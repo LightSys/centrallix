@@ -337,7 +337,7 @@ xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_a
  *** @returns 0, success.
  ****/
 static int
-xh_i_FreeEntry(pXHashEntry entry, void* arg)
+xh_i_freeEntry(pXHashEntry entry, void* arg)
     {
 	/*** The passed void* actually points to a void* array with 2 elements.
 	 *** 
@@ -378,7 +378,7 @@ xhClearKeySafe(pXHashTable this, void (*free_fn)(pXHashEntry, void*), void* free
 	
 	/** Free each row. **/
 	void* args[2] = {free_fn, free_arg};
-	const int ret = xhForEach(this, xh_i_FreeEntry, args);
+	const int ret = xhForEach(this, xh_i_freeEntry, args);
 	
 	/** Mark all rows as empty. **/
 	for (int i = 0; i < this->nRows; i++)

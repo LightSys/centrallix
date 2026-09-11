@@ -60,7 +60,7 @@
  *** @returns The resulting hash.
  ***/
 static unsigned int
-ca_i_hash_char_pair(const unsigned char c1, const unsigned char c2)
+ca_i_hashCharPair(const unsigned char c1, const unsigned char c2)
     {
 	const double sum = (c1 * c1 * c1) + (c2 * c2 * c2);
 	const double scale = ((double)c1 + 1.0) / ((double)c2 + 1.0);
@@ -74,7 +74,7 @@ ca_i_hash_char_pair(const unsigned char c1, const unsigned char c2)
  *** @param c1 The first character in the character pair.
  *** @param c2 The second character in the character pair.
  *** @param hash The hash for the two characters, calculated by calling the 
- *** 	ca_i_hash_char_pair() function (above).
+ *** 	ca_i_hashCharPair() function (above).
  **/
 typedef struct
     {
@@ -93,7 +93,7 @@ typedef struct
  ***          0 if p1 and p2 have identical hashes.
  ***/
 static int
-ca_i_char_pair_cmp(const void *p1, const void *p2)
+ca_i_charPairCmp(const void *p1, const void *p2)
     {
 	const CharPair *a = p1, *b = p2;
 	return a->hash - b->hash;
@@ -196,7 +196,7 @@ ca_build_vector(const char* str)
 	    
 	    /** Hash the character pair into an index (dimension).  **/
 	    /** Note that the passed value should always be between 97 ('a') and 132 ('9'). **/
-	    char_pairs[i].hash = ca_i_hash_char_pair(chars[i], chars[i + 1]);
+	    char_pairs[i].hash = ca_i_hashCharPair(chars[i], chars[i + 1]);
 	    }
 	
 	/** Free unused memory. **/
@@ -205,7 +205,7 @@ ca_build_vector(const char* str)
 	
 	
 	/** Sort char_pairs by hash value. **/
-	qsort(char_pairs, num_pairs, sizeof(CharPair), ca_i_char_pair_cmp);
+	qsort(char_pairs, num_pairs, sizeof(CharPair), ca_i_charPairCmp);
 	
 	
 	/** Allocate space for the sparse vector. **/
@@ -286,7 +286,7 @@ ca_free_vector(pVector sparse_vector)
  *** @param token_value The location to save the `token_value`.
  ***/
 static void
-ca_parse_vector_token(const int token, unsigned int* dims_consumed, unsigned int* token_value)
+ca_i_parseVectorToken(const int token, unsigned int* dims_consumed, unsigned int* token_value)
     {
 	if (token < 0)
 	    {
@@ -325,7 +325,7 @@ ca_sparse_len(const pVector vector)
 	    {
 	    /** Parse the vector token. **/
 	    unsigned int dims_consumed = 0u, val = 0u;
-	    ca_parse_vector_token(vector[i++], &dims_consumed, &val);
+	    ca_i_parseVectorToken(vector[i++], &dims_consumed, &val);
 	    
 	    /** Move ahead the requested number of dimensions. **/
 	    dim += dims_consumed;
@@ -363,7 +363,7 @@ ca_print_vector(const pVector vector)
  *** @returns The computed magnitude.
  ***/
 static double
-ca_magnitude_sparse(const pVector vector)
+ca_i_magnitudeSparse(const pVector vector)
     {
     unsigned int magnitude = 0u;
     
@@ -371,7 +371,7 @@ ca_magnitude_sparse(const pVector vector)
 	    {
 	    /** Parse the vector token. **/
 	    unsigned int dims_consumed = 0u, val = 0u;
-	    ca_parse_vector_token(vector[i++], &dims_consumed, &val);
+	    ca_i_parseVectorToken(vector[i++], &dims_consumed, &val);
 	    
 	    /** Increase magnitude. **/
 	    magnitude += val * val;
@@ -389,7 +389,7 @@ ca_magnitude_sparse(const pVector vector)
  *** @returns The computed magnitude.
  ***/
 static double
-ca_magnitude_dense(const pCentroid centroid)
+ca_i_magnitudeDense(const pCentroid centroid)
     {
     double magnitude = 0.0;
     
@@ -409,7 +409,7 @@ ca_magnitude_dense(const pCentroid centroid)
  ***     0 indicates completely different.
  ***/
 static double
-ca_sparse_similarity(const pVector v1, const pVector v2)
+ca_i_sparseSimilarity(const pVector v1, const pVector v2)
     {
 	/** Calculate dot product. **/
 	unsigned int vec1_remaining = 0u, vec2_remaining = 0u;
@@ -417,8 +417,8 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
 	while (dim < CA_NUM_DIMS)
 	    {
 	    unsigned int val1 = 0u, val2 = 0u;
-	    if (vec1_remaining == 0u) ca_parse_vector_token(v1[i1++], &vec1_remaining, &val1);
-	    if (vec2_remaining == 0u) ca_parse_vector_token(v2[i2++], &vec2_remaining, &val2);
+	    if (vec1_remaining == 0u) ca_i_parseVectorToken(v1[i1++], &vec1_remaining, &val1);
+	    if (vec2_remaining == 0u) ca_i_parseVectorToken(v2[i2++], &vec2_remaining, &val2);
 	    
 	    /*** Accumulate the dot_product. If either vector is 0 here,
 	     *** the total is 0 and this statement does nothing.
@@ -436,7 +436,7 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
 	if (dot_product == 0u) return 0.0;
     
     /** Return the difference score. **/
-    return (double)dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_sparse(v2));
+    return (double)dot_product / (ca_i_magnitudeSparse(v1) * ca_i_magnitudeSparse(v2));
     }
 
 /*** Calculate the difference between two sparsely allocated vectors by
@@ -448,7 +448,7 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
  ***     1 indicates completely different and
  ***     0 indicates identical.
  ***/
-#define ca_sparse_dif(v1, v2) (1.0 - ca_sparse_similarity(v1, v2))
+#define ca_sparse_dif(v1, v2) (1.0 - ca_i_sparseSimilarity(v1, v2))
 
 /*** Calculate the similarity between a sparsely allocated vector and a densely
  *** allocated centroid by taking their dot product.
@@ -460,7 +460,7 @@ ca_sparse_similarity(const pVector v1, const pVector v2)
  ***     0 indicates completely different.
  ***/
 static double
-ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c1)
+ca_i_sparseSimilarityToCentroid(const pVector v1, const pCentroid c1)
     {
     double dot_product = 0.0;
     
@@ -468,7 +468,7 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c1)
 	    {
 	    /** Parse the vector token. **/
 	    unsigned int dims_consumed = 0u, val = 0u;
-	    ca_parse_vector_token(v1[i++], &dims_consumed, &val);
+	    ca_i_parseVectorToken(v1[i++], &dims_consumed, &val);
 	    
 	    /** Increase dot product (skipped for zero-values). **/
 	    if (val > 0u) dot_product += (double)val * c1[dim];
@@ -478,7 +478,7 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c1)
 	    }
     
     /** Return the difference score. **/
-    return dot_product / (ca_magnitude_sparse(v1) * ca_magnitude_dense(c1));
+    return dot_product / (ca_i_magnitudeSparse(v1) * ca_i_magnitudeDense(c1));
     }
 
 /*** Calculate the difference between a sparsely allocated vector and a densely
@@ -490,7 +490,7 @@ ca_sparse_similarity_to_centroid(const pVector v1, const pCentroid c1)
  ***     1 indicates completely different and
  ***     0 indicates identical.
  ***/
-#define ca_sparse_dif_to_centroid(v1, c1) (1.0 - ca_sparse_similarity_to_centroid(v1, c1))
+#define ca_sparse_dif_to_centroid(v1, c1) (1.0 - ca_i_sparseSimilarityToCentroid(v1, c1))
 
 /*** Computes Levenshtein distance between two strings.
  *** 
@@ -635,7 +635,7 @@ ca_cos_compare(void* v1, void* v2)
 	if (!v1_empty && v2_empty) return 0.0;
     
     /** Apply rounding to avoid annoying floating point issues before returning. **/
-    return round(ca_sparse_similarity(vec1, vec2) * 1000000.0) / 1000000.0;
+    return round(ca_i_sparseSimilarity(vec1, vec2) * 1000000.0) / 1000000.0;
     }
 
 /*** Compares two strings using their Levenshtein edit distance to compute a
@@ -717,7 +717,7 @@ ca_eql(pVector v1, pVector v2)
  *** @returns The average cluster size.
  ***/
 static double
-ca_i_get_cluster_size(
+ca_i_getClusterSize(
     pVector* vectors,
     const unsigned int num_vectors,
     unsigned int* labels,
@@ -924,7 +924,7 @@ ca_kmeans(
 	    
 	    /** Is there enough improvement? **/
 	    if (min_improvement <= -1.0) continue; /** Skip check if it will never end the loop. **/
-	    const double average_cluster_size = checkDouble(ca_i_get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
+	    const double average_cluster_size = checkDouble(ca_i_getClusterSize(vectors, num_vectors, labels, centroids, num_clusters));
 	    if (isnan(average_cluster_size)) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;
 	    if (improvement < min_improvement) break;
@@ -935,7 +935,7 @@ ca_kmeans(
 	if (vector_sims != NULL)
 	    {
 	    for (unsigned int i = 0u; i < num_vectors; i++)
-		vector_sims[i] = ca_sparse_similarity_to_centroid(vectors[i], centroids[labels[i]]);
+		vector_sims[i] = ca_i_sparseSimilarityToCentroid(vectors[i], centroids[labels[i]]);
 	    }
 	
 	/** Success. **/

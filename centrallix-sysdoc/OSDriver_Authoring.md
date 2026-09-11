@@ -1217,21 +1217,21 @@ int expSetParamFunctions(pParamObjects this, char* name, int (*type_fn)(), int (
 This function sets the param accessor functions used to access params on a specific name.  Some example function signatures for the `type_fn()`, `get_fn()`, and `set_fn()` are provided below:
 
 ```c
-static int ci_GetParamType(void* v, char* attr_name);
-static int ci_GetParamValue(void* v, char* attr_name, int datatype, pObjData val);
-static int ci_SetParamValue(void* v, char* attr_name, int datatype, pObjData val);
+static int cluster_i_getParamType(void* v, char* attr_name);
+static int cluster_i_getParamValue(void* v, char* attr_name, int datatype, pObjData val);
+static int cluster_i_setParamValue(void* v, char* attr_name, int datatype, pObjData val);
 ```
 
 The functions use the following parameters:
 - `v : void*` is the object provided in `expAddParamToList()` (or a similar function).
 - `attr_name : char*` is the string name for the requested attribute.
 - `datatype : int` is the data type for the requested attribute.
-- `val : pObjectData` is either a buffer in which to store the requested data (`ci_GetParamValue()`) or a buffer containing data that will be copied to the parameter `ci_SetParamValue()`.
+- `val : pObjectData` is either a buffer in which to store the requested data (`cluster_i_getParamValue()`) or a buffer containing data that will be copied to the parameter `cluster_i_setParamValue()`.
 
 The functions return the following values:
-- The `ci_GetParamType()` function returns the datatype on success (e.g. `DATA_T_INTEGER`), or -1 if an error occurs.
-- The `ci_GetParamValue()` function returns 0 for success, 1 if the attribute is `NULL`, or -1 if an error occurs.
-- The `ci_SetParamValue()` function returns 0 for success (even if the value was set to `NULL`), or -1 if an error occurs.
+- The `cluster_i_getParamType()` function returns the datatype on success (e.g. `DATA_T_INTEGER`), or -1 if an error occurs.
+- The `cluster_i_getParamValue()` function returns 0 for success, 1 if the attribute is `NULL`, or -1 if an error occurs.
+- The `cluster_i_setParamValue()` function returns 0 for success (even if the value was set to `NULL`), or -1 if an error occurs.
 
 The `expSetParamFunctions()` function returns 0 if the functions were set successfully, or -1 if an error occurs.
 

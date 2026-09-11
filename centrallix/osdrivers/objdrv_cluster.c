@@ -96,7 +96,7 @@ ClusterAlgorithm ALL_CLUSTERING_ALGORITHMS[] =
 
 /** Converts a clustering algorithm to its string name. **/
 char*
-ci_ClusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
+cluster_i_clusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
     {
 	switch (clustering_algorithm)
 	    {
@@ -133,7 +133,7 @@ SimilarityMeasure ALL_SIMILARITY_MEASURES[] =
  *** @returns The corresponding name.
  ***/
 char*
-ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
+cluster_i_similarityMeasureToString(SimilarityMeasure similarity_measure)
     {
 	switch (similarity_measure)
 	    {
@@ -158,7 +158,7 @@ ci_SimilarityMeasureToString(SimilarityMeasure similarity_measure)
  *** 	if an error occurs, in which case it always calls mssError() to give
  *** 	an error message.
  ***/
-double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(void*, void*)
+double (*cluster_i_similarityMeasureToFunction(SimilarityMeasure similarity_measure))(void*, void*)
     {
     switch (similarity_measure)
 	{
@@ -167,7 +167,7 @@ double (*ci_SimilarityMeasureToFunction(SimilarityMeasure similarity_measure))(v
 	default:
 	    mssError(1, "Cluster",
 		"Unknown similarity measure \"%s\" (%d).",
-		ci_SimilarityMeasureToString(similarity_measure), similarity_measure
+		cluster_i_similarityMeasureToString(similarity_measure), similarity_measure
 	    );
 	    return NULL;
 	}
@@ -596,46 +596,44 @@ struct
 /** ================ Function Declarations ================ **/
 /** ANCHOR[id=functions] **/
 
-/** Note: ci stands for "cluster_internal". **/
-
 /** Parsing Functions. **/
 // LINK #parsing
-static void ci_GiveHint(const char* hint);
-static bool ci_TryHint(char* value, char** valid_values, const unsigned int n_valid_values);
-static void ci_UnknownAttribute(char* attr_name, int target_type);
-static int ci_ParseAttribute(pStructInf inf, char* attr_name, int datatype, pObjData data, pParamObjects param_list, bool required, bool print_type_error);
-static ClusterAlgorithm ci_ParseClusteringAlgorithm(pStructInf cluster_inf, pParamObjects param_list);
-static SimilarityMeasure ci_ParseSimilarityMeasure(pStructInf cluster_inf, pParamObjects param_list);
-static pSourceData ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path);
-static pClusterData ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source_data);
-static pSearchData ci_ParseSearchData(pStructInf inf, pNodeData node_data);
-static pNodeData ci_ParseNodeData(pStructInf inf, pObject obj);
+static void cluster_i_giveHint(const char* hint);
+static bool cluster_i_tryHint(char* value, char** valid_values, const unsigned int n_valid_values);
+static void cluster_i_unknownAttribute(char* attr_name, int target_type);
+static int cluster_i_parseAttribute(pStructInf inf, char* attr_name, int datatype, pObjData data, pParamObjects param_list, bool required, bool print_type_error);
+static ClusterAlgorithm cluster_i_parseClusteringAlgorithm(pStructInf cluster_inf, pParamObjects param_list);
+static SimilarityMeasure cluster_i_parseSimilarityMeasure(pStructInf cluster_inf, pParamObjects param_list);
+static pSourceData cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path);
+static pClusterData cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source_data);
+static pSearchData cluster_i_parseSearchData(pStructInf inf, pNodeData node_data);
+static pNodeData cluster_i_parseNodeData(pStructInf inf, pObject obj);
 
 /** Freeing Functions. **/
 // LINK #freeing
-static void ci_FreeSourceData(pSourceData source_data);
-static void ci_FreeClusterData(pClusterData cluster_data, bool recursive);
-static void ci_FreeSearchData(pSearchData search_data);
-static void ci_FreeNodeData(pNodeData node_data);
-static void ci_ClearCaches(void);
+static void cluster_i_freeSourceData(pSourceData source_data);
+static void cluster_i_freeClusterData(pClusterData cluster_data, bool recursive);
+static void cluster_i_freeSearchData(pSearchData search_data);
+static void cluster_i_freeNodeData(pNodeData node_data);
+static void cluster_i_clearCaches(void);
 
 /** Deep Size Computation Functions. **/
 // LINK #sizing
-static size_t ci_SizeOfSourceData(pSourceData source_data);
-static size_t ci_SizeOfClusterData(pClusterData cluster_data, bool recursive);
-static size_t ci_SizeOfSearchData(pSearchData search_data);
+static size_t cluster_i_sizeOfSourceData(pSourceData source_data);
+static size_t cluster_i_sizeOfClusterData(pClusterData cluster_data, bool recursive);
+static size_t cluster_i_sizeOfSearchData(pSearchData search_data);
 
 /** Computation Functions. (Ensure data is computed.) **/
 // LINK #computation
-static int ci_ComputeSourceData(pSourceData source_data, pObjSession session);
-static int ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data);
-static int ci_ComputeSearchData(pSearchData search_data, pNodeData node_data);
+static int cluster_i_computeSourceData(pSourceData source_data, pObjSession session);
+static int cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data);
+static int cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data);
 
 /** Parameter Functions. **/
 // LINK #params
-static int ci_GetParamType(void* inf_v, const char* attr_name);
-static int ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val);
-static int ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val);
+static int cluster_i_getParamType(void* inf_v, const char* attr_name);
+static int cluster_i_getParamValue(void* inf_v, char* attr_name, int datatype, pObjData val);
+static int cluster_i_setParamValue(void* inf_v, char* attr_name, int datatype, pObjData val);
 
 /** Driver Functions. **/
 // LINK #driver
@@ -655,10 +653,10 @@ int clusterInfo(void* inf_v, pObjectInfo info);
 // LINK #method
 char* clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt);
 char* clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt);
-static int ci_PrintEntry(pXHashEntry entry, void* arg);
-static void ci_CacheFreeSourceData(pXHashEntry entry, void* path);
-static void ci_CacheFreeCluster(pXHashEntry entry, void* path);
-static void ci_CacheFreeSearch(pXHashEntry entry, void* path);
+static int cluster_i_printEntry(pXHashEntry entry, void* arg);
+static void cluster_i_cacheFreeSourceData(pXHashEntry entry, void* path);
+static void cluster_i_cacheFreeCluster(pXHashEntry entry, void* path);
+static void cluster_i_cacheFreeSearch(pXHashEntry entry, void* path);
 int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt);
 
 /** Unimplemented DriverFunctions. **/
@@ -678,7 +676,7 @@ int clusterCommit(void* inf_v, pObjTrxTree *oxt);
 // LINK #functions
 
 /** Format a hint to give to the user. **/
-static void ci_GiveHint(const char* hint)
+static void cluster_i_giveHint(const char* hint)
     {
 	fprintf(stderr, "  > Hint: Did you mean \"%s\"?\n", hint);
     
@@ -697,13 +695,13 @@ static void ci_GiveHint(const char* hint)
  *** @returns Whether a hint was given.
  ***/
 static bool
-ci_TryHint(char* value, char** valid_values, const unsigned int n_valid_values)
+cluster_i_tryHint(char* value, char** valid_values, const unsigned int n_valid_values)
     {
 	char* guess = ca_most_similar(value, (void**)valid_values, n_valid_values, ca_lev_compare, 0.25);
 	if (guess == NULL) return false; /* No hint. */
 	
 	/** Issue hint. **/
-	ci_GiveHint(guess);
+	cluster_i_giveHint(guess);
     
     return true;
     }
@@ -717,7 +715,7 @@ ci_TryHint(char* value, char** valid_values, const unsigned int n_valid_values)
  *** 	attributes in this context.
  ***/
 static void
-ci_UnknownAttribute(char* attr_name, const int target_type)
+cluster_i_unknownAttribute(char* attr_name, const int target_type)
     {
 	/** Display the error message. **/
 	mssError(1, "Cluster", "Unknown attribute '%s'.", attr_name);
@@ -741,8 +739,8 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
 	    }
 	
 	/** Attempt to give hints. **/
-	if (ci_TryHint(attr_name, my_attrs, n_my_attrs));
-	else if (ci_TryHint(attr_name, DRIVER_ATTRIBUTE_NAMES, N_DRIVER_ATTRIBUTE_NAMES));
+	if (cluster_i_tryHint(attr_name, my_attrs, n_my_attrs));
+	else if (cluster_i_tryHint(attr_name, DRIVER_ATTRIBUTE_NAMES, N_DRIVER_ATTRIBUTE_NAMES));
     
     return;
     }
@@ -762,7 +760,7 @@ ci_UnknownAttribute(char* attr_name, const int target_type)
  *** describe the function parameters.
  ***/
 static int
-ci_ParseAttribute(
+cluster_i_parseAttribute(
     pStructInf inf,
     char* attr_name,
     int datatype,
@@ -844,11 +842,11 @@ ci_ParseAttribute(
  *** @returns The data algorithm, or ALGORITHM_NULL on failure.
  ***/
 static ClusterAlgorithm
-ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
+cluster_i_parseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the algorithm attribute. **/
 	char* algorithm;
-	if (UNLIKELY(ci_ParseAttribute(inf, "algorithm", DATA_T_STRING, POD(&algorithm), param_list, true, true) != 0))
+	if (UNLIKELY(cluster_i_parseAttribute(inf, "algorithm", DATA_T_STRING, POD(&algorithm), param_list, true, true) != 0))
 	    {
 	    mssError(0, "Cluster", "Failed to parse attribute 'algorithm' in group \"%s\".", inf->Name);
 	    return ALGORITHM_NULL;
@@ -868,12 +866,12 @@ ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 	/** Attempt to give a hint. **/
 	char* all_names[N_CLUSTERING_ALGORITHMS] = {NULL};
 	for (unsigned int i = 1u; i < N_CLUSTERING_ALGORITHMS; i++)
-	    all_names[i] = ci_ClusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i]);
-	if (ci_TryHint(algorithm, all_names, N_CLUSTERING_ALGORITHMS));
-	else if (strcasecmp(algorithm, "sliding") == 0) ci_GiveHint(ci_ClusteringAlgorithmToString(ALGORITHM_SLIDING_WINDOW));
-	else if (strcasecmp(algorithm, "window")  == 0) ci_GiveHint(ci_ClusteringAlgorithmToString(ALGORITHM_SLIDING_WINDOW));
-	else if (strcasecmp(algorithm, "null")    == 0) ci_GiveHint(ci_ClusteringAlgorithmToString(ALGORITHM_NONE));
-	else if (strcasecmp(algorithm, "nothing") == 0) ci_GiveHint(ci_ClusteringAlgorithmToString(ALGORITHM_NONE));
+	    all_names[i] = cluster_i_clusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i]);
+	if (cluster_i_tryHint(algorithm, all_names, N_CLUSTERING_ALGORITHMS));
+	else if (strcasecmp(algorithm, "sliding") == 0) cluster_i_giveHint(cluster_i_clusteringAlgorithmToString(ALGORITHM_SLIDING_WINDOW));
+	else if (strcasecmp(algorithm, "window")  == 0) cluster_i_giveHint(cluster_i_clusteringAlgorithmToString(ALGORITHM_SLIDING_WINDOW));
+	else if (strcasecmp(algorithm, "null")    == 0) cluster_i_giveHint(cluster_i_clusteringAlgorithmToString(ALGORITHM_NONE));
+	else if (strcasecmp(algorithm, "nothing") == 0) cluster_i_giveHint(cluster_i_clusteringAlgorithmToString(ALGORITHM_NONE));
     
     /** Fail. **/
     return ALGORITHM_NULL;
@@ -892,11 +890,11 @@ ci_ParseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
  *** @returns The similarity measure, or SIMILARITY_NULL on failure.
  ***/
 static SimilarityMeasure
-ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
+cluster_i_parseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the similarity_measure attribute. **/
 	char* measure;
-	if (UNLIKELY(ci_ParseAttribute(inf, "similarity_measure", DATA_T_STRING, POD(&measure), param_list, true, true) != 0))
+	if (UNLIKELY(cluster_i_parseAttribute(inf, "similarity_measure", DATA_T_STRING, POD(&measure), param_list, true, true) != 0))
 	    {
 	    mssError(0, "Cluster", "Failed to parse attribute 'similarity_measure' in group \"%s\".", inf->Name);
 	    return SIMILARITY_NULL;
@@ -912,12 +910,12 @@ ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
 	/** Attempt to give a hint. **/
 	char* all_names[N_SIMILARITY_MEASURES] = {NULL};
 	for (unsigned int i = 1u; i < N_SIMILARITY_MEASURES; i++)
-	    all_names[i] = ci_SimilarityMeasureToString(ALL_SIMILARITY_MEASURES[i]);
-	if (ci_TryHint(measure, all_names, N_SIMILARITY_MEASURES));
-	else if (strcasecmp(measure, "cos")           == 0) ci_GiveHint(ci_SimilarityMeasureToString(SIMILARITY_COSINE));
-	else if (strcasecmp(measure, "lev")           == 0) ci_GiveHint(ci_SimilarityMeasureToString(SIMILARITY_LEVENSHTEIN));
-	else if (strcasecmp(measure, "edit-dist")     == 0) ci_GiveHint(ci_SimilarityMeasureToString(SIMILARITY_LEVENSHTEIN));
-	else if (strcasecmp(measure, "edit-distance") == 0) ci_GiveHint(ci_SimilarityMeasureToString(SIMILARITY_LEVENSHTEIN));
+	    all_names[i] = cluster_i_similarityMeasureToString(ALL_SIMILARITY_MEASURES[i]);
+	if (cluster_i_tryHint(measure, all_names, N_SIMILARITY_MEASURES));
+	else if (strcasecmp(measure, "cos")           == 0) cluster_i_giveHint(cluster_i_similarityMeasureToString(SIMILARITY_COSINE));
+	else if (strcasecmp(measure, "lev")           == 0) cluster_i_giveHint(cluster_i_similarityMeasureToString(SIMILARITY_LEVENSHTEIN));
+	else if (strcasecmp(measure, "edit-dist")     == 0) cluster_i_giveHint(cluster_i_similarityMeasureToString(SIMILARITY_LEVENSHTEIN));
+	else if (strcasecmp(measure, "edit-distance") == 0) cluster_i_giveHint(cluster_i_similarityMeasureToString(SIMILARITY_LEVENSHTEIN));
     
     /** Fail. **/
     return SIMILARITY_NULL;
@@ -939,7 +937,7 @@ ci_ParseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
  *** @returns A new pSourceData struct on success, or NULL on failure.
  ***/
 static pSourceData
-ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
+cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
     {
     char* buf = NULL;
     pSourceData source_data = NULL;
@@ -959,17 +957,17 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	if (check(objCurrentDate(&source_data->DateCreated)) != 0) goto err_free;
 	
 	/** Get source. **/
-	if (UNLIKELY(ci_ParseAttribute(inf, "source", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(cluster_i_parseAttribute(inf, "source", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
 	source_data->SourcePath = (char*)checkPtr(nmSysStrdup(buf));
 	if (UNLIKELY(source_data->SourcePath == NULL)) goto err_free;
 	
 	/** Get the attribute name to use when querying keys from the source. **/
-	if (UNLIKELY(ci_ParseAttribute(inf, "key_attr", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(cluster_i_parseAttribute(inf, "key_attr", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
 	source_data->KeyAttr = (char*)checkPtr(nmSysStrdup(buf));
 	if (UNLIKELY(source_data->KeyAttr == NULL)) goto err_free;
 	
 	/** Get the attribute name to use for querying data from the source. **/
-	if (UNLIKELY(ci_ParseAttribute(inf, "data_attr", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(cluster_i_parseAttribute(inf, "data_attr", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
 	source_data->DataAttr = (char*)checkPtr(nmSysStrdup(buf));
 	if (UNLIKELY(source_data->DataAttr == NULL)) goto err_free;
 	
@@ -993,7 +991,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    
 	    /** Free data we don't need. **/
 	    nmSysFree(source_data->CacheKey);
-	    ci_FreeSourceData(source_data);
+	    cluster_i_freeSourceData(source_data);
 	    
 	    /** Return the cached source data. **/
 	    return source_maybe;
@@ -1011,7 +1009,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	if (source_data != NULL)
 	    {
 	    if (source_data->CacheKey != NULL) nmSysFree(source_data->CacheKey);
-	    ci_FreeSourceData(source_data);
+	    cluster_i_freeSourceData(source_data);
 	    }
 	
 	mssError(0, "Cluster",
@@ -1038,7 +1036,7 @@ ci_ParseSourceData(pStructInf inf, pParamObjects param_list, char* path)
  *** @returns A new pClusterData struct on success, or NULL on failure.
  ***/
 static pClusterData
-ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source_data)
+cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source_data)
     {
     int result;
     pClusterData cluster_data = NULL;
@@ -1068,7 +1066,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	if (check(objCurrentDate(&cluster_data->DateCreated)) != 0) goto err_free;
 	
 	/** Get algorithm. **/
-	cluster_data->ClusterAlgorithm = ci_ParseClusteringAlgorithm(inf, param_list);
+	cluster_data->ClusterAlgorithm = cluster_i_parseClusteringAlgorithm(inf, param_list);
 	if (UNLIKELY(cluster_data->ClusterAlgorithm == ALGORITHM_NULL)) goto err_free;
 	
 	/** Handle no clustering case. **/
@@ -1079,7 +1077,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    }
 	
 	/** Get similarity_measure. **/
-	cluster_data->SimilarityMeasure = ci_ParseSimilarityMeasure(inf, param_list);
+	cluster_data->SimilarityMeasure = cluster_i_parseSimilarityMeasure(inf, param_list);
 	if (UNLIKELY(cluster_data->SimilarityMeasure == SIMILARITY_NULL)) goto err_free;
 	
 	/** Handle sliding window case. **/
@@ -1090,7 +1088,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    
 	    /** Get window_size. **/
 	    int window_size;
-	    if (ci_ParseAttribute(inf, "window_size", DATA_T_INTEGER, POD(&window_size), param_list, true, true) != 0)
+	    if (cluster_i_parseAttribute(inf, "window_size", DATA_T_INTEGER, POD(&window_size), param_list, true, true) != 0)
 		goto err_free;
 	    if (window_size < 1)
 		{
@@ -1105,7 +1103,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	
 	/** Get num_clusters. **/
 	int num_clusters;
-	if (UNLIKELY(ci_ParseAttribute(inf, "num_clusters", DATA_T_INTEGER, POD(&num_clusters), param_list, true, true) != 0))
+	if (UNLIKELY(cluster_i_parseAttribute(inf, "num_clusters", DATA_T_INTEGER, POD(&num_clusters), param_list, true, true) != 0))
 	    goto err_free;
 	if (num_clusters < 2)
 	    {
@@ -1117,7 +1115,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	
 	/** Get min_improvement. **/
 	double improvement;
-	result = ci_ParseAttribute(inf, "min_improvement", DATA_T_DOUBLE, POD(&improvement), param_list, false, false);
+	result = cluster_i_parseAttribute(inf, "min_improvement", DATA_T_DOUBLE, POD(&improvement), param_list, false, false);
 	if (UNLIKELY(result == -1)) goto err_free;
 	else if (result == 1) cluster_data->MinImprovement = CI_DEFAULT_MIN_IMPROVEMENT;
 	else if (result == 0)
@@ -1133,7 +1131,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	
 	/** Get max_iterations. **/
 	int max_iterations;
-	result = ci_ParseAttribute(inf, "max_iterations", DATA_T_INTEGER, POD(&max_iterations), param_list, false, true);
+	result = cluster_i_parseAttribute(inf, "max_iterations", DATA_T_INTEGER, POD(&max_iterations), param_list, false, true);
 	if (UNLIKELY(result == -1)) goto err_free;
 	if (result == 0)
 	    {
@@ -1148,7 +1146,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	
 	/** Get seed. **/
 	int seed;
-	result = ci_ParseAttribute(inf, "seed", DATA_T_INTEGER, POD(&seed), param_list, false, true);
+	result = cluster_i_parseAttribute(inf, "seed", DATA_T_INTEGER, POD(&seed), param_list, false, true);
 	if (UNLIKELY(result == -1)) goto err_free;
 	if (result == 0)
 	    {
@@ -1194,9 +1192,9 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster \"%s\".\n", name, inf->Name);
-		    if (ci_TryHint(name, CLUSTER_ATTRS, N_INPUT_CLUSTER_ATTRS));
-		    else if (strcasecmp(name, "k") == 0) ci_GiveHint("num_clusters");
-		    else if (strcasecmp(name, "threshold") == 0) ci_GiveHint("min_improvement");
+		    if (cluster_i_tryHint(name, CLUSTER_ATTRS, N_INPUT_CLUSTER_ATTRS));
+		    else if (strcasecmp(name, "k") == 0) cluster_i_giveHint("num_clusters");
+		    else if (strcasecmp(name, "threshold") == 0) cluster_i_giveHint("min_improvement");
 		    
 		    break;
 		    }
@@ -1212,12 +1210,12 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 			    "Warning: Unknown group [\"%s\" : \"%s\"] in cluster \"%s\".\n",
 			    name, group_type, inf->Name
 			);
-			ci_GiveHint("cluster/cluster");
+			cluster_i_giveHint("cluster/cluster");
 			continue;
 			}
 		    
 		    /** Subcluster found. **/
-		    pClusterData sub_cluster = ci_ParseClusterData(sub_inf, param_list, source_data);
+		    pClusterData sub_cluster = cluster_i_parseClusterData(sub_inf, param_list, source_data);
 		    if (sub_cluster == NULL) goto err_free;
 		    sub_cluster->Parent = cluster_data;
 		    if (checkPos(xaAddItem(&sub_clusters, sub_cluster)) < 0) goto err_free;
@@ -1299,7 +1297,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 	    ASSERTMAGIC(cluster_maybe, MGK_CL_CLUSTER_DATA);
 	    
 	    /** Free the parsed cluster that we no longer need. */
-	    if (LIKELY(cluster_data != NULL)) ci_FreeClusterData(cluster_data, false);
+	    if (LIKELY(cluster_data != NULL)) cluster_i_freeClusterData(cluster_data, false);
 	    if (LIKELY(cache_key != NULL)) nmSysFree(cache_key);
 	    
 	    /** Return the cached cluster. **/
@@ -1320,12 +1318,12 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
 		{
 		pClusterData cur = sub_clusters.Items[i];
 		if (cur == NULL) break;
-		ci_FreeClusterData(cur, true);
+		cluster_i_freeClusterData(cur, true);
 		}
 	    check(xaDeInit(&sub_clusters)); /* Failure ignored. */
 	    }
 	
-	if (cluster_data != NULL) ci_FreeClusterData(cluster_data, false);
+	if (cluster_data != NULL) cluster_i_freeClusterData(cluster_data, false);
 	
 	mssError(0, "Cluster", "Failed to parse cluster from group \"%s\".", inf->Name);
 	return NULL;
@@ -1345,7 +1343,7 @@ ci_ParseClusterData(pStructInf inf, pParamObjects param_list, pSourceData source
  *** @returns A new pSearchData struct on success, or NULL on failure.
  ***/
 static pSearchData
-ci_ParseSearchData(pStructInf inf, pNodeData node_data)
+cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
     {
     pSearchData search_data = NULL;
     char* key = NULL;
@@ -1367,7 +1365,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	
 	/** Search for the source cluster. **/
 	char* source_cluster_name;
-	if (ci_ParseAttribute(inf, "source", DATA_T_STRING, POD(&source_cluster_name), param_list, true, true) != 0) goto err_free;
+	if (cluster_i_parseAttribute(inf, "source", DATA_T_STRING, POD(&source_cluster_name), param_list, true, true) != 0) goto err_free;
 	for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
 	    {
 	    pClusterData cluster_data = node_data->ClusterDatas[i];
@@ -1392,14 +1390,14 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    char* cluster_names[node_data->nClusterDatas];
 	    for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
 		cluster_names[i] = node_data->ClusterDatas[i]->Name;
-	    ci_TryHint(source_cluster_name, cluster_names, node_data->nClusterDatas);
+	    cluster_i_tryHint(source_cluster_name, cluster_names, node_data->nClusterDatas);
 	    
 	    /** Fail. **/
 	    goto err_free;
 	    }
 	
 	/** Get threshold attribute. **/
-	if (UNLIKELY(ci_ParseAttribute(inf, "threshold", DATA_T_DOUBLE, POD(&search_data->Threshold), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(cluster_i_parseAttribute(inf, "threshold", DATA_T_DOUBLE, POD(&search_data->Threshold), param_list, true, true) != 0)) goto err_free;
 	if (UNLIKELY(search_data->Threshold <= 0.0 || 1.0 <= search_data->Threshold))
 	    {
 	    mssError(1, "Cluster",
@@ -1410,7 +1408,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    }
 	
 	/** Get similarity measure. **/
-	search_data->SimilarityMeasure = ci_ParseSimilarityMeasure(inf, param_list);
+	search_data->SimilarityMeasure = cluster_i_parseSimilarityMeasure(inf, param_list);
 	if (UNLIKELY(search_data->SimilarityMeasure == SIMILARITY_NULL)) goto err_free;
 	
 	/** Check for additional data to warn the user about. **/
@@ -1446,7 +1444,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in search \"%s\".\n", name, inf->Name);
-		    ci_TryHint(name, SEARCH_ATTRS, N_INPUT_SEARCH_ATTRS);
+		    cluster_i_tryHint(name, SEARCH_ATTRS, N_INPUT_SEARCH_ATTRS);
 		    
 		    break;
 		    }
@@ -1494,7 +1492,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	    ASSERTMAGIC(search_maybe, MGK_CL_SEARCH_DATA);
 	    
 	    /** Free the parsed search that we no longer need. **/
-	    if (LIKELY(search_data != NULL)) ci_FreeSearchData(search_data);
+	    if (LIKELY(search_data != NULL)) cluster_i_freeSearchData(search_data);
 	    if (LIKELY(key != NULL)) nmSysFree(key);
 	    
 	    /** Return the cached search. **/
@@ -1510,7 +1508,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
 	
 	/** Error cleanup. **/
     err_free:
-	if (search_data != NULL) ci_FreeSearchData(search_data);
+	if (search_data != NULL) cluster_i_freeSearchData(search_data);
 	
 	mssError(0, "Cluster", "Failed to parse SearchData from group \"%s\".", inf->Name);
 	
@@ -1532,7 +1530,7 @@ ci_ParseSearchData(pStructInf inf, pNodeData node_data)
  *** @returns A new pNodeData struct on success, or NULL on failure.
  ***/
 static pNodeData
-ci_ParseNodeData(pStructInf inf, pObject parent)
+cluster_i_parseNodeData(pStructInf inf, pObject parent)
     {
     int ret = -1;
     pNodeData node_data = NULL;
@@ -1571,9 +1569,9 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	ret = expSetParamFunctions(
 	    node_data->ParamList,
 	    "parameters",
-	    ci_GetParamType,
-	    ci_GetParamValue,
-	    ci_SetParamValue
+	    cluster_i_getParamType,
+	    cluster_i_getParamValue,
+	    cluster_i_setParamValue
 	);
 	if (UNLIKELY(ret != 0))
 	    {
@@ -1616,7 +1614,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 		    
 		    /** Give the user a warning, and attempt to give them a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster driver root node \"%s\".\n", name, inf->Name);
-		    ci_TryHint(name, ROOT_ATTRS, N_INPUT_ROOT_ATTRS);
+		    cluster_i_tryHint(name, ROOT_ATTRS, N_INPUT_ROOT_ATTRS);
 		    
 		    break;
 		    }
@@ -1647,7 +1645,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 			    "Warning: Unknown group type \"%s\" on group \"%s\".\n",
 			    group_type, sub_inf->Name
 			);
-			ci_TryHint(group_type, (char*[]){
+			cluster_i_tryHint(group_type, (char*[]){
 			    "cluster/parameter",
 			    "cluster/cluster",
 			    "cluster/search",
@@ -1760,14 +1758,14 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    if (UNLIKELY(param_names == NULL)) goto err_free;
 	    for (unsigned int j = 0u; j < node_data->nParams; j++)
 		param_names[j] = node_data->Params[j]->Name;
-	    ci_TryHint(provided_name, param_names, node_data->nParams);
+	    cluster_i_tryHint(provided_name, param_names, node_data->nParams);
 	    if (LIKELY(param_names != NULL)) nmSysFree(param_names);
 	    
 	    next_provided_param:;
 	    }
 	
 	/** Parse source data. **/
-	node_data->SourceData = ci_ParseSourceData(inf, node_data->ParamList, path);
+	node_data->SourceData = cluster_i_parseSourceData(inf, node_data->ParamList, path);
 	if (UNLIKELY(node_data->SourceData == NULL)) goto err_free;
 	
 	/** Parse each cluster. **/
@@ -1780,7 +1778,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    memset(node_data->ClusterDatas, 0, clusters_size);
 	    for (unsigned int i = 0u; i < node_data->nClusterDatas; i++)
 		{
-		node_data->ClusterDatas[i] = ci_ParseClusterData(cluster_infs.Items[i], node_data->ParamList, node_data->SourceData);
+		node_data->ClusterDatas[i] = cluster_i_parseClusterData(cluster_infs.Items[i], node_data->ParamList, node_data->SourceData);
 		if (node_data->ClusterDatas[i] == NULL) goto err_free;
 		}
 	    }
@@ -1798,7 +1796,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	    memset(node_data->SearchDatas, 0, searches_size);
 	    for (unsigned int i = 0u; i < node_data->nSearchDatas; i++)
 		{
-		node_data->SearchDatas[i] = ci_ParseSearchData(search_infs.Items[i], node_data);
+		node_data->SearchDatas[i] = cluster_i_parseSearchData(search_infs.Items[i], node_data);
 		if (node_data->SearchDatas[i] == NULL) goto err_free;
 		}
 	    }
@@ -1813,7 +1811,7 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 	if (param_infs.nAlloc   != 0) check(xaDeInit(&param_infs));   /* Failure ignored. */
 	if (cluster_infs.nAlloc != 0) check(xaDeInit(&cluster_infs)); /* Failure ignored. */
 	if (search_infs.nAlloc  != 0) check(xaDeInit(&search_infs));  /* Failure ignored. */
-	if (node_data != NULL) ci_FreeNodeData(node_data);
+	if (node_data != NULL) cluster_i_freeNodeData(node_data);
 	mssError(0, "Cluster", "Failed to parse node from group \"%s\" in file: %s", inf->Name, path);
     
 	return NULL;
@@ -1826,12 +1824,12 @@ ci_ParseNodeData(pStructInf inf, pObject parent)
 
 /** @param source_data A pSourceData struct, freed by this function. **/
 static void
-ci_FreeSourceData(pSourceData source_data)
+cluster_i_freeSourceData(pSourceData source_data)
     {
 	/** Guard segfault. **/
 	if (UNLIKELY(source_data == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to ci_FreeSourceData(NULL);\n");
+	    fprintf(stderr, "Warning: Call to cluster_i_freeSourceData(NULL);\n");
 	    return;
 	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
@@ -1919,7 +1917,7 @@ ci_FreeSourceData(pSourceData source_data)
  *** @param recursive Whether to recursively free subclusters.
  ***/
 static void
-ci_FreeClusterData(pClusterData cluster_data, bool recursive)
+cluster_i_freeClusterData(pClusterData cluster_data, bool recursive)
     {
 	if (thExcessiveRecursion())
 	    {
@@ -1930,7 +1928,7 @@ ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 	/** Guard segfault. **/
 	if (UNLIKELY(cluster_data == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to ci_FreeClusterData(NULL, %s);\n", (recursive) ? "true" : "false");
+	    fprintf(stderr, "Warning: Call to cluster_i_freeClusterData(NULL, %s);\n", (recursive) ? "true" : "false");
 	    return;
 	    }
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
@@ -1972,7 +1970,7 @@ ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 		    {
 		    if (cluster_data->SubClusters[i] != NULL)
 			{
-			ci_FreeClusterData(cluster_data->SubClusters[i], recursive);
+			cluster_i_freeClusterData(cluster_data->SubClusters[i], recursive);
 			cluster_data->SubClusters[i] = NULL;
 			}
 		    }
@@ -1992,12 +1990,12 @@ ci_FreeClusterData(pClusterData cluster_data, bool recursive)
 // LINK #functions
 /** @param search_data A pSearchData struct, freed by this function. **/
 static void
-ci_FreeSearchData(pSearchData search_data)
+cluster_i_freeSearchData(pSearchData search_data)
     {
 	/** Guard segfault. **/
 	if (UNLIKELY(search_data == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to ci_FreeSearchData(NULL);\n");
+	    fprintf(stderr, "Warning: Call to cluster_i_freeSearchData(NULL);\n");
 	    return;
 	    }
 	ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
@@ -2032,12 +2030,12 @@ ci_FreeSearchData(pSearchData search_data)
 // LINK #functions
 /** @param node_data A pNodeData struct, freed by this function. **/
 static void
-ci_FreeNodeData(pNodeData node_data)
+cluster_i_freeNodeData(pNodeData node_data)
     {
 	/** Guard segfault. **/
 	if (UNLIKELY(node_data == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to ci_FreeNodeData(NULL);\n");
+	    fprintf(stderr, "Warning: Call to cluster_i_freeNodeData(NULL);\n");
 	    return;
 	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
@@ -2106,14 +2104,14 @@ ci_FreeNodeData(pNodeData node_data)
 
 /** Frees all data in caches for all cluster driver instances. **/
 static void
-ci_ClearCaches(void)
+cluster_i_clearCaches(void)
     {
 	/*** Free caches in reverse of the order they are created in case
 	 *** cached data relies on its source during the freeing process.
 	 ***/
-	check(xhClearKeySafe(&ClusterDriverCaches.SearchDataCache, ci_CacheFreeSearch, NULL)); /* Failure ignored. */
-	check(xhClearKeySafe(&ClusterDriverCaches.ClusterDataCache, ci_CacheFreeCluster, NULL)); /* Failure ignored. */
-	check(xhClearKeySafe(&ClusterDriverCaches.SourceDataCache, ci_CacheFreeSourceData, NULL)); /* Failure ignored. */
+	check(xhClearKeySafe(&ClusterDriverCaches.SearchDataCache, cluster_i_cacheFreeSearch, NULL)); /* Failure ignored. */
+	check(xhClearKeySafe(&ClusterDriverCaches.ClusterDataCache, cluster_i_cacheFreeCluster, NULL)); /* Failure ignored. */
+	check(xhClearKeySafe(&ClusterDriverCaches.SourceDataCache, cluster_i_cacheFreeSourceData, NULL)); /* Failure ignored. */
     
     return;
     }
@@ -2133,12 +2131,12 @@ ci_ClearCaches(void)
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
 static size_t
-ci_SizeOfSourceData(pSourceData source_data)
+cluster_i_sizeOfSourceData(pSourceData source_data)
     {
 	/** Guard segfaults. **/
 	if (UNLIKELY(source_data == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to ci_SizeOfSourceData(NULL);\n");
+	    fprintf(stderr, "Warning: Call to cluster_i_sizeOfSourceData(NULL);\n");
 	    return 0u;
 	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
@@ -2184,7 +2182,7 @@ ci_SizeOfSourceData(pSourceData source_data)
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
 static size_t
-ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
+cluster_i_sizeOfClusterData(pClusterData cluster_data, bool recursive)
     {
 	if (thExcessiveRecursion())
 	    {
@@ -2195,7 +2193,7 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 	/** Guard segfaults. **/
 	if (UNLIKELY(cluster_data == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to ci_SizeOfClusterData(NULL, %s);\n", (recursive) ? "true" : "false");
+	    fprintf(stderr, "Warning: Call to cluster_i_sizeOfClusterData(NULL, %s);\n", (recursive) ? "true" : "false");
 	    return 0u;
 	    }
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
@@ -2213,7 +2211,7 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
 	    if (recursive)
 		{
 		for (unsigned int i = 0u; i < cluster_data->nSubClusters; i++)
-		    size += ci_SizeOfClusterData(cluster_data->SubClusters[i], recursive);
+		    size += cluster_i_sizeOfClusterData(cluster_data->SubClusters[i], recursive);
 		}
 	    size += cluster_data->nSubClusters * sizeof(pClusterData);
 	    }
@@ -2234,12 +2232,12 @@ ci_SizeOfClusterData(pClusterData cluster_data, bool recursive)
  *** @returns The size in bytes of the struct and all internal allocated data.
  ***/
 static size_t
-ci_SizeOfSearchData(pSearchData search_data)
+cluster_i_sizeOfSearchData(pSearchData search_data)
     {
 	/** Guard segfaults. **/
 	if (UNLIKELY(search_data == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to ci_SizeOfSearchData(NULL);\n");
+	    fprintf(stderr, "Warning: Call to cluster_i_sizeOfSearchData(NULL);\n");
 	    return 0u;
 	    }
 	ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
@@ -2268,7 +2266,7 @@ ci_SizeOfSearchData(pSearchData search_data)
  ***         -1 other value on failure.
  ***/
 static int
-ci_ComputeSourceData(pSourceData source_data, pObjSession session)
+cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
     {
     bool successful = false;
     int ret;
@@ -2530,7 +2528,7 @@ ci_ComputeSourceData(pSourceData source_data, pObjSession session)
  ***         -1 other value on failure.
  ***/
 static int
-ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
+cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
     {
     size_t clusters_size = -1;
     size_t sims_size = -1;
@@ -2556,7 +2554,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	pObjSession session = checkPtr(node_data->ParamList->Session);
 	if (UNLIKELY(session == NULL)) goto err_free;
 	ASSERTMAGIC(session, MGK_OBJSESSION);
-	if (UNLIKELY(ci_ComputeSourceData(source_data, session) != 0))
+	if (UNLIKELY(cluster_i_computeSourceData(source_data, session) != 0))
 	    {
 	    mssError(0, "Cluster", "ClusterData computation failed due to missing SourceData.");
 	    goto err_free;
@@ -2610,7 +2608,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    {
 		    mssError(1, "Cluster",
 			"The similarity measure \"%s\" is not implemented for 'k-means' clusters.",
-			ci_SimilarityMeasureToString(cluster_data->SimilarityMeasure)
+			cluster_i_similarityMeasureToString(cluster_data->SimilarityMeasure)
 		    );
 		    goto err_free;
 		    }
@@ -2671,7 +2669,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 			if (UNLIKELY(index > __UINT32_MAX__))
 			    {
 			    mssError(1, "Cluster",
-				"How did you try to cluster more than %u data points and ci_ComputeSearchData() "
+				"How did you try to cluster more than %u data points and cluster_i_computeSearchData() "
 				"was the first thing to break?! Well... looks like it's time to update %s:%s to "
 				"handle a larger amount of data.",
 				__UINT32_MAX__, __FILE__, __LINE__
@@ -2690,7 +2688,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    default:
 		mssError(1, "Cluster",
 		    "Clustering algorithm \"%s\" is not implemented.",
-		    ci_ClusteringAlgorithmToString(cluster_data->ClusterAlgorithm)
+		    cluster_i_clusteringAlgorithmToString(cluster_data->ClusterAlgorithm)
 		);
 		goto err_free;
 	    }
@@ -2749,7 +2747,7 @@ ci_ComputeClusterData(pClusterData cluster_data, pNodeData node_data)
  ***         -1 other value on failure.
  ***/
 static int
-ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
+cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
     {
     pXArray pairs = NULL;
     
@@ -2769,7 +2767,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	    goto err_free;
 	    }
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
-	if (UNLIKELY(ci_ComputeClusterData(cluster_data, node_data) != 0))
+	if (UNLIKELY(cluster_i_computeClusterData(cluster_data, node_data) != 0))
 	    {
 	    mssError(0, "Cluster", "SearchData computation failed due to missing clusters.");
 	    goto err_free;
@@ -2783,7 +2781,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 	if (check(objCurrentDate(&search_data->DateComputed)) != 0) goto err_free;
 	
 	/** Get the comparison function based on the similarity measure. **/
-	double (*similarity_function)(void *, void *) = checkPtr(ci_SimilarityMeasureToFunction(search_data->SimilarityMeasure));
+	double (*similarity_function)(void *, void *) = checkPtr(cluster_i_similarityMeasureToFunction(search_data->SimilarityMeasure));
 	if (UNLIKELY(similarity_function == NULL)) goto err_free;
 	
 	/** Execute the search using the specified algorithm. **/
@@ -2802,7 +2800,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		default:
 		    mssError(1, "Cluster",
 			"Unknown similarity measure \"%s\".",
-			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
+			cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
 		    );
 		    goto err_free;
 		}
@@ -2820,7 +2818,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		{
 		mssError(1, "Cluster",
 		    "Failed to compute sliding search with %s similarity measure.",
-		    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
+		    cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
 		);
 		goto err_free;
 		}
@@ -2848,7 +2846,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    default:
 			mssError(1, "Cluster",
 			    "Unknown similarity measure \"%s\".",
-			    ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
+			    cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
 			);
 			goto err_free;
 		    }
@@ -2881,7 +2879,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
 		    {
 		    mssError(1, "Cluster",
 			"Failed to compute ca_complete_search() with %s similarity measure.",
-			ci_SimilarityMeasureToString(search_data->SimilarityMeasure)
+			cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
 		    );
 		    goto err_free;
 		    }
@@ -2951,7 +2949,7 @@ ci_ComputeSearchData(pSearchData search_data, pNodeData node_data)
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
 static int
-ci_GetParamType(void* inf_v, const char* attr_name)
+cluster_i_getParamType(void* inf_v, const char* attr_name)
     {
 	pNodeData node_data = checkPtr(inf_v);
 	if (UNLIKELY(node_data == NULL)) return DATA_T_UNAVAILABLE;
@@ -2997,7 +2995,7 @@ ci_GetParamType(void* inf_v, const char* attr_name)
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
 static int
-ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
+cluster_i_getParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
     {
 	pNodeData node_data = checkPtr(inf_v);
 	if (UNLIKELY(node_data == NULL)) goto err;
@@ -3036,7 +3034,7 @@ ci_GetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
 // LINK #functions
 /** Not implemented. **/
 static int
-ci_SetParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
+cluster_i_setParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
     {
 	mssError(1, "Cluster", "SetParamValue() is not implemented because clusters are immutable.");
     
@@ -3113,7 +3111,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	ASSERTMAGIC(node_struct->Data, MGK_STRUCTINF);
 	
 	/** Parse node data from the node_struct. **/
-	node_data = ci_ParseNodeData(node_struct->Data, parent);
+	node_data = cluster_i_parseNodeData(node_struct->Data, parent);
 	if (UNLIKELY(node_data == NULL))
 	    {
 	    mssError(0, "Cluster", "Failed to parse structure file \"%s\".", objFileName(parent));
@@ -3223,12 +3221,12 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 		target_names[i] = node_data->ClusterDatas[i]->Name;
 	    for (unsigned int i = 0u; i < node_data->nSearchDatas; i++)
 		target_names[i + node_data->nClusterDatas] = node_data->SearchDatas[i]->Name;
-	    ci_TryHint(target_name, target_names, n_targets);
+	    cluster_i_tryHint(target_name, target_names, n_targets);
 	    }
 	
 	/** Error cleanup. **/
     err_free:
-	if (node_data != NULL) ci_FreeNodeData(node_data);
+	if (node_data != NULL) cluster_i_freeNodeData(node_data);
 	if (driver_data != NULL) nmFree(driver_data, sizeof(DriverData));
 	
 	mssError(0, "Cluster",
@@ -3266,7 +3264,7 @@ clusterClose(void* inf_v, pObjTrxTree* oxt)
 	pNodeData node_data = checkPtr(driver_data->NodeData); /* Failure ignored. */
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	if (UNLIKELY(node_data != NULL && --node_data->OpenCount == 0))
-	    ci_FreeNodeData(driver_data->NodeData);
+	    cluster_i_freeNodeData(driver_data->NodeData);
 	
 	/** Free driver data. **/
 	nmFree(driver_data, sizeof(DriverData));
@@ -3413,7 +3411,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		pClusterData target = (pClusterData)checkPtr(driver_data->TargetData);
 		if (UNLIKELY(target == NULL)) goto err_free;
 		ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
-		if (UNLIKELY(ci_ComputeClusterData(target, node_data) != 0))
+		if (UNLIKELY(cluster_i_computeClusterData(target, node_data) != 0))
 		    {
 		    mssError(0, "Cluster", "Failed to compute ClusterData for query.");
 		    goto err_free;
@@ -3435,7 +3433,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		pSearchData target = (pSearchData)checkPtr(driver_data->TargetData);
 		if (UNLIKELY(target == NULL)) goto err_free;
 		ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
-		if (UNLIKELY(ci_ComputeSearchData(target, node_data) != 0))
+		if (UNLIKELY(cluster_i_computeSearchData(target, node_data) != 0))
 		    {
 		    mssError(0, "Cluster", "Failed to compute SearchData for query.");
 		    goto err_free;
@@ -3876,12 +3874,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		
 		if (strcmp(attr_name, "algorithm") == 0)
 		    {
-		    val->String = ci_ClusteringAlgorithmToString(target->ClusterAlgorithm);
+		    val->String = cluster_i_clusteringAlgorithmToString(target->ClusterAlgorithm);
 		    return 0;
 		    }
 		if (strcmp(attr_name, "similarity_measure") == 0)
 		    {
-		    val->String = ci_SimilarityMeasureToString(target->SimilarityMeasure);
+		    val->String = cluster_i_similarityMeasureToString(target->SimilarityMeasure);
 		    return 0;
 		    }
 		if (strcmp(attr_name, "num_clusters") == 0)
@@ -3924,7 +3922,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		    }
 		if (strcmp(attr_name, "similarity_measure") == 0)
 		    {
-		    val->String = ci_SimilarityMeasureToString(target->SimilarityMeasure);
+		    val->String = cluster_i_similarityMeasureToString(target->SimilarityMeasure);
 		    return 0;
 		    }
 		if (strcmp(attr_name, "threshold") == 0)
@@ -4003,7 +4001,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    }
 	
     unknown_attribute:
-	ci_UnknownAttribute(attr_name, driver_data->TargetType);
+	cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
 	
     err:;
 	char* name;
@@ -4185,7 +4183,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Enum values. **/
 		    check(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)); /* Failure ignored. */
 		    for (unsigned int i = 0u; i < N_CLUSTERING_ALGORITHMS; i++)
-			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_ClusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])))); /* Failure ignored. */
+			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(cluster_i_clusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])))); /* Failure ignored. */
 		    
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -4211,7 +4209,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Enum values. **/
 		    check(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)); /* Failure ignored. */
 		    for (unsigned int i = 0u; i < N_SIMILARITY_MEASURES; i++)
-			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(ci_SimilarityMeasureToString(ALL_SIMILARITY_MEASURES[i])))); /* Failure ignored. */
+			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(cluster_i_similarityMeasureToString(ALL_SIMILARITY_MEASURES[i])))); /* Failure ignored. */
 			
 		    /** Display flags. **/
 		    hints->Style     |= OBJ_PH_STYLE_BUTTONS;
@@ -4326,7 +4324,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    }
 	
     unknown_attribute:
-	ci_UnknownAttribute(attr_name, driver_data->TargetType);
+	cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
 	
     err_free:
 	/** Error cleanup. **/
@@ -4547,7 +4545,7 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 // LINK #functions
 /** Intended for use in `xhForEach()`. **/
 static int
-ci_PrintEntry(pXHashEntry entry, void* arg)
+cluster_i_printEntry(pXHashEntry entry, void* arg)
     {
 	/** Extract entry. **/
 	char* key = entry->Key;
@@ -4574,7 +4572,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 		pSourceData source_data = (pSourceData)data;
 		
 		/** Compute size. **/
-		bytes = ci_SizeOfSourceData(source_data);
+		bytes = cluster_i_sizeOfSourceData(source_data);
 		
 		/** If less is specified, skip uncomputed source. **/
 		if (*less_ptr > 0llu && source_data->Vectors == NULL) goto no_print;
@@ -4589,7 +4587,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 		pClusterData cluster_data = (pClusterData)data;
 		
 		/** Compute size. **/
-		bytes = ci_SizeOfClusterData(cluster_data, false);
+		bytes = cluster_i_sizeOfClusterData(cluster_data, false);
 		
 		/** If less is specified, skip uncomputed source. **/
 		if (*less_ptr > 0llu && cluster_data->Clusters == NULL) goto no_print;
@@ -4604,7 +4602,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 		pSearchData search_data = (pSearchData)data;
 		
 		/** Compute size. **/
-		bytes = ci_SizeOfSearchData(search_data);
+		bytes = cluster_i_sizeOfSearchData(search_data);
 		
 		/** If less is specified, skip uncomputed source. **/
 		if (*less_ptr > 0llu && search_data->Pairs == NULL) goto no_print;
@@ -4638,7 +4636,7 @@ ci_PrintEntry(pXHashEntry entry, void* arg)
 // LINK #functions
 /** Intended for use in `xhClearKeySafe()`. **/
 static void
-ci_CacheFreeSourceData(pXHashEntry entry, void* path)
+cluster_i_cacheFreeSourceData(pXHashEntry entry, void* path)
     {
 	/** Extract hash entry. **/
 	char* key = entry->Key;
@@ -4648,7 +4646,7 @@ ci_CacheFreeSourceData(pXHashEntry entry, void* path)
 	if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return;
 	
 	/** Free data. **/
-	ci_FreeSourceData(source_data);
+	cluster_i_freeSourceData(source_data);
 	nmSysFree(key);
     
     return;
@@ -4658,7 +4656,7 @@ ci_CacheFreeSourceData(pXHashEntry entry, void* path)
 // LINK #functions
 /** Intended for use in `xhClearKeySafe()`. **/
 static void
-ci_CacheFreeCluster(pXHashEntry entry, void* path)
+cluster_i_cacheFreeCluster(pXHashEntry entry, void* path)
     {
 	/** Extract hash entry. **/
 	char* key = entry->Key;
@@ -4668,7 +4666,7 @@ ci_CacheFreeCluster(pXHashEntry entry, void* path)
 	if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return;
 	
 	/** Free data. **/
-	ci_FreeClusterData(cluster_data, false);
+	cluster_i_freeClusterData(cluster_data, false);
 	nmSysFree(key);
     
     return;
@@ -4678,7 +4676,7 @@ ci_CacheFreeCluster(pXHashEntry entry, void* path)
 // LINK #functions
 /** Intended for use in `xhClearKeySafe()`. **/
 static void
-ci_CacheFreeSearch(pXHashEntry entry, void* path)
+cluster_i_cacheFreeSearch(pXHashEntry entry, void* path)
     {
 	/** Extract hash entry. **/
 	char* key = entry->Key;
@@ -4688,7 +4686,7 @@ ci_CacheFreeSearch(pXHashEntry entry, void* path)
 	if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return;
 	
 	/** Free data. **/
-	ci_FreeSearchData(search_data);
+	cluster_i_freeSearchData(search_data);
 	nmSysFree(key);
     
     return;
@@ -4751,19 +4749,19 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		printf("%-8s %-16s %-12s %s\n", "Type", "Name", "Size", "Entry CacheKey");
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
-		    ci_PrintEntry,
+		    cluster_i_printEntry,
 		    (void*[]){&i, &source_bytes, (void*)&skip_uncomputed, path}
 		)) != 0);
 		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.ClusterDataCache,
-		    ci_PrintEntry,
+		    cluster_i_printEntry,
 		    (void*[]){&i, &cluster_bytes, (void*)&skip_uncomputed, path}
 		)) != 0);
 		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SearchDataCache,
-		    ci_PrintEntry,
+		    cluster_i_printEntry,
 		    (void*[]){&i, &search_bytes, (void*)&skip_uncomputed, path}
 		)) != 0);
 		if (failed)
@@ -4797,7 +4795,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    /** 'drop_all'. **/
 	    if (strcmp(param->String, "drop_all") == 0)
 		{
-		ci_ClearCaches();
+		cluster_i_clearCaches();
 		printf("Dropped cache for all cluster files.\n");
 		return 0;
 		}
@@ -4836,7 +4834,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	mssError(1, "Cluster", "Unknown command: \"%s\"", method_name);
 	
 	/** Attempt to give hint. **/
-	ci_TryHint(method_name, METHOD_NAMES, METHOD_NAMES_COUNT);
+	cluster_i_tryHint(method_name, METHOD_NAMES, METHOD_NAMES_COUNT);
 	
     err:
 	mssError(0, "Cluster", "Failed execute command.");

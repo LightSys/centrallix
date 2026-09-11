@@ -131,7 +131,7 @@ typedef struct
  ***         -1 if an expectation is violated (and mssError() is called).
  ***/
 static int
-exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
+exp_fn_i_verifyArg(const char* fn_name, pExpression arg, const ArgExpect* arg_expect)
     {
 	/** The expectation struct cannot be NULL. **/
 	if (UNLIKELY(arg_expect == NULL))
@@ -355,7 +355,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
  *** 
  *** Example:
  *** ```c
- *** if (exp_fn_i_verify_schema(
+ *** if (exp_fn_i_verifySchema(
  ***     (ArgExpect[]){
  ***         {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_DATETIME, -1}, EXP_ARG_NOT_NULL},
  ***         {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
@@ -370,7 +370,7 @@ exp_fn_i_verify_arg(const char* fn_name, pExpression arg, const ArgExpect* arg_e
  *** ```
  ***/
 static int
-exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
+exp_fn_i_verifySchema(const ArgExpect* arg_expects, pExpression tree)
     {
 	/** Verify expression tree. **/
 	ASSERTMAGIC(tree, MGK_EXPRESSION);
@@ -420,7 +420,7 @@ exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
 	/** Verify arguments. **/
 	for (int i = 0; i < actual_args; i++)
 	    {
-	    if (UNLIKELY(exp_fn_i_verify_arg(tree->Name, tree->Children.Items[i], &arg_expects[i]) != 0))
+	    if (UNLIKELY(exp_fn_i_verifyArg(tree->Name, tree->Children.Items[i], &arg_expects[i]) != 0))
 		{
 		mssError(0, "EXP",
 		    "%s(...): Error while reading arg #%d/%d.",
@@ -443,7 +443,7 @@ exp_fn_i_verify_schema(const ArgExpect* arg_expects, pExpression tree)
  ***          1 if the expression is NULL.
  ***/
 static int
-exp_fn_i_get_number(pExpression numeric_expr, double* result_ptr)
+exp_fn_i_getNumber(pExpression numeric_expr, double* result_ptr)
     {
 	/** Check for null values. **/
 	if (numeric_expr == NULL || numeric_expr->Flags & EXPR_F_NULL) return 1;
@@ -481,7 +481,7 @@ exp_fn_i_get_number(pExpression numeric_expr, double* result_ptr)
  *** @param tree The affected tree.
  ***/
 static void
-exp_fn_i_free_result_string(pExpression tree)
+exp_fn_i_freeResultString(pExpression tree)
     {
 	/** If no string is allocated, no work is needed. **/
 	if (tree->Alloc == 0) return;
@@ -506,10 +506,10 @@ exp_fn_i_free_result_string(pExpression tree)
  ***         -1 if an error occurs.
  ***/
 static int
-exp_fn_i_alloc_result_string(pExpression tree, const size_t required_space)
+exp_fn_i_allocResultString(pExpression tree, const size_t required_space)
     {
 	/** Free the previous string (if needed) so we can store a new one. **/
-	exp_fn_i_free_result_string(tree);
+	exp_fn_i_freeResultString(tree);
 	
 	/** Decide how to allocate space. **/
 	if (required_space <= sizeof(tree->Types.StringBuf))
@@ -1586,7 +1586,7 @@ int
 exp_fn_lztrim(pExpression tree)
     {
 	/** Expect one nullable string parameter. **/
-	if (UNLIKELY(exp_fn_i_verify_schema((ArgExpect[]){
+	if (UNLIKELY(exp_fn_i_verifySchema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
 	}, tree) != 0))
@@ -1617,7 +1617,7 @@ exp_fn_lztrim(pExpression tree)
 	while (*str == '0' && (str[1] >= '0' && str[1] <= '9')) str++;
 	
 	/** Return the results using the tree. **/
-	exp_fn_i_free_result_string(tree);
+	exp_fn_i_freeResultString(tree);
 	tree->DataType = DATA_T_STRING;
 	tree->String = str;
 	tree->Alloc = 0;
@@ -1631,7 +1631,7 @@ int
 exp_fn_ltrim(pExpression tree)
     {
 	/** Expect one nullable string parameter. **/
-	if (UNLIKELY(exp_fn_i_verify_schema((ArgExpect[]){
+	if (UNLIKELY(exp_fn_i_verifySchema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
 	}, tree) != 0))
@@ -1663,7 +1663,7 @@ exp_fn_ltrim(pExpression tree)
 	while (*str == ' ') str++;
 	
 	/** Return the results using the tree. **/
-	exp_fn_i_free_result_string(tree);
+	exp_fn_i_freeResultString(tree);
 	tree->DataType = DATA_T_STRING;
 	tree->String = str;
 	tree->Alloc = 0;
@@ -1677,7 +1677,7 @@ int
 exp_fn_rtrim(pExpression tree)
     {
 	/** Expect one nullable string parameter. **/
-	if (UNLIKELY(exp_fn_i_verify_schema((ArgExpect[]){
+	if (UNLIKELY(exp_fn_i_verifySchema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
 	}, tree) != 0))
@@ -1713,7 +1713,7 @@ exp_fn_rtrim(pExpression tree)
 	    }
 	
 	/** We need to copy to remove spaces (str is owned by a child expression). **/
-	if (check(exp_fn_i_alloc_result_string(tree, n + 1)) != 0) return -1;
+	if (check(exp_fn_i_allocResultString(tree, n + 1)) != 0) return -1;
 	memcpy(tree->String, str, n);
 	tree->String[n] = '\0';
 	
@@ -3781,14 +3781,14 @@ int exp_fn_from_base64(pExpression tree, pParamObjects objlist, pExpression i0, 
     }
 
 static int
-exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
+exp_fn_i_doMath(pExpression tree, double (*math)(), int arg_num)
     {
 	/** Verify function schema: expect arg_num numeric values. **/
 	ArgExpect expects[arg_num + 1];
 	for (int i = 0; i < arg_num; i++)
 	    expects[i] = (ArgExpect){(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_NO_FLAGS};
 	expects[arg_num] = EXP_ARG_END;
-	if (exp_fn_i_verify_schema(expects, tree) != 0)
+	if (exp_fn_i_verifySchema(expects, tree) != 0)
 	    {
 	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
@@ -3809,7 +3809,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 	/** Maximum supported args. **/
 	if (arg_num > 4)
 	    {
-	    mssError(1, "EXP", "%s(...): exp_fn_i_do_math() does not support functions with more than 4 arguments. If this is an issue, please increase the number of arguments here: %s:%d", tree->Name, __FILE__, __LINE__);
+	    mssError(1, "EXP", "%s(...): exp_fn_i_doMath() does not support functions with more than 4 arguments. If this is an issue, please increase the number of arguments here: %s:%d", tree->Name, __FILE__, __LINE__);
 	    return -1;
 	    }
 	
@@ -3817,7 +3817,7 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 	double n[4] = {0.0, 0.0, 0.0, 0.0};
 	for (int i = 0; i < arg_num; i++)
 	    {
-	    if (check(exp_fn_i_get_number(tree->Children.Items[i], &(n[i]))) != 0)
+	    if (check(exp_fn_i_getNumber(tree->Children.Items[i], &(n[i]))) != 0)
 		{
 		mssError(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i);
 		return -1;
@@ -3834,26 +3834,26 @@ exp_fn_i_do_math(pExpression tree, double (*math)(), int arg_num)
 int
 exp_fn_power(pExpression tree)
     {
-    return exp_fn_i_do_math(tree, pow, 2);
+    return exp_fn_i_doMath(tree, pow, 2);
     }
 
 int
 exp_fn_ln(pExpression tree)
     {
-    return exp_fn_i_do_math(tree, log, 1);
+    return exp_fn_i_doMath(tree, log, 1);
     }
 
 int
 exp_fn_log10(pExpression tree)
     {
-    return exp_fn_i_do_math(tree, log10, 1);
+    return exp_fn_i_doMath(tree, log10, 1);
     }
 
 int
 exp_fn_log(pExpression tree)
     {
 	/** Verify function schema: A number and an optional base. **/
-	if (exp_fn_i_verify_schema((ArgExpect[]){
+	if (exp_fn_i_verifySchema((ArgExpect[]){
 	    {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_NO_FLAGS},
 	    {(int[]){DATA_T_INTEGER, DATA_T_DOUBLE, DATA_T_MONEY, -1}, EXP_ARG_OPTIONAL},
 	    EXP_ARG_END,
@@ -3865,14 +3865,14 @@ exp_fn_log(pExpression tree)
 	
 	/** Extract args. **/
 	double number, base;
-	if (check(exp_fn_i_get_number(checkPtr(tree->Children.Items[0]), &number)) != 0)
+	if (check(exp_fn_i_getNumber(checkPtr(tree->Children.Items[0]), &number)) != 0)
 	    {
 	    mssError(0, "EXP", "%s(...): Failed to get arg1 (number).", tree->Name);
 	    return -1;
 	    }
 	if (tree->Children.nItems > 1)
 	    {
-	    if (check(exp_fn_i_get_number(checkPtr(tree->Children.Items[1]), &base)) != 0)
+	    if (check(exp_fn_i_getNumber(checkPtr(tree->Children.Items[1]), &base)) != 0)
 		{
 		mssError(0, "EXP", "%s(...): Failed to get arg2 (base).", tree->Name);
 		return -1;
@@ -4556,7 +4556,7 @@ exp_fn_metaphone(pExpression tree)
     char* secondary = NULL;
     
 	/** Verify function schema. **/
-	if (UNLIKELY(exp_fn_i_verify_schema((ArgExpect[]){
+	if (UNLIKELY(exp_fn_i_verifySchema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
 	}, tree) != 0))
@@ -4598,7 +4598,7 @@ exp_fn_metaphone(pExpression tree)
 	/** Store the results. **/
     store_data:;
 	const size_t length = strlen(primary) + 1lu + strlen(secondary) + 1lu;
-	if (check(exp_fn_i_alloc_result_string(tree, length)) != 0) goto end_free;
+	if (check(exp_fn_i_allocResultString(tree, length)) != 0) goto end_free;
 	sprintf(tree->String, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
 	tree->DataType = DATA_T_STRING;
 	ret = 0;
@@ -4626,7 +4626,7 @@ static int
 exp_fn_compare(pExpression tree)
     {
 	/** Verify function schema. **/
-	if (UNLIKELY(exp_fn_i_verify_schema((ArgExpect[]){
+	if (UNLIKELY(exp_fn_i_verifySchema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
@@ -4707,7 +4707,7 @@ int
 exp_fn_levenshtein(pExpression tree)
     {
 	/** Verify function schema. **/
-	if (UNLIKELY(exp_fn_i_verify_schema((ArgExpect[]){
+	if (UNLIKELY(exp_fn_i_verifySchema((ArgExpect[]){
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    {(int[]){DATA_T_STRING, -1}, EXP_ARG_NO_FLAGS},
 	    EXP_ARG_END,
