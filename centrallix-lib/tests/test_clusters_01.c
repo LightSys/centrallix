@@ -32,7 +32,7 @@ static bool doTest(void)
     bool success = true;
     
 	/** Many, many replace edits. **/
-	const static unsigned short num_edits = 254;//15827;
+	const static unsigned short num_edits = 2039;
 	char AAA[num_edits + 1], BBB[num_edits + 1];
 	memset(AAA, 'A', num_edits);
 	memset(BBB, 'B', num_edits);
