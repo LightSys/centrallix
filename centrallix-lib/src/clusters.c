@@ -1131,8 +1131,6 @@ ca_complete_search(
 void
 ca_init(void)
     {
-	nmRegister(sizeof(pVector), "pVector");
-	nmRegister(sizeof(pCentroid), "pCentroid");
 	nmRegister(CENTROID_SIZE, "Centroid");
 	nmRegister(sizeof(Pair), "Pair");
     
