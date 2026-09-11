@@ -33,6 +33,7 @@
 /*              for debugging algorithms.                               */
 /************************************************************************/
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,9 +55,11 @@
  *** @param name The symbol name of the visualizer.
  *** @param str The string printed for the visualization.
  *** @param interval The number of invocations of glyph() required to print.
+ *** 	Must be one or more.
  *** @param flush Whether to flush on output.
  ***/
 #define glyphInit(name, str, interval, flush) \
+	assert(interval > 0); \
 	const char* vis_##name##_str = str; \
 	const unsigned int vis_##name##_interval = interval; \
 	const bool vis_##name##_flush = flush; \
