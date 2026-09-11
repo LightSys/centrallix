@@ -559,6 +559,7 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 	    if (checkNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
 		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
+		nmSysFree(allocated_err_msg);
 		return; /* Give up. */
 		}
 	    }
