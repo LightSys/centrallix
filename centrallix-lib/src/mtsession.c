@@ -523,7 +523,7 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 	    if (clr) check(mssClearError()); /* Failure ignored. */
 
 	    /** Allocate space and construct the error text. **/
-	    const char* allocated_err_msg = checkPtr(nmSysStrdup(err_msg));
+	    char* allocated_err_msg = checkPtr(nmSysStrdup(err_msg));
 	    if (allocated_err_msg == NULL)
 		{
 		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
@@ -531,9 +531,10 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 		}
 
 	    /** Store the error. **/
-	    if (checkNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
+	    if (checkPos(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
 		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
+		nmSysFree(allocated_err_msg);
 		return; /* Give up. */
 		}
 	    }
