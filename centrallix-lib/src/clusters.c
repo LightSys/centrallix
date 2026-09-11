@@ -22,14 +22,14 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	lib_cluster.c, lib_cluster.h				*/
+/* Module:	clusters.c, clusters.h					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	September 29, 2025					*/
 /* Description	Clustering library used to cluster and search data with	*/
 /*		cosine or Levenshtein (aka. edit distance) similarity 	*/
 /*		measures. Used by the "clustering driver".		*/
 /*		For more information on how to use this library, see	*/
-/*		string-similarity.md in the centrallix-sysdoc folder.	*/
+/*		string_similarity.md in the centrallix-sysdoc folder.	*/
 /************************************************************************/
 
 #include <ctype.h>
@@ -613,7 +613,7 @@ ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const
  *** @attention - This function takes `void*` instead of `pVector` so that it
  *** 	can be used as the similarity function in the ca_search() function
  *** 	family without needing a messy typecast to avoid the compiler warning.
- *** 	However, behavior is undefined if `v1` and `v2` do are not `pVector`s.
+ *** 	However, behavior is undefined if `v1` and `v2` are not `pVector`s.
  *** 
  *** @param v1 A `pVector` to the first string to compare.
  *** @param v2 A `pVector` to the second string to compare.
@@ -651,7 +651,7 @@ ca_cos_compare(void* v1, void* v2)
  *** @attention - This function takes `void*` instead of `char*` so that it
  *** 	can be used as the similarity function in the ca_search() function
  *** 	family without needing a messy typecast to avoid the compiler warning.
- *** 	However, behavior is undefined if `v1` and `v2` do are not `char*`s.
+ *** 	However, behavior is undefined if `v1` and `v2` are not `char*`s.
  *** 
  *** @param str1 A `char*` to the first string to compare.
  *** @param str2 A `char*` to the second string to compare.
@@ -717,7 +717,7 @@ ca_eql(pVector v1, pVector v2)
  *** @returns The average cluster size.
  ***/
 static double
-get_cluster_size(
+ca_i_get_cluster_size(
     pVector* vectors,
     const unsigned int num_vectors,
     unsigned int* labels,
@@ -776,14 +776,13 @@ get_cluster_size(
 
 /*** Executes the k-means clustering algorithm.  Selects `num_clusters` random
  *** vectors as initial centroids, using `rand()` (to set a seed, call srand()
- *** pass false for `auto_seed`).  Each iteration, points are assigned to the
+ *** and pass false for `auto_seed`).  Each iteration, points are assigned to the
  *** nearest centroid using cosine similarity on the provided sparse vectors.
  *** After this, centroids are moved to the center of their points.  This
  *** process repeats until the `min_improvement` threshold is not met, or
  *** `max_iter` is reached (whichever happens first).
  *** 
- *** @attention - `num_vectors` must be the length of `vectors`.
- *** @attention - `num_clusters` must be the length of `labels`.
+ *** @attention - `num_vectors` must be the length of both `vectors` and `labels`.
  *** 
  *** @param vectors The sparse cosine similarity vectors representing the data
  *** 	to cluster.
@@ -925,7 +924,7 @@ ca_kmeans(
 	    
 	    /** Is there enough improvement? **/
 	    if (min_improvement <= -1.0) continue; /** Skip check if it will never end the loop. **/
-	    const double average_cluster_size = checkDouble(get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
+	    const double average_cluster_size = checkDouble(ca_i_get_cluster_size(vectors, num_vectors, labels, centroids, num_clusters));
 	    if (isnan(average_cluster_size)) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;
 	    if (improvement < min_improvement) break;
@@ -1072,7 +1071,7 @@ ca_sliding_search(
 		const double sim = checkDouble(similarity(data[i], data[j]));
 		if (isnan(sim) || sim < 0.0 || 1.0 < sim)
 		    {
-		    fprintf(stderr, "Invalid similarity %g %lf.\n", sim, sim);
+		    fprintf(stderr, "Invalid similarity %g.\n", sim);
 		    goto err_free;
 		    }
 		if (sim > threshold) /* Pair found! */
@@ -1094,7 +1093,7 @@ ca_sliding_search(
 	/** Error cleanup: Free the pairs that we added to the XArray. **/
 	while (pairs->nItems > num_starting_pairs)
 	    nmFree(pairs->Items[--pairs->nItems], sizeof(Pair));
-	if (maybe_pairs == NULL) check(xaDeInit(pairs)); /* Failure ignored. */
+	if (maybe_pairs == NULL) check(xaFree(pairs)); /* Failure ignored. */
     
     err:
 	return NULL;

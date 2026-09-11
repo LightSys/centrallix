@@ -290,7 +290,7 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
     return 0;
     }
 
-/*** Executes an operation on each entry of the hash table entry. 
+/*** Executes an operation on each entry of the hash table.
  *** 
  *** @param this The affected hash table (passing NULL causes undefined
  *** 	behavior).
@@ -347,7 +347,7 @@ xh_i_FreeEntry(pXHashEntry entry, void* arg)
 	 *** 
 	 *** Interestingly, you can write this code in one line like this:
 	 *** ((void (*)(pXHashEntry, void*))((void**)arg)[0])(entry, ((void**)arg)[1]);
-	 *** But I value code readability, so fortunately, I can't be THAT cleaver...
+	 *** But I value code readability, so fortunately, I can't be THAT clever...
 	 ***/
 	void** args = (void**)arg;
 	void (*free_fn)(pXHashEntry, void*) = args[0];

@@ -914,11 +914,11 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 					break;
 					
 				    case DATA_T_STRINGVEC:
-					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.StringVec, DATA_F_QUOTED & DATA_F_BRACKETS));
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.StringVec, DATA_F_QUOTED | DATA_F_BRACKETS));
 					break;
 				    
 				    case DATA_T_INTVEC:
-					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.IntVec, DATA_F_QUOTED & DATA_F_BRACKETS));
+					fdPrintf(TESTOBJ.Output,"%s", objDataToStringTmp(type, od.IntVec, DATA_F_QUOTED | DATA_F_BRACKETS));
 					break;
 
 				    case DATA_T_STRING:

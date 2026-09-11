@@ -92,7 +92,7 @@ This function frees the block of memory.
 
 ## nmStats()
 ```c
-void nmStats(void);
+void nmStats();
 ```
 Prints statistics about the memory manager, for debugging and optimizing.
 
@@ -118,7 +118,7 @@ This function is usually called in a module's `Initialize()` function on each of
 
 ## nmDebug()
 ```c
-void nmDebug(void);
+void nmDebug();
 ```
 Prints a listing of block allocation counts, giving (by size):
 - The number of blocks allocated but not yet freed.
@@ -129,7 +129,7 @@ Prints a listing of block allocation counts, giving (by size):
 
 ## nmDeltas()
 ```c
-void nmDeltas(void);
+void nmDeltas();
 ```
 Prints a listing of all blocks whose allocation count has changed, and by how much, since the last `nmDeltas()` call.  This function is VERY USEFUL FOR MEMORY LEAK DETECTIVE WORK.
 

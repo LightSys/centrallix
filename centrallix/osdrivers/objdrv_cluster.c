@@ -3646,7 +3646,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	/** Guard possible segfault. **/
 	if (UNLIKELY(attr_name == NULL))
 	    {
-	    fprintf(stderr, "Warning: Call to clusterGetAttrType() with NULL attribute name.\n");
+	    fprintf(stderr, "Warning: Call to clusterGetAttrValue() with NULL attribute name.\n");
 	    goto err;
 	    }
 	

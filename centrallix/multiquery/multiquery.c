@@ -1198,7 +1198,7 @@ mq_internal_ParseSelectItem(pQueryStructure item_qs, pLxSession lxs)
 		/** Treat "log" as a keyword to allow the log function to be handled properly. **/
 		if (strcmp(ptr, "log") == 0) t = MLX_TOK_KEYWORD;
 		else break;
-		};
+		}
 
 	    /** Copy the token string into item_qs->RawData. **/
 	    if (t == MLX_TOK_STRING)

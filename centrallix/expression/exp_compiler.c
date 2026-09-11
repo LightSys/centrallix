@@ -1072,7 +1072,8 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 			break;
 			}
 		    }
-		cm |= EXPR_MASK_EXTREF;
+		if (exp->ObjID == -1)
+		    cm |= EXPR_MASK_EXTREF;
 		}
 	    else if (exp->ObjID == EXPR_OBJID_CURRENT) cm |= (1<<(objlist->CurrentID));
 	    else if (exp->ObjID == EXPR_OBJID_PARENT) cm |= (1<<(objlist->ParentID));

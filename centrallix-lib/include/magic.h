@@ -25,9 +25,10 @@
 /************************************************************************/
 
 
-
 #ifdef 	DBMAGIC
+#include <stdio.h>
 #include <stdlib.h>
+
 #include "expect.h"
 
 /** Define the value used as a placeholder to mark null data. **/
@@ -41,7 +42,7 @@
     if (UNLIKELY(_data != NULL && _actual != _expect)) \
 	{ \
 	fprintf(stderr, \
-	    "%s:%d: Magic assertion failed, unexpected %u != %d for %8.8lX.\n", \
+	    "%s:%d: Magic assertion failed, unexpected %X != %X for %8.8lX.\n", \
 	    __FILE__, __LINE__, _actual, _expect, (long)_data \
 	); \
 	abort(); \
@@ -57,7 +58,7 @@
     if (UNLIKELY(_data != NULL && _actual == _expect)) \
 	{ \
 	fprintf(stderr, \
-	    "%s:%d: Magic assertion failed, unexpected %d.\n", \
+	    "%s:%d: Magic assertion failed, unexpected %X.\n", \
 	    __FILE__, __LINE__, _expect \
 	); \
 	abort(); \

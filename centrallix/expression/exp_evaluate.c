@@ -1466,7 +1466,7 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    case DATA_T_INTVEC:
 		v = getfn(obj, tree->Name, DATA_T_INTVEC, &vptr);
 		if (v != 0) break;
-		memcpy(&(tree->Types.StrVec), vptr, sizeof(IntVec));
+		memcpy(&(tree->Types.IntVec), vptr, sizeof(IntVec));
 		break;
 
 	    /*** FIX: Shallow copy violates contract, but objdrv_cluster.c is
@@ -1476,7 +1476,7 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 	    case DATA_T_STRINGVEC:
 		v = getfn(obj, tree->Name, DATA_T_STRINGVEC, &vptr);
 		if (v != 0) break;
-		memcpy(&(tree->Types.IntVec), vptr, sizeof(StringVec));
+		memcpy(&(tree->Types.StrVec), vptr, sizeof(StringVec));
 		break;
 
 	    case DATA_T_MONEY:

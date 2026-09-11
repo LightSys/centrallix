@@ -259,7 +259,7 @@ Each OS Driver will have an abbreviation prefix, such as `qy` for the query driv
 
 This document uses `xxx` to refer to an unspecified abbreviation prefix.
 
-- 📖 **Note**: Once an abbreviation prefix has been selected, the driver author should add it to the [Prefixes.md](Prefixes.md) file.  It is advised never to pick a prefix longer than 7 characters, as doing so will this file's table style.
+- 📖 **Note**: Once an abbreviation prefix has been selected, the driver author should add it to the [Prefixes.md](Prefixes.md) file.
 
 
 ### Internal Functions
