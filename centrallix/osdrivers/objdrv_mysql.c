@@ -674,7 +674,7 @@ mysd_internal_SafeAppend(MYSQL* conn, pXString dst, char* src)
 	
 	/** Allocate memory. **/
 	const size_t escaped_str_size = src_length * 2 + 1;
-	escaped_str = check_ptr(nmMalloc(escaped_str_size));
+	escaped_str = checkPtr(nmMalloc(escaped_str_size));
 	if (escaped_str == NULL) goto end;
 	
 	/** Write the escaped string. **/
@@ -3497,7 +3497,7 @@ mysdInitialize()
     pObjDriver drv;
 
         /** Allocate the driver **/
-	drv = (pObjDriver)check_ptr(nmMalloc(sizeof(ObjDriver)));
+	drv = (pObjDriver)checkPtr(nmMalloc(sizeof(ObjDriver)));
         if (!drv) return -1;
         memset(drv, 0, sizeof(ObjDriver));
 
