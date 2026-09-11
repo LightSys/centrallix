@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -46,7 +46,7 @@ typedef struct _SI
     int		    Magic;
     int		    LinkCnt;
     char*	    Name;	/* name of attrib or group */
-    char*	    UsrType;	/* type of group, null if attrib */
+    char*	    UsrType;	/* type of group (e.g. "system/object"), null if attrib */
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
     struct _SI*	    Parent;	/* Parent inf, null if toplevel */
     struct _SI**    SubInf;	/* List of attrs/groups included */
