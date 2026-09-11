@@ -697,7 +697,7 @@ mssSetParamPtr(char* paramname, void* ptr)
 	    goto error;
 
 	/** The name has to fit the field it is kept in **/
-	if (checkNeg(strtcpy(name, paramname, sizeof(name))) < 0)
+	if (checkPos(strtcpy(name, paramname, sizeof(name))) < 0)
 	    goto error;
 
     	/** Need to delete first? **/
