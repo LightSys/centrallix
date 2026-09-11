@@ -47,5 +47,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "cluster-01 ca_edit_dist(): Stress test";
-    return loopTest(doTest);
+    return loopTest(doTest) * 3;
     }

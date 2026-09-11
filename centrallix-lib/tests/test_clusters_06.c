@@ -145,5 +145,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "cluster-06 Searching";
-    return loopTest(doTest);
+    return loopTest(doTest) * 3;
     }

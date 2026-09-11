@@ -181,5 +181,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "cluster-05 ca_most_similar()";
-    return loopTest(doTest);
+    return loopTest(doTest) * 35;
     }

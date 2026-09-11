@@ -66,5 +66,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "cluster-04 ca_lev_compare()";
-    return loopTest(doTest);
+    return loopTest(doTest) * 25;
     }

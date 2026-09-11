@@ -91,5 +91,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "cluster-00 ca_edit_dist()";
-    return loopTest(doTest);
+    return loopTest(doTest) * 36;
     }

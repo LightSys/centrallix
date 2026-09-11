@@ -77,7 +77,7 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "cluster-02 ca_build_vector()";
-    return loopTest(doTest);
+    return loopTest(doTest) * 9;
     }
 
 /** Clean up scope. **/
