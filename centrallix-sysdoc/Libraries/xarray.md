@@ -216,4 +216,4 @@ This function inserts an item before the specified index, moving all following i
 ```c
 int xaInsertAfter(pXArray this, int index, void* item)
 ```
-This function inserts an item after the specified index, moving all following items forward to make space.  The new item cannot be inserted past the end of the array.  This function returns the index on success, or -1 if an error occurs.
+This function inserts an item after the specified index, moving all following items forward to make space.  The new item cannot be inserted past the end of the array.  This function returns the index of the inserted value on success, or -1 if an error occurs.
