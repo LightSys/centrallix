@@ -5,64 +5,79 @@
 #include <stdlib.h>
 #include <time.h>
 #include "smmalloc.h"
+#include <stdbool.h>
+#include "test_utils.h"
 
-long long
-test(char** tname)
+/** Region shared by every pass; created and destroyed by test(). **/
+static pSmRegion region = NULL;
+
+/** References freed by the most recent pass, used for the op count. **/
+static int refs = 0;
+
+static bool
+doTest(void)
     {
-    int i;
-    pSmRegion r;
-    int iter;
     int j,k,l,t;
     void* alloc[1024];
     int cnt[1024];
 
-	smInitialize();
-
-	*tname = "smmalloc-07 reference counting (randomized free order)";
-	srand(time(NULL));
-	iter = 300;
-	r = smCreate(1024*1024);
-	for(i=0;i<iter;i++)
+	/** allocate **/
+	j=0;
+	while((alloc[j] = smMalloc(region,1 + rand()%8192)) != NULL && j < 1023) 
 	    {
-	    j=0;
-	    /** allocate **/
-	    while((alloc[j] = smMalloc(r,1 + rand()%8192)) != NULL && j < 1023) 
-		{
-		cnt[j++] = 1;
-		}
-	    if (j < 120)
-		{
-		smDestroy(r);
-		return -1;
-		}
-	    /** link **/
-	    for(k=0;k<1024;k++) 
-		{
-		l = rand()%j;
-		smLinkTo(alloc[l]);
-		cnt[l]++;
-		}
-	    /** free **/
-	    t = j + 1024;
-	    for(k=0;k<t*4/5;k++)
-		{
-		while (cnt[(l = rand()%j)] == 0)
-		    ;
-		smFree(alloc[l]);
-		cnt[l]--;
-		if (!cnt[l]) alloc[l] = NULL;
-		}
-	    for(k=0;k<j;k++)
-		{
-		if (alloc[k]) 
-		    {
-		    for(l=0;l<cnt[k];l++) smFree(alloc[k]);
-		    }
-		alloc[k] = NULL;
-		}
+	    cnt[j++] = 1;
 	    }
-	smDestroy(r);
+	if (j < 120) return false;
 
-    return iter*t;
+	/** link **/
+	for(k=0;k<1024;k++) 
+	    {
+	    l = rand()%j;
+	    smLinkTo(alloc[l]);
+	    cnt[l]++;
+	    }
+
+	/** free **/
+	t = j + 1024;
+	refs = t;
+	for(k=0;k<t*4/5;k++)
+	    {
+	    while (cnt[(l = rand()%j)] == 0)
+		;
+	    smFree(alloc[l]);
+	    cnt[l]--;
+	    if (!cnt[l]) alloc[l] = NULL;
+	    }
+	for(k=0;k<j;k++)
+	    {
+	    if (alloc[k]) 
+		{
+		for(l=0;l<cnt[k];l++) smFree(alloc[k]);
+		}
+	    alloc[k] = NULL;
+	    }
+
+    return true;
     }
 
+long long
+test(char** tname)
+    {
+    long long rval;
+
+	*tname = "smmalloc-07 reference counting (randomized free order)";
+
+	smInitialize();
+	srand(time(NULL));
+	region = smCreate(1024*1024);
+	if (!region) return -1;
+
+	rval = loopTest(doTest);
+
+	if (rval > 0) rval *= refs;
+
+	smDestroy(region);
+	region = NULL;
+
+    return rval;
+    }

@@ -1,9 +1,12 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
+
+#include "test_utils.h"
 
 #include "strtcpy.h"
 
@@ -51,31 +54,83 @@ static size_t bad_positions[] =
     (size_t)-1,
     };
 
-long long
-test(char** tname)
+/** Sizes of the case tables run per call to doTest(). **/
+#define NFMTS	((int)(sizeof(failing_fmts) / sizeof(failing_fmts[0])))
+#define NPFX	((int)(sizeof(prefixes) / sizeof(const char*)))
+#define NBAD	((int)(sizeof(bad_positions) / sizeof(size_t)))
+
+/** Set by test() once the platform's vsnprintf() has been probed. **/
+static bool can_fail = false;
+
+/*** This test verifies that strtcatf() refuses bad input safely, covering the
+ *** two paths ordinary appends never reach.  When a conversion fails, the
+ *** append must be abandoned and the string already in dst left intact, even
+ *** though vsnprintf() may have written part of its output first.  A *pos at
+ *** or past the end of dst, including one large enough to overflow the guard's
+ *** own arithmetic, must append nothing.  Both return 0, leave *pos alone, and
+ *** write nothing outside the caller's dstlen.
+ ***/
+static bool
+doTest(void)
     {
-    int i, c, f, rval;
-    int iter;
-    int nfmts = sizeof(failing_fmts) / sizeof(failing_fmts[0]);
-    int npfx = sizeof(prefixes) / sizeof(const char*);
-    int nbad = sizeof(bad_positions) / sizeof(size_t);
-    int ncases;
-    int can_fail;
+    int c, f, rval;
     unsigned char raw[RAW];
     char* dst = (char*)raw + GUARD;
-    char probe[32];
     size_t pos;
     size_t n;
 
-	/*** This test verifies that strtcatf() refuses bad input safely,
-	 *** covering the two paths ordinary appends never reach.  When a
-	 *** conversion fails, the append must be abandoned and the string
-	 *** already in dst left intact, even though vsnprintf() may have
-	 *** written part of its output first.  A *pos at or past the end of
-	 *** dst, including one large enough to overflow the guard's own
-	 *** arithmetic, must append nothing.  Both return 0, leave *pos
-	 *** alone, and write nothing outside the caller's dstlen.
-	 ***/
+	/** A failed conversion appends nothing and keeps dst intact. **/
+	for(c=0;can_fail && c<NFMTS;c++)
+	    {
+	    for(f=0;f<NPFX;f++)
+		{
+		memset(raw, 0xAA, RAW);
+		memcpy(dst, prefixes[f], strlen(prefixes[f]) + 1);
+		pos = strlen(prefixes[f]);
+
+		rval = strtcatf(dst, AREA, &pos, failing_fmts[c],
+		    unconvertible, unconvertible);
+
+		/** The text already in dst survives, and *pos with it. **/
+		assert(rval == 0);
+		assert(pos == strlen(prefixes[f]));
+		assert(!strcmp(dst, prefixes[f]));
+
+		/** Partial output may remain, but never outside dstlen. **/
+		for(n=0;n<GUARD;n++)
+		    assert(raw[n] == 0xAA);
+		for(n=GUARD+AREA;n<RAW;n++)
+		    assert(raw[n] == 0xAA);
+		}
+	    }
+
+	/** A *pos at or past the end appends nothing at all. **/
+	for(c=0;c<NBAD;c++)
+	    {
+	    memset(raw, 0xAA, RAW);
+	    memcpy(dst, "abc", 4);
+
+	    pos = bad_positions[c];
+	    rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
+
+	    /** Nothing appended, and *pos left exactly as it was. **/
+	    assert(rval == 0);
+	    assert(pos == bad_positions[c]);
+	    assert(!strcmp(dst, "abc"));
+
+	    /** Not one byte of the buffer may have changed. **/
+	    for(n=0;n<RAW;n++)
+		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
+	    }
+
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
+    char probe[32];
+    int ncases;
 
 	*tname = "strtcpy-13 strtcatf() failed conversions and bad positions";
 
@@ -84,55 +139,7 @@ test(char** tname)
 	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], unconvertible) < 0);
 	if (!can_fail)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
-	ncases = nbad + (can_fail ? nfmts * npfx : 0);
+	ncases = NBAD + (can_fail ? NFMTS * NPFX : 0);
 
-	iter = 40000;
-	for(i=0;i<iter;i++)
-	    {
-	    /** A failed conversion appends nothing and keeps dst intact. **/
-	    for(c=0;can_fail && c<nfmts;c++)
-		{
-		for(f=0;f<npfx;f++)
-		    {
-		    memset(raw, 0xAA, RAW);
-		    memcpy(dst, prefixes[f], strlen(prefixes[f]) + 1);
-		    pos = strlen(prefixes[f]);
-
-		    rval = strtcatf(dst, AREA, &pos, failing_fmts[c],
-			unconvertible, unconvertible);
-
-		    /** The text already in dst survives, and *pos with it. **/
-		    assert(rval == 0);
-		    assert(pos == strlen(prefixes[f]));
-		    assert(!strcmp(dst, prefixes[f]));
-
-		    /** Partial output may remain, but never outside dstlen. **/
-		    for(n=0;n<GUARD;n++)
-			assert(raw[n] == 0xAA);
-		    for(n=GUARD+AREA;n<RAW;n++)
-			assert(raw[n] == 0xAA);
-		    }
-		}
-
-	    /** A *pos at or past the end appends nothing at all. **/
-	    for(c=0;c<nbad;c++)
-		{
-		memset(raw, 0xAA, RAW);
-		memcpy(dst, "abc", 4);
-
-		pos = bad_positions[c];
-		rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
-
-		/** Nothing appended, and *pos left exactly as it was. **/
-		assert(rval == 0);
-		assert(pos == bad_positions[c]);
-		assert(!strcmp(dst, "abc"));
-
-		/** Not one byte of the buffer may have changed. **/
-		for(n=0;n<RAW;n++)
-		    assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
-		}
-	    }
-
-    return (long long)iter * ncases;
+    return loopTest(doTest) * ncases;
     }

@@ -22,10 +22,26 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "range.h"
 
 /** Tested module. **/
 #include "timer.h"
+
+/** The length of one wait, in microseconds and in seconds. **/
+#define SLEEP_USEC 100000
+#define SLEEP_SEC (SLEEP_USEC / 1000000.0)
+
+/** Scheduler and Valgrind overhead allowed per wait, in seconds. **/
+#define SLACK_SEC 0.1
+
+/*** usleep() guarantees a minimum delay, not an exact one, so elapsed time is
+ *** checked against a range rather than a single value.  After n waits the
+ *** timer must read at least the time requested, plus at most n waits' slack.
+ ***/
+#define ELAPSED_MIN(n) ((n) * SLEEP_SEC)
+#define ELAPSED_MAX(n) ((n) * (SLEEP_SEC + SLACK_SEC))
+
+/** The most the two timers may disagree, having been started microseconds apart. **/
+#define SKEW 0.005
 
 /** A function for wasting cpu cycles. **/
 static bool doNothing(void)
@@ -45,46 +61,44 @@ long long test(char** tname)
 	/** 0.1 second wait. **/
 	timerStart(timer1);
 	timerStart(timer2);
-	usleep(99900); /* 0.0999 seconds (leave room for overhead). */
-	double t1_inter = roundTo(timerGet(timer1), 3);
-	double t2_inter = roundTo(timerGet(timer2), 3);
-	usleep(99900); /* 0.0999 seconds (leave room for overhead). */
+	usleep(SLEEP_USEC);
+	double t1_inter = timerGet(timer1);
+	double t2_inter = timerGet(timer2);
+	usleep(SLEEP_USEC);
 	timerStop(timer1);
 	timerStop(timer2);
 	
-	/** Extract values with rounding to give margin for error. **/
-	double t1_val = roundTo(timerGet(timer1), 3);
-	double t2_val = roundTo(timerGet(timer2), 3);
+	double t1_val = timerGet(timer1);
+	double t2_val = timerGet(timer2);
 	
 	/** Check for incorrect values. **/
-	if (!EXPECT_EQL(t1_inter, 0.1, "%g")) goto fail;
-	if (!EXPECT_EQL(t2_inter, 0.1, "%g")) goto fail;
-	if (!EXPECT_EQL(t1_inter, t2_inter, "%g")) goto fail;
-	if (!EXPECT_EQL(t1_val, 0.2, "%g")) goto fail;
-	if (!EXPECT_EQL(t2_val, 0.2, "%g")) goto fail;
-	if (!EXPECT_EQL(t1_val, t2_val, "%g")) goto fail;
+	if (!EXPECT_RANGE(t1_inter, ELAPSED_MIN(1), ELAPSED_MAX(1), "%g")) goto fail;
+	if (!EXPECT_RANGE(t2_inter, ELAPSED_MIN(1), ELAPSED_MAX(1), "%g")) goto fail;
+	if (!EXPECT_RANGE(fabs(t1_inter - t2_inter), 0.0, SKEW, "%g")) goto fail;
+	if (!EXPECT_RANGE(t1_val, ELAPSED_MIN(2), ELAPSED_MAX(2), "%g")) goto fail;
+	if (!EXPECT_RANGE(t2_val, ELAPSED_MIN(2), ELAPSED_MAX(2), "%g")) goto fail;
+	if (!EXPECT_RANGE(fabs(t1_val - t2_val), 0.0, SKEW, "%g")) goto fail;
 	
 	/** Test that timer can resume properly. **/
 	timerStart(timer1);
 	timerStart(timer2);
-	usleep(99900); /* 0.0999 seconds (leave room for overhead). */
-	double t1_inter2 = roundTo(timerGet(timer1), 3);
-	double t2_inter2 = roundTo(timerGet(timer2), 3);
-	usleep(99900); /* 0.0999 seconds (leave room for overhead). */
+	usleep(SLEEP_USEC);
+	double t1_inter2 = timerGet(timer1);
+	double t2_inter2 = timerGet(timer2);
+	usleep(SLEEP_USEC);
 	timerStop(timer1);
 	timerStop(timer2);
 	
-	/** Extract values with rounding to give margin for error. **/
-	double t1_val2 = roundTo(timerGet(timer1), 3);
-	double t2_val2 = roundTo(timerGet(timer2), 3);
+	double t1_val2 = timerGet(timer1);
+	double t2_val2 = timerGet(timer2);
 	
 	/** Check for incorrect values. **/
-	if (!EXPECT_EQL(t1_inter2, 0.3, "%g")) goto fail;
-	if (!EXPECT_EQL(t2_inter2, 0.3, "%g")) goto fail;
-	if (!EXPECT_EQL(t1_inter2, t2_inter2, "%g")) goto fail;
-	if (!EXPECT_EQL(t1_val2, 0.4, "%g")) goto fail;
-	if (!EXPECT_EQL(t2_val2, 0.4, "%g")) goto fail;
-	if (!EXPECT_EQL(t1_val2, t2_val2, "%g")) goto fail;
+	if (!EXPECT_RANGE(t1_inter2, ELAPSED_MIN(3), ELAPSED_MAX(3), "%g")) goto fail;
+	if (!EXPECT_RANGE(t2_inter2, ELAPSED_MIN(3), ELAPSED_MAX(3), "%g")) goto fail;
+	if (!EXPECT_RANGE(fabs(t1_inter2 - t2_inter2), 0.0, SKEW, "%g")) goto fail;
+	if (!EXPECT_RANGE(t1_val2, ELAPSED_MIN(4), ELAPSED_MAX(4), "%g")) goto fail;
+	if (!EXPECT_RANGE(t2_val2, ELAPSED_MIN(4), ELAPSED_MAX(4), "%g")) goto fail;
+	if (!EXPECT_RANGE(fabs(t1_val2 - t2_val2), 0.0, SKEW, "%g")) goto fail;
 	
 	/** Clean up. **/
 	timerDeInit(timer1);
@@ -95,7 +109,7 @@ long long test(char** tname)
 	 *** CPU cycles so that the test runner doesn't crash because the
 	 *** CPU clock time was too low.
 	 ***/
-	long long i = loop_tests(doNothing);
+	const long long i = loopTest(doNothing);
 	
 	/** Return success. **/
 	return i;

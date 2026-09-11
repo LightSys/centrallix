@@ -22,6 +22,8 @@
 
 #include "cxlibconfig-internal.h"
 #include "mtask.h"
+#include "test_utils.h"
+#include "util.h"
 
 
 long long test(char**);
@@ -56,19 +58,11 @@ start(void* v)
     clock_t start,end;
     long long rval;
 
-	/** Register handlers for signals that may occur during a test. **/
+	/** Setup handlers for signals that may occur during a test. **/
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
-
-	/*** Set a timer before Lockup is triggered, using a significantly
-	 *** larger value if Valgrind appears to be enabled.
-	 ***/
-	#ifdef USING_VALGRIND
-	alarm(90); /* Valgrind detected. */
-	#else
-	alarm(5); /* Normal timeout. */
-	#endif
+	alarm(LOCKUP_SECONDS);
 
 	/** Run the test while tracking CPU time. **/
 	times(&t);
@@ -86,12 +80,38 @@ start(void* v)
 	    if (duration == 0)
 		{
 		printf("%-62.62s  PASS ???\n", tname);
-		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loop_tests() from test_utils.h.\n");
+		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTest() from test_utils.h.\n");
 		return;
 		}
-	    long long ops_per_second = rval * (100 / duration);
-	    if (ops_per_second > 0) printf("%-62.62s  PASS %lld\n", tname, ops_per_second);
-	    else printf("%-62.62s  PASS %.4lf\n", tname, rval * (100.0 / duration));
+	    double ops_per_second = rval * (100.0 / duration);
+
+	    /** Round to four significant figures. **/
+	    int precision = 3;
+	    unsigned long long factor = 1;
+	    double scaled = ops_per_second;
+	    while (scaled >= 10.0)
+		{
+		scaled /= 10.0;
+		if (precision > 0)
+		    precision--;
+		else
+		    factor *= 10;
+		}
+	    while (scaled > 0.0 && scaled < 1.0)
+		{
+		scaled *= 10.0;
+		precision++;
+		}
+
+	    /** Print whole numbers with commas. **/
+	    if (precision == 0)
+		{
+		char buf[32];
+		unsigned long long rounded = (unsigned long long)(ops_per_second / factor + 0.5) * factor;
+		printf("%-62.62s  PASS %s\n", tname, snprintCommasLlu(buf, sizeof(buf), rounded));
+		}
+	    else
+		printf("%-62.62s  PASS %.*f\n", tname, precision, ops_per_second);
 	    }
 
     return;

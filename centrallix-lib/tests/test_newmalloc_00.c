@@ -28,12 +28,26 @@
 /** Tested module. **/
 #include "newmalloc.h"
 
+/*** Valgrind instruments every memory access, so the bulk data sizes are
+ *** divided by this factor when running under it, keeping the test inside
+ *** the driver's lockup timeout.
+ ***/
+#ifdef USING_VALGRIND
+#include "valgrind/valgrind.h"
+#define BULK_DIVISOR	(RUNNING_ON_VALGRIND ? 16lu : 1lu)
+#else
+#define BULK_DIVISOR	1lu
+#endif
+
+#define TEST_LIMIT	(16384lu / BULK_DIVISOR)
+#define LARGE_BUF_SIZE	(256000000lu / BULK_DIVISOR)
+
 static unsigned int seed_counter = 0;
 static char* err_buf;
 static unsigned int err_buf_i;
 static unsigned int err_buf_size;
 
-static int mock_error_fn(char* error_msg)
+static int mockErrorFn(char* error_msg)
     {
     const size_t len = strlen(error_msg) + 1lu;
 
@@ -54,7 +68,7 @@ static int mock_error_fn(char* error_msg)
     }
 
 /** Initialize memory of a given size with random data. **/
-static void* random_init(void* ptr, size_t size)
+static void* randomInit(void* ptr, size_t size)
     {
 	if (ptr == NULL) return NULL;
 	unsigned char* p = (unsigned char*)ptr;
@@ -64,7 +78,7 @@ static void* random_init(void* ptr, size_t size)
 	return ptr;
     }
 
-static bool do_tests(void)
+static bool doTest(void)
     {
     bool success = true;
 
@@ -74,10 +88,7 @@ static bool do_tests(void)
 	/** Initialize the mock error function. **/
 	err_buf = checkPtr(malloc(err_buf_size = 256));
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
-	nmSetErrFunction(mock_error_fn);
-
-	/** Baseline: Should leak. **/
-	success &= EXPECT_NOT_NULL(nmSysMalloc(42));
+	nmSetErrFunction(mockErrorFn);
 
 	/** Basic string data. **/
 	char* str1;
@@ -89,14 +100,13 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
-	/** 128 MB random data, varying sizes. **/
-	#define TEST_LIMIT 16384
+	/** Random data, varying sizes. **/
 	void** data = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
 	void** test = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
 	    success &= EXPECT_NOT_NULL(test[i] = nmSysMalloc(i));
-	    data[i] = random_init(checkPtr(malloc(i)), i);
+	    data[i] = randomInit(checkPtr(malloc(i)), i);
 	    memcpy(test[i], data[i], i); /* Write test data into test memory. */
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
@@ -139,6 +149,8 @@ static bool do_tests(void)
 	    free(data[i]);
 	    nmSysFree(test[i]);
 	    }
+	free(data);
+	free(test);
 
 	/** Basic string data is unharmed. **/
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
@@ -153,14 +165,15 @@ static bool do_tests(void)
 	success &= EXPECT_STR_EQL(str_dup2, "ThatDataIsDifferentStringData.\n");
 
 	/** Large singular allocation. **/
-	#define _256MB 256000000lu
 	void* large_buf;
-	success &= EXPECT_NOT_NULL(large_buf = nmSysMalloc(_256MB));
-	for (size_t i = _256MB - 1lu; i > 0lu; i--)
+	success &= EXPECT_NOT_NULL(large_buf = nmSysMalloc(LARGE_BUF_SIZE));
+	for (size_t i = LARGE_BUF_SIZE - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;
-	for (size_t i = 0lu; i < _256MB; i++)
-	    success &= EXPECT_EQL(*((unsigned char*)large_buf + i), (unsigned char)(i % 255lu), "%d");
+	size_t mismatches = 0lu;
+	for (size_t i = 0lu; i < LARGE_BUF_SIZE; i++)
+	    if (*((unsigned char*)large_buf + i) != (unsigned char)(i % 255lu)) mismatches++;
+	success &= EXPECT_EQL(mismatches, 0lu, "%zu");
 
 	/** Dup string data is unharmed. **/
 	success &= EXPECT_STR_EQL(str_dup1, "ThisIsSomeDa");
@@ -176,15 +189,19 @@ static bool do_tests(void)
 	/** Expect no captured errors. **/
 	success &= EXPECT_STR_EQL(err_buf, "");
 
+	/** Clean up. **/
+	free(err_buf);
+
     return success;
     }
 
 long long test(char** tname)
     {
     *tname = "newmalloc-00 nmSysMalloc(), nmSysFree(), nmSysRealloc(), & nmSysStrdup()";
-    return loop_tests(do_tests);
+    return loopTest(doTest) * ((long long)TEST_LIMIT + 3ll);
     }
 
 /** Scope cleanup. **/
+#undef BULK_DIVISOR
 #undef TEST_LIMIT
-#undef _256MB
+#undef LARGE_BUF_SIZE

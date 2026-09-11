@@ -27,7 +27,7 @@
 /** Tested module. **/
 #include "range.h"
 
-static bool do_tests(void)
+static bool doTest(void)
     {
     bool success = true;
 
@@ -75,5 +75,5 @@ static bool do_tests(void)
 long long test(char** tname)
     {
     *tname = "range-00 min() & max()";
-    return loop_tests(do_tests);
+    return loopTest(doTest) * (15 * 2);
     }
