@@ -25,7 +25,7 @@
 <!-- File:        xarray.md                                               -->
 <!-- Author:      Greg Beeley                                             -->
 <!-- Creation:    January 13th, 1999                                      -->
-<!-- Description: Describes the xarray module in centrallix-lib.          -->
+<!-- Description: Describes the XArray module in centrallix-lib.          -->
 <!--              This text was moved to here from OSDriver_Authoring.md  -->
 <!--              by Israel Fuller in November and December of 2025.      -->
 <!-------------------------------------------------------------------------->
@@ -61,7 +61,7 @@
 
 
 ## Introduction
-The xarray (xa) module is intended to manage sized growable arrays, similar to a light-weight arraylist implementation.  It includes the `XArray`, which has the following fields:
+The XArray (xa) module is intended to manage sized growable arrays, similar to a light-weight arraylist implementation.  It includes the `XArray` struct, which has the following fields:
 - `nItems : int`: The number of items in the array.
 - `nAlloc : int`: Internal variable to store the size of the allocated memory.
 - `Items : void**`: The allocated array of items.
@@ -89,7 +89,7 @@ Frees a `pXArray` allocated using [`xaNew`](#xanew), returning 0 if successful o
 ```c
 int xaInit(pXArray this, int init_size);
 ```
-This function initializes an allocated (but uninitialized) xarray. It makes room for `init_size` items initially, but this is only an optimization.  A typical value for `init_size` is 16.  Remember to [`xaDeInit`](#xadeinit) this xarray, do **not** [`xaFree`](#xafree) it.
+This function initializes an allocated (but uninitialized) XArray. It makes room for `init_size` items initially, but this is only an optimization.  A typical value for `init_size` is 16.  Remember to [`xaDeInit`](#xadeinit) this XArray, do **not** [`xaFree`](#xafree) it.
 
 This function returns 0 on success, or -1 if an error occurs.
 
@@ -98,7 +98,7 @@ This function returns 0 on success, or -1 if an error occurs.
 ```c
 int xaDeInit(pXArray this);
 ```
-This function de-initializes an xarray, but does not free the XArray structure itself.  This is useful if the structure is a local variable allocated using [`xaInit()`](#xainit).
+This function de-initializes an XArray, but does not free the XArray structure itself.  This is useful if the structure is a local variable initialized using [`xaInit()`](#xainit).
 
 This function returns 0 on success, or -1 if an error occurs.
 
@@ -107,7 +107,7 @@ For example:
 XArray arr;
 if (xaInit(&arr, 16) != 0) goto handle_error;
 
-/** Use the xarray. **/
+/** Use the XArray. **/
 
 if (arr.nAlloc != 0 && xaDeInit(&arr) != 0) goto handle_error;
 arr.nAlloc = 0;
@@ -118,7 +118,7 @@ arr.nAlloc = 0;
 ```c
 int xaAddItem(pXArray this, void* item);
 ```
-This function adds an item to the end of the xarray.  The item is assumed to be a `void*`, but this function will _not_ follow pointers stored in the array.  Thus, other types can be typecast and stored into that location (such as an `int`).
+This function adds an item to the end of the XArray.  The item is assumed to be a `void*`, but this function will _not_ follow pointers stored in the array.  Thus, other types can be typecast and stored into that location (such as an `int`).
 
 This function returns 0 on success, or -1 if an error occurs.
 
@@ -127,7 +127,7 @@ This function returns 0 on success, or -1 if an error occurs.
 ```c
 int xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen);
 ```
-This function adds an item to a sorted xarray while maintaining the sorted property.  The value for sorting is expected to begin at the offset given by `keyoffset` and continue for `keylen` bytes.  This function _will_ follow pointers are stored in the array so casting other types to store them is not allowed (as it is with [`xaAddItem()`](#xaadditem)).
+This function adds an item to a sorted XArray while maintaining the sorted property.  The value for sorting is expected to begin at the offset given by `keyoffset` and continue for `keylen` bytes.  This function _will_ follow pointers are stored in the array so casting other types to store them is not allowed (as it is with [`xaAddItem()`](#xaadditem)).
 
 
 ## xaAddItemSortedInt32()
@@ -141,7 +141,7 @@ int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset)
 ```c
 void* xaGetItem(pXArray this, int index)
 ```
-This function returns an item given a specific index into the xarray, or `NULL` if the index is out of bounds.  If the bounds check needs to be omitted for performance and the caller can otherwise verify that no out of bounds read is possible (e.g. because they are iterating from 0 to `xarray->nItems`), the caller should access `xarray->Items` directly.  Either way, the result may need to be typecasted or stored in a variable of a specific type for it to be useable, and error checking for `NULL` values should be used.
+This function returns an item given a specific index into the XArray, or `NULL` if the index is out of bounds.  If the bounds check needs to be omitted for performance and the caller can otherwise verify that no out of bounds read is possible (e.g. because they are iterating from 0 to `XArray->nItems`), the caller should access `XArray->Items` directly.  Either way, the result may need to be typecasted or stored in a variable of a specific type for it to be useable, and error checking for `NULL` values should be used.
 
 
 ## xaFindItem()
@@ -179,14 +179,14 @@ This function works the same as [`xaFindItem()`](#xafinditem), however it iterat
 ```c
 int xaRemoveItem(pXArray this, int index)
 ```
-This function removes an item from the xarray at the given the index, then shifts all following items back to fill the gap created by the removal.  XArray is not optimized for removing multiple items efficiently.  This function returns 0 on success, or -1 if an error occurs.
+This function removes an item from the XArray at the given the index, then shifts all following items back to fill the gap created by the removal.  XArray is not optimized for removing multiple items efficiently.  This function returns 0 on success, or -1 if an error occurs.
 
 
 ## xaClear()
 ```c
 int xaClear(pXArray this, int (*free_fn)(), void* free_arg);
 ```
-This function removes all elements from the xarray, leaving it empty.  `free_fn()` is invoked on each element with a `void*` to the element to be freed as the first argument and `free_arg` as the second argument (the return value of `free_fn()` is always ignored).  This function returns 0 on success (even if the `free_fn()` returns an error), or -1 if an error is detected.
+This function removes all elements from the XArray, leaving it empty.  `free_fn()` is invoked on each element with a `void*` to the element to be freed as the first argument and `free_arg` as the second argument (the return value of `free_fn()` is always ignored).  This function returns 0 on success (even if the `free_fn()` returns an error), or -1 if an error is detected.
 
 
 ## xaClearR()
@@ -200,7 +200,7 @@ This function works the same as [`xaClear()`](#xaclear), except that it is sligh
 ```c
 int xaCount(pXArray this);
 ```
-This function returns the number of items in the xarray, or -1 on error.  It is equivalent to accessing `xarray->nItems` (although the latter expression will not return an error).
+This function returns the number of items in the XArray, or -1 on error.  It is equivalent to accessing `XArray->nItems` (although the latter expression will not return an error).
 
 
 ## xaInsertBefore()
