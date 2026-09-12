@@ -3,48 +3,44 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
+#include "test_utils.h"
 
-long long
-test(char** tname)
-    {
-    int i;
-    int iter;
-    int flags;
-    pLxSession lxs;
-    int t;
-    char* strval;
-    int j;
-    int strcnt;
-    char str[65536] = "\n\n'string one' 'string two'\n'string three' 'string four'\r\n'string five'\r\n\r\nString Six";
-    int n_flagtype = 4;
-    int n_tok = 15;
-    int flagtype[4] = {MLX_F_EOF, MLX_F_EOF | MLX_F_EOL, MLX_F_EOL, 0};
-    int toktype[4][15] = {   
+#define N_FLAGTYPE	4
+#define N_TOK		15
+
+static char str[65536] = "\n\n'string one' 'string two'\n'string three' 'string four'\r\n'string five'\r\n\r\nString Six";
+static int flagtype[N_FLAGTYPE] = {MLX_F_EOF, MLX_F_EOF | MLX_F_EOL, MLX_F_EOL, 0};
+static int toktype[N_FLAGTYPE][N_TOK] = {
 			    {MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_EOF, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR},
 			    {MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_EOF },
 			    {MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_STRING, MLX_TOK_EOL, MLX_TOK_ERROR },
 			    {MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_STRING, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR, MLX_TOK_ERROR},
 			};
-    char* tokstr[8] = {	"\n", "\n", "'string one' 'string two'\n", "'string three' 'string four'\r\n", "'string five'\r\n", "\r\n", "String Six", NULL };
+static char* tokstr[8] = { "\n", "\n", "'string one' 'string two'\n", "'string three' 'string four'\r\n", "'string five'\r\n", "\r\n", "String Six", NULL };
 
-	*tname = "mtlexer-17 LINEONLY mode test";
+static bool
+doTest(void)
+    {
+    int f;
+    int j;
+    int t;
+    int strcnt;
+    char* strval;
+    pLxSession lxs;
 
-	mssInitialize("system", "", "", 0, "test");
-
-	iter = 100000;
-	for(i=0;i<iter;i++)
+	for(f=0;f<N_FLAGTYPE;f++)
 	    {
-	    flags = flagtype[i%n_flagtype];
-	    lxs = mlxStringSession(str, flags | MLX_F_LINEONLY);
+	    lxs = mlxStringSession(str, flagtype[f] | MLX_F_LINEONLY);
 	    assert(lxs != NULL);
 	    strcnt = 0;
-	    for(j=0;j<n_tok;j++)
+	    for(j=0;j<N_TOK;j++)
 		{
 		t = mlxNextToken(lxs);
-		assert(t == toktype[i%n_flagtype][j]);
+		assert(t == toktype[f][j]);
 		if (t == MLX_TOK_STRING)
 		    {
 		    strval = mlxStringVal(lxs, NULL);
@@ -56,6 +52,13 @@ test(char** tname)
 	    mlxCloseSession(lxs);
 	    }
 
-    return iter * 7;
+    return true;
     }
 
+long long
+test(char** tname)
+    {
+    *tname = "mtlexer-17 LINEONLY mode test";
+    mssInitialize("system", "", "", 0, "test");
+    return loopTest(doTest) * N_FLAGTYPE * 7;
+    }
