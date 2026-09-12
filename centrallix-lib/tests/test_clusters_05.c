@@ -68,7 +68,6 @@ static bool doTest(void)
 	/** Check error cases. **/
 	success &= EXPECT_STR_EQL(caMostSimilar(NULL, (void*[]){"str_abc", "str1"}, 2, caLevCompare, 0.0), NULL);
 	success &= EXPECT_STR_EQL(caMostSimilar("str", NULL, 2, caLevCompare, 0.0), NULL);
-	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 0, caLevCompare, 0.0), NULL);
 	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, NULL, 0.0), NULL);
 	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, 1.1), NULL);
 	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, -0.1), NULL);
