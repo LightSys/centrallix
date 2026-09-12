@@ -93,6 +93,12 @@ static bool doTest(void)
 	/** List overflow. **/
 	success &= EXPECT_STR_EQL(caMostSimilar("target", (void*[]){"str1", "targets", "target", "walmart"}, 2, caLevCompare, 0.0), "targets");
 	
+	/** Length detection on null-terminated lists. **/
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1", NULL}, 0, caLevCompare, 0.0), "str1");
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){NULL}, 0, caLevCompare, 0.0), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("blob", (void*[]){"blooooop", "targets", "string", NULL}, 0, caLevCompare, 0.5), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("target", (void*[]){"str1", "targets", "target", NULL}, 2, caLevCompare, 0.0), "targets");
+	
 	/** Threshold exceeded. **/
 	success &= EXPECT_STR_EQL(caMostSimilar("blob", (void*[]){"blooooop", "targets", "string"}, 3, caLevCompare, 0.0), "blooooop");
 	success &= EXPECT_STR_EQL(caMostSimilar("blob", (void*[]){"blooooop", "targets", "string"}, 3, caLevCompare, 0.5), NULL);
@@ -180,5 +186,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "cluster-05 caMostSimilar()";
-    return loopTest(doTest) * 35;
+    return loopTest(doTest) * 39;
     }
