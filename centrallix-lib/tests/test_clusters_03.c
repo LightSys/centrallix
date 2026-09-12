@@ -11,7 +11,7 @@
 /* Module:	test_clusters_03.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 26th, 2025					*/
-/* Description:	Test the ca_cos_compare() function from clusters.h.	*/
+/* Description:	Test the caCosCompare() function from clusters.h.	*/
 /************************************************************************/
 
 #include <limits.h>
@@ -37,11 +37,11 @@ static bool doTest(void)
 	pVector free_list[max_index];
 	#define STORE(v) (free_list[index++] = (v))
 	
-	/** ca_cos_compare() shortcut macro. **/
+	/** caCosCompare() shortcut macro. **/
 	#define cos_cmp(str1, str2) ({ \
-	    pVector _v1 = STORE(ca_build_vector(str1)); \
-	    pVector _v2 = STORE(ca_build_vector(str2)); \
-	    ca_cos_compare(_v1, _v2); \
+	    pVector _v1 = STORE(caBuildVector(str1)); \
+	    pVector _v2 = STORE(caBuildVector(str2)); \
+	    caCosCompare(_v1, _v2); \
 	})
 	
 	/** Basic tests of cosine similarity. **/
@@ -78,7 +78,7 @@ static bool doTest(void)
 	    {
 	    pVector cur_vector = free_list[--index];
 	    if (cur_vector == NULL) continue;
-	    else ca_free_vector(cur_vector);
+	    else caFreeVector(cur_vector);
 	    }
     
     return success;
@@ -86,6 +86,6 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
-    *tname = "cluster-03 ca_cos_compare()";
+    *tname = "cluster-03 caCosCompare()";
     return loopTest(doTest) * 11;
     }

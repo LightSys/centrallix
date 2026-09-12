@@ -4587,7 +4587,7 @@ exp_fn_metaphone(pExpression tree)
 	    }
 	
 	/** Compute Double Metaphone. **/
-	tmp = meta_double_metaphone(str, &primary, &secondary);
+	tmp = metaDoubleMetaphone(str, &primary, &secondary);
 	if (UNLIKELY(tmp != 0))
 	    {
 	    mssError(1, "EXP", "Double metaphone computation failed (error code %d).", tmp);
@@ -4656,8 +4656,8 @@ exp_fn_compare(pExpression tree)
 	    int ret;
 	    
 	    /** Build vectors. **/
-	    const pVector v1 = checkPtr(ca_build_vector(str1));
-	    const pVector v2 = checkPtr(ca_build_vector(str2));
+	    const pVector v1 = checkPtr(caBuildVector(str1));
+	    const pVector v2 = checkPtr(caBuildVector(str2));
 	    if (UNLIKELY(v1 == NULL || v2 == NULL))
 		{
 		mssError(1, "EXP",
@@ -4669,20 +4669,20 @@ exp_fn_compare(pExpression tree)
 	    else
 		{
 		/** Compute the similarity. **/
-		tree->Types.Double = ca_cos_compare(v1, v2);
+		tree->Types.Double = caCosCompare(v1, v2);
 		tree->DataType = DATA_T_DOUBLE;
 		ret = 0;
 		}
 	    
 	    /** Clean up. **/
-	    if (LIKELY(v1 != NULL)) ca_free_vector(v1);
-	    if (LIKELY(v2 != NULL)) ca_free_vector(v2);
+	    if (LIKELY(v1 != NULL)) caFreeVector(v1);
+	    if (LIKELY(v2 != NULL)) caFreeVector(v2);
 	    if (UNLIKELY(ret == -1)) goto err;
 	    else return 0;
 	    }
 	else
 	    { /* lev_compare() */
-	    const double lev_sim = checkDouble(ca_lev_compare(str1, str2));
+	    const double lev_sim = checkDouble(caLevCompare(str1, str2));
 	    if (UNLIKELY(isnan(lev_sim)))
 		{
 		mssError(1, "EXP",
@@ -4733,7 +4733,7 @@ exp_fn_levenshtein(pExpression tree)
 	
 	/** Compute edit distance. **/
 	/** Length 0 is provided for both strings so that the function will compute it for us. **/
-	const int edit_dist = checkPos(ca_edit_dist(str1, str2, 0lu, 0lu));
+	const int edit_dist = checkPos(caEditDist(str1, str2, 0lu, 0lu));
 	if (UNLIKELY(edit_dist < 0))
 	    {
 	    mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.", tree->Name, str1, str2);
@@ -4871,7 +4871,7 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
 int exp_internal_DefineFunctions()
     {
 	/** Initialize clustering library. **/
-	ca_init();
+	caInit();
 	
 	/** Function list for EXPR_N_FUNCTION nodes **/
 	xhAdd(&EXP.Functions, "getdate", (char*)exp_fn_getdate);

@@ -11,7 +11,7 @@
 /* Module:	test_clusters_05.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 26th, 2025					*/
-/* Description:	Test the ca_most_similar() function from clusters.h.	*/
+/* Description:	Test the caMostSimilar() function from clusters.h.	*/
 /************************************************************************/
 
 #include <limits.h>
@@ -66,68 +66,68 @@ static bool doTest(void)
     bool success = true;
     
 	/** Check error cases. **/
-	success &= EXPECT_STR_EQL(ca_most_similar(NULL, (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, 0.0), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", NULL, 2, ca_lev_compare, 0.0), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 0, ca_lev_compare, 0.0), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 2, NULL, 0.0), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, 1.1), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, -0.1), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, INFINITY), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, -INFINITY), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, NAN), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar(NULL, (void*[]){"str_abc", "str1"}, 2, caLevCompare, 0.0), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", NULL, 2, caLevCompare, 0.0), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 0, caLevCompare, 0.0), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, NULL, 0.0), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, 1.1), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, -0.1), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, INFINITY), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, -INFINITY), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, NAN), NULL);
 	
 	/** Simple test cases. **/
-	success &= EXPECT_STR_EQL(ca_most_similar("str1", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, 0.0), "str1");
-	success &= EXPECT_STR_EQL(ca_most_similar("str", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, 0.0), "str1");
-	success &= EXPECT_STR_EQL(ca_most_similar("kitten", (void*[]){"str_abc", "str1"}, 2, ca_lev_compare, 0.0), "str1");
-	success &= EXPECT_STR_EQL(ca_most_similar("str1", (void*[]){"str2", "str", "eight"}, 3, ca_lev_compare, 0.0), "str2");
+	success &= EXPECT_STR_EQL(caMostSimilar("str1", (void*[]){"str_abc", "str1"}, 2, caLevCompare, 0.0), "str1");
+	success &= EXPECT_STR_EQL(caMostSimilar("str", (void*[]){"str_abc", "str1"}, 2, caLevCompare, 0.0), "str1");
+	success &= EXPECT_STR_EQL(caMostSimilar("kitten", (void*[]){"str_abc", "str1"}, 2, caLevCompare, 0.0), "str1");
+	success &= EXPECT_STR_EQL(caMostSimilar("str1", (void*[]){"str2", "str", "eight"}, 3, caLevCompare, 0.0), "str2");
 	
 	/** Many, identically similar options. */
-	success &= EXPECT_STR_EQL(ca_most_similar("kitten",
+	success &= EXPECT_STR_EQL(caMostSimilar("kitten",
 	    (void*[]){"skitten", "itten", "mitten", "iktten", "kittens", "kitte", "kittem", "kittne"}, 8,
-	ca_lev_compare, 0.0), "skitten");
+	caLevCompare, 0.0), "skitten");
 	
 	/** Pointer-perfect handling. **/
 	char* target = "string";
-	success &= EXPECT_EQL((char*)ca_most_similar(target, (void*[]){"str", target}, 2, ca_lev_compare, 0.0), target, "%s");
+	success &= EXPECT_EQL((char*)caMostSimilar(target, (void*[]){"str", target}, 2, caLevCompare, 0.0), target, "%s");
 	
 	/** List overflow. **/
-	success &= EXPECT_STR_EQL(ca_most_similar("target", (void*[]){"str1", "targets", "target", "walmart"}, 2, ca_lev_compare, 0.0), "targets");
+	success &= EXPECT_STR_EQL(caMostSimilar("target", (void*[]){"str1", "targets", "target", "walmart"}, 2, caLevCompare, 0.0), "targets");
 	
 	/** Threshold exceeded. **/
-	success &= EXPECT_STR_EQL(ca_most_similar("blob", (void*[]){"blooooop", "targets", "string"}, 3, ca_lev_compare, 0.0), "blooooop");
-	success &= EXPECT_STR_EQL(ca_most_similar("blob", (void*[]){"blooooop", "targets", "string"}, 3, ca_lev_compare, 0.5), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("hello", (void*[]){"bane", "noepo", "stars"}, 3, ca_lev_compare, 0.0), "noepo");
-	success &= EXPECT_STR_EQL(ca_most_similar("hello", (void*[]){"bane", "noepo", "stars"}, 3, ca_lev_compare, 0.25), NULL);
-	success &= EXPECT_STR_EQL(ca_most_similar("kitten", (void*[]){"skitten", "fit"}, 2, ca_lev_compare, 0.0), "skitten");
-	success &= EXPECT_STR_EQL(ca_most_similar("kitten", (void*[]){"skitten", "fit"}, 2, ca_lev_compare, 0.9), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("blob", (void*[]){"blooooop", "targets", "string"}, 3, caLevCompare, 0.0), "blooooop");
+	success &= EXPECT_STR_EQL(caMostSimilar("blob", (void*[]){"blooooop", "targets", "string"}, 3, caLevCompare, 0.5), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("hello", (void*[]){"bane", "noepo", "stars"}, 3, caLevCompare, 0.0), "noepo");
+	success &= EXPECT_STR_EQL(caMostSimilar("hello", (void*[]){"bane", "noepo", "stars"}, 3, caLevCompare, 0.25), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("kitten", (void*[]){"skitten", "fit"}, 2, caLevCompare, 0.0), "skitten");
+	success &= EXPECT_STR_EQL(caMostSimilar("kitten", (void*[]){"skitten", "fit"}, 2, caLevCompare, 0.9), NULL);
 	
 	/** Make an array to STORE() pointers to vectors so we can free them. **/
 	const unsigned int max_index = 32u;
 	unsigned int index = 0u;
 	pVector free_list[max_index];
 	#define STORE(v) (free_list[index++] = (v))
-	#define vec(s) STORE(ca_build_vector(s))
+	#define vec(s) STORE(caBuildVector(s))
 	
 	/** Alternative similarity function. **/
 	pVector hello = vec("hello"), fellow = vec("fellow"), felon = vec("felon");
 	pVector held = vec("held"), zephora = vec("zephora"), hexza = vec("hexza");
 	pVector hello_there = vec("hello there"), hello_world = vec("hello world");
 	pVector hellow_there = vec("hellow there");
-	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){fellow, felon, hello, held}, 4, ca_cos_compare, 0.0), hello);
-	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){zephora, hello_world, hexza}, 3, ca_cos_compare, 0.0), hello_world);
-	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){zephora, hello_world}, 1, ca_cos_compare, 0.0), zephora);
-	success &= EXPECT_VEC_EQL(ca_most_similar(hello, (void*[]){zephora}, 1, ca_cos_compare, 0.0), zephora);
-	success &= EXPECT_VEC_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there, hexza}, 4, ca_cos_compare, 0.0), hellow_there);
-	success &= EXPECT_VEC_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, ca_cos_compare, 0.0), hello_world);
-	success &= EXPECT_VEC_EQL(ca_most_similar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, ca_cos_compare, 0.8), NULL);
+	success &= EXPECT_VEC_EQL(caMostSimilar(hello, (void*[]){fellow, felon, hello, held}, 4, caCosCompare, 0.0), hello);
+	success &= EXPECT_VEC_EQL(caMostSimilar(hello, (void*[]){zephora, hello_world, hexza}, 3, caCosCompare, 0.0), hello_world);
+	success &= EXPECT_VEC_EQL(caMostSimilar(hello, (void*[]){zephora, hello_world}, 1, caCosCompare, 0.0), zephora);
+	success &= EXPECT_VEC_EQL(caMostSimilar(hello, (void*[]){zephora}, 1, caCosCompare, 0.0), zephora);
+	success &= EXPECT_VEC_EQL(caMostSimilar(hello_there, (void*[]){hello_world, zephora, hellow_there, hexza}, 4, caCosCompare, 0.0), hellow_there);
+	success &= EXPECT_VEC_EQL(caMostSimilar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, caCosCompare, 0.0), hello_world);
+	success &= EXPECT_VEC_EQL(caMostSimilar(hello_there, (void*[]){hello_world, zephora, hellow_there}, 2, caCosCompare, 0.8), NULL);
 	
 	/** Special characters (ignored by the similarity function). **/
 	pVector yip = vec("Yippee!!!");
 	pVector str1 = vec("@*#((%^!&@*-+!"), str2 = vec(">>->y  i!&P^^_pe$/\n?e"), str3 = vec("yip");
 	success &= EXPECT_VEC_EQL(yip, str2);
-	success &= EXPECT_VEC_EQL(ca_most_similar(yip, (void*[]){str1, str2, str3}, 3, ca_cos_compare, 0.0), str2);
-	success &= EXPECT_VEC_EQL(ca_most_similar(yip, (void*[]){str1, str2, str3}, 3, ca_cos_compare, 1.0), str2);
+	success &= EXPECT_VEC_EQL(caMostSimilar(yip, (void*[]){str1, str2, str3}, 3, caCosCompare, 0.0), str2);
+	success &= EXPECT_VEC_EQL(caMostSimilar(yip, (void*[]){str1, str2, str3}, 3, caCosCompare, 1.0), str2);
 	
 	/** Clean up scope. **/
 	#undef STORE
@@ -145,7 +145,7 @@ static bool doTest(void)
 	    {
 	    pVector cur_vector = free_list[--index];
 	    if (cur_vector == NULL) continue;
-	    else ca_free_vector(cur_vector);
+	    else caFreeVector(cur_vector);
 	    }
 	
 	/** Set up the mock similarity function. **/
@@ -159,8 +159,8 @@ static bool doTest(void)
 	if (check(xhAdd(&sim_table, "str1|str",   (void*)&str1_str)) != 0) return false;
 	if (check(xhAdd(&sim_table, "str1|str2",  (void*)&str1_str2)) != 0) return false;
 	if (check(xhAdd(&sim_table, "str1|eight", (void*)&str1_eight)) != 0) return false;
-	success &= EXPECT_STR_EQL(ca_most_similar("str1", (void*[]){"str2", "str", "eight"}, 3, getSimMock, 0.0), "eight");
-	success &= EXPECT_STR_EQL(ca_most_similar("str1", (void*[]){"str2", "str", "eight"}, 3, getSimMock, 0.9), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("str1", (void*[]){"str2", "str", "eight"}, 3, getSimMock, 0.0), "eight");
+	success &= EXPECT_STR_EQL(caMostSimilar("str1", (void*[]){"str2", "str", "eight"}, 3, getSimMock, 0.9), NULL);
 	if (check(xhClear(&sim_table, do_nothing, NULL)) != 0) return false;
 	
 	/** Nans are skipped. **/
@@ -168,8 +168,8 @@ static bool doTest(void)
 	if (check(xhAdd(&sim_table, "val|nan",  (void*)&val_nan))  != 0) return false;
 	if (check(xhAdd(&sim_table, "val|vals", (void*)&val_vals)) != 0) return false;
 	if (check(xhAdd(&sim_table, "val|val",  (void*)&val_val))  != 0) return false;
-	success &= EXPECT_STR_EQL(ca_most_similar("val", (void*[]){"val", "vals", "nan"}, 3, getSimMock, 0.0), "nan");
-	success &= EXPECT_STR_EQL(ca_most_similar("val", (void*[]){"val", "vals", "nan"}, 3, getSimMock, 0.9), NULL);
+	success &= EXPECT_STR_EQL(caMostSimilar("val", (void*[]){"val", "vals", "nan"}, 3, getSimMock, 0.0), "nan");
+	success &= EXPECT_STR_EQL(caMostSimilar("val", (void*[]){"val", "vals", "nan"}, 3, getSimMock, 0.9), NULL);
 	if (check(xhClear(&sim_table, do_nothing, NULL)) != 0) return false;
 	
 	/** Clean up. **/
@@ -180,6 +180,6 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
-    *tname = "cluster-05 ca_most_similar()";
+    *tname = "cluster-05 caMostSimilar()";
     return loopTest(doTest) * 35;
     }

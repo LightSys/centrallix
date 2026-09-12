@@ -93,16 +93,16 @@ typedef struct
 
 
 /** Edit distance function. **/
-int ca_edit_dist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
+int caEditDist(const char* str1, const char* str2, const size_t str1_length, const size_t str2_length);
 
 /** Vector functions. **/
-pVector ca_build_vector(const char* str);
-unsigned int ca_sparse_len(const pVector vector);
-void ca_print_vector(const pVector vector);
-void ca_free_vector(pVector sparse_vector);
+pVector caBuildVector(const char* str);
+unsigned int caSparseLen(const pVector vector);
+void caPrintVector(const pVector vector);
+void caFreeVector(pVector sparse_vector);
 
 /** k-means function. **/
-int ca_kmeans(
+int caKmeans(
     pVector* vectors,
     const unsigned int num_vectors,
     const unsigned int num_clusters,
@@ -113,16 +113,16 @@ int ca_kmeans(
     bool auto_seed);
 
 /** Vector helper macros. **/
-#define ca_is_empty(vector) (vector[0] == -CA_NUM_DIMS)
-/*** Note: Given that CA_NUM_DIMS == 251, ca_build_vector("") will give the
- *** vector we check for in the ca_has_no_pairs() macro, [-172, 11, -78],
+#define caIsEmpty(vector) (vector[0] == -CA_NUM_DIMS)
+/*** Note: Given that CA_NUM_DIMS == 251, caBuildVector("") will give the
+ *** vector we check for in the caHasNoPairs() macro, [-172, 11, -78],
  *** which has a single pair of boundary characters.
  *** If CA_NUM_DIMS is modified, this macro will need to be updated, hence the
  *** compiler directive causing it to be undefined in this case, likely leading
  *** to a lot of compiler or linker issues to remind the developer about this.
  ***/
 #if CA_NUM_DIMS == 251
-#define ca_has_no_pairs(vector) \
+#define caHasNoPairs(vector) \
     ({ \
 	__typeof__ (vector) _v = (vector); \
 	_v[0] == -172 && _v[1] == 11 && _v[2] == -78; \
@@ -130,25 +130,25 @@ int ca_kmeans(
 #endif
 
 /** Comparison functions (see ca_search()). **/
-double ca_cos_compare(void* v1, void* v2);
-double ca_lev_compare(void* str1, void* str2);
-bool ca_eql(pVector v1, pVector v2);
+double caCosCompare(void* v1, void* v2);
+double caLevCompare(void* str1, void* str2);
+bool caEql(pVector v1, pVector v2);
 
 /** Similarity search functions. **/
-void* ca_most_similar(
+void* caMostSimilar(
     void* target,
     void** data,
     const unsigned int num_data,
     double (*similarity)(void*, void*),
     const double threshold);
-pXArray ca_sliding_search(
+pXArray caSlidingSearch(
     void** data,
     const unsigned int num_data,
     const unsigned int window_size,
     double (*similarity)(void*, void*),
     const double threshold,
     pXArray maybe_pairs);
-pXArray ca_complete_search(
+pXArray caCompleteSearch(
     void** data,
     const unsigned int num_data,
     double (*similarity)(void*, void*),
@@ -156,6 +156,6 @@ pXArray ca_complete_search(
     pXArray maybe_pairs);
 
 /** Module management functions. **/
-void ca_init(void);
+void caInit(void);
 
 #endif /* End of .h file. */

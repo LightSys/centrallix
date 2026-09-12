@@ -11,7 +11,7 @@
 /* Module:	test_clusters_01.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 25th, 2025					*/
-/* Description:	Test the ca_edit_dist() function from clusters.h.	*/
+/* Description:	Test the caEditDist() function from clusters.h.	*/
 /************************************************************************/
 
 #include <limits.h>
@@ -37,15 +37,15 @@ static bool doTest(void)
 	memset(AAA, 'A', num_edits);
 	memset(BBB, 'B', num_edits);
 	AAA[num_edits] = BBB[num_edits] = '\0';
-	success &= EXPECT_EQL(ca_edit_dist(AAA, "", 0, 0), num_edits, "%d");
-	success &= EXPECT_EQL(ca_edit_dist("", BBB, 0, 0), num_edits, "%d");
-	success &= EXPECT_EQL(ca_edit_dist(AAA, BBB, 0, 0), num_edits, "%d");
+	success &= EXPECT_EQL(caEditDist(AAA, "", 0, 0), num_edits, "%d");
+	success &= EXPECT_EQL(caEditDist("", BBB, 0, 0), num_edits, "%d");
+	success &= EXPECT_EQL(caEditDist(AAA, BBB, 0, 0), num_edits, "%d");
     
     return success;
     }
 
 long long test(char** tname)
     {
-    *tname = "cluster-01 ca_edit_dist(): Stress test";
+    *tname = "cluster-01 caEditDist(): Stress test";
     return loopTest(doTest) * 3;
     }

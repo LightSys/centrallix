@@ -34,7 +34,7 @@
 /*    b) the "Artistic License" (5).					*/
 /* 									*/
 /* Citations:								*/
-/*    1: https://github.com/gitpan/Text-meta_double_metaphone		*/
+/*    1: https://github.com/gitpan/Text-metaDoubleMetaphone		*/
 /*    2: https://dev.perl.org/licenses/gpl1.html			*/
 /*    3: http://www.fsf.org						*/
 /*    4: http://www.fsf.org/licenses/licenses.html#GNUGPL		*/
@@ -330,7 +330,7 @@ meta_i_addStr(pMetaString s, const char* new_str)
  *** ```c
  *** char* primary_code;
  *** char* secondary_code;
- *** meta_double_metaphone(input, &primary_code, &secondary_code);
+ *** metaDoubleMetaphone(input, &primary_code, &secondary_code);
  *** ```
  *** 
  *** @param str The string to compute.
@@ -341,7 +341,7 @@ meta_i_addStr(pMetaString s, const char* new_str)
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
-meta_double_metaphone(const char* str, char** primary_code, char** secondary_code)
+metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
     {
     int ret = -1;
     
@@ -1282,7 +1282,7 @@ meta_double_metaphone(const char* str, char** primary_code, char** secondary_cod
 	ret = 0;
 	
     end_free:
-	if (UNLIKELY(ret != 0)) fprintf(stderr, "Error: meta_double_metaphone() failed (error code %d).\n", ret);
+	if (UNLIKELY(ret != 0)) fprintf(stderr, "Error: metaDoubleMetaphone() failed (error code %d).\n", ret);
 	meta_i_destroyString(original);
 	meta_i_destroyString(primary);
 	meta_i_destroyString(secondary);

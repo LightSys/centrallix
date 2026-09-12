@@ -70,20 +70,20 @@ static bool doTest(void)
 	};
 	
 	/** Check error cases. **/
-	success &= EXPECT_EQL(ca_complete_search(NULL, 6, ca_lev_compare,  0.8,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(ca_complete_search(data, 0, ca_lev_compare,  0.8,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(ca_complete_search(data, 6, NULL,            0.8,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(ca_complete_search(data, 6, ca_lev_compare,  1.1,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(ca_complete_search(data, 6, ca_lev_compare, -0.1,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(ca_complete_search(data, 6, ca_lev_compare,  INFINITY, NULL), NULL, "%p");
-	success &= EXPECT_EQL(ca_complete_search(data, 6, ca_lev_compare, -INFINITY, NULL), NULL, "%p");
-	success &= EXPECT_EQL(ca_complete_search(data, 6, ca_lev_compare,  NAN,      NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(NULL, 6, caLevCompare,  0.8,      NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(data, 0, caLevCompare,  0.8,      NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(data, 6, NULL,            0.8,      NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare,  1.1,      NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare, -0.1,      NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare,  INFINITY, NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare, -INFINITY, NULL), NULL, "%p");
+	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare,  NAN,      NULL), NULL, "%p");
 	
 	/** Test complete search. **/
 	{
 	    XArray xPairs;
 	    if (check(xaInit(&xPairs, 4)) != 0) return false;
-	    success &= EXPECT_EQL(ca_complete_search(data, 6, ca_lev_compare, 0.8, &xPairs), &xPairs, "%p");
+	    success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
 		{
@@ -107,7 +107,7 @@ static bool doTest(void)
 	{
 	    XArray xPairs;
 	    if (check(xaInit(&xPairs, 4)) != 0) return false;
-	    success &= EXPECT_EQL(ca_sliding_search(data, 6, 5, ca_lev_compare, 0.8, &xPairs), &xPairs, "%p");
+	    success &= EXPECT_EQL(caSlidingSearch(data, 6, 5, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
 		{
@@ -131,7 +131,7 @@ static bool doTest(void)
 	{
 	    XArray xPairs;
 	    if (check(xaInit(&xPairs, 4)) != 0) return false;
-	    success &= EXPECT_EQL(ca_sliding_search(data, 6, 2, ca_lev_compare, 0.8, &xPairs), &xPairs, "%p");
+	    success &= EXPECT_EQL(caSlidingSearch(data, 6, 2, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
 		{

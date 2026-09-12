@@ -11,7 +11,7 @@
 /* Module:	test_clusters_02.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 25th, 2025					*/
-/* Description:	Test the ca_build_vector() function from clusters.h.	*/
+/* Description:	Test the caBuildVector() function from clusters.h.	*/
 /************************************************************************/
 
 #include <limits.h>
@@ -36,10 +36,10 @@ static bool doTest(void)
 	unsigned int index = 0u;
 	pVector free_list[max_index];
 	#define STORE(v) (free_list[index++] = (v))
-	#define vec(s) STORE(ca_build_vector(s))
+	#define vec(s) STORE(caBuildVector(s))
 	
 	/** Edge case: Null string. **/
-	success &= EXPECT_EQL(ca_build_vector(NULL), NULL, "%p");
+	success &= EXPECT_EQL(caBuildVector(NULL), NULL, "%p");
 	
 	/** Edge case: Empty string. **/
 	success &= EXPECT_VEC_EQL(vec(""), ((int[]){-172, 11, -78}));
@@ -68,7 +68,7 @@ static bool doTest(void)
 	    {
 	    pVector cur_vector = free_list[--index];
 	    if (cur_vector == NULL) continue;
-	    else ca_free_vector(cur_vector);
+	    else caFreeVector(cur_vector);
 	    }
     
     return success;
@@ -76,7 +76,7 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
-    *tname = "cluster-02 ca_build_vector()";
+    *tname = "cluster-02 caBuildVector()";
     return loopTest(doTest) * 9;
     }
 

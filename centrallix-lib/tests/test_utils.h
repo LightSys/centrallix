@@ -140,12 +140,12 @@
     ({ \
 	pVector _v1 = (v1); \
 	pVector _v2 = (v2); \
-	int success = ca_eql(_v1, _v2); \
+	int success = caEql(_v1, _v2); \
 	if (!success) \
 	    { \
 	    printf("  > Expected %s (1.) to equal %s (2.) at %s:%d, but got:\n", #v1, #v2, __FILE__, __LINE__); \
-	    printf("  > 1. (%p) ", _v1); ca_print_vector(_v1); printf("\n"); \
-	    printf("  > 2. (%p) ", _v2); ca_print_vector(_v2); printf("\n"); \
+	    printf("  > 1. (%p) ", _v1); caPrintVector(_v1); printf("\n"); \
+	    printf("  > 2. (%p) ", _v2); caPrintVector(_v2); printf("\n"); \
 	    fflush(stdout); \
 	    } \
 	success; \

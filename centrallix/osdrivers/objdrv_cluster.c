@@ -162,8 +162,8 @@ double (*cluster_i_similarityMeasureToFunction(SimilarityMeasure similarity_meas
     {
     switch (similarity_measure)
 	{
-	case SIMILARITY_COSINE: return ca_cos_compare;
-	case SIMILARITY_LEVENSHTEIN: return ca_lev_compare;
+	case SIMILARITY_COSINE: return caCosCompare;
+	case SIMILARITY_LEVENSHTEIN: return caLevCompare;
 	default:
 	    mssError(1, "Cluster",
 		"Unknown similarity measure \"%s\" (%d).",
@@ -697,7 +697,7 @@ static void cluster_i_giveHint(const char* hint)
 static bool
 cluster_i_tryHint(char* value, char** valid_values, const unsigned int n_valid_values)
     {
-	char* guess = ca_most_similar(value, (void**)valid_values, n_valid_values, ca_lev_compare, 0.25);
+	char* guess = caMostSimilar(value, (void**)valid_values, n_valid_values, caLevCompare, 0.25);
 	if (guess == NULL) return false; /* No hint. */
 	
 	/** Issue hint. **/
@@ -1894,7 +1894,7 @@ cluster_i_freeSourceData(pSourceData source_data)
 		{
 		if (source_data->Vectors[i] != NULL)
 		    {
-		    ca_free_vector(source_data->Vectors[i]);
+		    caFreeVector(source_data->Vectors[i]);
 		    source_data->Vectors[i] = NULL;
 		    }
 		}
@@ -2161,7 +2161,7 @@ cluster_i_sizeOfSourceData(pSourceData source_data)
 	if (source_data->Vectors != NULL)
 	    {
 	    for (unsigned int i = 0u; i < source_data->nDatas; i++)
-		size += ca_sparse_len(source_data->Vectors[i]) * sizeof(int);
+		size += caSparseLen(source_data->Vectors[i]) * sizeof(int);
 	    size += source_data->nDatas * sizeof(pVector);
 	    }
 	size += sizeof(SourceData);
@@ -2352,21 +2352,21 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    if (strlen(data) == 0) continue;
 	    
 	    /** Convert the string to a vector. **/
-	    pVector vector = ca_build_vector(data);
+	    pVector vector = caBuildVector(data);
 	    if (UNLIKELY(vector == NULL))
 		{
 		mssError(1, "Cluster", "Failed to build vectors for string \"%s\".", data);
 		goto end_free;
 		}
-	    if (UNLIKELY(ca_is_empty(vector)))
+	    if (UNLIKELY(caIsEmpty(vector)))
 		{
 		mssError(1, "Cluster", "Vector building for string \"%s\" produced no character pairs.", data);
 		goto end_free;
 		}
-	    if (ca_has_no_pairs(vector))
+	    if (caHasNoPairs(vector))
 		{
 		/** Skip pVector with only a single pair of boundary characters. **/
-		ca_free_vector(vector);
+		caFreeVector(vector);
 		continue;
 		}
 	    
@@ -2502,7 +2502,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    for (unsigned int i = 0u; i < vector_xarray.nItems; i++)
 		{
 		pVector vec = vector_xarray.Items[i];
-		if (vec != NULL) ca_free_vector(vec);
+		if (vec != NULL) caFreeVector(vec);
 		}
 	    check(xaDeInit(&vector_xarray)); /* Failure ignored. */
 	    }
@@ -2613,17 +2613,17 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    goto err_free;
 		    }
 		
-		/** Allocate labels. Note: ca_kmeans() initializes labels for us. **/
+		/** Allocate labels. Note: caKmeans() initializes labels for us. **/
 		const size_t labels_size = source_data->nDatas * sizeof(unsigned int);
 		unsigned int* labels = checkPtr(nmSysMalloc(labels_size));
 		if (UNLIKELY(labels == NULL)) goto err_free;
 		
-		/** Handle seed for ca_kmeans(). **/
+		/** Handle seed for caKmeans(). **/
 		const bool auto_seed = (cluster_data->Seed == CI_NO_SEED);
 		if (!auto_seed) srand(cluster_data->Seed);
 		
-		/** Run ca_kmeans(). **/
-		const bool successful = (check(ca_kmeans(
+		/** Run caKmeans(). **/
+		const bool successful = (check(caKmeans(
 		    source_data->Vectors,
 		    source_data->nDatas,
 		    cluster_data->nClusters,
@@ -2806,7 +2806,7 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		}
 	    
 	    /** Execute sliding search. **/
-	    pairs = checkPtr(ca_sliding_search(
+	    pairs = checkPtr(caSlidingSearch(
 		data,
 		source_data->nDatas,
 		cluster_data->WindowSize,
@@ -2867,7 +2867,7 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		    }
 		
 		/** Execute complete search. **/
-		const pXArray cluster_pairs = checkPtr(ca_complete_search(
+		const pXArray cluster_pairs = checkPtr(caCompleteSearch(
 		    filtered_data,
 		    cluster->Size,
 		    similarity_function,
@@ -2878,7 +2878,7 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		if (UNLIKELY(cluster_pairs == NULL))
 		    {
 		    mssError(1, "Cluster",
-			"Failed to compute ca_complete_search() with %s similarity measure.",
+			"Failed to compute caCompleteSearch() with %s similarity measure.",
 			cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
 		    );
 		    goto err_free;

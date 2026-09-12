@@ -37,7 +37,7 @@
 /*    b) the "Artistic License" (5).					*/
 /* 									*/
 /* Citations:								*/
-/*    1: https://github.com/gitpan/Text-meta_double_metaphone		*/
+/*    1: https://github.com/gitpan/Text-metaDoubleMetaphone		*/
 /*    2: https://dev.perl.org/licenses/gpl1.html			*/
 /*    3: http://www.fsf.org						*/
 /*    4: http://www.fsf.org/licenses/licenses.html#GNUGPL		*/
@@ -78,6 +78,6 @@
 /* 		standards so that it could be included here.		*/
 /************************************************************************/
 
-int meta_double_metaphone(const char* str, char** primary_code, char** secondary_code);
+int metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code);
 
 #endif /* End of .h file. */
