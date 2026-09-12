@@ -84,6 +84,9 @@ static bool doTest(void)
 	success &= EXPECT_EQL(caEditDist(identical_string, identical_string, 16, 13), 3, "%d");
 	success &= EXPECT_EQL(caEditDist(identical_string, identical_string, 0,  1), 16, "%d");
 	success &= EXPECT_EQL(caEditDist(identical_string, identical_string, 1,  0), 16, "%d");
+
+	/** Clean up. **/
+	free(str2);
     
     return success;
     }
