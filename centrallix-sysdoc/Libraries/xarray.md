@@ -68,7 +68,7 @@ The XArray (xa) module is intended to manage sized growable arrays, similar to a
 
 - 📖 **Note**: Some code occasionally sets `nAlloc` to 0 after an XArray struct has been deinitialized to indicate that the relevant data is no longer allocated.  Other than this, it is only used internally by the library.
 
-- ⚠️ **Warning**: Do not mix calls to [`xaNew()`](#xanew)/[`xaFree()`](#xafree) with calls to [`xaInit()`](#xainit)/[`xaDeInit()`](#xadeinit).  Every struct allocated using new must be freed, and ever struct allocated using init must be deinitted.  Mixing these calls can lead to memory leaks, bad frees, and crashes.
+- ⚠️ **Warning**: Do not mix calls to [`xaNew()`](#xanew)/[`xaFree()`](#xafree) with calls to [`xaInit()`](#xainit)/[`xaDeInit()`](#xadeinit).  Freeing a struct allocated with init or deinitting a struct allocated with new is undefined behavior and typically causes bad frees, crashes, and memory leaks.
 
 
 ## xaNew()
