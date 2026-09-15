@@ -11,16 +11,16 @@ Attribute [threshold]:   double  0.9
 Attribute [similarity_measure]:   string   "cosine" 
 Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
 Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
-Attribute [items]: stringve  "johnny"
+Attribute [items]: stringve   ["johnny"] 
 Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
 Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
-Attribute [items]: stringve  "MatTheW"
+Attribute [items]: stringve   ["MatTheW"] 
 Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
 Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
-Attribute [items]: stringve  "john","johns"
+Attribute [items]: stringve   ["john","johns"] 
 Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
 Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
-Attribute [items]: stringve  "mathew","mathews","math"
+Attribute [items]: stringve   ["mathew","mathews","math"] 
 Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
 Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
 Attribute [key1]:   string   "3: mathew" 
@@ -28,26 +28,26 @@ Attribute [key2]:   string   "5: mathews"
 Attribute [sim]:   double  0.947714
 Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
 Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
-Attribute [k1_items]: stringve  "john","johnny","johns","mathew","MatTheW","mathews","math"
-Attribute [k2_items]: stringve  "john","johnny","johns"
-Attribute [k2_items]: stringve  "mathew","MatTheW","mathews","math"
-Attribute [k3_items]: stringve  "johnny"
-Attribute [k3_items]: stringve  "mathew","MatTheW","mathews","math"
-Attribute [k3_items]: stringve  "john","johns"
-Attribute [k4_items]: stringve  "johnny"
-Attribute [k4_items]: stringve  "MatTheW"
-Attribute [k4_items]: stringve  "john","johns"
-Attribute [k4_items]: stringve  "mathew","mathews","math"
-Attribute [k1_items]: stringve  "john","johnny","johns","mathew","MatTheW","mathews","math"
-Attribute [k2_items]: stringve  "john","johnny","johns"
-Attribute [k2_items]: stringve  "mathew","MatTheW","mathews","math"
-Attribute [k3_items]: stringve  "johnny"
-Attribute [k3_items]: stringve  "mathew","MatTheW","mathews","math"
-Attribute [k3_items]: stringve  "john","johns"
-Attribute [k4_items]: stringve  "johnny"
-Attribute [k4_items]: stringve  "MatTheW"
-Attribute [k4_items]: stringve  "john","johns"
-Attribute [k4_items]: stringve  "mathew","mathews","math"
+Attribute [k1_items]: stringve   ["john","johnny","johns","mathew","MatTheW","mathews","math"] 
+Attribute [k2_items]: stringve   ["john","johnny","johns"] 
+Attribute [k2_items]: stringve   ["mathew","MatTheW","mathews","math"] 
+Attribute [k3_items]: stringve   ["johnny"] 
+Attribute [k3_items]: stringve   ["mathew","MatTheW","mathews","math"] 
+Attribute [k3_items]: stringve   ["john","johns"] 
+Attribute [k4_items]: stringve   ["johnny"] 
+Attribute [k4_items]: stringve   ["MatTheW"] 
+Attribute [k4_items]: stringve   ["john","johns"] 
+Attribute [k4_items]: stringve   ["mathew","mathews","math"] 
+Attribute [k1_items]: stringve   ["john","johnny","johns","mathew","MatTheW","mathews","math"] 
+Attribute [k2_items]: stringve   ["john","johnny","johns"] 
+Attribute [k2_items]: stringve   ["mathew","MatTheW","mathews","math"] 
+Attribute [k3_items]: stringve   ["johnny"] 
+Attribute [k3_items]: stringve   ["mathew","MatTheW","mathews","math"] 
+Attribute [k3_items]: stringve   ["john","johns"] 
+Attribute [k4_items]: stringve   ["johnny"] 
+Attribute [k4_items]: stringve   ["MatTheW"] 
+Attribute [k4_items]: stringve   ["john","johns"] 
+Attribute [k4_items]: stringve   ["mathew","mathews","math"] 
 Attribute [k1_key1]:   string   "0: john" 
 Attribute [k1_key2]:   string   "2: johns" 
 Attribute [k1_sim]:   double  0.757051
@@ -132,7 +132,7 @@ Attribute [slide_sim]:   double  0.8
 Attribute [slide_key1]:   string   "3: mathew" 
 Attribute [slide_key2]:   string   "5: mathews" 
 Attribute [slide_sim]:   double  0.857143
-Attribute [items]: stringve  "john","johnny","johns","mathew","MatTheW","mathews","math"
+Attribute [items]: stringve   ["john","johnny","johns","mathew","MatTheW","mathews","math"] 
 Attribute [date_created]: datetime   '01 Jan 1970 00:00' 
 Attribute [date_computed]: datetime   '01 Jan 1970 00:00' 
 Attribute [key1]:   string   "0: john" 
