@@ -199,15 +199,6 @@ fprintMem(FILE* out)
 	    }
 	check(fclose(fp)); /* Failure ignored. */
 	
-	if (resident < 0)
-	    {
-	    if (resident != -1)
-		fprintf(stderr, "Unexpected value for resident page count: %ld.\n", resident);
-	    
-	    printFail("Failed to get resident page count");
-	    return;
-	    }
-	
 	/** Get page size. **/
 	const long page_size = sysconf(_SC_PAGESIZE); /* in bytes */
 	if (page_size < 0)
