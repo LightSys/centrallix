@@ -110,9 +110,9 @@ Clears all items from a hash table.  If a `free_fn()` is provided, it will be in
 
 ## xhForEach()
 ```c
-int xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_arg);
+int xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, va_list), ...);
 ```
-This function executes an operation on each entry of the hash table entry.  The provided callback function will be called with each entry (in an arbitrary order).  This function is provided 2 parameters: the current hash table entry, and a `void*` argument specified using `each_arg`.  If any invocation of the callback function returns a value other than 0, the `xhForEach()` will immediately fail, returning that value as the error code.
+This function executes an operation on each entry of the hash table entry.  The provided callback function will be called with each entry (in an arbitrary order).  This function is provided 2 parameters: the current hash table entry, and a `va_list` of any additional arguments passed to `xhForEach()`.  Each invocation receives the full list, so the callback may consume the arguments freely.  If any invocation of the callback function returns a value other than 0, the `xhForEach()` will immediately fail, returning that value as the error code.
 
 This function returns 0 if the function executes successfully, 1 if the callback function is `NULL`, or n (where n != 0) if the callback function returns n.  It does not return any error code other than 1 or any error codes returned by `callback_fn()`.
 

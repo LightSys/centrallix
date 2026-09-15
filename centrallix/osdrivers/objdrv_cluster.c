@@ -653,7 +653,7 @@ int clusterInfo(void* inf_v, pObjectInfo info);
 // LINK #method
 char* clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt);
 char* clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt);
-static int cluster_i_printEntry(pXHashEntry entry, void* arg);
+static int cluster_i_printEntry(pXHashEntry entry, va_list args);
 static void cluster_i_cacheFreeSourceData(pXHashEntry entry, void* path);
 static void cluster_i_cacheFreeCluster(pXHashEntry entry, void* path);
 static void cluster_i_cacheFreeSearch(pXHashEntry entry, void* path);
@@ -4545,18 +4545,17 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 // LINK #functions
 /** Intended for use in `xhForEach()`. **/
 static int
-cluster_i_printEntry(pXHashEntry entry, void* arg)
+cluster_i_printEntry(pXHashEntry entry, va_list args)
     {
 	/** Extract entry. **/
 	char* key = entry->Key;
 	void* data = entry->Data;
 	
 	/** Extract args. **/
-	void** args = (void**)arg;
-	unsigned int* type_id_ptr     = (unsigned int*)args[0];
-	unsigned int* total_bytes_ptr = (unsigned int*)args[1];
-	unsigned long long* less_ptr  = (unsigned long long*)args[2];
-	char* path = (char*)args[3];
+	unsigned int* type_id_ptr     = va_arg(args, unsigned int*);
+	unsigned int* total_bytes_ptr = va_arg(args, unsigned int*);
+	unsigned long long* less_ptr  = va_arg(args, unsigned long long*);
+	char* path = va_arg(args, char*);
 	
 	/** If a path is provided, check that it matches the start of the key. **/
 	if (path != NULL && strncmp(key, path, strlen(path)) != 0) return 0;
@@ -4729,19 +4728,19 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
 		    cluster_i_printEntry,
-		    (void*[]){&i, &source_bytes, (void*)&skip_uncomputed, path}
+		    &i, &source_bytes, &skip_uncomputed, path
 		)) != 0);
 		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.ClusterDataCache,
 		    cluster_i_printEntry,
-		    (void*[]){&i, &cluster_bytes, (void*)&skip_uncomputed, path}
+		    &i, &cluster_bytes, &skip_uncomputed, path
 		)) != 0);
 		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SearchDataCache,
 		    cluster_i_printEntry,
-		    (void*[]){&i, &search_bytes, (void*)&skip_uncomputed, path}
+		    &i, &search_bytes, &skip_uncomputed, path
 		)) != 0);
 		if (failed)
 		    {

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <string.h>
 #include "xhash.h"
 #include "xarray.h"
@@ -295,18 +296,19 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
  *** @param this The affected hash table (passing NULL causes undefined
  *** 	behavior).
  *** @param callback_fn A callback function to be called on each hash table
- *** 	entry. It takes 2 parameters: the current hash table entry and a void*
- *** 	argument specified using each_arg. If any invocation of the callback
- *** 	function returns a value other than 0, xhForEach() will immediately
- *** 	fail, returning that value as the error code.
- *** @param each_arg An additional argument which will be passed to each
- *** 	invocation of the callback function.
+ *** 	entry. It takes 2 parameters: the current hash table entry and a
+ *** 	va_list of the additional arguments passed to this function. If any
+ *** 	invocation of the callback function returns a value other than 0,
+ *** 	xhForEach() will immediately fail, returning that value as the error
+ *** 	code.
+ *** @param ... Additional arguments, which are passed to each invocation of
+ *** 	the callback function as a va_list.
  *** @returns 0 if the function executes successfully.
  ***          1 if the callback function is NULL.
  ***          n (where n != 0) if the callback function returns n.
  ***/
 int
-xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_arg)
+xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, va_list), ...)
     {
 	if (callback_fn == NULL) return 1;
 	
@@ -316,7 +318,13 @@ xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_a
 	    while (entry != NULL)
 		{
 		pXHashEntry next = entry->Next;
-		const int ret = callback_fn(entry, each_arg);
+		
+		/** Start the arguments fresh so each call gets a fresh args value. **/
+		va_list args;
+		va_start(args, callback_fn);
+		const int ret = callback_fn(entry, args);
+		va_end(args);
+		
 		if (ret != 0) return ret;
 		entry = next;
 		}
