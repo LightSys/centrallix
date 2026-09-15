@@ -80,7 +80,7 @@ The xstring (xs) module is used for managing growable strings.  It is based on a
 ```c
 pXString xsNew()
 ```
-This function allocates a new XString structure to contain a new, empty string.  It uses [`nmMalloc()`](newmalloc.md#nmmalloc) because the XString struct is always a consistent size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
+This function allocates a new XString structure to contain a new, empty string, initializing it with [`xsInit()`](#xsinit) before returning.  It uses [`nmMalloc()`](newmalloc.md#nmmalloc) because the XString struct is always a consistent size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
 
 
 ## xsFree()
@@ -177,6 +177,7 @@ This function prints additional data onto the end of the string.  It is similar 
 - `%d`: Add a number (`int`).
 - `%X`: Add something?
 - `%%`: Add a `'%'` character.
+
 Attempting to use other features of printf (such as `%lf`, `%c`, `%u`, etc.) will cause unexpected results.
 
 This function returns 0 if successful, or -1 if an error occurs.
@@ -235,7 +236,7 @@ This function works the same as [`xsFind()`](#xsfind) except that it searches fr
 ```c
 int xsSubst(pXString this, int offset, int len, char* rep, int replen)
 ```
-This function substitutes a string into a given position in an xstring.  This does not search for matches as with [`xsReplace()`](#xsreplace), instead the position (`offset`) and length (`len`) must be specified.  Additionally, the length of the replacement string (`replen`) can be specified handle null characters.  Both `len` and `replen` can be left blank to generate them using `strlen()`.  This function returns 0 if successful, or -1 if an error occurs.
+This function substitutes a string into a given position in an xstring.  This does not search for matches as with [`xsReplace()`](#xsreplace), instead the position (`offset`) and length (`len`) must be specified.  Additionally, the length of the replacement string (`replen`) can be specified in order to handle null characters.  Pass -1 for `len` or `replen` to generate them using `strlen()`.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsReplace()
