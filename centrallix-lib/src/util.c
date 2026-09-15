@@ -110,9 +110,11 @@ static char* UNITS_METRIC[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
  *** 	long to avoid truncation.
  *** @param bytes The number of bytes, which will be formatted and written
  *** 	to the buffer.
- *** @returns buf, for chaining.
+ *** @returns The length the result would have had if buf_size were unlimited,
+ *** 	not counting the null terminator, as snprintf() does.  A value of
+ *** 	buf_size or more means the result was truncated.  Negative on error.
  ***/
-char*
+int
 snprintBytes(char* buf, const size_t buf_size, unsigned long bytes)
     {
 	char** units = (USE_METRIC) ? UNITS_METRIC : UNITS_CS;
@@ -127,58 +129,55 @@ snprintBytes(char* buf, const size_t buf_size, unsigned long bytes)
 		{
 		const double converted_size = size / denominator;
 		if (converted_size >= 100.0)
-		    snprintf(buf, buf_size, "%.5g %s", converted_size, units[i]);
+		    return snprintf(buf, buf_size, "%.5g %s", converted_size, units[i]);
 		else if (converted_size >= 10.0)
-		    snprintf(buf, buf_size, "%.4g %s", converted_size, units[i]);
+		    return snprintf(buf, buf_size, "%.4g %s", converted_size, units[i]);
 		else /* if (converted_size >= 1.0) - Always true. */
-		    snprintf(buf, buf_size, "%.3g %s", converted_size, units[i]);
-		return buf;
+		    return snprintf(buf, buf_size, "%.3g %s", converted_size, units[i]);
 		}
 	    }
 	
 	/** None of the larger units work, so we just use bytes. **/
-	snprintf(buf, buf_size, "%lu %s", bytes, units[0]);
-    
-    return buf;
+    return snprintf(buf, buf_size, "%lu %s", bytes, units[0]);
     }
 #undef N_UNITS
 
-/*** Print a large number formatted with comas to a buffer.
+/*** Print a large number formatted with commas to a buffer.
  *** 
- *** @param buf The buffer to print the number into.
- *** @param buf_size The maximum number of characters to add to the buffer.
+ *** @param buf The buffer to print the number into.  Only written if
+ *** 	`buf_size` is nonzero.
+ *** @param buf_size The size of the buffer, including room for the null
+ *** 	terminator.  A 27 character buffer holds any unsigned long long.
  *** @param value The value to write into the buffer.
- *** @returns `buf`, or NULL if `buf_size` is 0.
- */
-char*
+ *** @returns The length the result would have had if `buf_size` were
+ *** 	unlimited, not counting the null terminator, as snprintf() does.  A
+ *** 	value of `buf_size` or more means the result was truncated.
+ ***/
+int
 snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value)
     {
-	if (buf_size == 0) return NULL;
-	if (value == 0)
-	    {
-	    if (buf_size > 1) { buf[0] = '0'; buf[1] = '\0'; }
-	    else buf[0] = '\0';
-	    return buf;
-	    }
-	
-	/*** Write the number to the string in reverse order, adding commas as
-	 *** they are needed.
+	/*** Write the number to a scratch buffer in reverse order, adding
+	 *** commas as they are needed.  The largest unsigned long long is 20
+	 *** digits and 6 commas, so tmp is never the limiting factor.
 	 ***/
 	char tmp[32];
 	unsigned int ti = 0;
-	while (value > 0 && ti < sizeof(tmp) - 1)
-	    {
+	do  {
 	    if (ti % 4 == 3) tmp[ti++] = ',';
 	    tmp[ti++] = '0' + (value % 10);
 	    value /= 10;
 	    }
-	tmp[ti] = '\0';
+	    while (value > 0 && ti < sizeof(tmp) - 1);
 	
-	unsigned int outlen = min(ti, buf_size - 1u);
-	for (unsigned int i = 0u; i < outlen; i++) buf[i] = tmp[ti - i - 1];
-	buf[outlen] = '\0';
+	/** Copy it back out in the right order, truncating as snprintf() does. **/
+	if (buf_size > 0)
+	    {
+	    const unsigned int outlen = min(ti, buf_size - 1u);
+	    for (unsigned int i = 0u; i < outlen; i++) buf[i] = tmp[ti - i - 1];
+	    buf[outlen] = '\0';
+	    }
     
-    return buf;
+    return (int)ti;
     }
 
 /** Print summary the current memory in use to the file pointer. **/
