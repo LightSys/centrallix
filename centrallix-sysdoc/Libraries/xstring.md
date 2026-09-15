@@ -121,36 +121,26 @@ This function concatenates the `text` string onto the end of the XString's value
     
     For example, **DO NOT**:
     ```c
-    XString xs;
-    if (xsInit(&xs) != 0) goto handle_error;
+    XString xs; xsInit(&xs);
     
-    if (xsConcatenate(&xs, "This is the first sentence. ", -1) != 0) goto handle_error;
+    xsConcatenate(&xs, "This is the first sentence. ", -1);
     char* ptr = xsStringEnd(&xs); /* Stores string pointer! */
-    if (xsConcatenate(&xs, "This is the second sentence.", -1) != 0) goto handle_error;
+    xsConcatenate(&xs, "This is the second sentence.", -1);
     
     /** Print will probably read invalid memory. **/
     printf("A pointer to the second sentence is '%s'\n", ptr);
-    
-    ...
-    
-    if (xsDeInit(&xs) != 0) goto handle_error;
     ```
     
-    Instead, use indexes and pointer arithmetic like this:
+    Instead, use indexes and pointer arithmetic, like this:
     ```c
-    XString xs;
-    if (xsInit(&xs) != 0) goto handle_error;
+    XString xs; xsInit(&xs);
     
-    if (xsConcatenate(&xs, "This is the first sentence. ", -1) != 0) goto handle_error;
+    xsConcatenate(&xs, "This is the first sentence. ", -1);
     int offset = xsStringEnd(&xs) - xs->String; /* Stores index offset. */
-    if (xsConcatenate(&xs, "This is the second sentence.", -1) != 0) goto handle_error;
+    xsConcatenate(&xs, "This is the second sentence.", -1);
     
     /** Print will probably work fine. **/
     printf("A pointer to the second sentence is '%s'\n", xs->String + offset);
-    
-    ...
-    
-    if (xsDeInit(&xs) != 0) goto handle_error;
     ```
 
 
