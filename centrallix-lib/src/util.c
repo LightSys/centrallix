@@ -94,8 +94,8 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
  *** Fun Fact: Windows uses kibibytes, but displays them as KB.
  ***/
 #define USE_METRIC false
-static char* UNITS_CS[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"};
-static char* UNITS_METRIC[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
+static const char* const UNITS_CS[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"};
+static const char* const UNITS_METRIC[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
 #define N_UNITS ((unsigned int)(sizeof(UNITS_CS) / sizeof(UNITS_CS[0])))
 
 /*** Displays a size in bytes using the largest unit where the result would be
@@ -117,7 +117,7 @@ static char* UNITS_METRIC[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
 int
 snprintBytes(char* buf, const size_t buf_size, unsigned long bytes)
     {
-	char** units = (USE_METRIC) ? UNITS_METRIC : UNITS_CS;
+	const char* const* units = (USE_METRIC) ? UNITS_METRIC : UNITS_CS;
 	const double unit_size = (USE_METRIC) ? 1000.0 : 1024.0;
 	
 	/** Search for the largest unit where the value would be at least 1. **/
