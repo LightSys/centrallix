@@ -4636,18 +4636,11 @@ cluster_i_printEntry(pXHashEntry entry, void* arg)
 // LINK #functions
 /** Intended for use in `xhClearKeySafe()`. **/
 static void
-cluster_i_cacheFreeSourceData(pXHashEntry entry, void* path)
+cluster_i_cacheFreeSourceData(pXHashEntry entry, void* unused)
     {
-	/** Extract hash entry. **/
-	char* key = entry->Key;
-	pSourceData source_data = (pSourceData)entry->Data;
-	
-	/** If a path is provided, check that it matches the start of the key. **/
-	if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return;
-	
-	/** Free data. **/
-	cluster_i_freeSourceData(source_data);
-	nmSysFree(key);
+	/** Free the data, the key, and the entry itself. **/
+	cluster_i_freeSourceData((pSourceData)entry->Data);
+	nmSysFree(entry->Key);
     
     return;
     }
@@ -4656,18 +4649,11 @@ cluster_i_cacheFreeSourceData(pXHashEntry entry, void* path)
 // LINK #functions
 /** Intended for use in `xhClearKeySafe()`. **/
 static void
-cluster_i_cacheFreeCluster(pXHashEntry entry, void* path)
+cluster_i_cacheFreeCluster(pXHashEntry entry, void* unused)
     {
-	/** Extract hash entry. **/
-	char* key = entry->Key;
-	pClusterData cluster_data = (pClusterData)entry->Data;
-	
-	/** If a path is provided, check that it matches the start of the key. **/
-	if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return;
-	
-	/** Free data. **/
-	cluster_i_freeClusterData(cluster_data, false);
-	nmSysFree(key);
+	/** Free the data, the key, and the entry itself. **/
+	cluster_i_freeClusterData((pClusterData)entry->Data, false);
+	nmSysFree(entry->Key);
     
     return;
     }
@@ -4676,18 +4662,11 @@ cluster_i_cacheFreeCluster(pXHashEntry entry, void* path)
 // LINK #functions
 /** Intended for use in `xhClearKeySafe()`. **/
 static void
-cluster_i_cacheFreeSearch(pXHashEntry entry, void* path)
+cluster_i_cacheFreeSearch(pXHashEntry entry, void* unused)
     {
-	/** Extract hash entry. **/
-	char* key = entry->Key;
-	pSearchData search_data = (pSearchData)entry->Data;
-	
-	/** If a path is provided, check that it matches the start of the key. **/
-	if (path != NULL && strncmp(key, (char*)path, strlen((char*)path)) != 0) return;
-	
-	/** Free data. **/
-	cluster_i_freeSearchData(search_data);
-	nmSysFree(key);
+	/** Free the data, the key, and the entry itself. **/
+	cluster_i_freeSearchData((pSearchData)entry->Data);
+	nmSysFree(entry->Key);
     
     return;
     }
