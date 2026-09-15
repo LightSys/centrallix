@@ -67,7 +67,7 @@ static struct
 int
 mssMemoryErr(char* message)
     {
-    mssError(1,"NM",message);
+    mssError(1,"NM","Memory error: %s",message);
     return 0;
     }
 
