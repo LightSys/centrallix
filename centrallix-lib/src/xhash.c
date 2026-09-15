@@ -344,10 +344,6 @@ xh_i_freeEntry(pXHashEntry entry, void* arg)
 	 *** The first element is a function pointer to the free function, which
 	 *** we invoke using the provided entry and the free_arg, specified as the
 	 *** second element of the array.
-	 *** 
-	 *** Interestingly, you can write this code in one line like this:
-	 *** ((void (*)(pXHashEntry, void*))((void**)arg)[0])(entry, ((void**)arg)[1]);
-	 *** But I value code readability, so fortunately, I can't be THAT clever...
 	 ***/
 	void** args = (void**)arg;
 	void (*free_fn)(pXHashEntry, void*) = args[0];
