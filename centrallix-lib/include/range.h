@@ -60,7 +60,7 @@ double roundTo(double value, int decimals);
 #ifndef clamp
 /*** Clamps the value between a minimum and maximum bound.
  *** 
- *** If minimum > maximum, always returns maximum.
+ *** If minimum > maximum, always returns minimum.
  *** 
  *** @param minimum The smallest allowed value.
  *** @param value   The value to clamp.
