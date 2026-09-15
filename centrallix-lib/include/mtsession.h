@@ -35,6 +35,8 @@
 #include <errno.h>
 #include <string.h>
 
+#define MSS_ERROR_BUF_SIZE 16384
+#define MSS_ERROR_BUF_STACK_SIZE 2048
 
 /** optimum salt size for mssGenCred() **/
 #define	MSS_SALT_SIZE	4
