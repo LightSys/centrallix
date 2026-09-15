@@ -148,14 +148,14 @@ This function concatenates the `text` string onto the end of the XString's value
 ```c
 int xsCopy(pXString this, char* text, int len);
 ```
-This function copies the string `text` into the XString, overwriting any previous contents.  This function returns 0 if successful, or -1 if an error occurs.
+This function copies the string `text` into the XString, overwriting any previous contents.  The `len` param here is the same as in [`xsConcatenate()`](#xsconcatenate).  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsStringEnd()
 ```c
 char* xsStringEnd(pXString this);
 ```
-This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some string may contain nulls, using `strlen()` may produce an incorrect result.
+This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some string may contain nulls, using `strlen()` may produce an incorrect result.  It is equivalent to `this->String + xsLength()`, but it is shorter to type and keeps the internal workings of the xstring abstracted away from the caller.
 
 
 ## xsConcatPrintf()
@@ -275,8 +275,6 @@ xsLength(pXString this);
 ```
 This function returns the length of the string in constant time (since this value is stored in `this->Length`) checking for various errors, or returns `NULL` if an error occurs.
 
-<!-- TODO: Greg - So why do we need xsStringEnd() again when `this->String + this->Length` or `this->String + xsLength()` appears to also solve all the same problems? Is it just to support legacy code? -->
-
 
 ## xsQPrintf_va(), xsQPrintf(), & xsConcatQPrintf()
 ```c
@@ -284,4 +282,4 @@ int xsQPrintf_va(pXString this, char* fmt, va_list va);
 int xsQPrintf(pXString this, char* fmt, ...);
 int xsConcatQPrintf(pXString this, char* fmt, ...);
 ```
-These functions use the `QPrintf` to add data to an xstring.  They return 0 on success, or some other value on failure.
+These functions are similar to [`xsPrintf()`](#xsprintf) and [`xsConcatPrintf()`](#xsconcatprintf).  However, they use [`QPrintf`](../QPrintf.md) to process the provided format instead of an internal `printf()`-like parser before adding the results to the xstring.  They return 0 on success, or some other value on failure.
