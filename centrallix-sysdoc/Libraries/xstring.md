@@ -175,7 +175,7 @@ int xsConcatPrintf(pXString this, char* fmt, ...);
 This function prints additional data onto the end of the string.  It is similar to printf, however, only the following features are supported:
 - `%s`: Add a string (`char*`).
 - `%d`: Add a number (`int`).
-- `%X`: Add something?
+- `%X`: Add a number in uppercase hexadecimal (`int`, or `long long` with `%llX`).
 - `%%`: Add a `'%'` character.
 
 Attempting to use other features of printf (such as `%lf`, `%c`, `%u`, etc.) will cause unexpected results.
