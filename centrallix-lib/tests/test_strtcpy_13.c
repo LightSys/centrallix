@@ -18,7 +18,7 @@
 /*** A wide character with no representation in the C locale, so that any
  *** attempt to convert it makes vsnprintf() fail with EILSEQ.
  ***/
-static wchar_t unconvertible[] = { (wchar_t)0x4E2D, (wchar_t)0 };
+static wchar_t inconvertible[] = { (wchar_t)(0x4E2D), (wchar_t)(0) };
 
 /*** Formats that fail partway through, some only after emitting text.  Held
  *** in a volatile pointer so the compiler cannot fold the probe call below.
@@ -51,7 +51,7 @@ static size_t bad_positions[] =
     AREA,
     AREA + 1,
     AREA + 12,
-    (size_t)-1,
+    (size_t)(-1),
     };
 
 /** Sizes of the case tables run per call to doTest(). **/
@@ -76,57 +76,54 @@ static bool can_fail = false;
 static bool
 doTest(void)
     {
-    int c, f, rval;
     unsigned char raw[RAW];
     char* dst = (char*)raw + GUARD;
     size_t pos;
-    size_t n;
 
 	/** A failed conversion appends nothing and keeps dst intact. **/
-	for(c=0;can_fail && c<NFMTS;c++)
+	for (int c = 0; can_fail && c < NFMTS; c++)
 	    {
-	    for(f=0;f<NPFX;f++)
+	    for (int f = 0; f < NPFX; f++)
 		{
 		memset(raw, 0xAA, RAW);
 		memcpy(dst, prefixes[f], strlen(prefixes[f]) + 1);
 		pos = strlen(prefixes[f]);
 
-		rval = strtcatf(dst, AREA, &pos, failing_fmts[c],
-		    unconvertible, unconvertible);
+		const int rval = strtcatf(dst, AREA, &pos, failing_fmts[c], inconvertible, inconvertible);
 
 		/** A failed conversion is an error, not a full buffer. **/
 		assert(rval == -1);
 
 		/** The text already in dst survives, and *pos with it. **/
 		assert(pos == strlen(prefixes[f]));
-		assert(!strcmp(dst, prefixes[f]));
+		assert(strcmp(dst, prefixes[f]) == 0);
 
 		/** Partial output may remain, but never outside dstlen. **/
-		for(n=0;n<GUARD;n++)
+		for (size_t n = 0; n < GUARD; n++)
 		    assert(raw[n] == 0xAA);
-		for(n=GUARD+AREA;n<RAW;n++)
+		for (size_t n = GUARD+AREA; n < RAW; n++)
 		    assert(raw[n] == 0xAA);
 		}
 	    }
 
 	/** A *pos at or past the end appends nothing at all. **/
-	for(c=0;c<NBAD;c++)
+	for (int c = 0; c < NBAD; c++)
 	    {
 	    memset(raw, 0xAA, RAW);
 	    memcpy(dst, "abc", 4);
 
 	    pos = bad_positions[c];
-	    rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
+	    const int rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
 
 	    /** A full buffer is not an error, so it reports 0, not -1. **/
 	    assert(rval == 0);
 
 	    /** Nothing appended, and *pos left exactly as it was. **/
 	    assert(pos == bad_positions[c]);
-	    assert(!strcmp(dst, "abc"));
+	    assert(strcmp(dst, "abc") == 0);
 
 	    /** Not one byte of the buffer may have changed. **/
-	    for(n=0;n<RAW;n++)
+	    for (size_t n = 0; n < RAW; n++)
 		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 	    }
 
@@ -138,8 +135,8 @@ doTest(void)
 	assert(strtcatf(dst, AREA, NULL, "%s", "XYZ") == -1);
 	assert(strtcatf(dst, AREA, &pos, NULL) == -1);
 	assert(pos == 3);
-	assert(!strcmp(dst, "abc"));
-	for(n=0;n<RAW;n++)
+	assert(strcmp(dst, "abc") == 0);
+	for (size_t n = 0; n < RAW; n++)
 	    assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 
     return true;
@@ -155,7 +152,7 @@ test(char** tname)
 
 	/** Only run the conversion cases where the platform really fails. **/
 	setlocale(LC_ALL, "C");
-	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], unconvertible) < 0);
+	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], inconvertible) < 0);
 	if (!can_fail)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
 	ncases = NBAD + 3 + (can_fail ? NFMTS * NPFX : 0);
