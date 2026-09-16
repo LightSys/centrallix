@@ -321,8 +321,9 @@ char* METHOD_NAMES[] =
  *** 	the driver represented by SourcePath.
  *** 
  *** @skip --> Fetched/Computed Data.
- *** @param Keys The keys for each data string received from the database, used
- *** 	when the results are queried, or NULL if the data has not been fetched.
+ *** @param Keys The keys for each data string received from the data source,
+ *** 	used when the results are queried, or NULL if the data has not been
+ *** 	fetched.
  *** @param Strings The data strings to be clustered and searched, or NULL if
  *** 	they have not been fetched from the source.
  *** @param Vectors The cosine comparison vectors from the fetched data, or
@@ -2390,7 +2391,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		goto entry_free;
 		}
 	    
-	    /** Data value: Get value from database. **/
+	    /** Data value: Get value from provided data source. **/
 	    char* data;
 	    ret = objGetAttrValue(entry, source_data->DataAttr, DATA_T_STRING, POD(&data));
 	    if (UNLIKELY(ret != 0))
@@ -2448,7 +2449,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		goto entry_free;
 		}
 	    
-	    /** key value: Get value from database. **/
+	    /** key value: Get value from provided data source. **/
 	    char* key;
 	    ret = objGetAttrValue(entry, source_data->KeyAttr, DATA_T_STRING, POD(&key));
 	    if (UNLIKELY(ret != 0))
