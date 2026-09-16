@@ -4566,7 +4566,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	void* data = entry->Data;
 	
 	/** Extract args. **/
-	unsigned int* type_id_ptr     = va_arg(args, unsigned int*);
+	unsigned int  data_type       = va_arg(args, unsigned int);
 	unsigned int* total_bytes_ptr = va_arg(args, unsigned int*);
 	unsigned long long* less_ptr  = va_arg(args, unsigned long long*);
 	char* path = va_arg(args, char*);
@@ -4578,7 +4578,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	char* type;
 	char* name;
 	size_t bytes;
-	switch (*type_id_ptr)
+	switch (data_type)
 	    {
 	    case 1u:
 		{
@@ -4626,7 +4626,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 		break;
 		}
 	    default:
-		mssError(0, "Cluster", "Unknown type_id %u.", *type_id_ptr);
+		mssError(0, "Cluster", "Unknown type_id %u.", data_type);
 		return -1;
 	    }
 	
@@ -4742,19 +4742,19 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
 		    cluster_i_printEntry,
-		    &i, &source_bytes, &skip_uncomputed, path
+		    i, &source_bytes, &skip_uncomputed, path
 		)) != 0);
 		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.ClusterDataCache,
 		    cluster_i_printEntry,
-		    &i, &cluster_bytes, &skip_uncomputed, path
+		    i, &cluster_bytes, &skip_uncomputed, path
 		)) != 0);
 		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SearchDataCache,
 		    cluster_i_printEntry,
-		    &i, &search_bytes, &skip_uncomputed, path
+		    i, &search_bytes, &skip_uncomputed, path
 		)) != 0);
 		if (failed)
 		    {
