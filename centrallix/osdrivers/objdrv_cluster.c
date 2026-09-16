@@ -2653,6 +2653,10 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    
 	    case ALGORITHM_KMEANS:
 		{
+		unsigned int* labels = NULL;
+		XArray indexes_in_cluster[cluster_data->nClusters];
+		memset(indexes_in_cluster, 0, sizeof(indexes_in_cluster));
+		
 		/** Check for unimplemented similarity measures. **/
 		if (UNLIKELY(cluster_data->SimilarityMeasure != SIMILARITY_COSINE))
 		    {
@@ -2660,13 +2664,13 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 			"The similarity measure \"%s\" is not implemented for 'k-means' clusters.",
 			cluster_i_similarityMeasureToString(cluster_data->SimilarityMeasure)
 		    );
-		    goto err_free;
+		    goto err_cleanup;
 		    }
 		
 		/** Allocate labels. Note: caKmeans() initializes labels for us. **/
 		const size_t labels_size = source_data->nDatas * sizeof(unsigned int);
-		unsigned int* labels = checkPtr(nmSysMalloc(labels_size));
-		if (UNLIKELY(labels == NULL)) goto err_free;
+		labels = checkPtr(nmSysMalloc(labels_size));
+		if (UNLIKELY(labels == NULL)) goto err_cleanup;
 		
 		/** Handle seed for caKmeans(). **/
 		const bool auto_seed = (cluster_data->Seed == CI_NO_SEED);
@@ -2683,19 +2687,25 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    cluster_data->Sims,
 		    auto_seed
 		)) == 0);
-		if (UNLIKELY(!successful)) goto err_free;
+		if (UNLIKELY(!successful)) goto err_cleanup;
 		
 		/** Convert the labels into clusters. **/
 		
 		/** Allocate temporary xArrays for tracking the indices stored in each cluster. **/
-		XArray indexes_in_cluster[cluster_data->nClusters];
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
-		    if (check(xaInit(&indexes_in_cluster[i], CI_INITIAL_POINTS_PER_CLUSTER)) != 0) goto err_free;
+		    if (check(xaInit(&indexes_in_cluster[i], CI_INITIAL_POINTS_PER_CLUSTER)) != 0)
+			{
+			memset(&indexes_in_cluster[i], 0, sizeof(XArray));
+			goto err_cleanup;
+			}
 		
 		/** Iterate through each label and add the index of the data to the specified cluster. **/
 		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
-		    if (checkPos(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i)) < 0) goto err_free;
-		nmSysFree(labels); /* Free unused data. */
+		    if (checkPos(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i)) < 0) goto err_cleanup;
+		
+		/** Free unused data. **/
+		nmSysFree(labels);
+		labels = NULL;
 		
 		/** Store the indices for each cluster and free the temporary xArray. **/
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
@@ -2706,13 +2716,9 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    
 		    /** Store the data in the cluster. **/
 		    cluster->Size = indexes_in_this_cluster->nItems;
-		    if (cluster->Size == 0)
-			{
-			cluster->Indexes = NULL;
-			continue;
-			}
+		    if (cluster->Size == 0) goto cluster_cleanup; /* Not a failure, but the array still needs to be freed. */
 		    cluster->Indexes = checkPtr(nmSysMalloc(cluster->Size * sizeof(unsigned int*)));
-		    if (UNLIKELY(cluster->Indexes == NULL)) goto err_free;
+		    if (UNLIKELY(cluster->Indexes == NULL)) goto err_cleanup;
 		    for (unsigned int i = 0u; i < indexes_in_this_cluster->nItems; i++)
 			{
 			const unsigned long long index = (unsigned long long)indexes_in_this_cluster->Items[i];
@@ -2720,19 +2726,32 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 			    {
 			    mssError(1, "Cluster",
 				"How did you try to cluster more than %u data points and cluster_i_computeClusterData() "
-				"was the first thing to break?! Well... looks like it's time to update %s:%s to "
+				"was the first thing to break?! Well... looks like it's time to update %s:%d to "
 				"handle a larger amount of data.",
 				__UINT32_MAX__, __FILE__, __LINE__
 			    );
-			    goto err_free;
+			    goto err_cleanup;
 			    }
 			cluster->Indexes[i] = (unsigned int)index;
 			}
+		    
+    cluster_cleanup:
 		    check(xaDeInit(indexes_in_this_cluster)); /* Failure ignored. */
+		    indexes_in_this_cluster->Items = NULL;
 		    }
 		
 		/** k-means done. **/
 		break;
+		
+    err_cleanup:
+		/** Error clean up. **/
+		if (labels != NULL) nmSysFree(labels);
+		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
+		    {
+		    if (indexes_in_cluster[i].Items == NULL) continue;
+		    check(xaDeInit(&indexes_in_cluster[i])); /* Failure ignored. */
+		    }
+		goto err_free;
 		}
 	    
 	    default:
