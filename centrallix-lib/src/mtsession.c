@@ -568,7 +568,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 /*** mssClearError - removes all error messages from the current error
  *** stack.
  ***/
-int 
+int
 mssClearError()
     {
 	/** Get session pointer. **/
@@ -576,11 +576,7 @@ mssClearError()
 	if (s == NULL) return -1;
 
 	/** Free all error strings in the error list/error stack. **/
-	for (int i = 0; i < s->ErrList.nItems; i++)
-	    nmSysFree(s->ErrList.Items[i]);
-	s->ErrList.nItems = 0;
-
-    return 0;
+	return xaClear(&s->ErrList, (void*)nmSysFree, NULL);
     }
 
 
