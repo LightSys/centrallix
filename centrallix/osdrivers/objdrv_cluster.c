@@ -1417,7 +1417,7 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    pStructInf sub_inf = checkPtr(inf->SubInf[i]);
 	    if (UNLIKELY(sub_inf == NULL))
 		{
-		mssError(1, "Cluster", "Failed to get %uth subinf.", i);
+		mssError(1, "Cluster", "Failed to get subinf #%u/%u.", i + 1, inf->nSubInf);
 		goto err_free;
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
@@ -1835,7 +1835,7 @@ cluster_i_freeSourceData(pSourceData source_data)
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Free top level attributes, if they exist. **/
-	/** Note: The key field is handled by the caching system, so we shouldn't free it here. **/
+	/** Note: The CacheKey field is handled by the caching system, so we shouldn't free it here. **/
 	if (LIKELY(source_data->Name != NULL))
 	    {
 	    nmSysFree(source_data->Name);
@@ -2322,7 +2322,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    if (UNLIKELY(data_datatype == -1))
 		{
 		mssError(0, "Cluster",
-		    "Failed to get type for data of entry #%u.",
+		    "Failed to get type for data of entry #%d.",
 		    vector_xarray.nItems
 		);
 		goto end_free;
@@ -2330,7 +2330,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    if (UNLIKELY(data_datatype != DATA_T_STRING))
 		{
 		mssError(1, "Cluster",
-		    "Type for data of entry #%u was %s instead of String:\n",
+		    "Type for data of entry #%d was %s instead of String:\n",
 		    vector_xarray.nItems, objTypeToStr(data_datatype)
 		);
 		goto end_free;
@@ -2342,7 +2342,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    if (UNLIKELY(ret != 0))
 		{
 		mssError(0, "Cluster",
-		    "Failed to get attribute value for data entry #%u (error code: %d).",
+		    "Failed to get attribute value for data entry #%d (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
 		goto end_free;
@@ -2376,7 +2376,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    if (UNLIKELY(key_datatype == -1))
 		{
 		mssError(0, "Cluster",
-		    "Failed to get type of key on entry #%u.",
+		    "Failed to get type of key on entry #%d.",
 		    vector_xarray.nItems
 		);
 		goto end_free;
@@ -2384,7 +2384,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    if (UNLIKELY(key_datatype != DATA_T_STRING))
 		{
 		mssError(1, "Cluster",
-		    "Type of key on entry #%u was %s instead of String:",
+		    "Type of key on entry #%d was %s instead of String:",
 		    vector_xarray.nItems, objTypeToStr(key_datatype)
 		);
 		goto end_free;
@@ -2396,7 +2396,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    if (UNLIKELY(ret != 0))
 		{
 		mssError(0, "Cluster",
-		    "Failed to value for key on entry #%u (error code: %d).",
+		    "Failed to value for key on entry #%d (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
 		goto end_free;
@@ -2642,7 +2642,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		    if (check(xaInit(&indexes_in_cluster[i], 8)) != 0) goto err_free;
 		
-		/** Iterate through each label and add the index of the specified cluster to the xArray. **/
+		/** Iterate through each label and add the index of the data to the specified cluster. **/
 		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
 		    if (checkPos(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i)) < 0) goto err_free;
 		nmSysFree(labels); /* Free unused data. */
@@ -2669,7 +2669,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 			if (UNLIKELY(index > __UINT32_MAX__))
 			    {
 			    mssError(1, "Cluster",
-				"How did you try to cluster more than %u data points and cluster_i_computeSearchData() "
+				"How did you try to cluster more than %u data points and cluster_i_computeClusterData() "
 				"was the first thing to break?! Well... looks like it's time to update %s:%s to "
 				"handle a larger amount of data.",
 				__UINT32_MAX__, __FILE__, __LINE__
@@ -3379,7 +3379,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		{
 		unsigned int index = query_data->RowIndex++;
 		
-		/** Iterate over clusters. **/
+		/** Fetch a cluster at the current index. **/
 		const unsigned int n_cluster_datas = node_data->nClusterDatas;
 		if (index < n_cluster_datas)
 		    {
@@ -3390,7 +3390,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else index -= n_cluster_datas;
 		
-		/** Iterate over searches. **/
+		/** Fetch a search at the current index. **/
 		const unsigned int n_search_datas = node_data->nSearchDatas;
 		if (index < n_search_datas)
 		    {
@@ -3401,7 +3401,6 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		else index -= n_search_datas;
 		
-		/** Iteration complete. **/
 		goto done_free;
 		}
 	    
@@ -3417,7 +3416,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    goto err_free;
 		    }
 		
-		/** Stop iteration if the requested data does not exist. **/
+		/** Stop fetching if the requested data does not exist. **/
 		if (UNLIKELY(query_data->RowIndex >= target->nClusters)) goto done_free;
 		
 		/** Set the data being fetched. **/
@@ -3439,7 +3438,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    goto err_free;
 		    }
 		
-		/** Stop iteration if the requested data does not exist. **/
+		/** Stop fetching if the requested data does not exist. **/
 		if (UNLIKELY(query_data->RowIndex >= target->nPairs)) goto done_free;
 		
 		/** Set the data being fetched. **/
@@ -3459,7 +3458,9 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		goto err_free;
 	    }
 	
-	/** Add a link to the NodeData so that it isn't freed while we're using it. **/
+	/*** Add a link to node_data, which is referenced by the result_data
+	 *** struct we are about to return.
+	 ***/
 	node_data->OpenCount++;
 	
 	/** Success. **/
@@ -3623,6 +3624,7 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
  *** 	found.  If a value other than 0 is returned, the buffer is not updated.
  *** @param oxt The transaction tree (for the incomplete transaction system).
  *** @returns 0 if successful,
+ ***          1 if the attribute's value is NULL,
  ***         -1 if an error occurs.
  *** 
  *** LINK ../../centrallix-lib/include/datatypes.h:72
@@ -3717,7 +3719,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_CLUSTER: val->String = "Clustering driver: Cluster."; break;
 		case TARGET_CLUSTER_ENTRY: val->String = "Clustering driver: Cluster Entry."; break;
 		case TARGET_SEARCH: val->String = "Clustering driver: Search."; break;
-		case TARGET_SEARCH_ENTRY: val->String = "Clustering driver: Cluster Entry."; break;
+		case TARGET_SEARCH_ENTRY: val->String = "Clustering driver: Search Entry."; break;
 		
 		default:
 		    mssError(1, "Cluster", "Unknown target type %u.", target_type);
@@ -4021,8 +4023,8 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
  *** 
  *** Note: Failures from nmSysStrdup() and several others are ignored because
  *** 	the worst case scenario is that the attributes are set to null, which
- *** 	will cause them to be ignored. I consider that to be better than than
- *** 	throwing an error that could unnecessarily disrupt normal usage.
+ *** 	will cause them to be ignored. This prevents throwing an error that
+ *** 	could unnecessarily disrupt normal usage.
  *** 
  *** @param inf_v The driver instance to be read.
  *** @param attr_name The name of the requested attribute.
