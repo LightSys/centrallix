@@ -36,6 +36,12 @@ extern "C" {
      ***/
     #define USE_METRIC false
 
+    /** The max buffer size needed for snprintBytes(). **/
+    #define SNPRINT_BYTES_BUF_SIZE 11
+
+    /** The max buffer size needed for snprintCommasLlu(). **/
+    #define SNPRINT_COMMAS_LLU_BUF_SIZE 27
+
     int snprintBytes(char* buf, const size_t buf_size, unsigned long bytes);
     int snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value);
     void fprintMem(FILE* out);

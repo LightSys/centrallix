@@ -101,8 +101,7 @@ static const char* const UNITS_METRIC[] = {"bytes", "KB", "MB", "GB", "TB", "PB"
  *** 
  *** @param buf The buffer to which new text will be written, using snprintf().
  *** @param buf_size The amount of space in the buffer, passed to snprintf().
- *** 	It is recommended to provide a buffer that is at least 12 characters
- *** 	long to avoid truncation.
+ *** 	A `SNPRINT_BYTES_BUF_SIZE` buffer holds any result without truncating.
  *** @param bytes The number of bytes, which will be formatted and written
  *** 	to the buffer.
  *** @returns The length the result would have had if buf_size were unlimited,
@@ -142,7 +141,8 @@ snprintBytes(char* buf, const size_t buf_size, unsigned long bytes)
  *** @param buf The buffer to print the number into.  Only written if
  *** 	`buf_size` is nonzero.
  *** @param buf_size The size of the buffer, including room for the null
- *** 	terminator.  A 27 character buffer holds any unsigned long long.
+ *** 	terminator.  A `SNPRINT_COMMAS_LLU_BUF_SIZE` buffer holds any
+ *** 	unsigned long long without truncating.
  *** @param value The value to write into the buffer.
  *** @returns The length the result would have had if `buf_size` were
  *** 	unlimited, not counting the null terminator, as snprintf() does.  A
@@ -206,7 +206,7 @@ fprintMem(FILE* out)
 	
 	/** Get the number of resident bytes used. **/
 	const unsigned long resident_bytes = (unsigned long)resident * (unsigned long)page_size;
-	char buf[16];
+	char buf[SNPRINT_BYTES_BUF_SIZE];
 	snprintBytes(buf, sizeof(buf), resident_bytes);
 	
 	/** fprintf() out data. **/
