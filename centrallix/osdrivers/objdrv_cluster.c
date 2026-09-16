@@ -1439,7 +1439,7 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	if (UNLIKELY(search_data->Threshold <= 0.0 || 1.0 <= search_data->Threshold))
 	    {
 	    mssError(1, "Cluster",
-		"Invalid value for [threshold : 0.0 < x < 1.0 | \"none\"]: %g",
+		"Invalid value for [threshold : 0.0 < x < 1.0]: %g",
 		search_data->Threshold
 	    );
 	    goto err_free;
@@ -4803,7 +4803,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		    + (unsigned int)ClusterDriverCaches.SourceDataCache.nItems
 		    + (unsigned int)ClusterDriverCaches.ClusterDataCache.nItems
 		    + (unsigned int)ClusterDriverCaches.SearchDataCache.nItems;
-		if (total_caches <= skip_uncomputed) printf("All caches skipped, nothing to show...\n");
+		if (total_caches < skip_uncomputed) printf("All caches skipped, nothing to show...\n");
 		
 		/** Print stats. **/
 		char buf[SNPRINT_BYTES_BUF_SIZE];
@@ -4815,7 +4815,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		printf("%-8s %-4d %-12s\n\n", "Total", total_caches, snprintBytes(buf, sizeof(buf), source_bytes + cluster_bytes + search_bytes));
 		
 		/** Print skip stats (if anything was skipped.) **/
-		if (skip_uncomputed > 0llu) printf("Skipped %llu uncomputed caches.\n\n", skip_uncomputed - 1llu);
+		if (skip_uncomputed > 1llu) printf("Skipped %llu uncomputed caches.\n\n", skip_uncomputed - 1llu);
 		
 		return ret;
 		}
