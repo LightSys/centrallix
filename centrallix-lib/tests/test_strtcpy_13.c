@@ -63,12 +63,15 @@ static size_t bad_positions[] =
 static bool can_fail = false;
 
 /*** This test verifies that strtcatf() refuses bad input safely, covering the
- *** two paths ordinary appends never reach.  When a conversion fails, the
+ *** three paths ordinary appends never reach.  When a conversion fails, the
  *** append must be abandoned and the string already in dst left intact, even
- *** though vsnprintf() may have written part of its output first.  A *pos at
- *** or past the end of dst, including one large enough to overflow the guard's
- *** own arithmetic, must append nothing.  Both return 0, leave *pos alone, and
- *** write nothing outside the caller's dstlen.
+ *** though vsnprintf() may have written part of its output first; that reports
+ *** -1, as does a NULL dst, pos or fmt.  A *pos at or past the end of dst,
+ *** including one large enough to overflow the guard's own arithmetic, is a
+ *** full buffer rather than an error and so reports 0.  All of them leave *pos
+ *** alone and write nothing outside the caller's dstlen.  The -1 cannot be
+ *** mistaken for a truncated append, which appends its null terminator over at
+ *** least one character and so returns -2 or less.
  ***/
 static bool
 doTest(void)
@@ -92,10 +95,9 @@ doTest(void)
 		    unconvertible, unconvertible);
 
 		/** A failed conversion is an error, not a full buffer. **/
-		    assert(rval == -1);
+		assert(rval == -1);
 
-		    /**The text already in dst survives, and *pos with it. **/
-		
+		/** The text already in dst survives, and *pos with it. **/
 		assert(pos == strlen(prefixes[f]));
 		assert(!strcmp(dst, prefixes[f]));
 
@@ -117,10 +119,9 @@ doTest(void)
 	    rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
 
 	    /** A full buffer is not an error, so it reports 0, not -1. **/
-		assert(rval == 0);
+	    assert(rval == 0);
 
-		/**Nothing appended, and *pos left exactly as it was. **/
-	    
+	    /** Nothing appended, and *pos left exactly as it was. **/
 	    assert(pos == bad_positions[c]);
 	    assert(!strcmp(dst, "abc"));
 
@@ -129,17 +130,17 @@ doTest(void)
 		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 	    }
 
-	    /** A NULL dst, pos or fmt is an error, checked before anything else. **/
-	    memset(raw, 0xAA, RAW);
-	    memcpy(dst, "abc", 4);
-	    pos = 3;
-	    assert(strtcatf(NULL, AREA, &pos, "%s", "XYZ") == -1);
-	    assert(strtcatf(dst, AREA, NULL, "%s", "XYZ") == -1);
-	    assert(strtcatf(dst, AREA, &pos, NULL) == -1);
-	    assert(pos == 3);
-	    assert(!strcmp(dst, "abc"));
-	    for(n=0;n<RAW;n++)
-		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
+	/** A NULL dst, pos or fmt is an error, checked before anything else. **/
+	memset(raw, 0xAA, RAW);
+	memcpy(dst, "abc", 4);
+	pos = 3;
+	assert(strtcatf(NULL, AREA, &pos, "%s", "XYZ") == -1);
+	assert(strtcatf(dst, AREA, NULL, "%s", "XYZ") == -1);
+	assert(strtcatf(dst, AREA, &pos, NULL) == -1);
+	assert(pos == 3);
+	assert(!strcmp(dst, "abc"));
+	for(n=0;n<RAW;n++)
+	    assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 
     return true;
     }
@@ -157,7 +158,7 @@ test(char** tname)
 	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], unconvertible) < 0);
 	if (!can_fail)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
-	ncases = NBAD + (can_fail ? NFMTS * NPFX : 0);
+	ncases = NBAD + 3 + (can_fail ? NFMTS * NPFX : 0);
 
     return loopTest(doTest) * ncases;
     }
