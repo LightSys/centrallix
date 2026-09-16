@@ -2293,7 +2293,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** If the vectors are already computed, we're done. **/
-	if (LIKELY(source_data->Vectors != NULL))
+	if (source_data->Vectors != NULL)
 	    {
 	    successful = true;
 	    goto end_free;
