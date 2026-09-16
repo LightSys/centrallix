@@ -1740,7 +1740,9 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	check(xaDeInit(&param_infs)); /* Failure ignored. */
 	param_infs.nAlloc = 0;
 	
-	/** Iterate over provided parameters and warn the user if they specified a parameter that does not exist. **/
+	/*** Iterate over provided parameters to warn the user if they
+	 *** specified a parameter that does not exist.
+	 ***/
 	for (unsigned int i = 0u; i < num_provided_params; i++)
 	    {
 	    pStruct provided_param = checkPtr(provided_params[i]);
@@ -1748,20 +1750,30 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    char* provided_name = provided_param->Name;
 	    
 	    /** Look to see if this provided param actually exists for this driver instance. **/
+	    bool param_exists = false;
 	    for (unsigned int j = 0u; j < node_data->nParams; j++)
 		if (strcmp(provided_name, node_data->Params[j]->Name) == 0)
-		    goto next_provided_param;
+		    {
+		    param_exists = true;
+		    break;
+		    }
 	    
-	    /** This param doesn't exist, warn the user and attempt to give them a hint. **/
-	    fprintf(stderr, "Warning: Unknown provided parameter '%s' for cluster file: %s.\n", provided_name, objFileName(parent));
-	    char** param_names = checkPtr(nmSysMalloc(node_data->nParams * sizeof(char*)));
-	    if (UNLIKELY(param_names == NULL)) goto err_free;
-	    for (unsigned int j = 0u; j < node_data->nParams; j++)
-		param_names[j] = node_data->Params[j]->Name;
-	    cluster_i_tryHint(provided_name, param_names, node_data->nParams);
-	    if (LIKELY(param_names != NULL)) nmSysFree(param_names);
-	    
-	    next_provided_param:;
+	    /** If this param doesn't exist, warn the user and attempt to give a hint. **/
+	    if (!param_exists)
+		{
+		fprintf(stderr,
+		    "Warning: Unknown provided parameter '%s' for cluster file: %s.\n",
+		    provided_name, objFileName(parent)
+		);
+		
+		/** Attempt hint. **/
+		char** param_names = checkPtr(nmSysMalloc(node_data->nParams * sizeof(char*)));
+		if (UNLIKELY(param_names == NULL)) goto err_free;
+		for (unsigned int j = 0u; j < node_data->nParams; j++)
+		    param_names[j] = node_data->Params[j]->Name;
+		cluster_i_tryHint(provided_name, param_names, node_data->nParams);
+		nmSysFree(param_names);
+		}
 	    }
 	
 	/** Parse source data. **/
