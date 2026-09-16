@@ -456,8 +456,12 @@ mssEndSession(pMtSession s)
 
 
 /*** mss_i_error - Displays error text to the user (but no stack trace).
- *** Does not exit the program, allowing the calling function to fail, creating
- *** a cascade of error messages which provides useful info.
+ *** Does not exit the program, allowing the calling function to fail,
+ *** creating a cascade of error messages which provides useful info.
+ ***
+ *** Note: The format is parsed using vsnprintf(), so edge cases like a %s on
+ *** 	a value that isn't a valid string rely on glibc's implementation of C
+ *** 	undefined behavior.
  ***
  *** @param clr Whether to clear the current error stack.  As a rule of thumb,
  ***	if you are the first one to detect the error, clear the stack so that
@@ -471,9 +475,7 @@ mssEndSession(pMtSession s)
  *** @param line The line number where the error was detected.
  *** @param format The format text for the error, which accepts any format
  ***	specifier that would be accepted by printf().
- *** @param ... Variables matching format specifiers in the format.  A %s
- ***	argument must be a valid string:  the format goes straight to
- ***	vsnprintf(), which has no defined behavior for a NULL %s.
+ *** @param ... Variables matching format specifiers in the format.
  ***/
 void
 mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
