@@ -113,6 +113,7 @@ cluster_i_clusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
     return NULL; /** Unreachable. **/
     }
 
+
 /** Enum type representing a similarity measurement algorithm. **/
 typedef unsigned char SimilarityMeasure;
 #define SIMILARITY_NULL                ((SimilarityMeasure)0u)
@@ -173,6 +174,26 @@ double (*cluster_i_similarityMeasureToFunction(SimilarityMeasure similarity_meas
 	}
     }
 
+
+/*** Enum representing the type of an unknown data struct.
+ *** 
+ *** `0u` is reserved for a possible NULL value in the future.  However, NULL
+ *** values for CIDataType are not currently allowed.
+ ***/
+typedef unsigned char CIDataType;
+#define CI_SOURCE_DATA                 ((CIDataType)1u)
+#define CI_CLUSTER_DATA                ((CIDataType)2u)
+#define CI_SEARCH_DATA                 ((CIDataType)3u)
+
+CIDataType ALL_CI_DATA_TYPES[] =
+    {
+    CI_SOURCE_DATA,
+    CI_CLUSTER_DATA,
+    CI_SEARCH_DATA,
+    };
+#define N_CI_DATA_TYPES ((unsigned int)(sizeof(ALL_CI_DATA_TYPES) / sizeof(ALL_CI_DATA_TYPES[0])))
+
+
 /*** Enum representing the type of data targeted by the driver, set based on
  *** the path given when the driver is used to open a cluster file.
  *** 
@@ -195,6 +216,7 @@ TargetType ALL_TARGET_TYPES[] =
     TARGET_SEARCH_ENTRY,
     };
 #define N_TARGET_TYPES ((unsigned int)(sizeof(ALL_TARGET_TYPES) / sizeof(ALL_TARGET_TYPES[0])))
+
 
 /*** Attribute name lists by TargetType.
  *** 
