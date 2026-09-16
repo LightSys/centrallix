@@ -2366,6 +2366,10 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	while ((entry = objQueryFetch(query, O_RDONLY)) != NULL)
 	    {
 	    ASSERTMAGIC(entry, MGK_OBJECT);
+	    pVector vector = NULL;
+	    char* key_dup = NULL;
+	    char* data_dup = NULL;
+	    bool entry_ok = false;
 	    
 	    /** Data value: Type checking. **/
 	    const int data_datatype = objGetAttrType(entry, source_data->DataAttr);
@@ -2375,7 +2379,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		    "Failed to get type for data of entry #%d.",
 		    vector_xarray.nItems
 		);
-		goto end_free;
+		goto entry_free;
 		}
 	    if (UNLIKELY(data_datatype != DATA_T_STRING))
 		{
@@ -2383,7 +2387,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		    "Type for data of entry #%d was %s instead of String:\n",
 		    vector_xarray.nItems, objTypeToStr(data_datatype)
 		);
-		goto end_free;
+		goto entry_free;
 		}
 	    
 	    /** Data value: Get value from database. **/
@@ -2395,29 +2399,33 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		    "Failed to get attribute value for data entry #%d (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
-		goto end_free;
+		goto entry_free;
 		}
 	    
 	    /** Skip empty strings. **/
-	    if (strlen(data) == 0) continue;
+	    if (strlen(data) == 0)
+		{
+		entry_ok = true;
+		goto entry_free;
+		}
 	    
 	    /** Convert the string to a vector. **/
-	    pVector vector = caBuildVector(data);
+	    vector = caBuildVector(data);
 	    if (UNLIKELY(vector == NULL))
 		{
 		mssError(1, "Cluster", "Failed to build vectors for string \"%s\".", data);
-		goto end_free;
+		goto entry_free;
 		}
 	    if (UNLIKELY(caIsEmpty(vector)))
 		{
 		mssError(1, "Cluster", "Vector building for string \"%s\" produced no character pairs.", data);
-		goto end_free;
+		goto entry_free;
 		}
 	    if (caHasNoPairs(vector))
 		{
 		/** Skip pVector with only a single pair of boundary characters. **/
-		caFreeVector(vector);
-		continue;
+		entry_ok = true;
+		goto entry_free;
 		}
 	    
 	    
@@ -2429,7 +2437,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		    "Failed to get type of key on entry #%d.",
 		    vector_xarray.nItems
 		);
-		goto end_free;
+		goto entry_free;
 		}
 	    if (UNLIKELY(key_datatype != DATA_T_STRING))
 		{
@@ -2437,7 +2445,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		    "Type of key on entry #%d was %s instead of String:",
 		    vector_xarray.nItems, objTypeToStr(key_datatype)
 		);
-		goto end_free;
+		goto entry_free;
 		}
 	    
 	    /** key value: Get value from database. **/
@@ -2449,20 +2457,31 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		    "Failed to value for key on entry #%d (error code: %d).",
 		    vector_xarray.nItems, ret
 		);
-		goto end_free;
+		goto entry_free;
 		}
 	    
 	    /** Store values. **/
-	    char* key_dup = checkPtr(nmSysStrdup(key));
-	    if (key_dup == NULL) goto end_free;
-	    char* data_dup = checkPtr(nmSysStrdup(data));
-	    if (data_dup == NULL) goto end_free;
-	    if (checkPos(xaAddItem(&key_xarray, (void*)key_dup) < 0)) goto end_free;
-	    if (checkPos(xaAddItem(&data_xarray, (void*)data_dup) < 0)) goto end_free;
-	    if (checkPos(xaAddItem(&vector_xarray, (void*)vector) < 0)) goto end_free;
+	    key_dup = checkPtr(nmSysStrdup(key));
+	    if (key_dup == NULL) goto entry_free;
+	    data_dup = checkPtr(nmSysStrdup(data));
+	    if (data_dup == NULL) goto entry_free;
 	    
-	    /** Clean up. **/
+	    /** Hand each value to its xarray, which owns it from then on. **/
+	    if (checkPos(xaAddItem(&key_xarray, (void*)key_dup)) < 0) goto entry_free;
+	    key_dup = NULL;
+	    if (checkPos(xaAddItem(&data_xarray, (void*)data_dup)) < 0) goto entry_free;
+	    data_dup = NULL;
+	    if (checkPos(xaAddItem(&vector_xarray, (void*)vector)) < 0) goto entry_free;
+	    vector = NULL;
+	    entry_ok = true;
+	    
+    entry_free:
+	    /** Clean up owned memory, then fail if an error occurred. **/
+	    if (vector != NULL) caFreeVector(vector);
+	    if (key_dup != NULL) nmSysFree(key_dup);
+	    if (data_dup != NULL) nmSysFree(data_dup);
 	    check(objClose(entry)); /* Failure ignored. */
+	    if (UNLIKELY(!entry_ok)) goto end_free;
 	    }
 	
 	source_data->nDatas = vector_xarray.nItems;
@@ -2472,21 +2491,19 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    goto end_free;
 	    }
 	
-	/** Trim and store keys. **/
+	/** Trim and store the keys, data strings, and vectors. **/
 	source_data->Keys = (char**)checkPtr(xaToArray(&key_xarray));
 	if (UNLIKELY(source_data->Keys == NULL)) goto end_free;
-	check(xaDeInit(&key_xarray)); /* Failure ignored. */
-	key_xarray.nAlloc = 0;
-	
-	/** Trim and store data strings. **/
 	source_data->Strings = (char**)checkPtr(xaToArray(&data_xarray));
 	if (UNLIKELY(source_data->Strings == NULL)) goto end_free;
-	check(xaDeInit(&data_xarray)); /* Failure ignored. */
-	data_xarray.nAlloc = 0;
-	
-	/** Trim and store vectors. **/
 	source_data->Vectors = (int**)checkPtr(xaToArray(&vector_xarray));
 	if (UNLIKELY(source_data->Vectors == NULL)) goto end_free;
+	
+	/** The stored arrays own the values now, so only free the xarrays. **/
+	check(xaDeInit(&key_xarray)); /* Failure ignored. */
+	key_xarray.nAlloc = 0;
+	check(xaDeInit(&data_xarray)); /* Failure ignored. */
+	data_xarray.nAlloc = 0;
 	check(xaDeInit(&vector_xarray)); /* Failure ignored. */
 	vector_xarray.nAlloc = 0;
 	
