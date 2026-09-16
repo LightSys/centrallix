@@ -2986,7 +2986,11 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	search_data->nPairs = pairs->nItems;
 	if (pairs->nItems == 0)
 	    {
-	    search_data->Pairs = checkPtr(nmSysMalloc(0));
+	    /*** We need to set a valid pointer to indicate that the pairs
+	     *** were computed, but nmSysMalloc(0) may return NULL, so we
+	     *** allocate a 1 byte memory section to be a marker.
+	     ***/
+	    search_data->Pairs = checkPtr(nmSysMalloc(1));
 	    if (search_data->Pairs == NULL) goto err_free;
 	    }
 	else
