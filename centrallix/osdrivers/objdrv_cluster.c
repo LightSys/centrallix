@@ -2402,6 +2402,15 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		);
 		goto entry_free;
 		}
+	
+	    if (UNLIKELY(data == NULL))
+		{
+		mssError(1, "Cluster",
+		    "Got null string value from successful call to objGetAttrValue() for data entry #%d.",
+		    vector_xarray.nItems
+		);
+		goto entry_free;
+		}
 	    
 	    /** Skip empty strings. **/
 	    if (strlen(data) == 0)
@@ -2457,6 +2466,15 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		mssError(0, "Cluster",
 		    "Failed to value for key on entry #%d (error code: %d).",
 		    vector_xarray.nItems, ret
+		);
+		goto entry_free;
+		}
+	    
+	    if (UNLIKELY(key == NULL))
+		{
+		mssError(1, "Cluster",
+		    "Got null string value from successful call to objGetAttrValue() for key on entry #%d.",
+		    vector_xarray.nItems
 		);
 		goto entry_free;
 		}
