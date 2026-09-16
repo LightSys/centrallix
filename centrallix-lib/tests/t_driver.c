@@ -108,7 +108,8 @@ start(void* v)
 		{
 		char buf[32];
 		unsigned long long rounded = (unsigned long long)(ops_per_second / factor + 0.5) * factor;
-		printf("%-62.62s  PASS %s\n", tname, snprintCommasLlu(buf, sizeof(buf), rounded));
+		snprintCommasLlu(buf, sizeof(buf), rounded);
+		printf("%-62.62s  PASS %s\n", tname, buf);
 		}
 	    else
 		printf("%-62.62s  PASS %.*f\n", tname, precision, ops_per_second);

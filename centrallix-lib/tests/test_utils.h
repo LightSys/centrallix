@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "timer.h"
+#include "range.h"
 
 /*** Define lockup times.  Valgrind instruments every memory access, so tests
  *** may need longer to finish when running under valgrind.
@@ -114,11 +115,12 @@
     const int success = (_str1 == _str2) || (_str1 != NULL && _str2 != NULL && memcmp(_str1, _str2, _len) == 0); \
     if (!success)\
 	{ \
-	char _tmp1[_len + 1]; \
+	const size_t buf_len = max(7, _len + 1); \
+	char _tmp1[buf_len]; \
 	if (str1 == NULL) strcpy(_tmp1, "(null)"); \
 	else STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
 	\
-	char _tmp2[_len + 1]; \
+	char _tmp2[buf_len]; \
 	if (str2 == NULL) strcpy(_tmp2, "(null)"); \
 	else STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
 	\

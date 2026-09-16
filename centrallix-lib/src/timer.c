@@ -36,7 +36,7 @@ timer_i_getTime(void)
 	if (check(clock_gettime(CLOCK_MONOTONIC, &ts)) != 0)
 	    return NAN;
     
-    return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9f;
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9;
     }
 
 /*** Initialize a timer struct.  The initial timer is not yet started and has
