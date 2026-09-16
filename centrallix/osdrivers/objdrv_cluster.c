@@ -2992,6 +2992,8 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	     ***/
 	    search_data->Pairs = checkPtr(nmSysMalloc(1));
 	    if (search_data->Pairs == NULL) goto err_free;
+	    check(xaFree(pairs)); /* Failure ignored. */
+	    pairs = NULL;
 	    }
 	else
 	    {
