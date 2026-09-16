@@ -777,8 +777,8 @@ cluster_i_unknownAttribute(char* attr_name, const int target_type)
 	    }
 	
 	/** Attempt to give hints. **/
-	if (cluster_i_tryHint(attr_name, my_attrs, n_my_attrs));
-	else if (cluster_i_tryHint(attr_name, DRIVER_ATTRIBUTE_NAMES, N_DRIVER_ATTRIBUTE_NAMES));
+	if (cluster_i_tryHint(attr_name, my_attrs, n_my_attrs)) {}
+	else if (cluster_i_tryHint(attr_name, DRIVER_ATTRIBUTE_NAMES, N_DRIVER_ATTRIBUTE_NAMES)) {}
     
     return;
     }
@@ -4093,7 +4093,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	if (UNLIKELY(driver_data == NULL)) goto err_free;
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
 	const TargetType target_type = driver_data->TargetType;
-    
+	
 	/** Malloc presentation hints struct. **/
 	hints = checkPtr(nmMalloc(sizeof(ObjPresentationHints)));
 	if (UNLIKELY(hints == NULL)) goto err_free;
