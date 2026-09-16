@@ -512,7 +512,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	strtcatf_va(err_msg, err_msg_size, &i, message, args);
 	va_end(args);
 
-	/** Get current session **/
+	/** Get current session. **/
 	pMtSession s = thGetParam(NULL, "mss");
 	const bool log_error = (s == NULL || MSS.LogAllErrors);
 
@@ -574,14 +574,13 @@ mssClearError()
     int i;
     pMtSession s;
 
-	/** Get session pointer **/
+	/** Get session pointer. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (s == NULL) return -1;
 
-	/** Scan through list, freeing items **/
-	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
-
-	/** Zero the list. **/
+	/** Free all error strings in the error list/error stack. **/
+	for (int i = 0; i < s->ErrList.nItems; i++)
+	    nmSysFree(s->ErrList.Items[i]);
 	s->ErrList.nItems = 0;
 
     return 0;
