@@ -471,7 +471,9 @@ mssEndSession(pMtSession s)
  *** @param line The line number where the error was detected.
  *** @param format The format text for the error, which accepts any format
  ***	specifier that would be accepted by printf().
- *** @param ... Variables matching format specifiers in the format.
+ *** @param ... Variables matching format specifiers in the format.  A %s
+ ***	argument must be a valid string:  the format goes straight to
+ ***	vsnprintf(), which has no defined behavior for a NULL %s.
  ***/
 void
 mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
