@@ -571,11 +571,8 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 int 
 mssClearError()
     {
-    int i;
-    pMtSession s;
-
 	/** Get session pointer. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
+	pMtSession s = thGetParam(NULL, "mss");
 	if (s == NULL) return -1;
 
 	/** Free all error strings in the error list/error stack. **/
