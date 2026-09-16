@@ -89,11 +89,6 @@ unsigned int strtoui(const char *nptr, char **endptr, int base){
     return (unsigned int)tmp;
 }
 
-/*** snprintBytes() allows one to pick between CS units, where the kibibyte
- *** (KiB) is 1024 bytes, and metric units where the kilobyte (KB) is 1000 bytes.
- *** Fun Fact: Windows uses kibibytes, but displays them as KB.
- ***/
-#define USE_METRIC false
 static const char* const UNITS_CS[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"};
 static const char* const UNITS_METRIC[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
 #define N_UNITS ((unsigned int)(sizeof(UNITS_CS) / sizeof(UNITS_CS[0])))
