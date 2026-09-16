@@ -1751,7 +1751,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 		    mssError(0, "Cluster",
 			"Failed to set param value from struct info.\n"
 			"  > Param #%u: %s\n"
-			"  > Provided Param #%u: %n\n"
+			"  > Provided Param #%u: %s\n"
 			"  > Error code: %d",
 			i, param->Name,
 			j, provided_param->Name,
@@ -4809,10 +4809,14 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		char buf[SNPRINT_BYTES_BUF_SIZE];
 		printf("\nCache Stats:\n");
 		printf("%-8s %-4s %-12s\n", "", "#", "Total Size");
-		printf("%-8s %-4d %-12s\n", "Source", ClusterDriverCaches.SourceDataCache.nItems, snprintBytes(buf, sizeof(buf), source_bytes));
-		printf("%-8s %-4d %-12s\n", "Cluster", ClusterDriverCaches.ClusterDataCache.nItems, snprintBytes(buf, sizeof(buf), cluster_bytes));
-		printf("%-8s %-4d %-12s\n", "Search", ClusterDriverCaches.SearchDataCache.nItems, snprintBytes(buf, sizeof(buf), search_bytes));
-		printf("%-8s %-4d %-12s\n\n", "Total", total_caches, snprintBytes(buf, sizeof(buf), source_bytes + cluster_bytes + search_bytes));
+		snprintBytes(buf, sizeof(buf), source_bytes);
+		printf("%-8s %-4d %-12s\n", "Source", ClusterDriverCaches.SourceDataCache.nItems, buf);
+		snprintBytes(buf, sizeof(buf), cluster_bytes);
+		printf("%-8s %-4d %-12s\n", "Cluster", ClusterDriverCaches.ClusterDataCache.nItems, buf);
+		snprintBytes(buf, sizeof(buf), search_bytes);
+		printf("%-8s %-4d %-12s\n", "Search", ClusterDriverCaches.SearchDataCache.nItems, buf);
+		snprintBytes(buf, sizeof(buf), source_bytes + cluster_bytes + search_bytes);
+		printf("%-8s %-4d %-12s\n\n", "Total", total_caches, buf);
 		
 		/** Print skip stats (if anything was skipped.) **/
 		if (skip_uncomputed > 1llu) printf("Skipped %llu uncomputed caches.\n\n", skip_uncomputed - 1llu);
@@ -4841,16 +4845,26 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    char buf[SNPRINT_COMMAS_LLU_BUF_SIZE];
 	    printf("Cluster Driver Statistics:\n");
 	    printf("  Stat Name         %12s\n", "Value");
-	    printf("  OpenCalls         %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.OpenCalls));
-	    printf("  OpenQueryCalls    %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.OpenQueryCalls));
-	    printf("  FetchCalls        %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.FetchCalls));
-	    printf("  CloseCalls        %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.CloseCalls));
-	    printf("  GetTypeCalls      %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetTypeCalls));
-	    printf("  GetValCalls       %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls));
-	    printf("  GetValCalls_name  %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_name));
-	    printf("  GetValCalls_key1  %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key1));
-	    printf("  GetValCalls_key2  %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key2));
-	    printf("  GetValCalls_sim   %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_sim));
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.OpenCalls);
+	    printf("  OpenCalls         %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.OpenQueryCalls);
+	    printf("  OpenQueryCalls    %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.FetchCalls);
+	    printf("  FetchCalls        %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.CloseCalls);
+	    printf("  CloseCalls        %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetTypeCalls);
+	    printf("  GetTypeCalls      %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls);
+	    printf("  GetValCalls       %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_name);
+	    printf("  GetValCalls_name  %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key1);
+	    printf("  GetValCalls_key1  %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_key2);
+	    printf("  GetValCalls_key2  %12s\n", buf);
+	    snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.GetValCalls_sim);
+	    printf("  GetValCalls_sim   %12s\n", buf);
 	    printf("\n");
 	    
 	    nmStats();
