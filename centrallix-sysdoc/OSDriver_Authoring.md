@@ -679,7 +679,7 @@ The value pointer points to a union struct which can hold one of several types o
 
 \*_See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more info about this datatype._
 
-In this way, `int`s and `double`s can be returned by value while other types are returned by reference.  Items returned by reference must be guaranteed to be valid until either the object is closed, or another `GetAttrValue()` or `SetAttrValue()` call is made on the same driver (which ever happens first).
+In this way, `int`s and `double`s can be returned by value while other types are returned by reference.  Items returned by reference must be guaranteed to be valid until either the object is closed, or another `GetAttrValue()` or `SetAttrValue()` call is made to any driver (which ever happens first).
 
 This function should return 0 on success, 1 if the value is `NULL` or undefined / unset, or -1 on a non-existent attribute or other error.
 
