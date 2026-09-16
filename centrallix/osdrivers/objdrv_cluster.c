@@ -2289,7 +2289,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
     XArray vector_xarray = {0};
     
 	/** Guard segfaults. **/
-	if (UNLIKELY(checkPtr(source_data) == NULL)) goto end_free;
+	if (checkPtr(source_data) == NULL) goto end_free;
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** If the vectors are already computed, we're done. **/
@@ -2546,7 +2546,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
     size_t sims_size = -1;
     
 	/** Guard segfaults. **/
-	if (UNLIKELY(checkPtr(cluster_data) == NULL || checkPtr(node_data) == NULL)) goto err_free;
+	if (checkPtr(cluster_data) == NULL || checkPtr(node_data) == NULL) goto err_free;
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
@@ -2764,7 +2764,7 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
     pXArray pairs = NULL;
     
 	/** Guard segfaults. **/
-	if (UNLIKELY(checkPtr(search_data) == NULL || checkPtr(node_data) == NULL)) goto err_free;
+	if (checkPtr(search_data) == NULL || checkPtr(node_data) == NULL) goto err_free;
 	ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
@@ -3501,7 +3501,7 @@ clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
 	/** Cast the query data. **/
 	pQueryData query_data = qy_v;
-	if (UNLIKELY(checkPtr(qy_v) == NULL)) return -1;
+	if (checkPtr(qy_v) == NULL) return -1;
 	ASSERTMAGIC(query_data, MGK_CL_QUERY_DATA);
 	
 	/** Free the query data. **/
