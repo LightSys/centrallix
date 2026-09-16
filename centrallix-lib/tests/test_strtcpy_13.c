@@ -91,8 +91,11 @@ doTest(void)
 		rval = strtcatf(dst, AREA, &pos, failing_fmts[c],
 		    unconvertible, unconvertible);
 
-		/** The text already in dst survives, and *pos with it. **/
-		assert(rval == 0);
+		/** A failed conversion is an error, not a full buffer. **/
+		    assert(rval == -1);
+
+		    /**The text already in dst survives, and *pos with it. **/
+		
 		assert(pos == strlen(prefixes[f]));
 		assert(!strcmp(dst, prefixes[f]));
 
@@ -113,8 +116,11 @@ doTest(void)
 	    pos = bad_positions[c];
 	    rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
 
-	    /** Nothing appended, and *pos left exactly as it was. **/
-	    assert(rval == 0);
+	    /** A full buffer is not an error, so it reports 0, not -1. **/
+		assert(rval == 0);
+
+		/**Nothing appended, and *pos left exactly as it was. **/
+	    
 	    assert(pos == bad_positions[c]);
 	    assert(!strcmp(dst, "abc"));
 
@@ -122,6 +128,18 @@ doTest(void)
 	    for(n=0;n<RAW;n++)
 		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 	    }
+
+	    /** A NULL dst, pos or fmt is an error, checked before anything else. **/
+	    memset(raw, 0xAA, RAW);
+	    memcpy(dst, "abc", 4);
+	    pos = 3;
+	    assert(strtcatf(NULL, AREA, &pos, "%s", "XYZ") == -1);
+	    assert(strtcatf(dst, AREA, NULL, "%s", "XYZ") == -1);
+	    assert(strtcatf(dst, AREA, &pos, NULL) == -1);
+	    assert(pos == 3);
+	    assert(!strcmp(dst, "abc"));
+	    for(n=0;n<RAW;n++)
+		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 
     return true;
     }
