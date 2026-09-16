@@ -65,9 +65,22 @@
 
 /** Defaults for unspecified optional attributes. **/
 #define CI_DEFAULT_MIN_IMPROVEMENT 0.0001
-#define CI_DEFAULT_MAX_ITERATIONS 64u
+#define CI_DEFAULT_MAX_ITERATIONS 64
 #define CI_NO_SEED 0u
 
+/** Stringify a constant value. **/
+#define CI_STRINGIFY_CONSTANT_(value) #value
+#define CI_STRINGIFY_CONSTANT(value) CI_STRINGIFY_CONSTANT_(value)
+
+/** Initial sizes. **/
+#define CI_INITIAL_SOURCE_DATAS        64
+#define CI_INITIAL_INFS                8
+#define CI_INITIAL_SUBCLUSTERS         4
+#define CI_INITIAL_POINTS_PER_CLUSTER  8
+#define CI_CACHE_HASHTABLE_ROWS        251
+
+/** Developer config values. **/
+#define CI_HINT_SIMILARITY_THRESHOLD   0.25
 
 /** ================ Enum Declarations ================ **/
 /** ANCHOR[id=enums] **/
@@ -719,7 +732,10 @@ static void cluster_i_giveHint(const char* hint)
 static bool
 cluster_i_tryHint(char* value, char** valid_values, const unsigned int n_valid_values)
     {
-	char* guess = caMostSimilar(value, (void**)valid_values, n_valid_values, caLevCompare, 0.25);
+	char* guess = caMostSimilar(
+	    value, (void**)valid_values, n_valid_values,
+	    caLevCompare, CI_HINT_SIMILARITY_THRESHOLD
+	);
 	if (guess == NULL) return false; /* No hint. */
 	
 	/** Issue hint. **/
@@ -1182,7 +1198,7 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	else cluster_data->Seed = CI_NO_SEED;
 	
 	/** Search for sub-clusters. **/
-	if (check(xaInit(&sub_clusters, 4u)) != 0) goto err_free;
+	if (check(xaInit(&sub_clusters, CI_INITIAL_SUBCLUSTERS)) != 0) goto err_free;
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
 	    pStructInf sub_inf = checkPtr(inf->SubInf[i]);
@@ -1602,9 +1618,9 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    }
 	
 	/** Detect relevant groups. **/
-	if (check(xaInit(&param_infs, 8)) != 0) goto err_free;
-	if (check(xaInit(&cluster_infs, 8)) != 0) goto err_free;
-	if (check(xaInit(&search_infs, 8)) != 0) goto err_free;
+	if (check(xaInit(&param_infs, CI_INITIAL_INFS)) != 0) goto err_free;
+	if (check(xaInit(&cluster_infs, CI_INITIAL_INFS)) != 0) goto err_free;
+	if (check(xaInit(&search_infs, CI_INITIAL_INFS)) != 0) goto err_free;
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
 	    pStructInf sub_inf = checkPtr(inf->SubInf[i]);
@@ -2341,9 +2357,9 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    }
 	
 	/** Initialize an xarray to store the retrieved data. **/
-	if (check(xaInit(&key_xarray, 64)) != 0) goto end_free;
-	if (check(xaInit(&data_xarray, 64)) != 0) goto end_free;
-	if (check(xaInit(&vector_xarray, 64)) != 0) goto end_free;
+	if (check(xaInit(&key_xarray, CI_INITIAL_SOURCE_DATAS)) != 0) goto end_free;
+	if (check(xaInit(&data_xarray, CI_INITIAL_SOURCE_DATAS)) != 0) goto end_free;
+	if (check(xaInit(&vector_xarray, CI_INITIAL_SOURCE_DATAS)) != 0) goto end_free;
 	
 	/** Fetch data and build vectors. **/
 	pObject entry;
@@ -2674,7 +2690,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		/** Allocate temporary xArrays for tracking the indices stored in each cluster. **/
 		XArray indexes_in_cluster[cluster_data->nClusters];
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
-		    if (check(xaInit(&indexes_in_cluster[i], 8)) != 0) goto err_free;
+		    if (check(xaInit(&indexes_in_cluster[i], CI_INITIAL_POINTS_PER_CLUSTER)) != 0) goto err_free;
 		
 		/** Iterate through each label and add the index of the data to the specified cluster. **/
 		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
@@ -4191,7 +4207,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "min_improvement") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->DefaultExpr = expCompileExpression("0.0001", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->DefaultExpr = expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MIN_IMPROVEMENT), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    hints->MinValue = expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    hints->MaxValue = expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    
@@ -4204,7 +4220,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "max_iterations") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->DefaultExpr = expCompileExpression("64", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->DefaultExpr = expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MAX_ITERATIONS), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    hints->MaxValue = expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    
@@ -4588,7 +4604,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	void* data = entry->Data;
 	
 	/** Extract args. **/
-	unsigned int  data_type       = va_arg(args, unsigned int);
+	CIDataType    data_type       = (CIDataType)va_arg(args, int);
 	unsigned int* total_bytes_ptr = va_arg(args, unsigned int*);
 	unsigned long long* less_ptr  = va_arg(args, unsigned long long*);
 	char* path = va_arg(args, char*);
@@ -4602,7 +4618,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	size_t bytes;
 	switch (data_type)
 	    {
-	    case 1u:
+	    case CI_SOURCE_DATA:
 		{
 		pSourceData source_data = (pSourceData)data;
 		
@@ -4617,7 +4633,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 		name = source_data->Name;
 		break;
 		}
-	    case 2u:
+	    case CI_CLUSTER_DATA:
 		{
 		pClusterData cluster_data = (pClusterData)data;
 		
@@ -4632,7 +4648,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 		name = cluster_data->Name;
 		break;
 		}
-	    case 3u:
+	    case CI_SEARCH_DATA:
 		{
 		pSearchData search_data = (pSearchData)data;
 		
@@ -4653,7 +4669,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	    }
 	
 	/** Print the cache entry data. **/
-	char buf[12];
+	char buf[SNPRINT_BYTES_BUF_SIZE];
 	snprintBytes(buf, sizeof(buf), bytes);
 	printf("%-8s %-16s %-12s \"%s\"\n", type, name, buf, key);
 	goto increment_total;
@@ -4755,7 +4771,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		{
 		/** Print cache info table. **/
 		int ret = 0;
-		unsigned int i = 1u, source_bytes = 0u, cluster_bytes = 0u, search_bytes = 0u;
+		unsigned int source_bytes = 0u, cluster_bytes = 0u, search_bytes = 0u;
 		bool failed = false;
 		printf("\nShowing cache for ");
 		if (path != NULL) printf("\"%s\":\n", path);
@@ -4764,19 +4780,17 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
 		    cluster_i_printEntry,
-		    i, &source_bytes, &skip_uncomputed, path
+		    (int)CI_SOURCE_DATA, &source_bytes, &skip_uncomputed, path
 		)) != 0);
-		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.ClusterDataCache,
 		    cluster_i_printEntry,
-		    i, &cluster_bytes, &skip_uncomputed, path
+		    (int)CI_CLUSTER_DATA, &cluster_bytes, &skip_uncomputed, path
 		)) != 0);
-		i++;
 		failed |= (check(xhForEach(
 		    &ClusterDriverCaches.SearchDataCache,
 		    cluster_i_printEntry,
-		    i, &search_bytes, &skip_uncomputed, path
+		    (int)CI_SEARCH_DATA, &search_bytes, &skip_uncomputed, path
 		)) != 0);
 		if (failed)
 		    {
@@ -4792,7 +4806,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		if (total_caches <= skip_uncomputed) printf("All caches skipped, nothing to show...\n");
 		
 		/** Print stats. **/
-		char buf[16];
+		char buf[SNPRINT_BYTES_BUF_SIZE];
 		printf("\nCache Stats:\n");
 		printf("%-8s %-4s %-12s\n", "", "#", "Total Size");
 		printf("%-8s %-4d %-12s\n", "Source", ClusterDriverCaches.SourceDataCache.nItems, snprintBytes(buf, sizeof(buf), source_bytes));
@@ -4824,7 +4838,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	
 	if (strcmp(method_name, "stat") == 0)
 	    {
-	    char buf[12];
+	    char buf[SNPRINT_COMMAS_LLU_BUF_SIZE];
 	    printf("Cluster Driver Statistics:\n");
 	    printf("  Stat Name         %12s\n", "Value");
 	    printf("  OpenCalls         %12s\n", snprintCommasLlu(buf, sizeof(buf), ClusterStatistics.OpenCalls));
@@ -4963,9 +4977,9 @@ clusterInitialize(void)
 	
 	/** Initialize caches. **/
 	// memset(&ClusterDriverCaches, 0, sizeof(ClusterDriverCaches));
-	if (check(xhInit(&ClusterDriverCaches.SourceDataCache, 251, 0)) != 0) goto err_free;
-	if (check(xhInit(&ClusterDriverCaches.ClusterDataCache, 251, 0)) != 0) goto err_free;
-	if (check(xhInit(&ClusterDriverCaches.SearchDataCache, 251, 0)) != 0) goto err_free;
+	if (check(xhInit(&ClusterDriverCaches.SourceDataCache, CI_CACHE_HASHTABLE_ROWS, 0)) != 0) goto err_free;
+	if (check(xhInit(&ClusterDriverCaches.ClusterDataCache, CI_CACHE_HASHTABLE_ROWS, 0)) != 0) goto err_free;
+	if (check(xhInit(&ClusterDriverCaches.SearchDataCache, CI_CACHE_HASHTABLE_ROWS, 0)) != 0) goto err_free;
 	
 	/** Setup the structure. **/
 	if (checkPtr(strcpy(drv->Name, "cluster - Clustering Driver")) == NULL) goto err_free;
