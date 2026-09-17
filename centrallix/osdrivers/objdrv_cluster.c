@@ -3266,7 +3266,9 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	    /** Target found: Root **/
 	    driver_data->TargetType = TARGET_NODE;
 	    driver_data->TargetData = (void*)driver_data->NodeData->SourceData;
-	    goto success;
+	    
+	    /** Success. **/
+	    return driver_data;
 	    }
 	
 	/** Search clusters. **/
@@ -3284,7 +3286,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	    /** Sub-clusters are not fully implemented yet, skip the cluster logic below. **/
 	    parent->SubCnt++;
 	    driver_data->TargetData = (void*)cluster_data;
-	    goto success; /* Done! */
+	    return driver_data; /* Success. */
 	    
 	    /** Check for sub-clusters in the path. **/
 	    while (true)
@@ -3300,6 +3302,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 		    }
 		
 		/** Need to go deeper: Search for the requested sub-cluster. **/
+		bool found = false;
 		for (unsigned int i = 0u; i < cluster_data->nSubClusters; i++)
 		    {
 		    pClusterData sub_cluster = cluster_data->SubClusters[i];
@@ -3307,16 +3310,20 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 		    
 		    /** Target found: Sub-cluster_data **/
 		    cluster_data = sub_cluster;
-		    goto continue_descent;
+		    found = true;
+		    break;
 		    }
-		    
-		/** Path names sub-cluster that does not exist. **/
-		mssError(1, "Cluster", "Sub-cluster \"%s\" does not exist.", path_part);
-		goto err_free;
 		
-		continue_descent:;
+		/** Error if path names sub-cluster that does not exist. **/
+		if (!found)
+		    {
+		    mssError(1, "Cluster", "Sub-cluster \"%s\" does not exist.", path_part);
+		    goto err_free;
+		    }
 		}
-	    goto success;
+		
+	    /** Success. **/
+	    return driver_data;
 	    }
 	
 	/** Search searches. **/
@@ -3339,7 +3346,9 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 		mssError(1, "Cluster", "Unknown path part %s.", extra_data);
 		goto err_free;
 		}
-	    return (void*)driver_data; /* Success. */
+		
+	    /** Success. **/
+	    return driver_data;
 	    }
 	
 	/** We were unable to find the requested cluster or search. **/
@@ -3368,9 +3377,6 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	);
 	
 	return NULL;
-	
-    success:
-	return driver_data;
     }
 
 
