@@ -3345,8 +3345,9 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	/** We were unable to find the requested cluster or search. **/
 	mssError(1, "Cluster", "\"%s\" is not the name of a declared cluster or search.", target_name);
 	
-	/** Attempt to give a hint. **/
+	/** A separate scope is needed because target_names is a dynamically sized array. **/
 	    {
+	    /** Attempt to give a hint. **/
 	    const unsigned int n_targets = node_data->nClusterDatas + node_data->nSearchDatas;
 	    char* target_names[n_targets];
 	    for (unsigned int i = 0u; i < node_data->nClusterDatas; i++)
