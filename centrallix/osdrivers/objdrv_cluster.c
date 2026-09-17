@@ -2902,26 +2902,26 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	double (*similarity_function)(void *, void *) = checkPtr(cluster_i_similarityMeasureToFunction(search_data->SimilarityMeasure));
 	if (UNLIKELY(similarity_function == NULL)) goto err_free;
 	
+	/** Get a pointer to the data that will be used for the search. **/
+	void** data = NULL;
+	switch (search_data->SimilarityMeasure)
+	    {
+	    case SIMILARITY_COSINE: data = (void**)source_data->Vectors; break;
+	    case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
+	    default:
+		mssError(1, "Cluster",
+		    "Unknown similarity measure \"%s\".",
+		    cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
+		);
+		goto err_free;
+	    }
+	
 	/** Execute the search using the specified algorithm. **/
 	if (cluster_data->ClusterAlgorithm == ALGORITHM_SLIDING_WINDOW)
 	    {
 	    /*** Note: We don't need to examine the clusters because nothing
 	     ***       was computed during the clustering phase.
 	     ***/
-	    
-	    /** Get a pointer to the data that will be used for the search. **/
-	    void** data = NULL;
-	    switch (search_data->SimilarityMeasure)
-		{
-		case SIMILARITY_COSINE: data = (void**)source_data->Vectors; break;
-		case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
-		default:
-		    mssError(1, "Cluster",
-			"Unknown similarity measure \"%s\".",
-			cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
-		    );
-		    goto err_free;
-		}
 	    
 	    /** Execute sliding search. **/
 	    pairs = checkPtr(caSlidingSearch(
@@ -2954,20 +2954,6 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		/** Extract the struct for the cluster. **/
 		pCluster cluster = &cluster_data->Clusters[i];
 		ASSERTMAGIC(cluster, MGK_CL_CLUSTER);
-		
-		/** Get a pointer to the data of the type needed for the search. **/
-		void** data = NULL;
-		switch (search_data->SimilarityMeasure)
-		    {
-		    case SIMILARITY_COSINE: data = (void**)source_data->Vectors; break;
-		    case SIMILARITY_LEVENSHTEIN: data = (void**)source_data->Strings; break;
-		    default:
-			mssError(1, "Cluster",
-			    "Unknown similarity measure \"%s\".",
-			    cluster_i_similarityMeasureToString(search_data->SimilarityMeasure)
-			);
-			goto err_free;
-		    }
 		
 		/** Filter the data to only include values in the current cluster. **/
 		void** filtered_data = data;
