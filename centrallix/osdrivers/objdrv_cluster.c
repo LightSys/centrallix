@@ -4186,12 +4186,14 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    }
 	if (strcmp(attr_name, "internal_type") == 0)
 	    {
-	    check(xaInit(&(hints->EnumList), 5)); /* Failure ignored. */
-	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("system/cluster")))); /* Failure ignored. */
-	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/cluster")))); /* Failure ignored. */
-	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/entry")))); /* Failure ignored. */
-	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/search")))); /* Failure ignored. */
-	    checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("search/entry")))); /* Failure ignored. */
+	    if (check(xaInit(&(hints->EnumList), 5)) == 0)
+		{
+		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("system/cluster"))));  /* Failure ignored. */
+		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/cluster")))); /* Failure ignored. */
+		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/entry"))));   /* Failure ignored. */
+		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/search"))));  /* Failure ignored. */
+		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("search/entry"))));    /* Failure ignored. */
+		}
 	    hints->Length = 16;
 	    hints->VisualLength = 16;
 	    hints->FriendlyName = checkPtr(nmSysStrdup("Internal Type")); /* Failure ignored. */
@@ -4286,9 +4288,15 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "algorithm") == 0)
 		    {
 		    /** Enum values. **/
-		    check(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)); /* Failure ignored. */
-		    for (unsigned int i = 0u; i < N_CLUSTERING_ALGORITHMS; i++)
-			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(cluster_i_clusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])))); /* Failure ignored. */
+		    if (check(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)) == 0)
+			{
+			for (unsigned int i = 0u; i < N_CLUSTERING_ALGORITHMS; i++)
+			    {
+			    char* cluster_string = checkPtr(nmSysStrdup(cluster_i_clusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])));
+			    if (cluster_string == NULL) continue; /* Skip this. */
+			    checkPos(xaAddItem(&(hints->EnumList), cluster_string)); /* Failure ignored. */
+			    }
+			}
 		    
 		    /** Min and max values. **/
 		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -4312,9 +4320,15 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "similarity_measure") == 0)
 		    {
 		    /** Enum values. **/
-		    check(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)); /* Failure ignored. */
-		    for (unsigned int i = 0u; i < N_SIMILARITY_MEASURES; i++)
-			checkPos(xaAddItem(&(hints->EnumList), nmSysStrdup(cluster_i_similarityMeasureToString(ALL_SIMILARITY_MEASURES[i])))); /* Failure ignored. */
+		    if (check(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)) == 0)
+			{
+			for (unsigned int i = 0u; i < N_SIMILARITY_MEASURES; i++)
+			    {
+			    char* similarity_string = checkPtr(nmSysStrdup(cluster_i_similarityMeasureToString(ALL_SIMILARITY_MEASURES[i])));
+			    if (similarity_string == NULL) continue; /* Skip this. */
+			    checkPos(xaAddItem(&(hints->EnumList), similarity_string)); /* Failure ignored. */
+			    }
+			}
 			
 		    /** Display flags. **/
 		    hints->Style     |= OBJ_PH_STYLE_BUTTONS;
