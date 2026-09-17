@@ -3162,7 +3162,9 @@ cluster_i_setParamValue(void* inf_v, char* attr_name, int datatype, pObjData val
  *** @param parent The parent of the object to be opened, including useful
  *** 	information such as the pathname, session, etc.
  *** @param mask Driver permission mask (unused).
- *** @param sys_type ? (unused)
+ *** @param sys_type The content type registered by this driver that caused it
+ *** 	to be picked to open this content.  This driver only registers itself
+ *** 	for "system/cluster" currently.
  *** @param usr_type The object system file type being opened. Should always
  *** 	be "system/cluster" because this driver is only registered for that
  *** 	type of file.
