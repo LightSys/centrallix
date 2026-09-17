@@ -3206,7 +3206,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	if (UNLIKELY(parent == NULL))
 	    {
 	    mssError(0, "Cluster", "Warning: Call to clusterOpen(NULL, ...);\n");
-	    goto err_free;
+	    return NULL; /* The function failure assumes a valid parent, skip it. */
 	    }
 	ASSERTMAGIC(parent, MGK_OBJECT);
 	
