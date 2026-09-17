@@ -120,7 +120,7 @@ cluster_i_clusteringAlgorithmToString(ClusterAlgorithm clustering_algorithm)
 	    case ALGORITHM_KMEANS_PLUS_PLUS: return "k-means++";
 	    case ALGORITHM_KMEDOIDS: return "k-medoids";
 	    case ALGORITHM_DB_SCAN: return "db-scan";
-	    default: return "Unknown algorithm";
+	    default: return "unknown algorithm";
 	    }
     
     return NULL; /** Unreachable. **/
@@ -143,7 +143,7 @@ SimilarityMeasure ALL_SIMILARITY_MEASURES[] =
 
 /*** Converts a similarity measure to its string name.
  *** 
- *** @param similarity_measure The similarity measure to convert.
+ *** @param similarity_measure The similarity measure value to convert.
  *** @returns The corresponding name.
  ***/
 char*
@@ -154,7 +154,7 @@ cluster_i_similarityMeasureToString(SimilarityMeasure similarity_measure)
 	    case SIMILARITY_NULL: return "NULL similarity measure";
 	    case SIMILARITY_COSINE: return "cosine";
 	    case SIMILARITY_LEVENSHTEIN: return "levenshtein";
-	    default: return "Unknown similarity measure";
+	    default: return "unknown similarity measure";
 	    }
     
     return NULL; /** Unreachable. **/
@@ -164,7 +164,7 @@ cluster_i_similarityMeasureToString(SimilarityMeasure similarity_measure)
  *** corresponding comparison function.  This function can be called directly
  *** or passed to functions from `clusters.c`.
  *** 
- *** @param similarity_measure The similarity measure to be converted.
+ *** @param similarity_measure The similarity measure value to be converted.
  *** @returns A similarity computation function.  This function takes two void
  *** 	pointers, representing the data to be compared, and returns a double
  *** 	representing how similar the data is from 0.0 (no similarity) to 1.0
