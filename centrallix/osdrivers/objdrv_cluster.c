@@ -4377,11 +4377,6 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    
 	    case TARGET_CLUSTER_ENTRY:
 		{
-		/** Unused. **/
-		// pClusterData target = checkPtr(driver_data->TargetData);
-		// if (UNLIKELY(target == NULL)) goto err_free;
-		// ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
-		
 		if (strcmp(attr_name, "items") == 0)
 		    {
 		    /** Other hints. **/
@@ -4407,11 +4402,6 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    
 	    case TARGET_SEARCH_ENTRY:
 		{
-		/** Unused. **/
-		// pSearchData target = checkPtr(driver_data->TargetData);
-		// if (UNLIKELY(target == NULL)) goto err_free;
-		// ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
-		
 		if (strcmp(attr_name, "key1") == 0)
 		    {
 		    hints->Length = 255;
