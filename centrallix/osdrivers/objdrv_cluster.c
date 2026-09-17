@@ -3422,6 +3422,12 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pQueryData query_data = NULL;
     
+	/*** When an error occurs in this function, it's hard to detect if the
+	 *** error stack should be cleared so we clear it preemptively while
+	 *** we know no error is occurring.
+	 ***/
+	mssClearError();
+    
 	/** Get driver data. **/
 	pDriverData driver_data = checkPtr(inf_v);
 	if (driver_data == NULL) goto err_free;
@@ -3432,7 +3438,11 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    && driver_data->TargetType != TARGET_NODE)
 	    {
 	    /** Queries are not supported for this target type. **/
-	    goto err;
+	    mssError(1, "Cluster",
+		"The cluster driver object targeting a %s does not support queries.",
+		cluster_i_targetTypeToString(driver_data->TargetType)
+	    );
+	    goto err_free;
 	    }
 	
 	/** Update statistics. **/
