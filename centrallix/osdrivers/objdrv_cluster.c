@@ -3769,7 +3769,8 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	
 	/** Type check. **/
 	const int expected_datatype = clusterGetAttrType(inf_v, attr_name, oxt);
-	if (UNLIKELY(expected_datatype == DATA_T_UNAVAILABLE)) goto unknown_attribute;
+	if (UNLIKELY(expected_datatype == DATA_T_UNAVAILABLE))
+	    cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
 	if (UNLIKELY(datatype != expected_datatype))
 	    {
 	    mssError(1, "Cluster",
@@ -4114,7 +4115,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		goto err;
 	    }
 	
-    unknown_attribute:
+	/** No checks matched the requested attribute. **/
 	cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
 	
     err:;
