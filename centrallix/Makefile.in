@@ -70,11 +70,7 @@ XSUPPORT=stparse.o \
 	 htmlparse.o \
 	 hints.o \
 	 mergesort.o \
-	 mime/mime_parse.o \
-	 mime/mime_address.o \
-	 mime/mime_encode.o \
-	 mime/mime_util.o \
-	 mime/mime_attributes.o \
+	 @MIME_OBJS@ \
 	 ptod.o	\
 	 param.o \
 	 iface.o \
