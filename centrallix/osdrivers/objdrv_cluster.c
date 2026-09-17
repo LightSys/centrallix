@@ -4250,8 +4250,8 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "num_clusters") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = expCompileExpression("2", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MaxValue = expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MinValue = checkPtr(expCompileExpression("2", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = checkPtr(expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
 		    hints->Length = 8;
@@ -4262,9 +4262,9 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "min_improvement") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->DefaultExpr = expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MIN_IMPROVEMENT), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MinValue = expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MaxValue = expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->DefaultExpr = checkPtr(expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MIN_IMPROVEMENT), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
@@ -4275,9 +4275,9 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "max_iterations") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->DefaultExpr = expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MAX_ITERATIONS), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MaxValue = expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->DefaultExpr = checkPtr(expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MAX_ITERATIONS), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = checkPtr(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = checkPtr(expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
 		    hints->Length = 8;
@@ -4299,10 +4299,10 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 			}
 		    
 		    /** Min and max values. **/
-		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MinValue = checkPtr(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    char buf[8];
 		    snprintf(buf, sizeof(buf), "%u", N_CLUSTERING_ALGORITHMS - 1u);
-		    hints->MaxValue = expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MaxValue = checkPtr(expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Display flags. **/
 		    hints->Style     |= OBJ_PH_STYLE_BUTTONS;
@@ -4335,10 +4335,10 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    hints->StyleMask |= OBJ_PH_STYLE_BUTTONS;
 		    
 		    /** Min and max values. **/
-		    hints->MinValue = expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MinValue = checkPtr(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    char buf[8];
 		    snprintf(buf, sizeof(buf), "%u", N_SIMILARITY_MEASURES - 1u);
-		    hints->MaxValue = expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MaxValue = checkPtr(expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
 		    hints->Length = 32;
@@ -4360,8 +4360,8 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "threshold") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MaxValue = expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
@@ -4389,8 +4389,8 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "sim") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MaxValue = expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
@@ -4425,8 +4425,8 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "sim") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
-		    hints->MaxValue = expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
