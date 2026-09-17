@@ -1,7 +1,9 @@
+*.idea/*
 .depend
 Makefile
 config.log
 config.status
+centrallix-temp/
 centrallix-lib/include/cxlibconfig-all.h
 centrallix-lib/include/cxlibconfig-internal.h
 centrallix-lib/include/cxlibconfig.h

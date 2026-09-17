@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -59,11 +59,11 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
     int n_xset;
     double xset[PRT_HTMLFM_MAX_TABSTOP];
     double widths[PRT_HTMLFM_MAX_TABSTOP];
-    pPrtObjStream scan, linetail, next_xset_obj;
+    pPrtObjStream scan, linetail, next_xset_obj, justif_subscan;
     int i,j,cur_xset,next_xset;
-    double w;
+    double w, cur_x;
     int last_needed_cols, cur_needs_cols, need_new_row, in_td, in_tr;
-    PrtTextStyle oldstyle;
+    PrtHTMLfmSavedStyle oldstyle;
     char* justifytypes[] = { "left", "right", "center", "justify" };
     pPrtTextLMData lm_inf = (pPrtTextLMData)(area->LMData);
 
@@ -91,33 +91,54 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		}
 	    }
 
-	/** Output the area prologue **/
+	/** Output the area prologue. **/
 	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
-	prt_htmlfm_Output(context, "<table cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n", -1);
+	int saved_bg = context->BGColor;
+	if (lm_inf->AreaBorder.nLines > 0)
+	    {
+	    /** Draw the border. **/
+	    prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
+	    context->BGColor = area->BGColor;
+	    prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\">\n");
+	    }
+	else
+	    {
+	    /** No border: Draw the padding and background directly. **/
+	    const int pad = (area->MarginTop + area->MarginBottom + area->MarginLeft + area->MarginRight) * PRT_HTMLFM_XPIXEL/4;
+	    prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" width=\"100%%\" cellpadding=\"%d\"", pad);
+	    prt_htmlfm_OutputBGColor(context, area->BGColor);
+	    prt_htmlfm_OutputStrLiteral(context, ">\n");
+	    }
 	in_tr = 0;
 	in_td = 0;
 
-	/** Issue column width info **/
-	for(i=0;i<n_xset;i++)
+	/*** Issue column width info.  A single column spans the whole area by
+	 *** default, so we only need explicit <col> elements when there is more
+	 *** than one tabstop.
+	 ***/
+	if (n_xset == 1)
 	    {
-	    if (i == n_xset-1)
-		widths[i] = area->Width - area->MarginLeft - area->MarginRight - xset[i];
-	    else 
-		widths[i] = xset[i+1] - xset[i];
+	    /*** Note a single column spans the whole area by default,
+	     *** so no HTML is needed.
+	     ***/
+	    widths[0] = area->Width - area->MarginLeft - area->MarginRight;
+	    }
+	else
+	    {
+	    for (i=0;i<n_xset;i++)
+		{
+		if (i == n_xset-1)
+		    widths[i] = area->Width - area->MarginLeft - area->MarginRight - xset[i];
+		else 
+		    widths[i] = xset[i+1] - xset[i];
 
-	    /** We could use relative 'n*' formatting; older browsers will interpret as pixel
-	     ** width, newer ones as relative width, but doesn't seem to work right
-	     ** with newer browsers.
-	     **/
-	    prt_htmlfm_OutputPrintf(context,"<col width=\"%d\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
+		/** We could use relative 'n*' formatting; older browsers will interpret as pixel
+		 ** width, newer ones as relative width, but doesn't seem to work right
+		 ** with newer browsers.
+		 **/
+		prt_htmlfm_OutputPrintf(context,"<col width=\"%d*\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
+		}
 	    }
-	prt_htmlfm_Output(context,"<tr>",4);
-	for(i=0;i<n_xset;i++)
-	    {
-	    prt_htmlfm_OutputPrintf(context,"<td width=\"%d\"></td>",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
-	    }
-	prt_htmlfm_Output(context,"</tr>\n",6);
 
 	/** Walk the area's content **/
 	scan = area->ContentHead;
@@ -132,7 +153,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    while(1)
 		{
 		if (linetail->Flags & PRT_OBJ_F_XSET) cur_needs_cols = 1;
-		if ((linetail->Flags & (PRT_OBJ_F_SOFTNEWLINE | PRT_OBJ_F_NEWLINE)) || !linetail->Next) break;
+		if ((linetail->Flags & PRT_OBJ_F_NEWLINE) || !linetail->Next) break;
+
 		linetail = linetail->Next;
 		}
 	    need_new_row = (cur_needs_cols || last_needed_cols || scan->Justification != PRT_JUST_T_LEFT);
@@ -141,18 +163,18 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		if (in_td)
 		    {
 		    prt_htmlfm_EndStyle(context);
-		    prt_htmlfm_Output(context,"</td>", 5);
+		    prt_htmlfm_OutputStrLiteral(context, "</td>");
 		    in_td = 0;
 		    }
 		if (in_tr)
 		    {
-		    prt_htmlfm_Output(context,"</tr>\n", 6);
+		    prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
 		    in_tr = 0;
 		    }
 		}
 	    if (!in_tr)
 		{
-		prt_htmlfm_Output(context,"<tr>", 4);
+		prt_htmlfm_OutputStrLiteral(context, "<tr>");
 		in_tr = 1;
 		}
 
@@ -164,8 +186,13 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    {
 		    if (in_tr && !in_td)
 			{
-			prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\" width=\"%d\">&nbsp;</td>", 
-				cur_xset, (int)(widths[cur_xset]*PRT_HTMLFM_XPIXEL+0.001));
+			prt_htmlfm_OutputStrLiteral(context, "<td");
+			if (cur_xset > 1)
+			    prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cur_xset);
+			prt_htmlfm_OutputPrintf(context,
+			    " width=\"%d\">&nbsp;</td>",
+			    (int)(widths[cur_xset]*PRT_HTMLFM_XPIXEL+0.001)
+			);
 			}
 		    }
 		}
@@ -173,11 +200,18 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    /** Ok, scan through the line now **/
 	    while(scan != linetail->Next)
 		{
-		/** Find next xset location **/
+
+		/** Find next xset location that isn't at the current x **/
 		if (cur_needs_cols)
 		    {
+		    cur_x = scan->X; 
 		    next_xset_obj = scan->Next;
-		    while(next_xset_obj != linetail->Next && !(next_xset_obj->Flags & PRT_OBJ_F_XSET)) next_xset_obj=next_xset_obj->Next;
+		    while(next_xset_obj != linetail->Next && 
+			(!(next_xset_obj->Flags & PRT_OBJ_F_XSET) ||
+			next_xset_obj->X - cur_x < 0.001)) 
+		    {
+			next_xset_obj=next_xset_obj->Next;
+		    }
 		    if (next_xset_obj == linetail->Next)
 			{
 			next_xset_obj = NULL;
@@ -195,19 +229,40 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    }
 		if (!in_td)
 		    {
+		    /* find first non-empty or non-string justification */
+		    justif_subscan = scan;
+		    while(justif_subscan != linetail && 
+			justif_subscan->ObjType->TypeID == PRT_OBJ_T_STRING && ! (strlen((char*) scan->Content)))
+		    {
+			justif_subscan = justif_subscan->Next;
+		    }
+
+
 		    for(w=0.0,i=cur_xset;i<next_xset;i++) w += widths[i];
-		    prt_htmlfm_OutputPrintf(context, "<td align=\"%s\" valign=\"top\" colspan=\"%d\" width=\"%d\">",
-			    justifytypes[scan->Justification], next_xset - cur_xset,
-			    (int)(w*PRT_HTMLFM_XPIXEL+0.001));
+		    /*** Write HTML, skipping defaults (align="left", colspan="1")
+		     *** to reduce HTML size.  These cells are written very often.
+		     **/
+		    prt_htmlfm_OutputStrLiteral(context, "<td");
+		    if (justif_subscan->Justification != PRT_JUST_T_LEFT)
+			prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justif_subscan->Justification]);
+		    const int n_cols = next_xset - cur_xset;
+		    if (n_cols > 1)
+			prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_cols);
+		    prt_htmlfm_OutputPrintf(context,
+			" width=\"%d\">",
+			(int)(w*PRT_HTMLFM_XPIXEL+0.001)
+		    );
 		    prt_htmlfm_InitStyle(context, &(scan->TextStyle));
 		    in_td = 1;
 		    }
 
 		/** print the child objects **/
 		w = 0.0;
-		while((!next_xset_obj || scan != next_xset_obj->Next) && scan != linetail->Next)
+		/* set keepspaces at the start of this line */
+		prt_htmlfm_SetKeepSpaces(context);
+		while((!next_xset_obj || scan != next_xset_obj) && scan != linetail->Next)
 		    {
-		    prt_htmlfm_Generate_r(context, scan);
+		    if (prt_htmlfm_Generate_r(context, scan) < 0) return -1;
 		    w += scan->Width;
 		    scan = scan->Next;
 		    }
@@ -215,19 +270,19 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		/** Nothing printed? **/
 		if (w == 0.0)
 		    {
-		    prt_htmlfm_Output(context, "&nbsp;", 6);
+		    prt_htmlfm_OutputStrLiteral(context, "&nbsp;");
 		    }
 
 		/** Emit the closing td? **/
 		if (cur_needs_cols && in_td)
 		    {
 		    prt_htmlfm_EndStyle(context);
-		    prt_htmlfm_Output(context, "</td>", 5);
+		    prt_htmlfm_OutputStrLiteral(context, "</td>");
 		    in_td = 0;
 		    }
 		else if (in_td && scan)
 		    {
-		    prt_htmlfm_Output(context,"<br>\n",5);
+		    prt_htmlfm_OutputStrLiteral(context, "<br>\n");
 		    }
 		cur_xset = next_xset;
 		}
@@ -238,21 +293,36 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	if (in_td)
 	    {
 	    prt_htmlfm_EndStyle(context);
-	    prt_htmlfm_Output(context, "</td>", 5);
+	    prt_htmlfm_OutputStrLiteral(context, "</td>");
 	    in_td = 0;
 	    }
 	if (in_tr)
 	    {
-	    prt_htmlfm_Output(context,"</tr>\n", 6);
+	    prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
 	    in_tr = 0;
 	    }
 
+	/** Detect the bottom of the rendered content. **/
+	double content_bottom = 0.0;
+	for (scan = area->ContentHead; scan != NULL; scan = scan->Next)
+	    {
+	    if (scan->Y + scan->Height > content_bottom)
+		content_bottom = scan->Y + scan->Height;
+	    }
+
+	/** Pad the area out to the content bottom with a trailing spacer row. **/
+	if (area->ContentTail && (content_bottom + 0.01 < area->Height))
+	    {
+	    prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td></tr>",
+		(int) ((area->Height - content_bottom + 0.001) * PRT_HTMLFM_YPIXEL));
+	    }
+
 	/** Output the area epilogue **/
-	prt_htmlfm_Output(context,"</table>\n", -1);
-	prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area);
+	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
+	if (lm_inf->AreaBorder.nLines > 0)
+	    prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area);
+	context->BGColor = saved_bg; /* Restore background color. */
 	prt_htmlfm_ResetStyle(context, &oldstyle);
 
     return 0;
     }
-
-

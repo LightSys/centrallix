@@ -19,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -300,6 +300,9 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     double slack_space, total_width, width_so_far;
     int n_items, items_so_far, n_fj_items;;
 
+	/** Nothing to justify? **/
+	if (!starting_point) return -1;
+
 	/** Locate the beginning and end of the line **/
 	for(scan=starting_point; scan; scan=scan->Prev)
 	    {
@@ -574,7 +577,7 @@ prt_textlm_WordWrap(pPrtObjStream area, pPrtObjStream* curobj)
     pPrtObjStream oldcurobj;
     int rval,n;
     int sep,worstcasesep=-1;
-    double sepw,worstcasesepw;
+    double sepw,worstcasesepw=0.0;
 
 	/** First, temporarily add the curobj to the area's content **/
 	oldcurobj = *curobj;
@@ -976,12 +979,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     double x,y;
     int handle_id;
 
-	/** Need to adjust the height/width if unspecified? **/
-	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = prtInnerWidth(this);
-	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = prtInnerHeight(this);
-
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
 
@@ -1064,6 +1061,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    objptr->Y = y;
 		    }
 		}
+
+	    /** Set width/height to 0 if unspecified and let it grow **/
+	    if (objptr->Width < 0)
+		objptr->Width = 0;
+	    if (objptr->Height < 0)
+		objptr->Height = 0;
 
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
@@ -1311,5 +1314,3 @@ prt_textlm_Initialize()
 
     return 0;
     }
-
-

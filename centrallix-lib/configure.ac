@@ -18,6 +18,7 @@ dnl Checks for libraries.
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
 AC_CHECK_LIB(crypt, main)
+AC_CHECK_LIB(m, main)
 
 dnl Checks for header files.
 AC_HEADER_STDC
@@ -67,6 +68,9 @@ CHECK_COVERAGE
 
 dnl Check for Valgrind integration
 CHECK_VALGRIND
+
+dnl Check for pthreads use for MTASK
+CHECK_PTHREADS
 
 dnl Check for Linux SIOCOUTQ
 CHECK_SIOCOUTQ

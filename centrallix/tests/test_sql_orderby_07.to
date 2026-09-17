@@ -1,0 +1,8 @@
+##NAME ORDER BY alongside GROUP BY, same number of unqualified keys
+
+# Equal-length clauses used to compare as identical, so the ORDER BY was taken
+# as a restatement of the GROUP BY and no sort ran.  The second query is the
+# same ordering with a key count that never hit the comparison.
+
+csv SELECT :ColorGroup, :Color FROM /tests/TestLevel1.csv/rows GROUP BY :ColorGroup, :Color ORDER BY :Color, :ColorGroup
+csv SELECT :ColorGroup, :Color FROM /tests/TestLevel1.csv/rows GROUP BY :ColorGroup, :Color ORDER BY :Color

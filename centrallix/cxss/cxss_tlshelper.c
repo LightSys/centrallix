@@ -61,9 +61,9 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
     enum { Idle=0, Data=1, Done=2 } locstate, netstate;
     enum { Read=0, Write=1, Try=2 } locsslstate, netsslstate;
     char SSLBuf[256];
-    int SSLBytes;
+    int SSLBytes = 0;
     char LocBuf[256];
-    int LocBytes;
+    int LocBytes = 0;
     int cnt;
 
 	//cxDebugLog("cxss_internal_DoTLS()");
