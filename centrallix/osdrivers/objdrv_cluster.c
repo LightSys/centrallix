@@ -913,12 +913,12 @@ cluster_i_parseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 	    }
 	
 	/** Parse known clustering algorithms. **/
-	if (strcasecmp(algorithm, "none") == 0)           return ALGORITHM_NONE;
+	if (strcasecmp(algorithm, "none")           == 0) return ALGORITHM_NONE;
 	if (strcasecmp(algorithm, "sliding-window") == 0) return ALGORITHM_SLIDING_WINDOW;
-	if (strcasecmp(algorithm, "k-means") == 0)        return ALGORITHM_KMEANS;
-	if (strcasecmp(algorithm, "k-means++") == 0)      return ALGORITHM_KMEANS_PLUS_PLUS;
-	if (strcasecmp(algorithm, "k-medoids") == 0)      return ALGORITHM_KMEDOIDS;
-	if (strcasecmp(algorithm, "db-scan") == 0)        return ALGORITHM_DB_SCAN;
+	if (strcasecmp(algorithm, "k-means")        == 0) return ALGORITHM_KMEANS;
+	if (strcasecmp(algorithm, "k-means++")      == 0) return ALGORITHM_KMEANS_PLUS_PLUS;
+	if (strcasecmp(algorithm, "k-medoids")      == 0) return ALGORITHM_KMEDOIDS;
+	if (strcasecmp(algorithm, "db-scan")        == 0) return ALGORITHM_DB_SCAN;
 	
 	/** Unknown value for clustering algorithm. **/
 	mssError(1, "Cluster", "Unknown \"clustering algorithm\": %s", algorithm);
