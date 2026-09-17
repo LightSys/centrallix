@@ -816,12 +816,12 @@ caKmeans(
     double* vector_sims,
     bool auto_seed)
     {
+    bool successful = false;
     pCentroid* centroids = NULL;
     pCentroid* new_centroids = NULL;
-	
-	/** Setup variables. **/
-	bool successful = false;
-	unsigned int cluster_counts[num_clusters];
+    unsigned int cluster_counts[num_clusters];
+    
+	/** Initialize labels. **/
 	memset(labels, 0u, num_vectors * sizeof(unsigned int));
 	
 	/** Allocate space to store centroids and new_centroids. **/
