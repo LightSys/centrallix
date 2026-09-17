@@ -2731,7 +2731,6 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 			cluster_data->nClusters,
 			cluster_data->MaxIterations,
 			cluster_data->MinImprovement,
-			cluster_data->Sims,
 			(auto_seed) ? "true" : "false",
 			kmeans_result
 		    );
