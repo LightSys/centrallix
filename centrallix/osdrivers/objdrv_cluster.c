@@ -3471,7 +3471,6 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	if (query_data != NULL) nmFree(query_data, sizeof(ClusterQuery));
 	mssError(0, "Cluster", "Failed to open query.");
 	
-    err:
 	return NULL;
     }
 
