@@ -4250,7 +4250,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "num_clusters") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = checkPtr(expCompileExpression("2", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = checkPtr(expCompileExpression("1", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    hints->MaxValue = checkPtr(expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
 		    
 		    /** Other hints. **/
