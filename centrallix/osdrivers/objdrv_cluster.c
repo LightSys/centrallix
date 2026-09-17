@@ -3062,7 +3062,7 @@ static int
 cluster_i_getParamType(void* inf_v, const char* attr_name)
     {
 	pNodeData node_data = checkPtr(inf_v);
-	if (UNLIKELY(node_data == NULL)) return DATA_T_UNAVAILABLE;
+	if (UNLIKELY(node_data == NULL)) return -1;
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
 	/** Find the parameter. **/
@@ -3073,11 +3073,11 @@ cluster_i_getParamType(void* inf_v, const char* attr_name)
 	    if (strcmp(param->Name, attr_name) != 0) continue;
 	    
 	    /** Parameter found. **/
-	    return (param->Value == NULL) ? DATA_T_UNAVAILABLE : param->Value->DataType;
+	    return (param->Value == NULL) ? -1 : param->Value->DataType;
 	    }
     
     /** Parameter not found. **/
-    return DATA_T_UNAVAILABLE;
+    return -1;
     }
 
 
@@ -3760,7 +3760,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	
 	/** Type check. **/
 	const int expected_datatype = clusterGetAttrType(inf_v, attr_name, oxt);
-	if (UNLIKELY(expected_datatype == DATA_T_UNAVAILABLE))
+	if (UNLIKELY(expected_datatype == DATA_T_UNAVAILABLE || expected_datatype < 0))
 	    cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
 	if (UNLIKELY(datatype != expected_datatype))
 	    {
