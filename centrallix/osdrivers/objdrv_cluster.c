@@ -3641,9 +3641,6 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    return DATA_T_UNAVAILABLE;
 	    }
 	
-	/** Performance shortcut for frequently requested attributes: key1, key2, and sim. **/
-	if (attr_name[0] == 'k' || attr_name[0] == 's') goto handle_targets;
-	
 	/** Types for general attributes. **/
 	if (LIKELY(strcmp(attr_name, "name") == 0)
 	    || strcmp(attr_name, "annotation") == 0
@@ -3666,7 +3663,6 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    }
 	
 	/** Types for specific data targets. **/
-    handle_targets:
 	switch (target_type)
 	    {
 	    case TARGET_NODE:
@@ -3761,11 +3757,6 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    fprintf(stderr, "Warning: Call to clusterGetAttrValue() with NULL attribute name.\n");
 	    goto err;
 	    }
-	
-	/** Performance shortcut for frequently requested attributes: key1, key2, and sim. **/
-	if ((attr_name[0] == 'k' && datatype == DATA_T_STRING) /* key1, key2 : string */
-	 || (attr_name[0] == 's' && datatype == DATA_T_DOUBLE) /* sim : double */
-	) goto handle_targets;
 	
 	/** Type check. **/
 	const int expected_datatype = clusterGetAttrType(inf_v, attr_name, oxt);
@@ -3954,7 +3945,6 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    }
 	
 	/** Handle attributes for specific data targets. **/
-    handle_targets:
 	switch (target_type)
 	    {
 	    case TARGET_NODE:
