@@ -2713,7 +2713,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		if (!auto_seed) srand(cluster_data->Seed);
 		
 		/** Run caKmeans(). **/
-		const bool successful = (check(caKmeans(
+		const int kmeans_result = caKmeans(
 		    source_data->Vectors,
 		    source_data->nDatas,
 		    cluster_data->nClusters,
@@ -2722,8 +2722,21 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    labels,
 		    cluster_data->Sims,
 		    auto_seed
-		)) == 0);
-		if (UNLIKELY(!successful)) goto err_cleanup;
+		);
+		if (UNLIKELY(kmeans_result != 0))
+		    {
+		    mssError(1, "Cluster",
+			"kmeans(pVector[], %u, %u, %u, %lf, labels[], similarities[], %s) failed (error code: %d).",
+			source_data->nDatas,
+			cluster_data->nClusters,
+			cluster_data->MaxIterations,
+			cluster_data->MinImprovement,
+			cluster_data->Sims,
+			(auto_seed) ? "true" : "false",
+			kmeans_result
+		    );
+		    goto err_cleanup;
+		    }
 		
 		/** Convert the labels into clusters. **/
 		
