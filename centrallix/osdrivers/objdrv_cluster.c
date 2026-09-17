@@ -230,6 +230,27 @@ TargetType ALL_TARGET_TYPES[] =
     };
 #define N_TARGET_TYPES ((unsigned int)(sizeof(ALL_TARGET_TYPES) / sizeof(ALL_TARGET_TYPES[0])))
 
+/*** Converts a target type to its string name.
+ *** 
+ *** @param target_type The target type value to convert.
+ *** @returns The corresponding name.
+ ***/
+char*
+cluster_i_targetTypeToString(TargetType target_type)
+    {
+	switch (target_type)
+	    {
+	    case TARGET_NODE: return "node";
+	    case TARGET_CLUSTER: return "cluster";
+	    case TARGET_SEARCH: return "search";
+	    case TARGET_CLUSTER_ENTRY: return "cluster entry";
+	    case TARGET_SEARCH_ENTRY: return "search entry";
+	    default: return "unknown target type";
+	    }
+    
+    return NULL; /** Unreachable. **/
+    }
+
 
 /*** Attribute name lists by TargetType.
  *** 
