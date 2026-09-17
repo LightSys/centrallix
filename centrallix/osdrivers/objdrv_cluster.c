@@ -4216,7 +4216,11 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		hints->Format = checkPtr(nmSysStrdup("datetime")); /* Failure ignored. */
 		goto end;
 		}
-	    else goto unknown_attribute;
+	    else
+		{
+		cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
+		goto err_free;
+		}
 	    }
 	
 	/** Search by target type. **/
@@ -4442,7 +4446,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		goto err_free;
 	    }
 	
-    unknown_attribute:
+	/** No checks matched the requested attribute. **/
 	cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
 	
     err_free:
