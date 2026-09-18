@@ -1393,11 +1393,11 @@ prt_htmlfm_Initialize()
 	    continue;
 
     err_type:
-		mssError(0, "RPT",
-		    "Failed to add subtype #%d/%d: \"%s\"",
-		    i + 1, PRT_HTMLFM_N_SUBTYPES, prt_htmlfm_subtypes[i].MimeType
-		);
-		goto err;
+	    mssError(0, "RPT",
+		"Failed to add subtype #%d/%lu: \"%s\"",
+		i + 1, PRT_HTMLFM_N_SUBTYPES, prt_htmlfm_subtypes[i].MimeType
+	    );
+	    goto err;
 	    }
 
 	return 0;
