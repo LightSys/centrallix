@@ -657,7 +657,7 @@ struct
 // LINK #parsing
 static void cluster_i_giveHint(const char* hint);
 static bool cluster_i_tryHint(char* value, char** valid_values, const unsigned int n_valid_values);
-static void cluster_i_unknownAttribute(char* attr_name, int target_type);
+static void cluster_i_unknownAttribute(char* attr_name, TargetType target_type);
 static ClusterAlgorithm cluster_i_parseClusteringAlgorithm(pStructInf cluster_inf, pParamObjects param_list);
 static SimilarityMeasure cluster_i_parseSimilarityMeasure(pStructInf cluster_inf, pParamObjects param_list);
 static pSourceData cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path);
@@ -774,7 +774,7 @@ cluster_i_tryHint(char* value, char** valid_values, const unsigned int n_valid_v
  *** 	attributes in this context.
  ***/
 static void
-cluster_i_unknownAttribute(char* attr_name, const int target_type)
+cluster_i_unknownAttribute(char* attr_name, const TargetType target_type)
     {
 	/** Display the error message. **/
 	mssError(1, "Cluster", "Unknown attribute '%s'.", attr_name);
