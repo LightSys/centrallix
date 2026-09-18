@@ -16,11 +16,12 @@
 /************************************************************************/
 
 #include <math.h>
+#include <stdio.h>
 #include <time.h>
 
-#include "check.h"
 #include "expect.h"
 #include "newmalloc.h"
+#include "warn.h"
 
 #include "timer.h"
 
@@ -33,8 +34,11 @@ timer_i_getTime(void)
     {
     struct timespec ts;
     
-	if (check(clock_gettime(CLOCK_MONOTONIC, &ts)) != 0)
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+	    {
+	    fprintf(stderr, "Failed to get clock time.\n");
 	    return NAN;
+	    }
     
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9;
     }
@@ -63,7 +67,7 @@ timerInit(pTimer timer)
 pTimer
 timerNew(void)
     {
-    return timerInit(checkPtr(nmMalloc(sizeof(Timer))));
+    return timerInit(nmMalloc(sizeof(Timer)));
     }
 
 /*** Start timing.  If the timer was already timing, does nothing.
