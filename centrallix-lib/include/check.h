@@ -14,8 +14,8 @@
 /* Module:      check.c, check.h                                        */
 /* Author:      Israel Fuller                                           */
 /* Date:        October 13, 2025                                        */
-/* Description: A utility to help with error checking on function       */
-/*              return values, especially for library functions.        */
+/* Description: A utility wrapper to print warnings when a function	*/
+/* 		call misbehaves.  Not for printing errors.		*/
 /************************************************************************/
 
 #include <errno.h>
@@ -31,15 +31,15 @@
     ((last_directory != NULL) ? last_directory + 1 : __FILE__); \
     })
 
-/** Internal error printer (forward declaration). **/
+/** Internal warning printer (forward declaration). **/
 void printWarningInternal(const int error_code, const char* c_str, const char* file_name, const int line_number);
 #define printWarning(error_code, c_str) printWarningInternal(error_code, (c_str), __FILE__, __LINE__)
 
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is not zero.
+/*** Prints a warning if the result of the passed function call is an error
+ *** code, aka. any not zero int.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
+ *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define check(result) \
@@ -50,11 +50,10 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
 	_r; \
     })
 
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is negative.
+/*** Prints a warning if the result of the passed function call is negative.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
+ *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define checkPos(result) \
@@ -65,11 +64,10 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
 	_r; \
     })
 
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is a NAN double.
+/*** Prints a warning if the result of the passed function call is NAN.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
+ *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define checkDouble(result) \
@@ -80,11 +78,10 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
 	_r; \
     })
 
-/*** Ensures that developer diagnostics are printed if the result of the
- *** passed function call is a NULL pointer.
+/*** Prints a warning if the result of the passed function call is NULL.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the error message if an error occurs.
+ *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define checkPtr(result) \
