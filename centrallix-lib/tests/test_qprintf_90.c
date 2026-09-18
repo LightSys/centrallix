@@ -72,11 +72,11 @@ static bool test_bad_char(const char* bad_base64)
 	const int rval = qpfPrintf(s, buf, 10, "%STR&DB64", bad_base64);
 	
 	/** Verify results. **/
-	success &= EXPECT_TRUE(s->Errors & QPF_ERR_T_BADCHAR);
+	success &= ASSERT_TRUE(s->Errors & QPF_ERR_T_BADCHAR);
 	s->Errors &= ~QPF_ERR_T_BADCHAR; /* Clear the expected error. */
-	success &= EXPECT_NO_ERRORS(s);
-	success &= EXPECT_EQL(rval, -22, "%d");
-	success &= EXPECT_STR_EQL_N(buf, "\0XXXXXXXXXXX", sizeof(buf));
+	success &= ASSERT_NO_ERRORS(s);
+	success &= ASSERT_EQL(rval, -22, "%d");
+	success &= ASSERT_STR_EQL_N(buf, "\0XXXXXXXXXXX", sizeof(buf));
 	
 	/** Clean up. **/
 	qpfCloseSession(s);

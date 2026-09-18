@@ -32,11 +32,11 @@ static bool test_bad_format(const char* bad_format)
 	const int rval = qpfPrintf(s, buf, 6, bad_format);
 	
 	/** Verify results. **/
-	success &= EXPECT_TRUE(s->Errors & QPF_ERR_T_BADFORMAT);
+	success &= ASSERT_TRUE(s->Errors & QPF_ERR_T_BADFORMAT);
 	s->Errors &= ~QPF_ERR_T_BADFORMAT; /* Clear the expected error. */
-	success &= EXPECT_NO_ERRORS(s);
-	success &= EXPECT_EQL(rval, -22, "%d");
-	success &= EXPECT_STR_EQL_N(buf, "\0XXXXXXX", sizeof(buf));
+	success &= ASSERT_NO_ERRORS(s);
+	success &= ASSERT_EQL(rval, -22, "%d");
+	success &= ASSERT_STR_EQL_N(buf, "\0XXXXXXX", sizeof(buf));
 	
 	/** Clean up. **/
 	qpfCloseSession(s);

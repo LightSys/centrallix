@@ -31,11 +31,11 @@ static bool testBadFileName(const char* bad_file_name)
 	const int rval = qpfPrintf(s, buf, 6, "%STR&FILE", bad_file_name);
 	
 	/** Verify results. **/
-	success &= EXPECT_TRUE(s->Errors & QPF_ERR_T_BADFILE);
+	success &= ASSERT_TRUE(s->Errors & QPF_ERR_T_BADFILE);
 	s->Errors &= ~QPF_ERR_T_BADFILE; /* Clear the expected error. */
-	success &= EXPECT_NO_ERRORS(s);
-	success &= EXPECT_EQL(rval, -22, "%d");
-	success &= EXPECT_STR_EQL_N(buf, "\0XXXXXXX", sizeof(buf));
+	success &= ASSERT_NO_ERRORS(s);
+	success &= ASSERT_EQL(rval, -22, "%d");
+	success &= ASSERT_STR_EQL_N(buf, "\0XXXXXXX", sizeof(buf));
 	
 	/** Clean up. **/
 	qpfCloseSession(s);

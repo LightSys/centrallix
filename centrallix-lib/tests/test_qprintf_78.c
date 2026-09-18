@@ -23,9 +23,9 @@ static bool doTest(void)
 	rval = qpfPrintf(s, buf, ALL_SPECS_RESULT_LEN + 2, "%["ALL_SPECS"%]", true, ALL_SPECS_VALUES);
 	
 	/** Verify results. **/
-	success &= EXPECT_NO_ERRORS(s);
-	success &= EXPECT_EQL(rval, (int)ALL_SPECS_RESULT_LEN - 1, "%d");
-	success &= EXPECT_STR_EQL_N(buf, ALL_SPECS_RESULT"\0XXX", buf_len);
+	success &= ASSERT_NO_ERRORS(s);
+	success &= ASSERT_EQL(rval, (int)ALL_SPECS_RESULT_LEN - 1, "%d");
+	success &= ASSERT_STR_EQL_N(buf, ALL_SPECS_RESULT"\0XXX", buf_len);
 	
 	/** Reset structs for 2nd test case. **/
 	memset(buf, 'X', sizeof(buf));
@@ -37,11 +37,11 @@ static bool doTest(void)
 	rval = qpfPrintf(s, buf, ALL_SPECS_RESULT_LEN + 2, "%["ALL_SPECS"%]", false, ALL_SPECS_VALUES);
 	
 	/** Verify results. **/
-	success &= EXPECT_NO_ERRORS(s);
-	success &= EXPECT_EQL(rval, 0, "%d");
-	success &= EXPECT_EQL(buf[0], '\0', "%c");
+	success &= ASSERT_NO_ERRORS(s);
+	success &= ASSERT_EQL(rval, 0, "%d");
+	success &= ASSERT_EQL(buf[0], '\0', "%c");
 	buf[0] = 'Y';
-	success &= EXPECT_STR_EQL(buf + 1, original_buf + 1);
+	success &= ASSERT_STR_EQL(buf + 1, original_buf + 1);
 	
 	/** Clean up. **/
 	qpfCloseSession(s);

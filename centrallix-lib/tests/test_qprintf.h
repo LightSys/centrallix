@@ -27,10 +27,10 @@
 #define ALL_SPECS_RESULT "\t% & test -4 4 4.200000 E 4294967296\t"
 #define ALL_SPECS_RESULT_LEN (sizeof(ALL_SPECS_RESULT))
 
-#define EXPECT_NO_ERRORS(s) \
+#define ASSERT_NO_ERRORS(s) \
     ({ \
     pQPSession _s = (s); \
-    const bool success = EXPECT_EQL(qpfErrors(_s), QPF_ERR_T_NO_ERRORS, "%d"); \
+    const bool success = ASSERT_EQL(qpfErrors(_s), QPF_ERR_T_NO_ERRORS, "%d"); \
     if (!success) qpfLogErrors(_s); \
     success; \
     })

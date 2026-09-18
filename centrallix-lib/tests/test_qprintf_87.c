@@ -20,11 +20,11 @@ static bool doTest(void)
 	const int rval = qpfPrintf(s, buf, 6, "%2STR", NULL);
 	
 	/** Verify results. **/
-	success &= EXPECT_TRUE(s->Errors & QPF_ERR_T_NULL);
+	success &= ASSERT_TRUE(s->Errors & QPF_ERR_T_NULL);
 	s->Errors &= ~QPF_ERR_T_NULL; /* Clear the expected error. */
-	success &= EXPECT_NO_ERRORS(s);
-	success &= EXPECT_EQL(rval, -22, "%d");
-	success &= EXPECT_STR_EQL_N(buf, "\0XXXXXXX", sizeof(buf));
+	success &= ASSERT_NO_ERRORS(s);
+	success &= ASSERT_EQL(rval, -22, "%d");
+	success &= ASSERT_STR_EQL_N(buf, "\0XXXXXXX", sizeof(buf));
 	
 	/** Clean up. **/
 	qpfCloseSession(s);

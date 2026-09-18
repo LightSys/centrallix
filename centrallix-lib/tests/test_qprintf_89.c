@@ -36,11 +36,11 @@ static bool test_bad_file_path(const char* bad_file_path)
 	const int rval = qpfPrintf(s, buf, 10, "%STR&PATH", bad_file_path);
 	
 	/** Verify results. **/
-	success &= EXPECT_TRUE(s->Errors & QPF_ERR_T_BADPATH);
+	success &= ASSERT_TRUE(s->Errors & QPF_ERR_T_BADPATH);
 	s->Errors &= ~QPF_ERR_T_BADPATH; /* Clear the expected error. */
-	success &= EXPECT_NO_ERRORS(s);
-	success &= EXPECT_EQL(rval, -22, "%d");
-	success &= EXPECT_STR_EQL_N(buf, "\0XXXXXXXXXXX", sizeof(buf));
+	success &= ASSERT_NO_ERRORS(s);
+	success &= ASSERT_EQL(rval, -22, "%d");
+	success &= ASSERT_STR_EQL_N(buf, "\0XXXXXXXXXXX", sizeof(buf));
 	
 	/** Clean up. **/
 	qpfCloseSession(s);
