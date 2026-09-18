@@ -35,10 +35,8 @@
 /** Every printed error stack starts with this line. **/
 #define STACK_HEAD	"ERROR - Session By Username ["USERNAME"]\r\n"
 
-/*** Each printed line is built in a buffer of this size, so a line that
- *** would be longer is cut to fit, terminator included.
- ***/
-#define LINE_SIZE	200
+/** Length of the long message used to check that lines are not cut. **/
+#define MESSAGE_SIZE	400
 
 /** Big enough for any error stack this test prints. **/
 #define PRINT_SIZE	1024
@@ -85,12 +83,20 @@ static char* printError(int* rval)
 static bool doTest(void)
     {
     bool success = true;
-    char long_message[LINE_SIZE * 2];
-    int first_line, second_line;
+    char long_message[MESSAGE_SIZE];
+    int first_line, second_line, long_line;
+    int saved_stderr;
     int rval = 0;
 
-	/** Outside a session there is no stack to print. **/
-	success &= ASSERT_STR_EQL(printError(&rval), "");
+	/*** Outside a session there is no stack to print.  Failing to print
+	 *** is reported on stderr, which would otherwise sit in the test
+	 *** output as though something had gone wrong, so stderr is put away
+	 *** for the call.
+	 ***/
+	if (!quietStart(STDERR_FILENO, &saved_stderr)) return false;
+	printError(&rval);
+	if (!quietEnd(STDERR_FILENO, saved_stderr)) return false;
+	success &= ASSERT_STR_EQL(printed, "");
 	success &= ASSERT_EQL(rval, -1, "%d");
 
 	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
@@ -117,15 +123,15 @@ static bool doTest(void)
 	/** Printing leaves the stack as it was, so the same print repeats. **/
 	success &= ASSERT_STR_EQL(printError(&rval), expected);
 
-	/** A message too long for one printed line is cut to fit the line
-	 ** buffer, which takes the line ending with it.
-	 **/
+	/** A long message prints in full; printed lines are not cut. **/
 	memset(long_message, 'L', sizeof(long_message) - 1);
 	long_message[sizeof(long_message) - 1] = '\0';
+	long_line = __LINE__ + 1;
 	mssError(1, "MOD", "%s", long_message);
-	success &= ASSERT_EQL((int)strlen(printError(&rval)),
-		(int)strlen(STACK_HEAD) + LINE_SIZE - 1, "%d");
-	success &= ASSERT_STR_HAS(printed, "MOD: LLL");
+	snprintf(expected, sizeof(expected),
+		STACK_HEAD"--- %s:%d: MOD: %s\r\n", __FILE__, long_line,
+		long_message);
+	success &= ASSERT_STR_EQL(printError(&rval), expected);
 	success &= ASSERT_EQL(rval, 0, "%d");
 
 	/** The stack empties and prints as its heading again. **/
@@ -178,5 +184,5 @@ long long test(char** tname)
 #undef USERNAME
 #undef PASSWORD
 #undef STACK_HEAD
-#undef LINE_SIZE
+#undef MESSAGE_SIZE
 #undef PRINT_SIZE
