@@ -31,36 +31,36 @@ static bool doTest(void)
     bool success = true;
     
 	/** Rounding to 0 decimals does not change whole numbers. **/
-	success &= EXPECT_EQL(roundTo(0.0, 0), 0.0, "%g");
-	success &= EXPECT_EQL(roundTo(123, 0), 123.0, "%g");
-	success &= EXPECT_EQL(roundTo(-123, 0), -123.0, "%g");
+	success &= ASSERT_EQL(roundTo(0.0, 0), 0.0, "%g");
+	success &= ASSERT_EQL(roundTo(123, 0), 123.0, "%g");
+	success &= ASSERT_EQL(roundTo(-123, 0), -123.0, "%g");
 	    
 	/** Rounding to 0 decimals rounds decimals. **/
-	success &= EXPECT_EQL(roundTo(1.23, 0), 1.0, "%g");
-	success &= EXPECT_EQL(roundTo(24.43, 0), 24.0, "%g");
-	success &= EXPECT_EQL(roundTo(1234567890.499, 0), 1234567890.0, "%g");
-	success &= EXPECT_EQL(roundTo(-1.82, 0), -2.0, "%g");
-	success &= EXPECT_EQL(roundTo(-987654321.499, 0), -987654321.0, "%g");
+	success &= ASSERT_EQL(roundTo(1.23, 0), 1.0, "%g");
+	success &= ASSERT_EQL(roundTo(24.43, 0), 24.0, "%g");
+	success &= ASSERT_EQL(roundTo(1234567890.499, 0), 1234567890.0, "%g");
+	success &= ASSERT_EQL(roundTo(-1.82, 0), -2.0, "%g");
+	success &= ASSERT_EQL(roundTo(-987654321.499, 0), -987654321.0, "%g");
 	
 	/** Test rounding to various numbers of decimals. **/
-	success &= EXPECT_EQL(roundTo(1.23, 1), 1.2, "%g");
-	success &= EXPECT_EQL(roundTo(1.23, 2), 1.23, "%g");
-	success &= EXPECT_EQL(roundTo(1.23, 3), 1.23, "%g");
-	success &= EXPECT_EQL(roundTo(1.23, 8), 1.23, "%g");
-	success &= EXPECT_EQL(roundTo(5824113.8, 8), 5824113.8, "%g");
+	success &= ASSERT_EQL(roundTo(1.23, 1), 1.2, "%g");
+	success &= ASSERT_EQL(roundTo(1.23, 2), 1.23, "%g");
+	success &= ASSERT_EQL(roundTo(1.23, 3), 1.23, "%g");
+	success &= ASSERT_EQL(roundTo(1.23, 8), 1.23, "%g");
+	success &= ASSERT_EQL(roundTo(5824113.8, 8), 5824113.8, "%g");
 	
 	/** Test rounding to negative numbers of decimals. **/
-	success &= EXPECT_EQL(roundTo(1.23, -1), 0.0, "%g");
-	success &= EXPECT_EQL(roundTo(123.4, -1), 120.0, "%g");
-	success &= EXPECT_EQL(roundTo(586241.7, -4), 590000.0, "%g");
+	success &= ASSERT_EQL(roundTo(1.23, -1), 0.0, "%g");
+	success &= ASSERT_EQL(roundTo(123.4, -1), 120.0, "%g");
+	success &= ASSERT_EQL(roundTo(586241.7, -4), 590000.0, "%g");
 	
 	/** Rounding infinity. */
-	success &= EXPECT_EQL(roundTo( INFINITY, 0), INFINITY, "%g");
-	success &= EXPECT_EQL(roundTo(-INFINITY, 0), -INFINITY, "%g");
-	success &= EXPECT_EQL(roundTo( INFINITY, 16), INFINITY, "%g");
-	success &= EXPECT_EQL(roundTo(-INFINITY, 16), -INFINITY, "%g");
-	success &= EXPECT_EQL(roundTo( INFINITY, -16), INFINITY, "%g");
-	success &= EXPECT_EQL(roundTo(-INFINITY, -16), -INFINITY, "%g");
+	success &= ASSERT_EQL(roundTo( INFINITY, 0), INFINITY, "%g");
+	success &= ASSERT_EQL(roundTo(-INFINITY, 0), -INFINITY, "%g");
+	success &= ASSERT_EQL(roundTo( INFINITY, 16), INFINITY, "%g");
+	success &= ASSERT_EQL(roundTo(-INFINITY, 16), -INFINITY, "%g");
+	success &= ASSERT_EQL(roundTo( INFINITY, -16), INFINITY, "%g");
+	success &= ASSERT_EQL(roundTo(-INFINITY, -16), -INFINITY, "%g");
     
     return success;
     }

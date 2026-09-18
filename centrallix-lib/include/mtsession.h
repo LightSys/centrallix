@@ -35,7 +35,6 @@
 #include <errno.h>
 #include <string.h>
 
-
 /** optimum salt size for mssGenCred() **/
 #define	MSS_SALT_SIZE	4
 
@@ -88,15 +87,21 @@ void* mssGetParam(char* paramname);
 
 /** Error handling functions **/
 int mssLog(int level, char* msg);
-void mssError_internal(int clr, char* module, char* file, int line, char* message, ...);
+
+/** The message is a printf() format, so let the compiler check it. **/
+void mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
+    #ifdef __GNUC__
+    __attribute__ ((format(printf, 5, 6)))
+    #endif
+;
+
 #define mssError(clear, module, message, ...) \
-    mssError_internal(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
+    mss_i_error(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
 #define mssErrorErrno(clear, module, message, ...) \
-    mssError_internal(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
+    mss_i_error(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
 int mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
 int mssUserError(pXString str);
-
 
 #endif

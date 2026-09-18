@@ -27,14 +27,29 @@
 /** Tested module. **/
 #include "util.h"
 
-/** Assumes success is in scope. **/
+/*** Call an snprint-style function and check both what it wrote and what it
+ *** returned.
+ *** `expect` is the untruncated result so that we can expect the return to be
+ *** the correct length while requring the function to write exactly as much as
+ *** `buf_size` allows.  Nothing is written when `buf_size` is zero.
+ ***/
+#define TEST_SNPRINT(fn, buf, buf_size, value, expect) \
+    ({ \
+    char* _expect = (expect); \
+    const size_t _buf_size = (size_t)(buf_size); \
+    const int _len = fn((buf), _buf_size, (value)); \
+    char _trunc[strlen(_expect) + 1]; \
+    strcpy(_trunc, _expect); \
+    if (_buf_size > 0 && (size_t)_len >= _buf_size) _trunc[_buf_size - 1] = '\0'; \
+    ASSERT_EQL(_len, (int)strlen(_expect), "%d") && \
+	(_buf_size == 0 || ASSERT_STR_EQL((buf), _trunc)); \
+    })
+
 #define TEST_SNPRINT_COMMAS_LLU(buf, buf_size, value, expect) \
-	EXPECT_STR_EQL(snprintCommasLlu(buf, buf_size, value), expect) && \
-	EXPECT_EQL(snprintCommasLlu(buf, buf_size, value), &buf[0], "%p")
-    
+	TEST_SNPRINT(snprintCommasLlu, buf, buf_size, value, expect)
+
 #define TEST_SNPRINT_BYTES(buf, buf_size, value, expect) \
-	EXPECT_STR_EQL(snprintBytes(buf, buf_size, value), expect) && \
-	EXPECT_EQL(snprintBytes(buf, buf_size, value), &buf[0], "%p")
+	TEST_SNPRINT(snprintBytes, buf, buf_size, value, expect)
 
 static bool doTest(void)
     {
@@ -42,8 +57,8 @@ static bool doTest(void)
 
 	/** Detect if metric or CS units are intended. **/
 	bool cs = true;
-	#ifdef UTIL_USE_METRIC
-	if (UTIL_USE_METRIC) cs = false;
+	#ifdef USE_METRIC
+	if (USE_METRIC) cs = false;
 	#endif
 
 	/** Allocate space for the string buffer. **/
@@ -69,6 +84,13 @@ static bool doTest(void)
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1024, 3),                (cs) ? "1 GiB"      : "1.07 GB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, INT_MAX,                     (cs) ? "2 GiB"      : "2.15 GB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, UINT_MAX,                    (cs) ? "4 GiB"      : "4.29 GB");
+
+	/** Truncation: the full length is returned, but only part is written. **/
+	success &= TEST_SNPRINT_BYTES(buf, 0, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");
+	success &= TEST_SNPRINT_BYTES(buf, 1, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");
+	success &= TEST_SNPRINT_BYTES(buf, 4, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");
+	success &= TEST_SNPRINT_BYTES(buf, 5, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");
+	success &= TEST_SNPRINT_BYTES(buf, 6, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");
 
 	/** Test snprintCommasLlu(). Note: 10^16 would fail due to the double precision limit. **/
 	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, 0, "0");
@@ -114,6 +136,13 @@ static bool doTest(void)
 	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, UINT_MAX,         "4,294,967,295");
 	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, LLONG_MAX,        "9,223,372,036,854,775,807");
 	success &= TEST_SNPRINT_COMMAS_LLU(buf, buf_size, ULLONG_MAX,       "18,446,744,073,709,551,615");
+
+	/** Truncation: the full length is returned, but only part is written. **/
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, 0, pow(10, 3), "1,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, 1, pow(10, 3), "1,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, 3, pow(10, 3), "1,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, 5, pow(10, 3), "1,000");
+	success &= TEST_SNPRINT_COMMAS_LLU(buf, 6, pow(10, 3), "1,000");
     
     return success;
     }
@@ -121,5 +150,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "util-02 Printing";
-    return loopTest(doTest) * (17 + 43);
+    return loopTest(doTest) * (22 + 48);
     }
