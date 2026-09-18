@@ -1,9 +1,12 @@
 #include <assert.h>
 #include <float.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "test_utils.h"
 
 #include "qprintf.h"
 
@@ -30,6 +33,13 @@ static double dbl_values[] =
     -DBL_MAX,
     };
 
+/** Number of values run per call to doTest(). **/
+#define N_LL	((int)(sizeof(ll_values) / sizeof(long long)))
+#define N_DBL	((int)(sizeof(dbl_values) / sizeof(double)))
+
+/** Session used to check that none of the values are reported as an error. **/
+static pQPSession s = NULL;
+
 /*** Verifies that nothing outside the destination area was touched. ***/
 static void
 check_guards(const char* buf)
@@ -46,57 +56,63 @@ check_guards(const char* buf)
     }
 
 
-long long
-test(char** tname)
+/*** The %LL and %DBL specifiers format their value with snprintf() before
+ *** copying it out, and the length that snprintf() reports is what drives
+ *** the copy.  This test checks the extremes of both types, where that
+ *** reported length is largest: "%lf" of -DBL_MAX is 317 characters, one
+ *** short of the internal buffer's 318.  The output must match snprintf()
+ *** exactly, no error may be recorded, and nothing outside the destination
+ *** may be touched.
+ ***/
+static bool
+doTest(void)
     {
-    unsigned int i, v, iter, calls = 0;
-    pQPSession s;
+    int v;
     char buf[GUARD + AREA + GUARD];
     char* dst = buf + GUARD;
     char expected[AREA];
     int rval, explen;
 
-	/*** The %LL and %DBL specifiers format their value with snprintf()
-	 *** before copying it out, and the length that snprintf() reports is
-	 *** what drives the copy.  This test checks the extremes of both
-	 *** types, where that reported length is largest: "%lf" of -DBL_MAX
-	 *** is 317 characters, one short of the internal buffer's 318.  The
-	 *** output must match snprintf() exactly, no error may be recorded,
-	 *** and nothing outside the destination may be touched.
-	 ***/
+	for(v=0;v<N_LL;v++)
+	    {
+	    explen = snprintf(expected, sizeof(expected), "%lld", ll_values[v]);
+	    memset(buf, 0xff, sizeof(buf));
+	    rval = qpfPrintf(s, dst, AREA, "%LL", ll_values[v]);
+	    assert(rval == explen);
+	    assert(!strcmp(dst, expected));
+	    check_guards(buf);
+	    }
+
+	for(v=0;v<N_DBL;v++)
+	    {
+	    explen = snprintf(expected, sizeof(expected), "%lf", dbl_values[v]);
+	    memset(buf, 0xff, sizeof(buf));
+	    rval = qpfPrintf(s, dst, AREA, "%DBL", dbl_values[v]);
+	    assert(rval == explen);
+	    assert(!strcmp(dst, expected));
+	    check_guards(buf);
+	    }
+
+	/** None of these values may be reported as an error. **/
+	assert(qpfErrors(s) == QPF_ERR_T_NO_ERRORS);
+
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
+    long long rval;
 
 	*tname = "qprintf-71 %LL and %DBL at the extremes of their types";
+
 	s = qpfOpenSession();
 	assert(s != NULL);
-	iter = 1000;
-	for(i=0;i<iter;i++)
-	    {
-	    for(v=0;v<sizeof(ll_values)/sizeof(ll_values[0]);v++)
-		{
-		explen = snprintf(expected, sizeof(expected), "%lld", ll_values[v]);
-		memset(buf, 0xff, sizeof(buf));
-		rval = qpfPrintf(s, dst, AREA, "%LL", ll_values[v]);
-		assert(rval == explen);
-		assert(!strcmp(dst, expected));
-		check_guards(buf);
-		calls++;
-		}
 
-	    for(v=0;v<sizeof(dbl_values)/sizeof(dbl_values[0]);v++)
-		{
-		explen = snprintf(expected, sizeof(expected), "%lf", dbl_values[v]);
-		memset(buf, 0xff, sizeof(buf));
-		rval = qpfPrintf(s, dst, AREA, "%DBL", dbl_values[v]);
-		assert(rval == explen);
-		assert(!strcmp(dst, expected));
-		check_guards(buf);
-		calls++;
-		}
+	rval = loopTest(doTest) * (N_LL + N_DBL);
 
-	    /** None of these values may be reported as an error. **/
-	    assert(qpfErrors(s) == QPF_ERR_T_NO_ERRORS);
-	    }
 	qpfCloseSession(s);
+	s = NULL;
 
-    return calls;
+    return rval;
     }

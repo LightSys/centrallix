@@ -1,7 +1,10 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "test_utils.h"
 
 #include "qprintf.h"
 
@@ -31,12 +34,18 @@ static Case cases[] =
 	{ "%STR&HTE",	"<tag>",	5 },
     };
 
-long long
-test(char** tname)
+/** Number of cases run per call to doTest(). **/
+#define NCASES	((int)(sizeof(cases) / sizeof(Case)))
+
+/*** A NULL grow function means the buffer cannot grow, which is how
+ *** qpf_internal_Translate() and the base64 and hex helpers already read
+ *** it.  Passing NULL must therefore behave exactly like passing
+ *** qpfNoGrow(), not crash.
+ ***/
+static bool
+doTest(void)
     {
-    int i, c;
-    int iter;
-    int ncases = sizeof(cases) / sizeof(Case);
+    int c;
     unsigned char raw_null[RAW], raw_nogrow[RAW];
     char* dst_null;
     char* dst_nogrow;
@@ -44,46 +53,42 @@ test(char** tname)
     int rval_null, rval_nogrow;
     size_t n;
 
-	/*** A NULL grow function means the buffer cannot grow, which is how
-	 *** qpf_internal_Translate() and the base64 and hex helpers already
-	 *** read it.  Passing NULL must therefore behave exactly like passing
-	 *** qpfNoGrow(), not crash.
-	 ***/
-
-	*tname = "qprintf-74 qpfPrintf_g() with a NULL grow function";
-	iter = 20000;
-	for(i=0;i<iter;i++)
+	for(c=0;c<NCASES;c++)
 	    {
-	    for(c=0;c<ncases;c++)
-		{
-		memset(raw_null, 0xAA, RAW);
-		memset(raw_nogrow, 0xAA, RAW);
-		dst_null = (char*)raw_null + GUARD;
-		dst_nogrow = (char*)raw_nogrow + GUARD;
-		size_null = cases[c].Size;
-		size_nogrow = cases[c].Size;
+	    memset(raw_null, 0xAA, RAW);
+	    memset(raw_nogrow, 0xAA, RAW);
+	    dst_null = (char*)raw_null + GUARD;
+	    dst_nogrow = (char*)raw_nogrow + GUARD;
+	    size_null = cases[c].Size;
+	    size_nogrow = cases[c].Size;
 
-		rval_null = qpfPrintf_g(NULL, &dst_null, &size_null, NULL, NULL,
-			cases[c].Fmt, cases[c].Arg);
-		rval_nogrow = qpfPrintf_g(NULL, &dst_nogrow, &size_nogrow, qpfNoGrow, NULL,
-			cases[c].Fmt, cases[c].Arg);
+	    rval_null = qpfPrintf_g(NULL, &dst_null, &size_null, NULL, NULL,
+		    cases[c].Fmt, cases[c].Arg);
+	    rval_nogrow = qpfPrintf_g(NULL, &dst_nogrow, &size_nogrow, qpfNoGrow, NULL,
+		    cases[c].Fmt, cases[c].Arg);
 
-		/** Neither call may move or resize the buffer. **/
-		assert(dst_null == (char*)raw_null + GUARD);
-		assert(size_null == cases[c].Size);
-		assert(size_nogrow == cases[c].Size);
+	    /** Neither call may move or resize the buffer. **/
+	    assert(dst_null == (char*)raw_null + GUARD);
+	    assert(size_null == cases[c].Size);
+	    assert(size_nogrow == cases[c].Size);
 
-		/** Both calls must agree, byte for byte. **/
-		assert(rval_null == rval_nogrow);
-		assert(!memcmp(raw_null, raw_nogrow, RAW));
+	    /** Both calls must agree, byte for byte. **/
+	    assert(rval_null == rval_nogrow);
+	    assert(!memcmp(raw_null, raw_nogrow, RAW));
 
-		/** Guard bytes and anything past the size are untouched. **/
-		for(n=0;n<GUARD;n++)
-		    assert(raw_null[n] == 0xAA);
-		for(n=GUARD+cases[c].Size;n<RAW;n++)
-		    assert(raw_null[n] == 0xAA);
-		}
+	    /** Guard bytes and anything past the size are untouched. **/
+	    for(n=0;n<GUARD;n++)
+		assert(raw_null[n] == 0xAA);
+	    for(n=GUARD+cases[c].Size;n<RAW;n++)
+		assert(raw_null[n] == 0xAA);
 	    }
 
-    return (long long)iter * ncases;
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
+    *tname = "qprintf-74 qpfPrintf_g() with a NULL grow function";
+    return loopTest(doTest) * NCASES;
     }
