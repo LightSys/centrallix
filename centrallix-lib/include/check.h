@@ -42,7 +42,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
  *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
-#define check(result) \
+#define warnFail(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	int _r = (result); \
@@ -56,7 +56,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
  *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
-#define checkPos(result) \
+#define warnNeg(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	int _r = (result); \
@@ -70,7 +70,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
  *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
-#define checkDouble(result) \
+#define warnDouble(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	double _r = (result); \
@@ -84,7 +84,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
  *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
-#define checkPtr(result) \
+#define warnPtr(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	void* _r = (result); \
