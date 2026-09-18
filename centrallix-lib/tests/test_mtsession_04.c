@@ -23,7 +23,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 #include "strtcpy.h"
 #include "xstring.h"
@@ -96,7 +95,7 @@ static bool doTest(void)
 	success &= EXPECT_EQL(xs.Length, 0, "%d");
 	xsDeInit(&xs);
 
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 
 	/** A new session has nothing on its stack. **/
 	success &= EXPECT_EQL(errorCount(), 0, "%d");
@@ -157,30 +156,30 @@ static bool doTest(void)
 	mssError(1, "MOD", "appended");
 	xsInit(&xs);
 	xsConcatenate(&xs, "prefix ", -1);
-	success &= EXPECT_EQL(check(mssStringError(&xs)), 0, "%d");
+	success &= EXPECT_EQL(mssStringError(&xs), 0, "%d");
 	success &= EXPECT_STR_HAS_IN_ORDER(xs.String, "prefix ", "MOD: appended");
 	xsDeInit(&xs);
 	xsInit(&xs);
 	xsConcatenate(&xs, "prefix ", -1);
-	success &= EXPECT_EQL(check(mssUserError(&xs)), 0, "%d");
+	success &= EXPECT_EQL(mssUserError(&xs), 0, "%d");
 	success &= EXPECT_STR_EQL(xs.String, "prefix appended");
 	xsDeInit(&xs);
 
 	/** Clearing leaves the session in place with an empty stack. **/
-	success &= EXPECT_EQL(check(mssClearError()), 0, "%d");
+	success &= EXPECT_EQL(mssClearError(), 0, "%d");
 	success &= EXPECT_EQL(errorCount(), 0, "%d");
 	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD);
 	success &= EXPECT_STR_EQL(userError(), "");
-	success &= EXPECT_EQL(check(mssClearError()), 0, "%d");
+	success &= EXPECT_EQL(mssClearError(), 0, "%d");
 	success &= EXPECT_EQL(errorCount(), 0, "%d");
 
 	/** The stack belongs to the session, so a new session starts empty. **/
 	mssError(1, "MOD", "left over");
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	success &= EXPECT_EQL(errorCount(), 0, "%d");
 	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD);
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 
     return success;
     }

@@ -24,7 +24,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 
 /** Tested module. **/
@@ -148,7 +147,7 @@ static bool doTest(void)
 	    success &= EXPECT_EQL(mssAuthenticate(c->UserName, c->Password, c->Bypass), c->Expected, "%d");
 	    success &= EXPECT_EQL(thGetParam(NULL, "mss") != NULL, c->Expected == 0, "%d");
 	    if (thGetParam(NULL, "mss"))
-		success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+		success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 	    }
 
 	/*** An auth file the lexer cannot read is an error, not a way in.  No

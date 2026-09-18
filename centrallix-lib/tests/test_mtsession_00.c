@@ -22,7 +22,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 
 /** Tested module. **/
@@ -53,7 +52,7 @@ static bool doTest(void)
 	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
 	/** The right password starts a session. **/
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	success &= EXPECT_STR_EQL(mssUserName(), USERNAME);
 	success &= EXPECT_STR_EQL(mssPassword(), PASSWORD);
 
@@ -73,24 +72,24 @@ static bool doTest(void)
 	/** Authenticating again replaces the session, and bypass_crypt accepts
 	 ** any password.
 	 **/
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, "anything", 1)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, "anything", 1), 0, "%d");
 	success &= EXPECT_NOT_NULL(thGetParam(NULL, "mss"));
 	success &= EXPECT_STR_EQL(mssUserName(), USERNAME);
 	success &= EXPECT_STR_EQL(mssPassword(), "anything");
 
 	/** Ending the session detaches it from the thread. **/
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 	success &= EXPECT_EQL(mssUserName(), NULL, "%p");
 	success &= EXPECT_EQL(mssPassword(), NULL, "%p");
 	success &= EXPECT_EQL(mssEndSession(NULL), -1, "%d");
 
 	/** Ending a session by pointer works the same way. **/
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	s = (pMtSession)thGetParam(NULL, "mss");
 	success &= EXPECT_NOT_NULL(s);
 	if (!s) return false;
-	success &= EXPECT_EQL(check(mssEndSession(s)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(s), 0, "%d");
 	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
     return success;

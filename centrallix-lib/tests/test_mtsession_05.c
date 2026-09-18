@@ -23,7 +23,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 #include "strtcpy.h"
 #include "xstring.h"
@@ -74,9 +73,6 @@ static int errorCount(void)
     return s ? s->ErrList.nItems : -1;
     }
 
-/*** The calls here are not wrapped in check(), which clears errno before
- *** running what it is given, and errno is exactly what is under test.
- ***/
 static bool doTest(void)
     {
     bool success = true;
@@ -92,7 +88,7 @@ static bool doTest(void)
 	if (!quietEnd(saved_stdout)) return false;
 	success &= EXPECT_EQL(errorCount(), -1, "%d");
 
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 
 	/** The message carries the text of the current errno. **/
 	errno = ENOENT;
@@ -131,12 +127,12 @@ static bool doTest(void)
 	/** The user facing form drops the module code as usual. **/
 	XString xs;
 	xsInit(&xs);
-	success &= EXPECT_EQL(check(mssUserError(&xs)), 0, "%d");
+	success &= EXPECT_EQL(mssUserError(&xs), 0, "%d");
 	snprintf(expected, sizeof(expected), "only one left (%s)", strerror(ENOENT));
 	success &= EXPECT_STR_EQL(xs.String, expected);
 	xsDeInit(&xs);
 
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 
     return success;
     }

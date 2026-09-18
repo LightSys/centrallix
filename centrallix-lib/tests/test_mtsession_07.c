@@ -23,7 +23,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 #include "strtcpy.h"
 
@@ -77,7 +76,7 @@ static bool doTest(void)
 	success &= EXPECT_EQL(mssSetParamPtr("param", &marker), -1, "%d");
 	success &= EXPECT_EQL(mssGetParam("param"), NULL, "%p");
 
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 
 	/** A parameter that was never set reads back as nothing. **/
 	success &= EXPECT_EQL(mssGetParam("param"), NULL, "%p");
@@ -85,45 +84,45 @@ static bool doTest(void)
 	/** A string parameter reads back as an equal string, kept in the
 	 ** session rather than in the caller's buffer.
 	 **/
-	success &= EXPECT_EQL(check(mssSetParam("param", "value")), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", "value"), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), "value");
 	success &= EXPECT_EQL(mssGetParam("param") == (void*)"value", 0, "%d");
 
 	/** Setting it again replaces the value, whatever the lengths. **/
-	success &= EXPECT_EQL(check(mssSetParam("param", inline_value)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", inline_value), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), inline_value);
-	success &= EXPECT_EQL(check(mssSetParam("param", long_value)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", long_value), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), long_value);
-	success &= EXPECT_EQL(check(mssSetParam("param", alloc_value)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", alloc_value), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), alloc_value);
-	success &= EXPECT_EQL(check(mssSetParam("param", "value")), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", "value"), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), "value");
-	success &= EXPECT_EQL(check(mssSetParam("param", "")), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", ""), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), "");
 
 	/** Parameters are separate from one another. **/
-	success &= EXPECT_EQL(check(mssSetParam("other", long_value)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("other", long_value), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), "");
 	success &= EXPECT_STR_EQL(mssGetParam("other"), long_value);
 
 	/** A pointer parameter reads back as that same pointer, and NULL is
 	 ** a value like any other.
 	 **/
-	success &= EXPECT_EQL(check(mssSetParamPtr("pointer", &marker)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParamPtr("pointer", &marker), 0, "%d");
 	success &= EXPECT_EQL(mssGetParam("pointer"), (void*)&marker, "%p");
-	success &= EXPECT_EQL(check(mssSetParamPtr("pointer", NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParamPtr("pointer", NULL), 0, "%d");
 	success &= EXPECT_EQL(mssGetParam("pointer"), NULL, "%p");
 
 	/** Writing a string over a pointer parameter leaves the memory the
 	 ** pointer referred to alone; it was never the session's to release.
 	 **/
-	success &= EXPECT_EQL(check(mssSetParamPtr("pointer", borrowed)), 0, "%d");
-	success &= EXPECT_EQL(check(mssSetParam("pointer", long_value)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParamPtr("pointer", borrowed), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("pointer", long_value), 0, "%d");
 	success &= EXPECT_STR_EQL(borrowed, "borrowed");
 	success &= EXPECT_STR_EQL(mssGetParam("pointer"), long_value);
 
 	/** Writing a pointer over a string parameter works as well. **/
-	success &= EXPECT_EQL(check(mssSetParamPtr("pointer", borrowed)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParamPtr("pointer", borrowed), 0, "%d");
 	success &= EXPECT_EQL(mssGetParam("pointer"), (void*)borrowed, "%p");
 
 	/*** A name too long for the field it is kept in is refused, rather
@@ -138,7 +137,7 @@ static bool doTest(void)
 	 *** refused one does not answer to it.
 	 ***/
 	strtcpy(fitting_name, long_name, sizeof(fitting_name));
-	success &= EXPECT_EQL(check(mssSetParam(fitting_name, "value")), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam(fitting_name, "value"), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam(fitting_name), "value");
 	success &= EXPECT_EQL(mssGetParam(long_name), NULL, "%p");
 
@@ -157,41 +156,41 @@ static bool doTest(void)
 	/*** The value given may be the one the parameter is already holding,
 	 *** whether that is kept in the parameter or away from it.
 	 ***/
-	success &= EXPECT_EQL(check(mssSetParam("param", long_value)), 0, "%d");
-	success &= EXPECT_EQL(check(mssSetParam("param", mssGetParam("param"))), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", long_value), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", mssGetParam("param")), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), long_value);
-	success &= EXPECT_EQL(check(mssSetParam("param", "value")), 0, "%d");
-	success &= EXPECT_EQL(check(mssSetParam("param", mssGetParam("param"))), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", "value"), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", mssGetParam("param")), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), "value");
 
 	/*** Handing a parameter the value it is already holding as a pointer
 	 *** changes nothing, and leaves the storage the session's own.
 	 ***/
-	success &= EXPECT_EQL(check(mssSetParam("param", long_value)), 0, "%d");
-	success &= EXPECT_EQL(check(mssSetParamPtr("param", mssGetParam("param"))), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", long_value), 0, "%d");
+	success &= EXPECT_EQL(mssSetParamPtr("param", mssGetParam("param")), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), long_value);
 
 	/** It may even point part of the way into the value being replaced. **/
-	success &= EXPECT_EQL(check(mssSetParam("param", "prefix body")), 0, "%d");
-	success &= EXPECT_EQL(check(mssSetParam("param", (char*)mssGetParam("param") + 1)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", "prefix body"), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", (char*)mssGetParam("param") + 1), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam("param"), "refix body");
 
 	/** An empty name is a name too. **/
-	success &= EXPECT_EQL(check(mssSetParam("", "value")), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("", "value"), 0, "%d");
 	success &= EXPECT_STR_EQL(mssGetParam(""), "value");
 
 	/** Parameters belong to the session, so a new one starts with none. **/
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	success &= EXPECT_EQL(mssGetParam("param"), NULL, "%p");
 	success &= EXPECT_EQL(mssGetParam("other"), NULL, "%p");
 	success &= EXPECT_EQL(mssGetParam("pointer"), NULL, "%p");
 
 	/** Parameters left behind are released with the session. **/
-	success &= EXPECT_EQL(check(mssSetParam("param", long_value)), 0, "%d");
-	success &= EXPECT_EQL(check(mssSetParam("other", "value")), 0, "%d");
-	success &= EXPECT_EQL(check(mssSetParamPtr("pointer", borrowed)), 0, "%d");
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("param", long_value), 0, "%d");
+	success &= EXPECT_EQL(mssSetParam("other", "value"), 0, "%d");
+	success &= EXPECT_EQL(mssSetParamPtr("pointer", borrowed), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 	success &= EXPECT_STR_EQL(borrowed, "borrowed");
 
     return success;

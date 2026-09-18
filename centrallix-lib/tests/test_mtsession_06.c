@@ -24,7 +24,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 
 /** Tested module. **/
@@ -94,11 +93,11 @@ static bool doTest(void)
 	success &= EXPECT_STR_EQL(printError(&rval), "");
 	success &= EXPECT_EQL(rval, -1, "%d");
 
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 
 	/** An empty stack prints as just its heading. **/
 	success &= EXPECT_STR_EQL(printError(&rval), STACK_HEAD);
-	success &= EXPECT_EQL(check(rval), 0, "%d");
+	success &= EXPECT_EQL(rval, 0, "%d");
 
 	/*** Messages print newest first, one line each, each carrying the
 	 *** source location of the call that raised it.  This is the only
@@ -113,7 +112,7 @@ static bool doTest(void)
 		STACK_HEAD"--- %s:%d: MOD2: second\r\n--- %s:%d: MOD: first\r\n",
 		__FILE__, second_line, __FILE__, first_line);
 	success &= EXPECT_STR_EQL(printError(&rval), expected);
-	success &= EXPECT_EQL(check(rval), 0, "%d");
+	success &= EXPECT_EQL(rval, 0, "%d");
 
 	/** Printing leaves the stack as it was, so the same print repeats. **/
 	success &= EXPECT_STR_EQL(printError(&rval), expected);
@@ -127,12 +126,12 @@ static bool doTest(void)
 	success &= EXPECT_EQL((int)strlen(printError(&rval)),
 		(int)strlen(STACK_HEAD) + LINE_SIZE - 1, "%d");
 	success &= EXPECT_STR_HAS(printed, "MOD: LLL");
-	success &= EXPECT_EQL(check(rval), 0, "%d");
+	success &= EXPECT_EQL(rval, 0, "%d");
 
 	/** The stack empties and prints as its heading again. **/
-	success &= EXPECT_EQL(check(mssClearError()), 0, "%d");
+	success &= EXPECT_EQL(mssClearError(), 0, "%d");
 	success &= EXPECT_STR_EQL(printError(&rval), STACK_HEAD);
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 
     return success;
     }

@@ -26,7 +26,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 
 /** Tested module. **/
@@ -103,7 +102,7 @@ static char* captureEnd(void)
 	    return captured;
 	    }
 	if (length == (int)sizeof(captured) - 1)
-	    printFail("the captured text did not fit the buffer");
+	    fprintf(stderr, "  > the captured text did not fit the buffer\n");
 	captured[length] = '\0';
 
     return captured;
@@ -132,19 +131,19 @@ static bool doTest(void)
 	/*** With a session to hold the message, and without being told to log
 	 *** everything, the log stays quiet.
 	 ***/
-	if (!EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d")) return false;
+	if (!EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d")) return false;
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "in session");
 	errno = ENOENT;
 	mssErrorErrno(0, "MOD", "in session too");
 	success &= EXPECT_STR_EQL(captureEnd(), "");
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 
 	/*** Being told to log everything logs the messages that a session
 	 *** would otherwise have kept to itself, and stacks them all the same.
 	 ***/
 	mssInitialize("altpasswd", auth_path, "stdout", 1, APPNAME);
-	if (!EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d")) return false;
+	if (!EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d")) return false;
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "logged as well");
 	errno = ENOENT;
@@ -154,7 +153,7 @@ static bool doTest(void)
 		APPNAME": ", "MOD: logged as well",
 		APPNAME": ", expected);
 	success &= EXPECT_EQL(((pMtSession)thGetParam(NULL, "mss"))->ErrList.nItems, 2, "%d");
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 
 	/** With no program name to log under, the lines say "error". **/
 	mssInitialize("altpasswd", auth_path, "stdout", 0, "");

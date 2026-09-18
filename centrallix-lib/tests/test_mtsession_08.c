@@ -25,7 +25,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "test_mtsession.h"
-#include "check.h"
 #include "mtask.h"
 
 /** Tested module. **/
@@ -43,20 +42,20 @@ static bool doTest(void)
     pMtSession current;
 
 	/** A new session is held by the one thread that started it. **/
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	s = (pMtSession)thGetParam(NULL, "mss");
 	success &= EXPECT_NOT_NULL(s);
 	if (!s) return false;
 	success &= EXPECT_EQL(s->LinkCnt, 1, "%d");
 
 	/** Each link counts, and each unlink gives one back. **/
-	success &= EXPECT_EQL(check(mssLinkSession(s)), 0, "%d");
+	success &= EXPECT_EQL(mssLinkSession(s), 0, "%d");
 	success &= EXPECT_EQL(s->LinkCnt, 2, "%d");
-	success &= EXPECT_EQL(check(mssLinkSession(s)), 0, "%d");
+	success &= EXPECT_EQL(mssLinkSession(s), 0, "%d");
 	success &= EXPECT_EQL(s->LinkCnt, 3, "%d");
-	success &= EXPECT_EQL(check(mssUnlinkSession(s)), 0, "%d");
+	success &= EXPECT_EQL(mssUnlinkSession(s), 0, "%d");
 	success &= EXPECT_EQL(s->LinkCnt, 2, "%d");
-	success &= EXPECT_EQL(check(mssUnlinkSession(s)), 0, "%d");
+	success &= EXPECT_EQL(mssUnlinkSession(s), 0, "%d");
 	success &= EXPECT_EQL(s->LinkCnt, 1, "%d");
 
 	/** While links remain, the session is still the thread's. **/
@@ -64,7 +63,7 @@ static bool doTest(void)
 	success &= EXPECT_STR_EQL(mssUserName(), USERNAME);
 
 	/** The last unlink ends the session. **/
-	success &= EXPECT_EQL(check(mssUnlinkSession(s)), 0, "%d");
+	success &= EXPECT_EQL(mssUnlinkSession(s), 0, "%d");
 	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 	success &= EXPECT_EQL(mssUserName(), NULL, "%p");
 
@@ -72,22 +71,22 @@ static bool doTest(void)
 	 *** thread's next login, and ending it by pointer leaves the thread's
 	 *** own session alone.
 	 ***/
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	s = (pMtSession)thGetParam(NULL, "mss");
 	success &= EXPECT_NOT_NULL(s);
 	if (!s) return false;
-	success &= EXPECT_EQL(check(mssLinkSession(s)), 0, "%d");
-	success &= EXPECT_EQL(check(mssAuthenticate(USERNAME, PASSWORD, 0)), 0, "%d");
+	success &= EXPECT_EQL(mssLinkSession(s), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	current = (pMtSession)thGetParam(NULL, "mss");
 	success &= EXPECT_NOT_NULL(current);
 	if (!current) return false;
 	success &= EXPECT_EQL(s->LinkCnt, 1, "%d");
-	success &= EXPECT_EQL(check(mssEndSession(s)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(s), 0, "%d");
 	success &= EXPECT_EQL(thGetParam(NULL, "mss"), (void*)current, "%p");
 	success &= EXPECT_STR_EQL(mssUserName(), USERNAME);
 
 	/** The thread's own session ends as usual. **/
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 	success &= EXPECT_EQL(mssEndSession(NULL), -1, "%d");
 
     return success;

@@ -21,7 +21,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "mtsession.h"
@@ -79,38 +78,38 @@ static bool doTest(void)
 	/** A buffer with room for an MD5 credential gets one, salted with the
 	 ** hex expansion of the salt bytes.
 	 **/
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_EQL(strncmp(cred, "$1$"SALT_HEX"$", 12), 0, "%d");
 	success &= EXPECT_EQL((int)strlen(cred), MD5_CRED_LEN, "%d");
 	success &= EXPECT_EQL(guardIntact(CRED_BUF_SIZE), true, "%d");
 
 	/** The same inputs always produce the same credential. **/
 	strcpy(other, cred);
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_STR_EQL(cred, other);
 
 	/** A different password or a different salt produces different credentials. **/
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "password2", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "password2", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_EQL(strcmp(cred, other) == 0, 0, "%d");
-	success &= EXPECT_EQL(check(genCred("SALT", 4, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred("SALT", 4, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_EQL(strcmp(cred, other) == 0, 0, "%d");
 
 	/** Only salt_len bytes of the salt are used. **/
-	success &= EXPECT_EQL(check(genCred(SALT, 2, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 2, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_EQL(strncmp(cred, "$1$3716$", 8), 0, "%d");
 
 	/** A NUL byte within salt_len is salt data. **/
-	success &= EXPECT_EQL(check(genCred("sa\0lt", 4, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred("sa\0lt", 4, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_EQL(strncmp(cred, "$1$371600c6$", 12), 0, "%d");
-	success &= EXPECT_EQL(check(genCred("\0\0\0\0", 4, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred("\0\0\0\0", 4, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_EQL(strncmp(cred, "$1$00000000$", 12), 0, "%d");
 
 	/** A salt longer than the optimum is cut to MSS_SALT_SIZE bytes. **/
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "password", CRED_BUF_SIZE), 0, "%d");
 	strcpy(other, cred);
-	success &= EXPECT_EQL(check(genCred(SALT"more", 8, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT"more", 8, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_STR_EQL(cred, other);
-	success &= EXPECT_EQL(check(genCred(SALT"more", 1000, "password", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT"more", 1000, "password", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_STR_EQL(cred, other);
 
 	/** A salt length below one byte is refused. **/
@@ -119,18 +118,18 @@ static bool doTest(void)
 	success &= EXPECT_EQL(guardIntact(0), true, "%d");
 
 	/** An MD5 credential needs a buffer of MD5_CRED_SIZE bytes. **/
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "password", MD5_CRED_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "password", MD5_CRED_SIZE), 0, "%d");
 	success &= EXPECT_EQL((int)strlen(cred), MD5_CRED_LEN, "%d");
 	success &= EXPECT_EQL(guardIntact(MD5_CRED_SIZE), true, "%d");
 
 	/** MD5 falls back to a DES credential if the buffer is even one byte too small. **/
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "password", MD5_CRED_SIZE - 1)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "password", MD5_CRED_SIZE - 1), 0, "%d");
 	success &= EXPECT_EQL((int)strlen(cred), DES_CRED_LEN, "%d");
 	success &= EXPECT_EQL(strncmp(cred, SALT_HEX, 2), 0, "%d");
 	success &= EXPECT_EQL(guardIntact(MD5_CRED_SIZE - 1), true, "%d");
 
 	/** A DES credential needs a buffer of DES_CRED_SIZE bytes. **/
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "password", DES_CRED_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "password", DES_CRED_SIZE), 0, "%d");
 	success &= EXPECT_EQL((int)strlen(cred), DES_CRED_LEN, "%d");
 	success &= EXPECT_EQL(guardIntact(DES_CRED_SIZE), true, "%d");
 
@@ -142,7 +141,7 @@ static bool doTest(void)
 	success &= EXPECT_EQL(guardIntact(0), true, "%d");
 
 	/** An empty password is still a password. **/
-	success &= EXPECT_EQL(check(genCred(SALT, 4, "", CRED_BUF_SIZE)), 0, "%d");
+	success &= EXPECT_EQL(genCred(SALT, 4, "", CRED_BUF_SIZE), 0, "%d");
 	success &= EXPECT_EQL((int)strlen(cred), MD5_CRED_LEN, "%d");
 
     return success;

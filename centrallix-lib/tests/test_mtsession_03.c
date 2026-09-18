@@ -23,7 +23,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 #include "mtask.h"
 
 /** Tested module. **/
@@ -48,7 +47,7 @@ static bool doTest(void)
 	 *** groups of the whole process.
 	 ***/
 	mssInitialize("system", "", "", 0, "test_mtsession");
-	success &= EXPECT_EQL(check(mssAuthenticate(pw->pw_name, "unused", 1)), 0, "%d");
+	success &= EXPECT_EQL(mssAuthenticate(pw->pw_name, "unused", 1), 0, "%d");
 	s = (pMtSession)thGetParam(NULL, "mss");
 	success &= EXPECT_NOT_NULL(s);
 	if (!s) return false;
@@ -56,7 +55,7 @@ static bool doTest(void)
 	success &= EXPECT_EQL(s->GroupID, (int)pw->pw_gid, "%d");
 	success &= EXPECT_STR_EQL(s->UserName, pw->pw_name);
 	success &= EXPECT_STR_EQL(s->Password, "unused");
-	success &= EXPECT_EQL(check(mssEndSession(NULL)), 0, "%d");
+	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
 
 	/** A user the system does not know is refused, bypass or not. **/
 	success &= EXPECT_EQL(mssAuthenticate(NO_SUCH_USER, "unused", 1), -1, "%d");
@@ -96,7 +95,7 @@ long long test(char** tname)
 	pw = getpwuid(geteuid());
 	if (!pw)
 	    {
-	    printFail("getpwuid() found no entry for the current user");
+	    fprintf(stderr, "  > getpwuid() found no entry for the current user\n");
 	    return -1;
 	    }
 
