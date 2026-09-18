@@ -32,7 +32,7 @@
 	ASSERT_EQL((size_t)xsLength(xs), strlen(expect), "%ld") & \
 	ASSERT_STR_EQL(xsString(xs), expect)
 
-static bool do_tests(void)
+static bool doTest(void)
     {
     bool success = true;
     
@@ -157,5 +157,5 @@ static bool do_tests(void)
 long long test(char** tname)
     {
     *tname = "xstring-00 Full Test";
-    return loop_tests(do_tests);
+    return loopTest(doTest);
     }
