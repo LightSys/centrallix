@@ -705,19 +705,37 @@ mssSetParamPtr(char* paramname, void* ptr)
     int is_new = 0;
     char name[MSS_PARAMNAME_SIZE];
 
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (checkPtr(s) == NULL || checkPtr(paramname) == NULL)
+	/** Handle edge cases. **/
+	if (paramname == NULL)
+	    {
+	    mssError(1, "MSS", "paramname cannot be null.");
 	    goto error;
+	    }
+
+	/** Get session context. **/
+	s = (pMtSession)thGetParam(NULL,"mss");
+	if (s == NULL)
+	    {
+	    mssError(1, "MSS", "Cannot set session param ptr outside of session context.");
+	    goto error;
+	    }
 
 	/** The name has to fit the field it is kept in **/
-	if (checkPos(strtcpy(name, paramname, sizeof(name))) < 0)
+	if (strtcpy(name, paramname, sizeof(name)) < 0)
+	    {
+	    mssError(1, "MSS", "Failed to copy paramname: \"%s\".", paramname);
 	    goto error;
+	    }
 
     	/** Need to delete first? **/
 	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
-	    p = (pMtParam)checkPtr(nmMalloc(sizeof(MtParam)));
-	    if (p == NULL) goto error;
+	    p = nmMalloc(sizeof(MtParam));
+	    if (p == NULL)
+		{
+		mssError(1, "MSS", "Failed to allocate MtParam.");
+		goto error;
+		}
 	    strcpy(p->Name, name);
 	    is_new = 1;
 	    }
@@ -733,13 +751,16 @@ mssSetParamPtr(char* paramname, void* ptr)
 
 	p->Value = ptr;
 	p->IsAlloc = 0;
-	if (is_new && check(xhAdd(&s->Params, p->Name, (void*)p)) != 0)
+	if (is_new && xhAdd(&s->Params, p->Name, (void*)p) != 0)
+	    {
+	    mssError(1, "MSS", "Failed to add param pointer to xhash.");
 	    goto error;
+	    }
 
 	return 0;
 
     error:
-	mssError(1, "MSS", "Failed to add session parameter pointer.");
+	mssError(1, "MSS", "Failed to set session parameter pointer.");
 	return -1;
     }
 
