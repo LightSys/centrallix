@@ -31,7 +31,7 @@
  *** @param line_number The line number in the file at which the error occurred.
  ***/
 void
-printErrInternal(const int error_code, const char* c_str, const char* file_name, const int line_number)
+printWarningInternal(const int error_code, const char* c_str, const char* file_name, const int line_number)
     {
 	/** Grab errno before any library call of ours can overwrite it. **/
 	const int saved_errno = errno;
