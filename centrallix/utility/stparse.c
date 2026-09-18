@@ -612,8 +612,11 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	    return 0;
 	    }
 
-	/** If external ref, do eval **/
-	if ((find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE)) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
+	/*** If binding to a domain or external ref, do eval.  If a domain is
+	 *** specified, we ignore the coverage mask because expBindExpression()
+	 *** overwrites it with the resolved mask.
+	 ***/
+	if ((domain != 0 || (find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE))) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
 	    if (!objlist)
 		{
