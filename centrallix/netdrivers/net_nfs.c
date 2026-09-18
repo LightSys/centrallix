@@ -38,7 +38,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1584,11 +1584,11 @@ nnfs_internal_request_handler(void* v)
 		    {
 		    /** thread 'i' has it locked -- give it up **/
 		    if(xrqEnqueue(&NNFS.threads[i].waitingRequests,entry)!=0)
-			mssError("NNFS",1,"Unable to give request on inode %i to thread %i",requestInode,i);
+			mssError(1,"NNFS","Unable to give request on inode %u to thread %i",requestInode,i);
 		    else
 			if(NNFS_DEBUG & NNFS_DEBUG_REQUEST)
 			    {
-			    printf("successfully gave request on %i to %i\n",requestInode,i);
+			    printf("successfully gave request on %u to %i\n",requestInode,i);
 			    }
 		    entry = NULL;
 		    break;
@@ -1602,7 +1602,7 @@ nnfs_internal_request_handler(void* v)
 	/** enqueue the initial request (this makes processing easier) **/
 	if(xrqEnqueue(&(cThread->waitingRequests),entry)!=0)
 	    {
-	    mssError("NNFS",1,"Unable to enqueue request on %i",threadNum);
+	    mssError(1,"NNFS","Unable to enqueue request on %i",threadNum);
 	    nnfs_internal_destroy_queueentry(entry);
 	    continue;
 	    }
@@ -1610,7 +1610,7 @@ nnfs_internal_request_handler(void* v)
 	/** lock the inode **/
 	cThread->lockedInode = requestInode;
 	if(NNFS_DEBUG & NNFS_DEBUG_LOCKING)
-	    printf("thread #%i locked inode %i\n",threadNum,requestInode);
+	    printf("thread #%i locked inode %u\n",threadNum,requestInode);
 
 	/** grab elements off the top of the queue until there are no more **/
 	while((entry = xrqDequeue(&(cThread->waitingRequests))) != NULL)
@@ -1836,13 +1836,13 @@ nnfs_internal_nfs_listener(void* v)
 				    }
 				else
 				    {
-				    mssError(0,"NNFS","Bad mountd procedure requested: %i",msg_in.rm_call.cb_proc);
+				    mssError(0,"NNFS","Bad mountd procedure requested: %lu",(unsigned long)msg_in.rm_call.cb_proc);
 				    msg_out.rm_reply.rp_acpt.ar_stat = PROC_UNAVAIL;
 				    }
 				}
 			    else
 				{
-				mssError(0,"NNFS","Invalid mount version requested: %i",msg_in.rm_call.cb_vers);
+				mssError(0,"NNFS","Invalid mount version requested: %lu",(unsigned long)msg_in.rm_call.cb_vers);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 				msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 				msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -1850,13 +1850,13 @@ nnfs_internal_nfs_listener(void* v)
 			    }
 			else
 			    {
-			    mssError(0,"NNFS","Invalid program requested: %i",msg_in.rm_call.cb_prog);
+			    mssError(0,"NNFS","Invalid program requested: %lu",(unsigned long)msg_in.rm_call.cb_prog);
 			    msg_out.rm_reply.rp_acpt.ar_stat = PROG_UNAVAIL;
 			    }
 			}
 		    else
 			{
-			mssError(0,"Invalid RPC version requested: %i",msg_in.rm_call.cb_rpcvers);
+			mssError(0,"NNFS","Invalid RPC version requested: %lu",(unsigned long)msg_in.rm_call.cb_rpcvers);
 			msg_out.rm_reply.rp_stat = MSG_DENIED;
 			msg_out.rm_reply.rp_rjct.rj_vers.low = 2;
 			msg_out.rm_reply.rp_rjct.rj_vers.high = 2;
@@ -2141,13 +2141,13 @@ nnfs_internal_mount_listener(void* v)
 				}
 			    else
 				{
-				mssError(0,"NNFS","Bad mountd procedure requested: %i\n",msg_in.rm_call.cb_proc);
+				mssError(0,"NNFS","Bad mountd procedure requested: %lu\n",(unsigned long)msg_in.rm_call.cb_proc);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROC_UNAVAIL;
 				}
 			    }
 			else
 			    {
-			    mssError(0,"Invalid mount version requested: %i\n",msg_in.rm_call.cb_vers);
+			    mssError(0,"NNFS","Invalid mount version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_vers);
 			    msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 			    msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 			    msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -2155,13 +2155,13 @@ nnfs_internal_mount_listener(void* v)
 			}
 		    else
 			{
-			mssError(0,"Invalid program requested: %i\n",msg_in.rm_call.cb_prog);
+			mssError(0,"NNFS","Invalid program requested: %lu\n",(unsigned long)msg_in.rm_call.cb_prog);
 			msg_out.rm_reply.rp_acpt.ar_stat = PROG_UNAVAIL;
 			}
 		    }
 		else
 		    {
-		    mssError(0,"Invalid RPC version requested: %i\n",msg_in.rm_call.cb_rpcvers);
+		    mssError(0,"NNFS","Invalid RPC version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_rpcvers);
 		    msg_out.rm_reply.rp_stat = MSG_DENIED;
 		    msg_out.rm_reply.rp_rjct.rj_vers.low = 2;
 		    msg_out.rm_reply.rp_rjct.rj_vers.high = 2;
@@ -2600,4 +2600,3 @@ MODULE_PREFIX("nnfs");
 MODULE_DESC("NFS Network Driver");
 MODULE_VERSION(0,1,1);
 MODULE_IFACE(CX_CURRENT_IFACE);
-

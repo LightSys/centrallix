@@ -29,9 +29,21 @@ extern "C" {
 
     int strtoi(const char *nptr, char **endptr, int base);
     unsigned int strtoui(const char *nptr, char **endptr, int base);
+    
+    /*** snprintBytes() allows one to pick between CS units, where the kibibyte
+     *** (KiB) is 1024 bytes, and metric units where the kilobyte (KB) is 1000 bytes.
+     *** Fun Fact: Windows uses kibibytes, but displays them as KB.
+     ***/
+    #define USE_METRIC false
 
-    char* snprintBytes(char* buf, const size_t buf_size, unsigned long bytes);
-    char* snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value);
+    /** The max buffer size needed for snprintBytes(). **/
+    #define SNPRINT_BYTES_BUF_SIZE 11
+
+    /** The max buffer size needed for snprintCommasLlu(). **/
+    #define SNPRINT_COMMAS_LLU_BUF_SIZE 27
+
+    int snprintBytes(char* buf, const size_t buf_size, unsigned long bytes);
+    int snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value);
     void fprintMem(FILE* out);
 
 #ifdef	__cplusplus
