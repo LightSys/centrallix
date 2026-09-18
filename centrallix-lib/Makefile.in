@@ -59,8 +59,8 @@ LIBS = @LIBS@ -lm
 ##
 PROFILE=@PROFILE@
 COVERAGE=@COVERAGE@
-CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) $(COVERAGE) -g
-MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall $(PROFILE) $(COVERAGE) -g -O0
+CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g
+MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g -O0
 TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
 
 XSTATICFILES=mtask.o mtlexer.o memstr.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o util.o timer.o warn.o range.o
