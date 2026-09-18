@@ -549,7 +549,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 
     end:
 	/** Clean up. **/
-	xsDeInit(&err_msg);
+	warnFail(xsDeInit(&err_msg));
 
 	return;
     }
