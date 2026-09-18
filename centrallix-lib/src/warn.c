@@ -50,14 +50,14 @@ printWarningInternal(const int error_code, const char* c_str, const char* file_n
 	    {
 	    /** Failed to make error message. Fallback to a more basic error. **/
 	    fprintf(stderr,
-		"%s:%d: Warning! %s. (Failed to build full error message.)",
+		"%s:%d: Warning! %s. (Failed to build full error message.)\n",
 		file_name, line_number, c_str
 	    );
 	    }
 	else
 	    {
 	    fprintf(stderr,
-		"%s:%d: Warning! %s%s.",
+		"%s:%d: Warning! %s%s.\n",
 		file_name, line_number, c_str, extra_info_buf
 	    );
 	    }

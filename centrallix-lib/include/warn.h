@@ -84,7 +84,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
  *** 	included in the warning message if an warning occurs.
  *** @returns The result of the checked expression.
  ***/
-#define warnPtr(result) \
+#define warnNull(result) \
     ({ \
 	errno = 0; /* Reset errno to prevent confusion. */ \
 	void* _r = (result); \

@@ -27,6 +27,7 @@
 #include <unistd.h>
 
 #include "check.h"
+#include "expect.h"
 #include "mtsession.h"
 #include "newmalloc.h"
 #include "range.h"
@@ -225,7 +226,7 @@ fprintMem(FILE* out)
 	if (snprintBytes(buf, sizeof(buf), resident_bytes) < 0)
 	    {
 	    mssError(1, "UTIL", "Failed to format memory info.");
-	    goto end;	
+	    goto end;
 	    }
 	
 	/** fprintf() out data. **/
