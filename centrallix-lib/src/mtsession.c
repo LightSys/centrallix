@@ -521,6 +521,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    else if (strcmp(MSS.LogMethod, "stdout") == 0)
 		{
 		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", xsString(&err_msg));
+		warnFail(fflush(stdout));
 		}
 	    }
 
