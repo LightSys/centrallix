@@ -24,13 +24,6 @@
 
 #include "expect.h"
 
-/** File name macro, expanding functionality like __FILE__ and __LINE__. **/
-#define __FILENAME__ \
-    ({ \
-    const char* last_directory = strrchr(__FILE__, '/'); \
-    ((last_directory != NULL) ? last_directory + 1 : __FILE__); \
-    })
-
 /** Internal warning printer (forward declaration). **/
 void printWarningInternal(const int error_code, const char* c_str, const char* file_name, const int line_number);
 #define printWarning(error_code, c_str) printWarningInternal(error_code, (c_str), __FILE__, __LINE__)
