@@ -47,7 +47,7 @@ static bool doTest(void)
 	 ***/
 	char stats_buf[2048];
 	int stats_pipe[2];
-	success &= EXPECT_EQL(pipe(stats_pipe), 0, "%d");
+	if (!EXPECT_EQL(pipe(stats_pipe), 0, "%d")) return false;
 	fflush(stdout);
 	int saved_stdout = dup(STDOUT_FILENO);
 	dup2(stats_pipe[1], STDOUT_FILENO);

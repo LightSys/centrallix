@@ -54,7 +54,7 @@ static int mockErrorFn(char* error_msg)
 	    {
 	    err_buf_size *= 2;
 	    err_buf = realloc(err_buf, err_buf_size);
-	    EXPECT_NOT_NULL(err_buf);
+	    if (!EXPECT_NOT_NULL(err_buf)) return -1;
 	    }
 
 	err_buf_i += snprintf(
@@ -86,16 +86,16 @@ static bool doTest(void)
 
 	/** Initialize the mock error function. **/
 	err_buf = malloc(err_buf_size = 256);
-	success &= EXPECT_NOT_NULL(err_buf);
+	if (!EXPECT_NOT_NULL(err_buf)) return false;
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
 	nmSetErrFunction(mockErrorFn);
 
 	/** Basic string data. **/
 	char* str1;
-	success &= EXPECT_NOT_NULL(str1 = nmMalloc(16));
+	if (!EXPECT_NOT_NULL(str1 = nmMalloc(16))) return false;
 	snprintf(str1, 16, "ThisIsSomeData!");
 	char* str2;
-	success &= EXPECT_NOT_NULL(str2 = nmMalloc(32));
+	if (!EXPECT_NOT_NULL(str2 = nmMalloc(32))) return false;
 	snprintf(str2, 32, "ThisDataIsDifferentStringData.\n");
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
@@ -103,12 +103,12 @@ static bool doTest(void)
 	/** Random data, varying sizes. **/
 	void** data = malloc(TEST_LIMIT * sizeof(void*));
 	void** test = malloc(TEST_LIMIT * sizeof(void*));
-	success &= EXPECT_NOT_NULL(data);
-	success &= EXPECT_NOT_NULL(test);
+	if (!EXPECT_NOT_NULL(data)) return false;
+	if (!EXPECT_NOT_NULL(test)) return false;
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
-	    success &= EXPECT_NOT_NULL(test[i] = nmMalloc(i));
-	    success &= EXPECT_NOT_NULL(data[i] = randomInit(malloc(i), i));
+	    if (!EXPECT_NOT_NULL(test[i] = nmMalloc(i))) return false;
+	    if (!EXPECT_NOT_NULL(data[i] = randomInit(malloc(i), i))) return false;
 	    memcpy(test[i], data[i], i);
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
@@ -120,7 +120,7 @@ static bool doTest(void)
 
 	/** Large singular allocation. **/
 	void* large_buf;
-	success &= EXPECT_NOT_NULL(large_buf = nmMalloc(LARGE_BUF_SIZE));
+	if (!EXPECT_NOT_NULL(large_buf = nmMalloc(LARGE_BUF_SIZE))) return false;
 	for (size_t i = LARGE_BUF_SIZE - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;

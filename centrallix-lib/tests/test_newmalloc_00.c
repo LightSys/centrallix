@@ -55,7 +55,7 @@ static int mockErrorFn(char* error_msg)
 	    {
 	    err_buf_size *= 2;
 	    err_buf = realloc(err_buf, err_buf_size);
-	    EXPECT_NOT_NULL(err_buf);
+	    if (!EXPECT_NOT_NULL(err_buf)) return -1;
 	    }
 
 	err_buf_i += snprintf(
@@ -87,16 +87,16 @@ static bool doTest(void)
 
 	/** Initialize the mock error function. **/
 	err_buf = malloc(err_buf_size = 256);
-	EXPECT_NOT_NULL(err_buf);
+	if (!EXPECT_NOT_NULL(err_buf)) return false;
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
 	nmSetErrFunction(mockErrorFn);
 
 	/** Basic string data. **/
 	char* str1;
-	success &= EXPECT_NOT_NULL(str1 = nmSysMalloc(16));
+	if (!EXPECT_NOT_NULL(str1 = nmSysMalloc(16))) return false;
 	snprintf(str1, 16, "ThisIsSomeData!");
 	char* str2;
-	success &= EXPECT_NOT_NULL(str2 = nmSysMalloc(32));
+	if (!EXPECT_NOT_NULL(str2 = nmSysMalloc(32))) return false;
 	snprintf(str2, 32, "ThisDataIsDifferentStringData.\n");
 	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
@@ -104,12 +104,12 @@ static bool doTest(void)
 	/** Random data, varying sizes. **/
 	void** data = malloc(TEST_LIMIT * sizeof(void*));
 	void** test = malloc(TEST_LIMIT * sizeof(void*));
-	success &= EXPECT_NOT_NULL(data);
-	success &= EXPECT_NOT_NULL(test);
+	if (!EXPECT_NOT_NULL(data)) return false;
+	if (!EXPECT_NOT_NULL(test)) return false;
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
-	    success &= EXPECT_NOT_NULL(test[i] = nmSysMalloc(i));
-	    success &= EXPECT_NOT_NULL(data[i] = randomInit(malloc(i), i));
+	    if (!EXPECT_NOT_NULL(test[i] = nmSysMalloc(i))) return false;
+	    if (!EXPECT_NOT_NULL(data[i] = randomInit(malloc(i), i))) return false;
 	    memcpy(test[i], data[i], i); /* Write test data into test memory. */
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
@@ -121,7 +121,7 @@ static bool doTest(void)
 
 	/** Reallocate all variably sized memory to a different size. **/
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
-	    success &= EXPECT_NOT_NULL(test[i] = nmSysRealloc(test[i], TEST_LIMIT - i));
+	    if (!EXPECT_NOT_NULL(test[i] = nmSysRealloc(test[i], TEST_LIMIT - i))) return false;
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    success &= EXPECT_EQL(memcmp(data[i], test[i], min(i, TEST_LIMIT - i)), 0, "%d");
 
@@ -132,8 +132,8 @@ static bool doTest(void)
 	/** Testing strdup. **/
 	char* str_dup1;
 	char* str_dup2;
-	success &= EXPECT_NOT_NULL(str_dup1 = nmSysStrdup(str1));
-	success &= EXPECT_NOT_NULL(str_dup2 = nmSysStrdup(str2));
+	if (!EXPECT_NOT_NULL(str_dup1 = nmSysStrdup(str1))) return false;
+	if (!EXPECT_NOT_NULL(str_dup2 = nmSysStrdup(str2))) return false;
 	success &= EXPECT_STR_EQL(str_dup1, "ThisIsSomeData!");
 	success &= EXPECT_STR_EQL(str_dup2, "ThisDataIsDifferentStringData.\n");
 	str_dup1[12] = '\0';
@@ -169,7 +169,7 @@ static bool doTest(void)
 
 	/** Large singular allocation. **/
 	void* large_buf;
-	success &= EXPECT_NOT_NULL(large_buf = nmSysMalloc(LARGE_BUF_SIZE));
+	if (!EXPECT_NOT_NULL(large_buf = nmSysMalloc(LARGE_BUF_SIZE))) return false;
 	for (size_t i = LARGE_BUF_SIZE - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;
