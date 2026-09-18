@@ -1516,7 +1516,7 @@ nnfs_internal_get_inode(void* data, xdrproc_t func)
 	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((readdirargs*)data)->dir,(xdrproc_t)xdr_fhandle);
 	}
-    mssError("NNFS",0,"Error getting inode from %p (%p)\n",data,func);
+    mssError(0,"NNFS","Error getting inode from %p (%p)",data,func);
     CXSEC_EXIT(NFS_FN_KEY);
     return 0;
     }
