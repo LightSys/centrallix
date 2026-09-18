@@ -44,13 +44,13 @@
  ***/
 #define MIN_TEST_SECONDS 0.1
 
-/*** Expect a value to be true.
+/*** Assert a value to be true.
  *** 
  *** @param v1 The value.
  *** @param v2 The second value.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_TRUE(v) \
+#define ASSERT_TRUE(v) \
     ({ \
     const int success = !!(v); \
     if (!success) fprintf(stderr, \
@@ -60,7 +60,7 @@
     success; \
     })
 
-/*** Expect two values to be equal.
+/*** Assert two values to be equal.
  *** 
  *** @param v1 The first value.
  *** @param v2 The second value.
@@ -69,7 +69,7 @@
  ***    sting literal or a macro that expands to one.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_EQL(v1, v2, sp) \
+#define ASSERT_EQL(v1, v2, sp) \
     ({ \
     __typeof__ (v1) _v1 = (v1); \
     __typeof__ (v2) _v2 = (v2); \
@@ -81,13 +81,13 @@
     success; \
     })
 
-/*** Expect two strings to be equal.
+/*** Assert two strings to be equal.
  *** 
  *** @param str1 The first string.
  *** @param str2 The second string.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_STR_EQL(str1, str2) \
+#define ASSERT_STR_EQL(str1, str2) \
     ({ \
     char* _str1 = (str1); \
     char* _str2 = (str2); \
@@ -99,7 +99,7 @@
     success; \
     })
 
-/*** Expect two strings to be equal, including null characters.
+/*** Assert two strings to be equal, including null characters.
  *** Warning: Can read off the end of strings.
  *** 
  *** @param str1 The first string.
@@ -107,7 +107,7 @@
  *** @param len The length of strings to check (aka. N).
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_STR_EQL_N(str1, str2, len) \
+#define ASSERT_STR_EQL_N(str1, str2, len) \
     ({ \
     const char* _str1 = (str1); \
     const char* _str2 = (str2); \
@@ -132,13 +132,13 @@
     success; \
     })
 
-/*** Expect two cosine vectors from `cluster.c` to be equal.
+/*** Assert two cosine vectors from `cluster.c` to be equal.
  *** 
  *** @param v1 The first vector.
  *** @param v2 The second vector.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_VEC_EQL(v1, v2) \
+#define ASSERT_VEC_EQL(v1, v2) \
     ({ \
 	pVector _v1 = (v1); \
 	pVector _v2 = (v2); \
@@ -153,7 +153,7 @@
 	success; \
     })
 
-/*** Expect a value to fall within a range.
+/*** Assert a value to fall within a range.
  *** 
  *** @param v The value.
  *** @param min_v The minimum acceptable value.
@@ -163,7 +163,7 @@
  ***    sting literal or a macro that expands to one.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_RANGE(v, min_v, max_v, sp) \
+#define ASSERT_RANGE(v, min_v, max_v, sp) \
     ({ \
     __typeof__ (v) _v = (v); \
     __typeof__ (min_v) _min = (min_v); \
@@ -176,13 +176,13 @@
     success; \
     })
 
-/*** Syntactic sugar to expect a pointer to be non null in a clearer, more
+/*** Syntactic sugar to assert a pointer to be non null in a clearer, more
  *** concise way.
  *** 
  *** @param ptr The pointer.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_NOT_NULL(ptr) \
+#define ASSERT_NOT_NULL(ptr) \
     ({ \
     __typeof__ (ptr) _ptr = (ptr); \
     int success = (_ptr != NULL); \

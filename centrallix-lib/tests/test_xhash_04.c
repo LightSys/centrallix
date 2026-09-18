@@ -35,7 +35,7 @@ static bool doTest(void)
     char keys[KEY_COUNT][KEY_SIZE];
     int used_rows = 0;
 
-	success &= EXPECT_EQL(xhInit(&hash, HASH_ROWS, 0), 0, "%d");
+	success &= ASSERT_EQL(xhInit(&hash, HASH_ROWS, 0), 0, "%d");
 
 	/*** Each key doubles as its own data, giving every entry a unique
 	 *** pointer to look up.  The keys share the stack of an mtask thread,
@@ -44,24 +44,24 @@ static bool doTest(void)
 	for (int i = 0; i < KEY_COUNT; i++)
 	    {
 	    snprintf(keys[i], sizeof(keys[i]), "spread-key-%d", i);
-	    success &= EXPECT_EQL(xhAdd(&hash, keys[i], keys[i]), 0, "%d");
+	    success &= ASSERT_EQL(xhAdd(&hash, keys[i], keys[i]), 0, "%d");
 	    }
-	success &= EXPECT_EQL(hash.nItems, KEY_COUNT, "%d");
+	success &= ASSERT_EQL(hash.nItems, KEY_COUNT, "%d");
 
 	/** Nothing was lost or confused with another key. **/
 	for (int i = 0; i < KEY_COUNT; i++)
-	    success &= EXPECT_EQL(xhLookup(&hash, keys[i]), (char*)keys[i], "%p");
+	    success &= ASSERT_EQL(xhLookup(&hash, keys[i]), (char*)keys[i], "%p");
 
 	/** Removing every key empties every row. **/
 	for (int i = 0; i < KEY_COUNT; i++)
-	    success &= EXPECT_EQL(xhRemove(&hash, keys[i]), 0, "%d");
+	    success &= ASSERT_EQL(xhRemove(&hash, keys[i]), 0, "%d");
 	for (int i = 0; i < HASH_ROWS; i++)
 	    if (hash.Rows.Items[i] != NULL) used_rows++;
-	success &= EXPECT_EQL(used_rows, 0, "%d");
-	success &= EXPECT_EQL(hash.nItems, 0, "%d");
+	success &= ASSERT_EQL(used_rows, 0, "%d");
+	success &= ASSERT_EQL(hash.nItems, 0, "%d");
 
 	/** Clean up. **/
-	success &= EXPECT_EQL(xhDeInit(&hash), 0, "%d");
+	success &= ASSERT_EQL(xhDeInit(&hash), 0, "%d");
 
     return success;
     }

@@ -67,71 +67,71 @@ static bool doTest(void)
 
 	/** Create a new xarray. **/
 	pXArray xa = xaNew(2);
-	if (!EXPECT_NOT_NULL(xa)) return false;
+	if (!ASSERT_NOT_NULL(xa)) return false;
 
 	/** A new xarray should have 0 items. **/
-	success &= EXPECT_EQL(xaCount(xa), 0, "%d");
+	success &= ASSERT_EQL(xaCount(xa), 0, "%d");
 
 	/** Test adding an item. **/
 	int* v1 = nmMalloc(sizeof(int));
-	if (!EXPECT_NOT_NULL(v1)) return false;
+	if (!ASSERT_NOT_NULL(v1)) return false;
 	*v1 = value1;
-	success &= EXPECT_EQL(xaAddItem(xa, v1), 0, "%d");
-	success &= EXPECT_EQL(xaCount(xa), 1, "%d");
-	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 0), value1, "%d");
+	success &= ASSERT_EQL(xaAddItem(xa, v1), 0, "%d");
+	success &= ASSERT_EQL(xaCount(xa), 1, "%d");
+	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 0), value1, "%d");
 
 	/** Test adding another item. **/
 	int* v2 = nmMalloc(sizeof(int));
-	if (!EXPECT_NOT_NULL(v2)) return false;
+	if (!ASSERT_NOT_NULL(v2)) return false;
 	*v2 = value2;
-	success &= EXPECT_EQL(xaAddItem(xa, v2), 1, "%d");
-	success &= EXPECT_EQL(xaCount(xa), 2, "%d");
-	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 1), value2, "%d");
+	success &= ASSERT_EQL(xaAddItem(xa, v2), 1, "%d");
+	success &= ASSERT_EQL(xaCount(xa), 2, "%d");
+	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 1), value2, "%d");
 
 	/** Test finding items. **/
-	success &= EXPECT_EQL(xaFindItem(xa, v2), 1, "%d");
-	success &= EXPECT_EQL(xaFindItem(xa, v1), 0, "%d");
-	success &= EXPECT_EQL(xaFindItemR(xa, v2), 1, "%d");
-	success &= EXPECT_EQL(xaFindItemR(xa, v1), 0, "%d");
+	success &= ASSERT_EQL(xaFindItem(xa, v2), 1, "%d");
+	success &= ASSERT_EQL(xaFindItem(xa, v1), 0, "%d");
+	success &= ASSERT_EQL(xaFindItemR(xa, v2), 1, "%d");
+	success &= ASSERT_EQL(xaFindItemR(xa, v1), 0, "%d");
 
 	/** Test finding items that don't exist. **/
 	int* v_not = nmMalloc(sizeof(int));
-	if (!EXPECT_NOT_NULL(v_not)) return false;
+	if (!ASSERT_NOT_NULL(v_not)) return false;
 	*v_not = value_not;
-	success &= EXPECT_EQL(xaFindItem(xa, NULL), -1, "%d");
-	success &= EXPECT_EQL(xaFindItemR(xa, NULL), -1, "%d");
-	success &= EXPECT_EQL(xaFindItem(xa, &v_not), -1, "%d");
-	success &= EXPECT_EQL(xaFindItemR(xa, &v_not), -1, "%d");
+	success &= ASSERT_EQL(xaFindItem(xa, NULL), -1, "%d");
+	success &= ASSERT_EQL(xaFindItemR(xa, NULL), -1, "%d");
+	success &= ASSERT_EQL(xaFindItem(xa, &v_not), -1, "%d");
+	success &= ASSERT_EQL(xaFindItemR(xa, &v_not), -1, "%d");
 	nmFree(v_not, sizeof(int)); v_not = NULL;
 
 	/** Insert before index 1. **/
 	int* v3 = nmMalloc(sizeof(int));
-	if (!EXPECT_NOT_NULL(v3)) return false;
+	if (!ASSERT_NOT_NULL(v3)) return false;
 	*v3 = value3;
-	success &= EXPECT_EQL(xaInsertBefore(xa, 1, v3), 1, "%d");
-	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 1), value3, "%d");
-	success &= EXPECT_EQL(xaCount(xa), 3, "%d");
+	success &= ASSERT_EQL(xaInsertBefore(xa, 1, v3), 1, "%d");
+	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 1), value3, "%d");
+	success &= ASSERT_EQL(xaCount(xa), 3, "%d");
 
 	/** Insert after index 2. **/
 	int* v4 = nmMalloc(sizeof(int));
-	if (!EXPECT_NOT_NULL(v4)) return false;
+	if (!ASSERT_NOT_NULL(v4)) return false;
 	*v4 = value4;
-	success &= EXPECT_EQL(xaInsertAfter(xa, 2, v4), 3, "%d");
-	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 3), value4, "%d");
-	success &= EXPECT_EQL(xaCount(xa), 4, "%d");
+	success &= ASSERT_EQL(xaInsertAfter(xa, 2, v4), 3, "%d");
+	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 3), value4, "%d");
+	success &= ASSERT_EQL(xaCount(xa), 4, "%d");
 
 	/** xaSetItem() beyond current end should create NULL gaps. **/
 	int* vset = nmMalloc(sizeof(int));
-	if (!EXPECT_NOT_NULL(vset)) return false;
+	if (!ASSERT_NOT_NULL(vset)) return false;
 	*vset = value5;
-	success &= EXPECT_EQL(xaSetItem(xa, 5, vset), 5, "%d");
-	success &= EXPECT_EQL(xaCount(xa), 6, "%d");
-	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 5), value5, "%d");
-	success &= EXPECT_EQL(xaGetItem(xa, 4), NULL, "%p"); /* Check null gap. */
+	success &= ASSERT_EQL(xaSetItem(xa, 5, vset), 5, "%d");
+	success &= ASSERT_EQL(xaCount(xa), 6, "%d");
+	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 5), value5, "%d");
+	success &= ASSERT_EQL(xaGetItem(xa, 4), NULL, "%p"); /* Check null gap. */
 
 	/** Remove an item and ensure that it is gone. **/
-	success &= EXPECT_EQL(xaRemoveItem(xa, 2), 0, "%d"); /* Remove original index 2. */
-	success &= EXPECT_EQL(xaCount(xa), 5, "%d");
+	success &= ASSERT_EQL(xaRemoveItem(xa, 2), 0, "%d"); /* Remove original index 2. */
+	success &= ASSERT_EQL(xaCount(xa), 5, "%d");
 	nmFree(v2, sizeof(int)); v2 = NULL; /* v2 is removed so it isn't freed with xaClear(). */
 
 	/** Count non-NULL items prior to clearing. **/
@@ -142,12 +142,12 @@ static bool doTest(void)
 
 	/** Clear and verify free was called for each non-NULL item. **/
 	unsigned int freed_count = 0;
-	success &= EXPECT_EQL(xaClear(xa, test_free, &freed_count), 0, "%d");
-	success &= EXPECT_EQL(freed_count, nonnull, "%d");
-	success &= EXPECT_EQL(xaCount(xa), 0, "%d");
+	success &= ASSERT_EQL(xaClear(xa, test_free, &freed_count), 0, "%d");
+	success &= ASSERT_EQL(freed_count, nonnull, "%d");
+	success &= ASSERT_EQL(xaCount(xa), 0, "%d");
 
 	/** Clean up. **/
-	success &= EXPECT_EQL(xaFree(xa), 0, "%d");
+	success &= ASSERT_EQL(xaFree(xa), 0, "%d");
 
     return success;
     }

@@ -54,7 +54,7 @@ static int mockErrorFn(char* error_msg)
 	    {
 	    err_buf_size *= 2;
 	    err_buf = realloc(err_buf, err_buf_size);
-	    if (!EXPECT_NOT_NULL(err_buf)) return -1;
+	    if (!ASSERT_NOT_NULL(err_buf)) return -1;
 	    }
 
 	err_buf_i += snprintf(
@@ -86,52 +86,52 @@ static bool doTest(void)
 
 	/** Initialize the mock error function. **/
 	err_buf = malloc(err_buf_size = 256);
-	if (!EXPECT_NOT_NULL(err_buf)) return false;
+	if (!ASSERT_NOT_NULL(err_buf)) return false;
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
 	nmSetErrFunction(mockErrorFn);
 
 	/** Basic string data. **/
 	char* str1;
-	if (!EXPECT_NOT_NULL(str1 = nmMalloc(16))) return false;
+	if (!ASSERT_NOT_NULL(str1 = nmMalloc(16))) return false;
 	snprintf(str1, 16, "ThisIsSomeData!");
 	char* str2;
-	if (!EXPECT_NOT_NULL(str2 = nmMalloc(32))) return false;
+	if (!ASSERT_NOT_NULL(str2 = nmMalloc(32))) return false;
 	snprintf(str2, 32, "ThisDataIsDifferentStringData.\n");
-	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
-	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
+	success &= ASSERT_STR_EQL(str1, "ThisIsSomeData!");
+	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Random data, varying sizes. **/
 	void** data = malloc(TEST_LIMIT * sizeof(void*));
 	void** test = malloc(TEST_LIMIT * sizeof(void*));
-	if (!EXPECT_NOT_NULL(data)) return false;
-	if (!EXPECT_NOT_NULL(test)) return false;
+	if (!ASSERT_NOT_NULL(data)) return false;
+	if (!ASSERT_NOT_NULL(test)) return false;
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
-	    if (!EXPECT_NOT_NULL(test[i] = nmMalloc(i))) return false;
-	    if (!EXPECT_NOT_NULL(data[i] = randomInit(malloc(i), i))) return false;
+	    if (!ASSERT_NOT_NULL(test[i] = nmMalloc(i))) return false;
+	    if (!ASSERT_NOT_NULL(data[i] = randomInit(malloc(i), i))) return false;
 	    memcpy(test[i], data[i], i);
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
-	    success &= EXPECT_EQL(memcmp(data[i], test[i], i), 0, "%d");
+	    success &= ASSERT_EQL(memcmp(data[i], test[i], i), 0, "%d");
 
 	/** Basic string data is unharmed. **/
-	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
-	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
+	success &= ASSERT_STR_EQL(str1, "ThisIsSomeData!");
+	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Large singular allocation. **/
 	void* large_buf;
-	if (!EXPECT_NOT_NULL(large_buf = nmMalloc(LARGE_BUF_SIZE))) return false;
+	if (!ASSERT_NOT_NULL(large_buf = nmMalloc(LARGE_BUF_SIZE))) return false;
 	for (size_t i = LARGE_BUF_SIZE - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;
 	size_t mismatches = 0lu;
 	for (size_t i = 0lu; i < LARGE_BUF_SIZE; i++)
 	    if (*((unsigned char*)large_buf + i) != (unsigned char)(i % 255lu)) mismatches++;
-	success &= EXPECT_EQL(mismatches, 0lu, "%zu");
+	success &= ASSERT_EQL(mismatches, 0lu, "%zu");
 
 	/** Dup string data is unharmed. **/
-	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
-	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
+	success &= ASSERT_STR_EQL(str1, "ThisIsSomeData!");
+	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Free random data, varying sizes. **/
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
@@ -143,8 +143,8 @@ static bool doTest(void)
 	free(test);
 
 	/** Basic string data is unharmed. **/
-	success &= EXPECT_STR_EQL(str1, "ThisIsSomeData!");
-	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
+	success &= ASSERT_STR_EQL(str1, "ThisIsSomeData!");
+	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Free data. **/
 	nmFree(str1, 16);
@@ -157,7 +157,7 @@ static bool doTest(void)
 	nmClear();
 
 	/** Expect no captured errors. **/
-	success &= EXPECT_STR_EQL(err_buf, "");
+	success &= ASSERT_STR_EQL(err_buf, "");
 
 	/** Clean up. **/
 	free(err_buf);

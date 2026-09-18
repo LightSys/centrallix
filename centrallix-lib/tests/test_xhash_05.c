@@ -53,28 +53,28 @@ static bool doTest(void)
 	for (int r = 0; r < ROW_COUNT; r++)
 	    {
 	    int hash = xh_internal_ComputeHash(key, KEY_LEN, rows[r]);
-	    success &= EXPECT_RANGE(hash, 0, rows[r] - 1, "%d");
-	    success &= EXPECT_EQL(xhInitialize(), 0, "%d");
-	    success &= EXPECT_EQL(xh_internal_ComputeHash(key, KEY_LEN, rows[r]), hash, "%d");
+	    success &= ASSERT_RANGE(hash, 0, rows[r] - 1, "%d");
+	    success &= ASSERT_EQL(xhInitialize(), 0, "%d");
+	    success &= ASSERT_EQL(xh_internal_ComputeHash(key, KEY_LEN, rows[r]), hash, "%d");
 
 	    /** An empty key hashes to the first row of any table. **/
-	    success &= EXPECT_EQL(xh_internal_ComputeHash(key, 0, rows[r]), 0, "%d");
+	    success &= ASSERT_EQL(xh_internal_ComputeHash(key, 0, rows[r]), 0, "%d");
 	    }
 
 	/*** The hash is in memory only, so it may be changed, but only on
 	 *** purpose: update this value when the hash or the key above changes.
 	 ***/
-	success &= EXPECT_EQL(xh_internal_ComputeHash(key, KEY_LEN, WIDE_ROWS), 609235, "%d");
+	success &= ASSERT_EQL(xh_internal_ComputeHash(key, KEY_LEN, WIDE_ROWS), 609235, "%d");
 
 	/** Where a byte sits matters, not just which bytes are present. **/
-	success &= EXPECT_EQL(xh_internal_ComputeHash("ab", 2, WIDE_ROWS)
+	success &= ASSERT_EQL(xh_internal_ComputeHash("ab", 2, WIDE_ROWS)
 	    != xh_internal_ComputeHash("ba", 2, WIDE_ROWS), true, "%d");
 
 	/** Only the first keylen bytes of the key are hashed. **/
 	char altered[KEY_LEN];
 	memcpy(altered, key, KEY_LEN);
 	altered[KEY_LEN - 1] ^= 0x5A;
-	success &= EXPECT_EQL(
+	success &= ASSERT_EQL(
 	    xh_internal_ComputeHash(altered, KEY_LEN - 1, WIDE_ROWS),
 	    xh_internal_ComputeHash(key, KEY_LEN - 1, WIDE_ROWS), "%d");
 
@@ -84,7 +84,7 @@ static bool doTest(void)
 	    {
 	    memcpy(altered, key, KEY_LEN);
 	    altered[i] ^= 0x5A;
-	    bool differs = EXPECT_EQL(
+	    bool differs = ASSERT_EQL(
 		xh_internal_ComputeHash(altered, KEY_LEN, WIDE_ROWS) != base, true, "%d");
 	    if (!differs) fprintf(stderr, "  > Byte %d of the key did not affect the hash.\n", i);
 	    success &= differs;
