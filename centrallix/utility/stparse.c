@@ -569,19 +569,27 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 int
 stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
     {
-    pStructInf attr_inf;
-
-	/** Find the attribute **/
-	attr_inf = stLookup(this, attrname);
-	if (!attr_inf)
-	    {
-	    /** NULL value - attribute does not exist **/
-	    return 1;
-	    }
-
-    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL, NULL, 0);
+    return stGetObjAttrValueOSML(this, attrname, type, value, 0, NULL, NULL, 0);
     }
 
+/*** stGetAttrValueOSML - return the value of an expression, evaluated
+ *** in the context of an OSML session.
+ ***/
+int
+stGetObjAttrValueOSML(pStructInf this, char* attrname, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist, int domain)
+    {
+	if (this == NULL)
+	    {
+	    mssError(0, "ST", "stGetObjAttrValueOSML(NULL, ...) failed: Cannot get attribute value from null struct inf.");
+	    return -1;
+	    }
+
+	/** Look up the requested inf. */
+	pStructInf target_inf = stLookup(this, attrname);
+	if (target_inf == NULL) return 1; /* Null value for nonexistent attribute. */
+
+	return stGetAttrValueOSML(target_inf, type, pod, nval, sess, objlist, domain);
+    }
 
 /*** stGetAttrValueOSML - return the value of an expression, evaluated
  *** in the context of an OSML session.
