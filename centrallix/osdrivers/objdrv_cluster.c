@@ -658,7 +658,6 @@ struct
 static void cluster_i_giveHint(const char* hint);
 static bool cluster_i_tryHint(char* value, char** valid_values, const unsigned int n_valid_values);
 static void cluster_i_unknownAttribute(char* attr_name, int target_type);
-static int cluster_i_parseAttribute(pStructInf inf, char* attr_name, int datatype, pObjData data, pParamObjects param_list, bool required, bool print_type_error);
 static ClusterAlgorithm cluster_i_parseClusteringAlgorithm(pStructInf cluster_inf, pParamObjects param_list);
 static SimilarityMeasure cluster_i_parseSimilarityMeasure(pStructInf cluster_inf, pParamObjects param_list);
 static pSourceData cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path);
@@ -807,91 +806,6 @@ cluster_i_unknownAttribute(char* attr_name, const int target_type)
 
 
 // LINK #functions
-/*** @returns 0 if a value is found,
- ***         -1 if an error occurs, or
- ***          1 if attribute is null, calling mssError() for required attributes.
- *** 
- *** @attention - Promises that a failure invokes mssError() at least once.
- *** 
- *** TODO: Greg - Review carefully. I think this code is the reason that
- *** runserver() is sometimes not required for dynamic attributes in the
- *** cluster driver, which I'm pretty sure is incorrect.
- *** TODO: Israel - After Greg's review, update this doc comment to properly
- *** describe the function parameters.
- ***/
-static int
-cluster_i_parseAttribute(
-    pStructInf inf,
-    char* attr_name,
-    int datatype,
-    pObjData data,
-    pParamObjects param_list,
-    bool required,
-    bool print_type_error)
-    {
-    int ret;
-    
-	/** Get attribute inf. **/
-	pStructInf attr_info = stLookup(inf, attr_name);
-	if (UNLIKELY(attr_info == NULL))
-	     {
-	     if (required) mssError(1, "Cluster", "'%s' must be specified for clustering.", attr_name);
-	     return 1;
-	     }
-	ASSERTMAGIC(attr_info, MGK_STRUCTINF);
-	
-	/** Allocate expression. **/
-	pExpression exp = (pExpression)checkPtr(stGetExpression(attr_info, 0));
-	if (UNLIKELY(exp == NULL)) goto err;
-	
-	/** Bind parameters. **/
-	/** TODO: Greg - What does this return? How do I know if it fails? **/
-	expBindExpression(exp, param_list, EXPR_F_RUNSERVER);
-	
-	/** Evaluate expression. **/
-	ret = expEvalTree(exp, param_list);
-	if (UNLIKELY(ret != 0))
-	    {
-	    mssError(0, "Cluster", "Expression evaluation failed (error code %d).", ret);
-	    goto err;
-	    }
-	
-	/** Check for data type mismatch. **/
-	if (UNLIKELY(datatype != exp->DataType))
-	    {
-	    mssError(1, "Cluster",
-		"Expected ['%s' : %s], but got type %s.",
-		attr_name, objTypeToStr(datatype), objTypeToStr(exp->DataType)
-	    );
-	    goto err;
-	    }
-	
-	/** Get the data out of the expression. **/
-	ret = expExpressionToPod(exp, datatype, data);
-	if (UNLIKELY(ret != 0))
-	    {
-	    mssError(1, "Cluster",
-		"Failed to get ['%s' : %s] using expression \"%s\" (error code %d).",
-		attr_name, objTypeToStr(datatype), exp->Name, ret
-	    );
-	    goto err;
-	    }
-	
-	/** Success. **/
-	return 0;
-	
-    err:
-	mssError(0, "Cluster",
-	    "Failed to parse attribute \"%s\" from group \"%s\"",
-	    attr_name, inf->Name
-	);
-	
-	/** Return error. **/
-	return -1;
-    }
-
-
-// LINK #functions
 /*** Parses a ClusteringAlgorithm from the algorithm attribute in the pStructInf.
  *** 
  *** @attention - Promises that a failure invokes mssError() at least once.
@@ -906,7 +820,15 @@ cluster_i_parseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the algorithm attribute. **/
 	char* algorithm;
-	if (UNLIKELY(cluster_i_parseAttribute(inf, "algorithm", DATA_T_STRING, POD(&algorithm), param_list, true, true) != 0))
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "algorithm"),
+	    DATA_T_STRING,
+	    POD(&algorithm),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0))
 	    {
 	    mssError(0, "Cluster", "Failed to parse attribute 'algorithm' in group \"%s\".", inf->Name);
 	    return ALGORITHM_NULL;
@@ -954,7 +876,15 @@ cluster_i_parseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the similarity_measure attribute. **/
 	char* measure;
-	if (UNLIKELY(cluster_i_parseAttribute(inf, "similarity_measure", DATA_T_STRING, POD(&measure), param_list, true, true) != 0))
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "similarity_measure"),
+	    DATA_T_STRING,
+	    POD(&measure),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0))
 	    {
 	    mssError(0, "Cluster", "Failed to parse attribute 'similarity_measure' in group \"%s\".", inf->Name);
 	    return SIMILARITY_NULL;
@@ -1017,17 +947,41 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	if (check(objCurrentDate(&source_data->DateCreated)) != 0) goto err_free;
 	
 	/** Get source. **/
-	if (UNLIKELY(cluster_i_parseAttribute(inf, "source", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "source"),
+	    DATA_T_STRING,
+	    POD(&buf),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0)) goto err_free;
 	source_data->SourcePath = (char*)checkPtr(nmSysStrdup(buf));
 	if (UNLIKELY(source_data->SourcePath == NULL)) goto err_free;
 	
 	/** Get the attribute name to use when querying keys from the source. **/
-	if (UNLIKELY(cluster_i_parseAttribute(inf, "key_attr", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "key_attr"),
+	    DATA_T_STRING,
+	    POD(&buf),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0)) goto err_free;
 	source_data->KeyAttr = (char*)checkPtr(nmSysStrdup(buf));
 	if (UNLIKELY(source_data->KeyAttr == NULL)) goto err_free;
 	
 	/** Get the attribute name to use for querying data from the source. **/
-	if (UNLIKELY(cluster_i_parseAttribute(inf, "data_attr", DATA_T_STRING, POD(&buf), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "data_attr"),
+	    DATA_T_STRING,
+	    POD(&buf),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0)) goto err_free;
 	source_data->DataAttr = (char*)checkPtr(nmSysStrdup(buf));
 	if (UNLIKELY(source_data->DataAttr == NULL)) goto err_free;
 	
@@ -1148,8 +1102,15 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    
 	    /** Get window_size. **/
 	    int window_size;
-	    if (cluster_i_parseAttribute(inf, "window_size", DATA_T_INTEGER, POD(&window_size), param_list, true, true) != 0)
-		goto err_free;
+	    if (UNLIKELY(stGetAttrValueOSML(
+		stLookup(inf, "window_size"),
+		DATA_T_INTEGER,
+		POD(&window_size),
+		0,
+		param_list->Session,
+		param_list,
+		EXPR_F_RUNSERVER
+	    ) != 0)) goto err_free;
 	    if (window_size < 1)
 		{
 		mssError(1, "Cluster", "Invalid value for [window_size : uint > 0]: %d", window_size);
@@ -1163,8 +1124,15 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get num_clusters. **/
 	int num_clusters;
-	if (UNLIKELY(cluster_i_parseAttribute(inf, "num_clusters", DATA_T_INTEGER, POD(&num_clusters), param_list, true, true) != 0))
-	    goto err_free;
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "num_clusters"),
+	    DATA_T_INTEGER,
+	    POD(&num_clusters),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0)) goto err_free;
 	if (num_clusters < 2)
 	    {
 	    mssError(1, "Cluster", "Invalid value for [num_clusters : uint > 1]: %d", num_clusters);
@@ -1175,7 +1143,15 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get min_improvement. **/
 	double improvement;
-	result = cluster_i_parseAttribute(inf, "min_improvement", DATA_T_DOUBLE, POD(&improvement), param_list, false, false);
+	result = stGetAttrValueOSML(
+	    stLookup(inf, "min_improvement"),
+	    DATA_T_DOUBLE,
+	    POD(&improvement),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	);
 	if (UNLIKELY(result == -1)) goto err_free;
 	else if (result == 1) cluster_data->MinImprovement = CI_DEFAULT_MIN_IMPROVEMENT;
 	else if (result == 0)
@@ -1191,7 +1167,15 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get max_iterations. **/
 	int max_iterations;
-	result = cluster_i_parseAttribute(inf, "max_iterations", DATA_T_INTEGER, POD(&max_iterations), param_list, false, true);
+	result = stGetAttrValueOSML(
+	    stLookup(inf, "max_iterations"),
+	    DATA_T_INTEGER,
+	    POD(&max_iterations),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	);
 	if (UNLIKELY(result == -1)) goto err_free;
 	if (result == 0)
 	    {
@@ -1206,7 +1190,15 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get seed. **/
 	int seed;
-	result = cluster_i_parseAttribute(inf, "seed", DATA_T_INTEGER, POD(&seed), param_list, false, true);
+	result = stGetAttrValueOSML(
+	    stLookup(inf, "seed"),
+	    DATA_T_INTEGER,
+	    POD(&seed),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	);
 	if (UNLIKELY(result == -1)) goto err_free;
 	if (result == 0)
 	    {
@@ -1425,7 +1417,15 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	
 	/** Search for the source cluster. **/
 	char* source_cluster_name;
-	if (cluster_i_parseAttribute(inf, "source", DATA_T_STRING, POD(&source_cluster_name), param_list, true, true) != 0) goto err_free;
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "source"),
+	    DATA_T_STRING,
+	    POD(&source_cluster_name),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0)) goto err_free;
 	for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
 	    {
 	    pClusterData cluster_data = node_data->ClusterDatas[i];
@@ -1457,7 +1457,15 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    }
 	
 	/** Get threshold attribute. **/
-	if (UNLIKELY(cluster_i_parseAttribute(inf, "threshold", DATA_T_DOUBLE, POD(&search_data->Threshold), param_list, true, true) != 0)) goto err_free;
+	if (UNLIKELY(stGetAttrValueOSML(
+	    stLookup(inf, "threshold"),
+	    DATA_T_DOUBLE,
+	    POD(&search_data->Threshold),
+	    0,
+	    param_list->Session,
+	    param_list,
+	    EXPR_F_RUNSERVER
+	) != 0)) goto err_free;
 	if (UNLIKELY(search_data->Threshold <= 0.0 || 1.0 <= search_data->Threshold))
 	    {
 	    mssError(1, "Cluster",
