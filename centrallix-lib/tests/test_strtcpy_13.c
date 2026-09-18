@@ -68,13 +68,17 @@ test(char** tname)
     size_t n;
 
 	/*** This test verifies that strtcatf() refuses bad input safely,
-	 *** covering the two paths ordinary appends never reach.  When a
+	 *** covering the three paths ordinary appends never reach.  When a
 	 *** conversion fails, the append must be abandoned and the string
 	 *** already in dst left intact, even though vsnprintf() may have
-	 *** written part of its output first.  A *pos at or past the end of
-	 *** dst, including one large enough to overflow the guard's own
-	 *** arithmetic, must append nothing.  Both return 0, leave *pos
-	 *** alone, and write nothing outside the caller's dstlen.
+	 *** written part of its output first; that reports -1, as does a NULL
+	 *** dst, pos or fmt.  A *pos at or past the end of dst, including one
+	 *** large enough to overflow the guard's own arithmetic, is a full
+	 *** buffer rather than an error and so reports 0.  All of them leave
+	 *** *pos alone and write nothing outside the caller's dstlen.  The
+	 *** -1 cannot be mistaken for a truncated append, which appends its
+	 *** null terminator over at least one character and so returns -2 or
+	 *** less.
 	 ***/
 
 	*tname = "strtcpy-13 strtcatf() failed conversions and bad positions";
@@ -84,7 +88,7 @@ test(char** tname)
 	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], unconvertible) < 0);
 	if (!can_fail)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
-	ncases = nbad + (can_fail ? nfmts * npfx : 0);
+	ncases = nbad + 3 + (can_fail ? nfmts * npfx : 0);
 
 	iter = 40000;
 	for(i=0;i<iter;i++)
@@ -101,8 +105,10 @@ test(char** tname)
 		    rval = strtcatf(dst, AREA, &pos, failing_fmts[c],
 			unconvertible, unconvertible);
 
+		    /** A failed conversion is an error, not a full buffer. **/
+		    assert(rval == -1);
+
 		    /** The text already in dst survives, and *pos with it. **/
-		    assert(rval == 0);
 		    assert(pos == strlen(prefixes[f]));
 		    assert(!strcmp(dst, prefixes[f]));
 
@@ -123,8 +129,10 @@ test(char** tname)
 		pos = bad_positions[c];
 		rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
 
-		/** Nothing appended, and *pos left exactly as it was. **/
+		/** A full buffer is not an error, so it reports 0, not -1. **/
 		assert(rval == 0);
+
+		/** Nothing appended, and *pos left exactly as it was. **/
 		assert(pos == bad_positions[c]);
 		assert(!strcmp(dst, "abc"));
 
@@ -132,6 +140,18 @@ test(char** tname)
 		for(n=0;n<RAW;n++)
 		    assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 		}
+
+	    /** A NULL dst, pos or fmt is an error, checked before anything else. **/
+	    memset(raw, 0xAA, RAW);
+	    memcpy(dst, "abc", 4);
+	    pos = 3;
+	    assert(strtcatf(NULL, AREA, &pos, "%s", "XYZ") == -1);
+	    assert(strtcatf(dst, AREA, NULL, "%s", "XYZ") == -1);
+	    assert(strtcatf(dst, AREA, &pos, NULL) == -1);
+	    assert(pos == 3);
+	    assert(!strcmp(dst, "abc"));
+	    for(n=0;n<RAW;n++)
+		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 	    }
 
     return (long long)iter * ncases;

@@ -67,7 +67,7 @@ static struct
 int
 mssMemoryErr(char* message)
     {
-    mssError(1,"NM",message);
+    mssError(1,"NM","Memory error: %s",message);
     return 0;
     }
 
@@ -455,9 +455,13 @@ mssEndSession(pMtSession s)
     }
 
 
-/*** mssError_internal - Displays error text to the user (but no stack trace).
- *** Does not exit the program, allowing the calling function to fail, creating
- *** a cascade of error messages which provides useful info.
+/*** mss_i_error - Displays error text to the user (but no stack trace).
+ *** Does not exit the program, allowing the calling function to fail,
+ *** creating a cascade of error messages which provides useful info.
+ ***
+ *** Note: The format is parsed using vsnprintf(), so edge cases like a %s on
+ *** 	a value that isn't a valid string rely on glibc's implementation of C
+ *** 	undefined behavior.
  ***
  *** @param clr Whether to clear the current error stack.  As a rule of thumb,
  ***	if you are the first one to detect the error, clear the stack so that
@@ -474,28 +478,41 @@ mssEndSession(pMtSession s)
  *** @param ... Variables matching format specifiers in the format.
  ***/
 void
-mssError_internal(int clr, char* module, char* file, int line, char* message, ...)
+mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
     {
-    char err_msg[BUFSIZ];
+    char err_msg_buf[MSS_ERROR_BUF_STACK_SIZE];
+    size_t err_msg_size = 0;
+    char* err_msg = NULL;
     size_t i = 0;
+
+	/** Heap allocate a larger error message buffer, if possible. **/
+	err_msg_size = MSS_ERROR_BUF_SIZE;
+	err_msg = checkPtr(nmSysMalloc(MSS_ERROR_BUF_SIZE));
+	if (err_msg == NULL)
+	    {
+	    /** Heap alloc failed, fall back to stack buffer. **/
+	    err_msg = &err_msg_buf[0];
+	    err_msg_size = MSS_ERROR_BUF_STACK_SIZE;
+	    }
+	const bool is_heap_error_msg = (err_msg != &err_msg_buf[0]);
+	err_msg[0] = '\0';
 
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	check(fflush(stdout)); /* Failure ignored. */
 
 	/** Add line number to error message. **/
-	err_msg[0] = '\0';
-	strtcatf(err_msg, sizeof(err_msg), &i, "%s:%d: ", file, line);
+	strtcatf(err_msg, err_msg_size, &i, "%s:%d: ", file, line);
 
 	/** Write the module to the start of the error message. */
-	strtcatf(err_msg, sizeof(err_msg), &i, "%s: ", module);
+	strtcatf(err_msg, err_msg_size, &i, "%s: ", module);
 
 	/** Process the message format with all the same rules as printf(). **/
 	va_list args;
 	va_start(args, message);
-	strtcatf_va(err_msg, sizeof(err_msg), &i, message, args);
+	strtcatf_va(err_msg, err_msg_size, &i, message, args);
 	va_end(args);
 
-	/** Get current session **/
+	/** Get current session. **/
 	pMtSession s = thGetParam(NULL, "mss");
 	const bool log_error = (s == NULL || MSS.LogAllErrors);
 
@@ -527,7 +544,7 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 	    if (allocated_err_msg == NULL)
 		{
 		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
-		return; /* Give up. */
+		goto end; /* Give up. */
 		}
 
 	    /** Store the error. **/
@@ -535,9 +552,14 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 		{
 		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
 		nmSysFree(allocated_err_msg);
-		return; /* Give up. */
+		goto end; /* Give up. */
 		}
 	    }
+
+    end:
+	/** Clean up. **/
+	if (err_msg != NULL && is_heap_error_msg)
+	    nmSysFree(err_msg);
 
 	return;
     }
@@ -546,23 +568,15 @@ mssError_internal(int clr, char* module, char* file, int line, char* message, ..
 /*** mssClearError - removes all error messages from the current error
  *** stack.
  ***/
-int 
+int
 mssClearError()
     {
-    int i;
-    pMtSession s;
+	/** Get session pointer. **/
+	pMtSession s = thGetParam(NULL, "mss");
+	if (s == NULL) return -1;
 
-	/** Get session pointer **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
-
-	/** Scan through list, freeing items **/
-	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
-
-	/** Zero the list. **/
-	s->ErrList.nItems = 0;
-
-    return 0;
+	/** Free all error strings in the error list/error stack. **/
+	return xaClear(&s->ErrList, (void*)nmSysFree, NULL);
     }
 
 
@@ -633,7 +647,7 @@ mssUserError(pXString str)
 	if (!s) return -1;
 
 	/*** Create a space-separated string of the messages, without the source
-	 *** location and module code that mssError_internal() writes in front
+	 *** location and module code that mss_i_error() writes in front
 	 *** of each one.  Both end in ": ", which the message itself may also
 	 *** contain, so only the first two are skipped.
 	 ***/
