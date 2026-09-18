@@ -18,7 +18,7 @@
 /*** A wide character with no representation in the C locale, so that any
  *** attempt to convert it makes vsnprintf() fail with EILSEQ.
  ***/
-static wchar_t unconvertible[] = { (wchar_t)0x4E2D, (wchar_t)0 };
+static wchar_t inconvertible[] = { (wchar_t)(0x4E2D), (wchar_t)(0) };
 
 /*** Formats that fail partway through, some only after emitting text.  Held
  *** in a volatile pointer so the compiler cannot fold the probe call below.
@@ -51,7 +51,7 @@ static size_t bad_positions[] =
     AREA,
     AREA + 1,
     AREA + 12,
-    (size_t)-1,
+    (size_t)(-1),
     };
 
 /** Sizes of the case tables run per call to doTest(). **/
@@ -63,65 +63,81 @@ static size_t bad_positions[] =
 static bool can_fail = false;
 
 /*** This test verifies that strtcatf() refuses bad input safely, covering the
- *** two paths ordinary appends never reach.  When a conversion fails, the
+ *** three paths ordinary appends never reach.  When a conversion fails, the
  *** append must be abandoned and the string already in dst left intact, even
- *** though vsnprintf() may have written part of its output first.  A *pos at
- *** or past the end of dst, including one large enough to overflow the guard's
- *** own arithmetic, must append nothing.  Both return 0, leave *pos alone, and
- *** write nothing outside the caller's dstlen.
+ *** though vsnprintf() may have written part of its output first; that reports
+ *** -1, as does a NULL dst, pos or fmt.  A *pos at or past the end of dst,
+ *** including one large enough to overflow the guard's own arithmetic, is a
+ *** full buffer rather than an error and so reports 0.  All of them leave *pos
+ *** alone and write nothing outside the caller's dstlen.  The -1 cannot be
+ *** mistaken for a truncated append, which appends its null terminator over at
+ *** least one character and so returns -2 or less.
  ***/
 static bool
 doTest(void)
     {
-    int c, f, rval;
     unsigned char raw[RAW];
     char* dst = (char*)raw + GUARD;
     size_t pos;
-    size_t n;
 
 	/** A failed conversion appends nothing and keeps dst intact. **/
-	for(c=0;can_fail && c<NFMTS;c++)
+	for (int c = 0; can_fail && c < NFMTS; c++)
 	    {
-	    for(f=0;f<NPFX;f++)
+	    for (int f = 0; f < NPFX; f++)
 		{
 		memset(raw, 0xAA, RAW);
 		memcpy(dst, prefixes[f], strlen(prefixes[f]) + 1);
 		pos = strlen(prefixes[f]);
 
-		rval = strtcatf(dst, AREA, &pos, failing_fmts[c],
-		    unconvertible, unconvertible);
+		const int rval = strtcatf(dst, AREA, &pos, failing_fmts[c], inconvertible, inconvertible);
+
+		/** A failed conversion is an error, not a full buffer. **/
+		assert(rval == -1);
 
 		/** The text already in dst survives, and *pos with it. **/
-		assert(rval == 0);
 		assert(pos == strlen(prefixes[f]));
-		assert(!strcmp(dst, prefixes[f]));
+		assert(strcmp(dst, prefixes[f]) == 0);
 
 		/** Partial output may remain, but never outside dstlen. **/
-		for(n=0;n<GUARD;n++)
+		for (size_t n = 0; n < GUARD; n++)
 		    assert(raw[n] == 0xAA);
-		for(n=GUARD+AREA;n<RAW;n++)
+		for (size_t n = GUARD+AREA; n < RAW; n++)
 		    assert(raw[n] == 0xAA);
 		}
 	    }
 
 	/** A *pos at or past the end appends nothing at all. **/
-	for(c=0;c<NBAD;c++)
+	for (int c = 0; c < NBAD; c++)
 	    {
 	    memset(raw, 0xAA, RAW);
 	    memcpy(dst, "abc", 4);
 
 	    pos = bad_positions[c];
-	    rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
+	    const int rval = strtcatf(dst, AREA, &pos, "%s", "XYZ");
+
+	    /** A full buffer is not an error, so it reports 0, not -1. **/
+	    assert(rval == 0);
 
 	    /** Nothing appended, and *pos left exactly as it was. **/
-	    assert(rval == 0);
 	    assert(pos == bad_positions[c]);
-	    assert(!strcmp(dst, "abc"));
+	    assert(strcmp(dst, "abc") == 0);
 
 	    /** Not one byte of the buffer may have changed. **/
-	    for(n=0;n<RAW;n++)
+	    for (size_t n = 0; n < RAW; n++)
 		assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 	    }
+
+	/** A NULL dst, pos or fmt is an error, checked before anything else. **/
+	memset(raw, 0xAA, RAW);
+	memcpy(dst, "abc", 4);
+	pos = 3;
+	assert(strtcatf(NULL, AREA, &pos, "%s", "XYZ") == -1);
+	assert(strtcatf(dst, AREA, NULL, "%s", "XYZ") == -1);
+	assert(strtcatf(dst, AREA, &pos, NULL) == -1);
+	assert(pos == 3);
+	assert(strcmp(dst, "abc") == 0);
+	for (size_t n = 0; n < RAW; n++)
+	    assert(raw[n] == (n < GUARD || n > GUARD + 3 ? 0xAA : "abc"[n-GUARD]));
 
     return true;
     }
@@ -136,10 +152,10 @@ test(char** tname)
 
 	/** Only run the conversion cases where the platform really fails. **/
 	setlocale(LC_ALL, "C");
-	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], unconvertible) < 0);
+	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], inconvertible) < 0);
 	if (!can_fail)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
-	ncases = NBAD + (can_fail ? NFMTS * NPFX : 0);
+	ncases = NBAD + 3 + (can_fail ? NFMTS * NPFX : 0);
 
     return loopTest(doTest) * ncases;
     }

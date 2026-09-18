@@ -22,7 +22,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "xhash.h"
@@ -58,11 +57,11 @@ static bool checkChain(pXHashTable hash, char** expect_keys, int expect_count)
 
 	for (int i = 0; i < expect_count; i++)
 	    {
-	    if (!EXPECT_NOT_NULL(entry)) return false;
-	    success &= EXPECT_EQL(entry->Key, expect_keys[i], "%p");
+	    if (!ASSERT_NOT_NULL(entry)) return false;
+	    success &= ASSERT_EQL(entry->Key, expect_keys[i], "%p");
 	    entry = entry->Next;
 	    }
-	success &= EXPECT_EQL(entry, NULL, "%p");
+	success &= ASSERT_EQL(entry, NULL, "%p");
 
     return success;
     }
@@ -75,29 +74,29 @@ static bool doTest(void)
     int remaining_count = 0;
 
 	/** One row means every key collides. **/
-	success &= EXPECT_EQL(check(xhInit(&hash, 1, 0)), 0, "%d");
-	success &= EXPECT_EQL(hash.nItems, 0, "%d");
+	success &= ASSERT_EQL(xhInit(&hash, 1, 0), 0, "%d");
+	success &= ASSERT_EQL(hash.nItems, 0, "%d");
 
 	/** Build the chain. **/
 	for (int i = 0; i < CHAIN_COUNT; i++)
 	    {
-	    success &= EXPECT_EQL(check(xhAdd(&hash, keys[i], data[i])), 0, "%d");
-	    success &= EXPECT_EQL(hash.nItems, i + 1, "%d");
+	    success &= ASSERT_EQL(xhAdd(&hash, keys[i], data[i]), 0, "%d");
+	    success &= ASSERT_EQL(hash.nItems, i + 1, "%d");
 	    }
 	success &= checkChain(&hash, keys, CHAIN_COUNT);
 
 	/** Every key in the chain is reachable. **/
 	for (int i = 0; i < CHAIN_COUNT; i++)
-	    success &= EXPECT_EQL(xhLookup(&hash, keys[i]), data[i], "%p");
+	    success &= ASSERT_EQL(xhLookup(&hash, keys[i]), data[i], "%p");
 
 	/** A key absent from a populated chain is neither found nor removed. **/
-	success &= EXPECT_EQL(xhLookup(&hash, "absent"), NULL, "%p");
-	success &= EXPECT_EQL(xhRemove(&hash, "absent"), -1, "%d");
-	success &= EXPECT_EQL(hash.nItems, CHAIN_COUNT, "%d");
+	success &= ASSERT_EQL(xhLookup(&hash, "absent"), NULL, "%p");
+	success &= ASSERT_EQL(xhRemove(&hash, "absent"), -1, "%d");
+	success &= ASSERT_EQL(hash.nItems, CHAIN_COUNT, "%d");
 
 	/** A duplicate is caught no matter how deep in the chain it sits. **/
-	success &= EXPECT_EQL(xhAdd(&hash, keys[CHAIN_COUNT / 2], "duplicate"), -1, "%d");
-	success &= EXPECT_EQL(hash.nItems, CHAIN_COUNT, "%d");
+	success &= ASSERT_EQL(xhAdd(&hash, keys[CHAIN_COUNT / 2], "duplicate"), -1, "%d");
+	success &= ASSERT_EQL(hash.nItems, CHAIN_COUNT, "%d");
 
 	/** Unlink the head, the middle, and the tail of the chain. **/
 	int removed_count = 0;
@@ -105,35 +104,35 @@ static bool doTest(void)
 	    {
 	    if (isRemoved(i))
 		{
-		success &= EXPECT_EQL(check(xhRemove(&hash, keys[i])), 0, "%d");
+		success &= ASSERT_EQL(xhRemove(&hash, keys[i]), 0, "%d");
 		removed_count++;
 		}
 	    else
 		remaining[remaining_count++] = keys[i];
 	    }
-	success &= EXPECT_EQL(removed_count, REMOVED_COUNT, "%d");
+	success &= ASSERT_EQL(removed_count, REMOVED_COUNT, "%d");
 
 	/*** The chain kept the other entries, in order, and lost the removed
 	 *** ones.
 	 ***/
 	for (int i = 0; i < CHAIN_COUNT; i++)
-	    success &= EXPECT_EQL(xhLookup(&hash, keys[i]),
+	    success &= ASSERT_EQL(xhLookup(&hash, keys[i]),
 		isRemoved(i) ? NULL : data[i], "%p");
-	success &= EXPECT_EQL(hash.nItems, CHAIN_COUNT - REMOVED_COUNT, "%d");
+	success &= ASSERT_EQL(hash.nItems, CHAIN_COUNT - REMOVED_COUNT, "%d");
 	success &= checkChain(&hash, remaining, remaining_count);
 
 	/** A removed key can be added back, landing at the end of the chain. **/
-	success &= EXPECT_EQL(check(xhAdd(&hash, keys[0], data[0])), 0, "%d");
-	success &= EXPECT_EQL(xhLookup(&hash, keys[0]), data[0], "%p");
-	success &= EXPECT_EQL(hash.nItems, CHAIN_COUNT - REMOVED_COUNT + 1, "%d");
+	success &= ASSERT_EQL(xhAdd(&hash, keys[0], data[0]), 0, "%d");
+	success &= ASSERT_EQL(xhLookup(&hash, keys[0]), data[0], "%p");
+	success &= ASSERT_EQL(hash.nItems, CHAIN_COUNT - REMOVED_COUNT + 1, "%d");
 	remaining[remaining_count++] = keys[0];
 	success &= checkChain(&hash, remaining, remaining_count);
 
 	/** Clean up. **/
-	success &= EXPECT_EQL(check(xhClear(&hash, NULL, NULL)), 0, "%d");
-	success &= EXPECT_EQL(hash.nItems, 0, "%d");
-	success &= EXPECT_EQL(hash.Rows.Items[0], NULL, "%p");
-	success &= EXPECT_EQL(check(xhDeInit(&hash)), 0, "%d");
+	success &= ASSERT_EQL(xhClear(&hash, NULL, NULL), 0, "%d");
+	success &= ASSERT_EQL(hash.nItems, 0, "%d");
+	success &= ASSERT_EQL(hash.Rows.Items[0], NULL, "%p");
+	success &= ASSERT_EQL(xhDeInit(&hash), 0, "%d");
 
     return success;
     }

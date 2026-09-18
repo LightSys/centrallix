@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "timer.h"
+#include "range.h"
 
 /*** Define lockup times.  Valgrind instruments every memory access, so tests
  *** may need longer to finish when running under valgrind.
@@ -41,15 +42,15 @@
  *** time than this might not use enough cpu cycles, confusing the test suite
  *** performance tracking.
  ***/
-#define MIN_TEST_SECONDS 0.1
+#define MIN_TEST_SECONDS 0.2
 
-/*** Expect a value to be true.
+/*** Assert a value to be true.
  *** 
  *** @param v1 The value.
  *** @param v2 The second value.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_TRUE(v) \
+#define ASSERT_TRUE(v) \
     ({ \
     const int success = !!(v); \
     if (!success) fprintf(stderr, \
@@ -59,7 +60,7 @@
     success; \
     })
 
-/*** Expect two values to be equal.
+/*** Assert two values to be equal.
  *** 
  *** @param v1 The first value.
  *** @param v2 The second value.
@@ -68,7 +69,7 @@
  ***    sting literal or a macro that expands to one.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_EQL(v1, v2, sp) \
+#define ASSERT_EQL(v1, v2, sp) \
     ({ \
     __typeof__ (v1) _v1 = (v1); \
     __typeof__ (v2) _v2 = (v2); \
@@ -80,13 +81,13 @@
     success; \
     })
 
-/*** Expect two strings to be equal.
+/*** Assert two strings to be equal.
  *** 
  *** @param str1 The first string.
  *** @param str2 The second string.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_STR_EQL(str1, str2) \
+#define ASSERT_STR_EQL(str1, str2) \
     ({ \
     char* _str1 = (str1); \
     char* _str2 = (str2); \
@@ -98,7 +99,7 @@
     success; \
     })
 
-/*** Expect two strings to be equal, including null characters.
+/*** Assert two strings to be equal, including null characters.
  *** Warning: Can read off the end of strings.
  *** 
  *** @param str1 The first string.
@@ -106,7 +107,7 @@
  *** @param len The length of strings to check (aka. N).
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_STR_EQL_N(str1, str2, len) \
+#define ASSERT_STR_EQL_N(str1, str2, len) \
     ({ \
     const char* _str1 = (str1); \
     const char* _str2 = (str2); \
@@ -114,8 +115,15 @@
     const int success = (_str1 == _str2) || (_str1 != NULL && _str2 != NULL && memcmp(_str1, _str2, _len) == 0); \
     if (!success)\
 	{ \
-	char _tmp1[_len + 1]; STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
-	char _tmp2[_len + 1]; STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
+	const size_t buf_len = max(7, _len + 1); \
+	char _tmp1[buf_len]; \
+	if (str1 == NULL) strcpy(_tmp1, "(null)"); \
+	else STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
+	\
+	char _tmp2[buf_len]; \
+	if (str2 == NULL) strcpy(_tmp2, "(null)"); \
+	else STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
+	\
 	fprintf(stderr, \
 	    "  > Expected %s (\"%s\") to equal %s (\"%s\") where '_' is a null-terminator, at %s:%d\n", \
 	    #str1, _tmp1, #str2, _tmp2, __FILE__, __LINE__ \
@@ -124,13 +132,13 @@
     success; \
     })
 
-/*** Expect two cosine vectors from `cluster.c` to be equal.
+/*** Assert two cosine vectors from `cluster.c` to be equal.
  *** 
  *** @param v1 The first vector.
  *** @param v2 The second vector.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_VEC_EQL(v1, v2) \
+#define ASSERT_VEC_EQL(v1, v2) \
     ({ \
 	pVector _v1 = (v1); \
 	pVector _v2 = (v2); \
@@ -145,7 +153,7 @@
 	success; \
     })
 
-/*** Expect a value to fall within a range.
+/*** Assert a value to fall within a range.
  *** 
  *** @param v The value.
  *** @param min_v The minimum acceptable value.
@@ -155,7 +163,7 @@
  ***    sting literal or a macro that expands to one.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_RANGE(v, min_v, max_v, sp) \
+#define ASSERT_RANGE(v, min_v, max_v, sp) \
     ({ \
     __typeof__ (v) _v = (v); \
     __typeof__ (min_v) _min = (min_v); \
@@ -168,13 +176,13 @@
     success; \
     })
 
-/*** Syntactic sugar to expect a pointer to be non null in a clearer, more
+/*** Syntactic sugar to assert a pointer to be non null in a clearer, more
  *** concise way.
  *** 
  *** @param ptr The pointer.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_NOT_NULL(ptr) \
+#define ASSERT_NOT_NULL(ptr) \
     ({ \
     __typeof__ (ptr) _ptr = (ptr); \
     int success = (_ptr != NULL); \
