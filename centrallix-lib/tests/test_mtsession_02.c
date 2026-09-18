@@ -144,10 +144,10 @@ static bool doTest(void)
 	    if (!authFileSet(contents, strlen(contents))) return false;
 
 	    /** Authenticate, and expect a session only where one was won. **/
-	    success &= EXPECT_EQL(mssAuthenticate(c->UserName, c->Password, c->Bypass), c->Expected, "%d");
-	    success &= EXPECT_EQL(thGetParam(NULL, "mss") != NULL, c->Expected == 0, "%d");
+	    success &= ASSERT_EQL(mssAuthenticate(c->UserName, c->Password, c->Bypass), c->Expected, "%d");
+	    success &= ASSERT_EQL(thGetParam(NULL, "mss") != NULL, c->Expected == 0, "%d");
 	    if (thGetParam(NULL, "mss"))
-		success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+		success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 	    }
 
 	/*** An auth file the lexer cannot read is an error, not a way in.  No
@@ -155,8 +155,8 @@ static bool doTest(void)
 	 ***/
 	memset(contents, '\0', 8);
 	if (!authFileSet(contents, 8)) return false;
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), -1, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), -1, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
 	/*** An auth file that is not there at all is an error, not a way in.
 	 *** Reporting it logs, which is test 09's business rather than this
@@ -170,9 +170,9 @@ static bool doTest(void)
 	rval = mssAuthenticate(USERNAME, PASSWORD, 0);
 	bypass_rval = mssAuthenticate(USERNAME, PASSWORD, 1);
 	if (!quietEnd(saved_stdout)) return false;
-	success &= EXPECT_EQL(rval, -1, "%d");
-	success &= EXPECT_EQL(bypass_rval, -1, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(rval, -1, "%d");
+	success &= ASSERT_EQL(bypass_rval, -1, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 	auth_fd = open(auth_path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
 	if (auth_fd < 0)
 	    {

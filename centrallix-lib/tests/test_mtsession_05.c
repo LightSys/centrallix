@@ -86,53 +86,53 @@ static bool doTest(void)
 	errno = ENOENT;
 	mssErrorErrno(1, "MOD", "message");
 	if (!quietEnd(saved_stdout)) return false;
-	success &= EXPECT_EQL(errorCount(), -1, "%d");
+	success &= ASSERT_EQL(errorCount(), -1, "%d");
 
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 
 	/** The message carries the text of the current errno. **/
 	errno = ENOENT;
 	mssErrorErrno(1, "MOD", "could not open it");
-	success &= EXPECT_EQL(errorCount(), 1, "%d");
-	success &= EXPECT_STR_HAS(errorStack(), expectMessage("MOD: could not open it", ENOENT));
+	success &= ASSERT_EQL(errorCount(), 1, "%d");
+	success &= ASSERT_STR_HAS(errorStack(), expectMessage("MOD: could not open it", ENOENT));
 
 	/** A different errno gives different text. **/
 	errno = EACCES;
 	mssErrorErrno(1, "MOD", "could not open it");
-	success &= EXPECT_STR_HAS(errorStack(), expectMessage("MOD: could not open it", EACCES));
+	success &= ASSERT_STR_HAS(errorStack(), expectMessage("MOD: could not open it", EACCES));
 
 	/** Even a zero errno has text of its own. **/
 	errno = 0;
 	mssErrorErrno(1, "MOD", "nothing went wrong");
-	success &= EXPECT_STR_HAS(errorStack(), expectMessage("MOD: nothing went wrong", 0));
+	success &= ASSERT_STR_HAS(errorStack(), expectMessage("MOD: nothing went wrong", 0));
 
 	/** The message is a printf() format string. **/
 	errno = ENOENT;
 	mssErrorErrno(1, "FMT", "s=%s d=%d pct=%%", "text", -7);
-	success &= EXPECT_STR_HAS(errorStack(), expectMessage("FMT: s=text d=-7 pct=%", ENOENT));
+	success &= ASSERT_STR_HAS(errorStack(), expectMessage("FMT: s=text d=-7 pct=%", ENOENT));
 
 	/** Clearing is honored, and the messages share one stack with the
 	 ** ones mssError() adds.
 	 **/
 	errno = ENOENT;
 	mssErrorErrno(0, "MOD", "second");
-	success &= EXPECT_EQL(errorCount(), 2, "%d");
+	success &= ASSERT_EQL(errorCount(), 2, "%d");
 	mssError(0, "MOD", "third");
-	success &= EXPECT_EQL(errorCount(), 3, "%d");
+	success &= ASSERT_EQL(errorCount(), 3, "%d");
 	errno = ENOENT;
 	mssErrorErrno(1, "MOD", "only one left");
-	success &= EXPECT_EQL(errorCount(), 1, "%d");
-	success &= EXPECT_STR_HAS(errorStack(), expectMessage("MOD: only one left", ENOENT));
+	success &= ASSERT_EQL(errorCount(), 1, "%d");
+	success &= ASSERT_STR_HAS(errorStack(), expectMessage("MOD: only one left", ENOENT));
 
 	/** The user facing form drops the module code as usual. **/
 	XString xs;
 	xsInit(&xs);
-	success &= EXPECT_EQL(mssUserError(&xs), 0, "%d");
+	success &= ASSERT_EQL(mssUserError(&xs), 0, "%d");
 	snprintf(expected, sizeof(expected), "only one left (%s)", strerror(ENOENT));
-	success &= EXPECT_STR_EQL(xs.String, expected);
+	success &= ASSERT_STR_EQL(xs.String, expected);
 	xsDeInit(&xs);
 
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
     return success;
     }

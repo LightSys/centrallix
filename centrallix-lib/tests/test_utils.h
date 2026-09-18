@@ -176,13 +176,13 @@
     success; \
     })
 
-/*** Expect a string to contain another string.
+/*** Assert a string to contain another string.
  *** 
  *** @param str The string to search.
  *** @param sub The string to find within it.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_STR_HAS(str, sub) \
+#define ASSERT_STR_HAS(str, sub) \
     ({ \
     char* _str = (str); \
     char* _sub = (sub); \
@@ -194,13 +194,13 @@
     success; \
     })
 
-/*** Expect a string to not contain another string.
+/*** Assert a string to not contain another string.
  *** 
  *** @param str The string to search.
  *** @param sub The string that must not appear within it.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_STR_LACKS(str, sub) \
+#define ASSERT_STR_LACKS(str, sub) \
     ({ \
     char* _str = (str); \
     char* _sub = (sub); \
@@ -237,14 +237,14 @@ static inline char* strFindOutOfOrder(char* subject, char** texts)
     return NULL;
     }
 
-/*** Expect a string to contain each of the given strings, in the order given,
+/*** Assert a string to contain each of the given strings, in the order given,
  *** making no assumptions about what surrounds or separates them.
  *** 
  *** @param str The string to search.
  *** @param ... The strings to find within it, in order.
  *** @returns true if successful, false otherwise.
  ***/
-#define EXPECT_STR_HAS_IN_ORDER(str, ...) \
+#define ASSERT_STR_HAS_IN_ORDER(str, ...) \
     ({ \
     char* _str = (str); \
     char* _missing = strFindOutOfOrder(_str, (char*[]){__VA_ARGS__, NULL}); \

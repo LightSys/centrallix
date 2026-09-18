@@ -123,7 +123,7 @@ static bool doTest(void)
 	errno = ENOENT;
 	mssErrorErrno(1, "MOD", "could not open it");
 	snprintf(expected, sizeof(expected), "MOD: could not open it (%s)", strerror(ENOENT));
-	success &= EXPECT_STR_HAS_IN_ORDER(captureEnd(),
+	success &= ASSERT_STR_HAS_IN_ORDER(captureEnd(),
 		APPNAME": ", "MOD: no session here",
 		APPNAME": ", "MOD: user testuser, attempt 3",
 		APPNAME": ", expected);
@@ -131,35 +131,35 @@ static bool doTest(void)
 	/*** With a session to hold the message, and without being told to log
 	 *** everything, the log stays quiet.
 	 ***/
-	if (!EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d")) return false;
+	if (!ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d")) return false;
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "in session");
 	errno = ENOENT;
 	mssErrorErrno(0, "MOD", "in session too");
-	success &= EXPECT_STR_EQL(captureEnd(), "");
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_STR_EQL(captureEnd(), "");
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
 	/*** Being told to log everything logs the messages that a session
 	 *** would otherwise have kept to itself, and stacks them all the same.
 	 ***/
 	mssInitialize("altpasswd", auth_path, "stdout", 1, APPNAME);
-	if (!EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d")) return false;
+	if (!ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d")) return false;
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "logged as well");
 	errno = ENOENT;
 	mssErrorErrno(0, "MOD", "logged too");
 	snprintf(expected, sizeof(expected), "MOD: logged too (%s)", strerror(ENOENT));
-	success &= EXPECT_STR_HAS_IN_ORDER(captureEnd(),
+	success &= ASSERT_STR_HAS_IN_ORDER(captureEnd(),
 		APPNAME": ", "MOD: logged as well",
 		APPNAME": ", expected);
-	success &= EXPECT_EQL(((pMtSession)thGetParam(NULL, "mss"))->ErrList.nItems, 2, "%d");
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_EQL(((pMtSession)thGetParam(NULL, "mss"))->ErrList.nItems, 2, "%d");
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
 	/** With no program name to log under, the lines say "error". **/
 	mssInitialize("altpasswd", auth_path, "stdout", 0, "");
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "nameless");
-	success &= EXPECT_STR_HAS_IN_ORDER(captureEnd(), "error: ", "MOD: nameless");
+	success &= ASSERT_STR_HAS_IN_ORDER(captureEnd(), "error: ", "MOD: nameless");
 
     return success;
     }

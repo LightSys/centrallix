@@ -38,59 +38,59 @@ static bool doTest(void)
     pMtSession s;
 
 	/** The thread starts out with no session at all. **/
-	success &= EXPECT_EQL(mssUserName(), NULL, "%p");
-	success &= EXPECT_EQL(mssPassword(), NULL, "%p");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
-	success &= EXPECT_EQL(mssEndSession(NULL), -1, "%d");
+	success &= ASSERT_EQL(mssUserName(), NULL, "%p");
+	success &= ASSERT_EQL(mssPassword(), NULL, "%p");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssEndSession(NULL), -1, "%d");
 
 	/** A wrong password, an unknown user, and a user name with the
 	 ** field separator are all refused.  None of them starts a session.
 	 **/
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, "wrongpassword", 0), -1, "%d");
-	success &= EXPECT_EQL(mssAuthenticate("nosuchuser", PASSWORD, 0), -1, "%d");
-	success &= EXPECT_EQL(mssAuthenticate("bad:user", PASSWORD, 0), -1, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, "wrongpassword", 0), -1, "%d");
+	success &= ASSERT_EQL(mssAuthenticate("nosuchuser", PASSWORD, 0), -1, "%d");
+	success &= ASSERT_EQL(mssAuthenticate("bad:user", PASSWORD, 0), -1, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
 	/** The right password starts a session. **/
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
-	success &= EXPECT_STR_EQL(mssUserName(), USERNAME);
-	success &= EXPECT_STR_EQL(mssPassword(), PASSWORD);
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
+	success &= ASSERT_STR_EQL(mssUserName(), USERNAME);
+	success &= ASSERT_STR_EQL(mssPassword(), PASSWORD);
 
 	/** The session is the thread's "mss" parameter. **/
 	s = (pMtSession)thGetParam(NULL, "mss");
-	success &= EXPECT_NOT_NULL(s);
+	success &= ASSERT_NOT_NULL(s);
 	if (!s) return false;
 
 	/** An altpasswd session runs as the calling process' own user. **/
-	success &= EXPECT_EQL(s->UserID, (int)geteuid(), "%d");
-	success &= EXPECT_EQL(s->GroupID, (int)getegid(), "%d");
-	success &= EXPECT_EQL(s->LinkCnt, 1, "%d");
-	success &= EXPECT_EQL(s->ErrList.nItems, 0, "%d");
-	success &= EXPECT_STR_EQL(s->UserName, USERNAME);
-	success &= EXPECT_STR_EQL(s->Password, PASSWORD);
+	success &= ASSERT_EQL(s->UserID, (int)geteuid(), "%d");
+	success &= ASSERT_EQL(s->GroupID, (int)getegid(), "%d");
+	success &= ASSERT_EQL(s->LinkCnt, 1, "%d");
+	success &= ASSERT_EQL(s->ErrList.nItems, 0, "%d");
+	success &= ASSERT_STR_EQL(s->UserName, USERNAME);
+	success &= ASSERT_STR_EQL(s->Password, PASSWORD);
 
 	/** Authenticating again replaces the session, and bypass_crypt accepts
 	 ** any password.
 	 **/
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, "anything", 1), 0, "%d");
-	success &= EXPECT_NOT_NULL(thGetParam(NULL, "mss"));
-	success &= EXPECT_STR_EQL(mssUserName(), USERNAME);
-	success &= EXPECT_STR_EQL(mssPassword(), "anything");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, "anything", 1), 0, "%d");
+	success &= ASSERT_NOT_NULL(thGetParam(NULL, "mss"));
+	success &= ASSERT_STR_EQL(mssUserName(), USERNAME);
+	success &= ASSERT_STR_EQL(mssPassword(), "anything");
 
 	/** Ending the session detaches it from the thread. **/
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
-	success &= EXPECT_EQL(mssUserName(), NULL, "%p");
-	success &= EXPECT_EQL(mssPassword(), NULL, "%p");
-	success &= EXPECT_EQL(mssEndSession(NULL), -1, "%d");
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssUserName(), NULL, "%p");
+	success &= ASSERT_EQL(mssPassword(), NULL, "%p");
+	success &= ASSERT_EQL(mssEndSession(NULL), -1, "%d");
 
 	/** Ending a session by pointer works the same way. **/
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 	s = (pMtSession)thGetParam(NULL, "mss");
-	success &= EXPECT_NOT_NULL(s);
+	success &= ASSERT_NOT_NULL(s);
 	if (!s) return false;
-	success &= EXPECT_EQL(mssEndSession(s), 0, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssEndSession(s), 0, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
     return success;
     }

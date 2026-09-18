@@ -47,42 +47,42 @@ static bool doTest(void)
 	 *** groups of the whole process.
 	 ***/
 	mssInitialize("system", "", "", 0, "test_mtsession");
-	success &= EXPECT_EQL(mssAuthenticate(pw->pw_name, "unused", 1), 0, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(pw->pw_name, "unused", 1), 0, "%d");
 	s = (pMtSession)thGetParam(NULL, "mss");
-	success &= EXPECT_NOT_NULL(s);
+	success &= ASSERT_NOT_NULL(s);
 	if (!s) return false;
-	success &= EXPECT_EQL(s->UserID, (int)pw->pw_uid, "%d");
-	success &= EXPECT_EQL(s->GroupID, (int)pw->pw_gid, "%d");
-	success &= EXPECT_STR_EQL(s->UserName, pw->pw_name);
-	success &= EXPECT_STR_EQL(s->Password, "unused");
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_EQL(s->UserID, (int)pw->pw_uid, "%d");
+	success &= ASSERT_EQL(s->GroupID, (int)pw->pw_gid, "%d");
+	success &= ASSERT_STR_EQL(s->UserName, pw->pw_name);
+	success &= ASSERT_STR_EQL(s->Password, "unused");
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
 	/** A user the system does not know is refused, bypass or not. **/
-	success &= EXPECT_EQL(mssAuthenticate(NO_SUCH_USER, "unused", 1), -1, "%d");
-	success &= EXPECT_EQL(mssAuthenticate(NO_SUCH_USER, "unused", 0), -1, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssAuthenticate(NO_SUCH_USER, "unused", 1), -1, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(NO_SUCH_USER, "unused", 0), -1, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
 	/** A real user with the wrong password is refused as well.  The test
 	 ** does not know the real one, so only this direction is checked.
 	 **/
-	success &= EXPECT_EQL(mssAuthenticate(pw->pw_name, "wrongpassword", 0), -1, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssAuthenticate(pw->pw_name, "wrongpassword", 0), -1, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
 	/** A user name holding the auth file field separator is refused
 	 ** before the auth method gets a look at it.
 	 **/
-	success &= EXPECT_EQL(mssAuthenticate("bad:user", "unused", 1), -1, "%d");
+	success &= ASSERT_EQL(mssAuthenticate("bad:user", "unused", 1), -1, "%d");
 
 	/** An auth method the module does not implement lets nobody in. **/
 	mssInitialize("nosuchmethod", "", "", 0, "test_mtsession");
-	success &= EXPECT_EQL(mssAuthenticate(pw->pw_name, "unused", 1), -1, "%d");
-	success &= EXPECT_EQL(mssAuthenticate(pw->pw_name, "unused", 0), -1, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssAuthenticate(pw->pw_name, "unused", 1), -1, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(pw->pw_name, "unused", 0), -1, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
 	/** Neither does an empty one. **/
 	mssInitialize("", "", "", 0, "test_mtsession");
-	success &= EXPECT_EQL(mssAuthenticate(pw->pw_name, "unused", 1), -1, "%d");
-	success &= EXPECT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
+	success &= ASSERT_EQL(mssAuthenticate(pw->pw_name, "unused", 1), -1, "%d");
+	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");
 
     return success;
     }

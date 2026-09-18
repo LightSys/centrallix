@@ -88,67 +88,67 @@ static bool doTest(void)
 
 	/** Outside a session there is no stack to add to, clear, or read. **/
 	mssError(1, "MOD", "message");
-	success &= EXPECT_EQL(mssClearError(), -1, "%d");
+	success &= ASSERT_EQL(mssClearError(), -1, "%d");
 	xsInit(&xs);
-	success &= EXPECT_EQL(mssStringError(&xs), -1, "%d");
-	success &= EXPECT_EQL(mssUserError(&xs), -1, "%d");
-	success &= EXPECT_EQL(xs.Length, 0, "%d");
+	success &= ASSERT_EQL(mssStringError(&xs), -1, "%d");
+	success &= ASSERT_EQL(mssUserError(&xs), -1, "%d");
+	success &= ASSERT_EQL(xs.Length, 0, "%d");
 	xsDeInit(&xs);
 
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 
 	/** A new session has nothing on its stack. **/
-	success &= EXPECT_EQL(errorCount(), 0, "%d");
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD);
-	success &= EXPECT_STR_EQL(userError(), "");
+	success &= ASSERT_EQL(errorCount(), 0, "%d");
+	success &= ASSERT_STR_EQL(errorStack(), STACK_HEAD);
+	success &= ASSERT_STR_EQL(userError(), "");
 
 	/** The first message becomes the whole stack. **/
 	mssError(1, "MOD", "first");
-	success &= EXPECT_EQL(errorCount(), 1, "%d");
-	success &= EXPECT_STR_HAS(errorStack(), "MOD: first");
+	success &= ASSERT_EQL(errorCount(), 1, "%d");
+	success &= ASSERT_STR_HAS(errorStack(), "MOD: first");
 
 	/** Further messages stack up, and the stack reads newest first. **/
 	mssError(0, "MOD2", "second");
 	mssError(0, "MOD3", "third");
-	success &= EXPECT_EQL(errorCount(), 3, "%d");
-	success &= EXPECT_STR_HAS_IN_ORDER(errorStack(),
+	success &= ASSERT_EQL(errorCount(), 3, "%d");
+	success &= ASSERT_STR_HAS_IN_ORDER(errorStack(),
 		"MOD3: third", "MOD2: second", "MOD: first");
 
 	/** The user facing form drops the module codes and joins the
 	 ** messages with single spaces.
 	 **/
-	success &= EXPECT_STR_EQL(userError(), "third second first");
+	success &= ASSERT_STR_EQL(userError(), "third second first");
 
 	/** Setting clr replaces the stack instead of adding to it. **/
 	mssError(1, "MOD", "fresh");
-	success &= EXPECT_EQL(errorCount(), 1, "%d");
-	success &= EXPECT_STR_HAS(errorStack(), "MOD: fresh");
-	success &= EXPECT_STR_LACKS(errorStack(), "third");
+	success &= ASSERT_EQL(errorCount(), 1, "%d");
+	success &= ASSERT_STR_HAS(errorStack(), "MOD: fresh");
+	success &= ASSERT_STR_LACKS(errorStack(), "third");
 
 	/** The message carries the source location of the mssError() call. **/
 	line = __LINE__ + 1;
 	mssError(1, "MOD", "located");
 	snprintf(location, sizeof(location), "%s:%d", __FILE__, line);
-	success &= EXPECT_STR_HAS_IN_ORDER(errorStack(), location, "MOD: located");
+	success &= ASSERT_STR_HAS_IN_ORDER(errorStack(), location, "MOD: located");
 
 	/** The message is a printf() format string. **/
 	mssError(1, "FMT", "s=%s d=%d c=%c pct=%%", "text", -7, 'X');
-	success &= EXPECT_STR_HAS(errorStack(), "FMT: s=text d=-7 c=X pct=%");
+	success &= ASSERT_STR_HAS(errorStack(), "FMT: s=text d=-7 c=X pct=%");
 
 	/** A message with nothing in it, from a module with no name. **/
 	mssError(1, "", "");
-	success &= EXPECT_EQL(errorCount(), 1, "%d");
-	success &= EXPECT_STR_EQL(userError(), "");
+	success &= ASSERT_EQL(errorCount(), 1, "%d");
+	success &= ASSERT_STR_EQL(userError(), "");
 
 	/** A message with no conversions at all is passed through. **/
 	mssError(1, "MOD", "plain message, no conversions");
-	success &= EXPECT_STR_HAS(errorStack(), "MOD: plain message, no conversions");
+	success &= ASSERT_STR_HAS(errorStack(), "MOD: plain message, no conversions");
 
 	/** A colon in the message itself does not confuse the user facing
 	 ** form, which only drops the source location and module code.
 	 **/
 	mssError(1, "MOD", "colon: inside");
-	success &= EXPECT_STR_EQL(userError(), "colon: inside");
+	success &= ASSERT_STR_EQL(userError(), "colon: inside");
 
 	/** Both forms add to the string they are handed, rather than
 	 ** replacing what is already in it.
@@ -156,30 +156,30 @@ static bool doTest(void)
 	mssError(1, "MOD", "appended");
 	xsInit(&xs);
 	xsConcatenate(&xs, "prefix ", -1);
-	success &= EXPECT_EQL(mssStringError(&xs), 0, "%d");
-	success &= EXPECT_STR_HAS_IN_ORDER(xs.String, "prefix ", "MOD: appended");
+	success &= ASSERT_EQL(mssStringError(&xs), 0, "%d");
+	success &= ASSERT_STR_HAS_IN_ORDER(xs.String, "prefix ", "MOD: appended");
 	xsDeInit(&xs);
 	xsInit(&xs);
 	xsConcatenate(&xs, "prefix ", -1);
-	success &= EXPECT_EQL(mssUserError(&xs), 0, "%d");
-	success &= EXPECT_STR_EQL(xs.String, "prefix appended");
+	success &= ASSERT_EQL(mssUserError(&xs), 0, "%d");
+	success &= ASSERT_STR_EQL(xs.String, "prefix appended");
 	xsDeInit(&xs);
 
 	/** Clearing leaves the session in place with an empty stack. **/
-	success &= EXPECT_EQL(mssClearError(), 0, "%d");
-	success &= EXPECT_EQL(errorCount(), 0, "%d");
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD);
-	success &= EXPECT_STR_EQL(userError(), "");
-	success &= EXPECT_EQL(mssClearError(), 0, "%d");
-	success &= EXPECT_EQL(errorCount(), 0, "%d");
+	success &= ASSERT_EQL(mssClearError(), 0, "%d");
+	success &= ASSERT_EQL(errorCount(), 0, "%d");
+	success &= ASSERT_STR_EQL(errorStack(), STACK_HEAD);
+	success &= ASSERT_STR_EQL(userError(), "");
+	success &= ASSERT_EQL(mssClearError(), 0, "%d");
+	success &= ASSERT_EQL(errorCount(), 0, "%d");
 
 	/** The stack belongs to the session, so a new session starts empty. **/
 	mssError(1, "MOD", "left over");
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
-	success &= EXPECT_EQL(errorCount(), 0, "%d");
-	success &= EXPECT_STR_EQL(errorStack(), STACK_HEAD);
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
+	success &= ASSERT_EQL(errorCount(), 0, "%d");
+	success &= ASSERT_STR_EQL(errorStack(), STACK_HEAD);
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
     return success;
     }

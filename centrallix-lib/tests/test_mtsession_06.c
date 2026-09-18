@@ -90,14 +90,14 @@ static bool doTest(void)
     int rval = 0;
 
 	/** Outside a session there is no stack to print. **/
-	success &= EXPECT_STR_EQL(printError(&rval), "");
-	success &= EXPECT_EQL(rval, -1, "%d");
+	success &= ASSERT_STR_EQL(printError(&rval), "");
+	success &= ASSERT_EQL(rval, -1, "%d");
 
-	success &= EXPECT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
+	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");
 
 	/** An empty stack prints as just its heading. **/
-	success &= EXPECT_STR_EQL(printError(&rval), STACK_HEAD);
-	success &= EXPECT_EQL(rval, 0, "%d");
+	success &= ASSERT_STR_EQL(printError(&rval), STACK_HEAD);
+	success &= ASSERT_EQL(rval, 0, "%d");
 
 	/*** Messages print newest first, one line each, each carrying the
 	 *** source location of the call that raised it.  This is the only
@@ -111,11 +111,11 @@ static bool doTest(void)
 	snprintf(expected, sizeof(expected),
 		STACK_HEAD"--- %s:%d: MOD2: second\r\n--- %s:%d: MOD: first\r\n",
 		__FILE__, second_line, __FILE__, first_line);
-	success &= EXPECT_STR_EQL(printError(&rval), expected);
-	success &= EXPECT_EQL(rval, 0, "%d");
+	success &= ASSERT_STR_EQL(printError(&rval), expected);
+	success &= ASSERT_EQL(rval, 0, "%d");
 
 	/** Printing leaves the stack as it was, so the same print repeats. **/
-	success &= EXPECT_STR_EQL(printError(&rval), expected);
+	success &= ASSERT_STR_EQL(printError(&rval), expected);
 
 	/** A message too long for one printed line is cut to fit the line
 	 ** buffer, which takes the line ending with it.
@@ -123,15 +123,15 @@ static bool doTest(void)
 	memset(long_message, 'L', sizeof(long_message) - 1);
 	long_message[sizeof(long_message) - 1] = '\0';
 	mssError(1, "MOD", "%s", long_message);
-	success &= EXPECT_EQL((int)strlen(printError(&rval)),
+	success &= ASSERT_EQL((int)strlen(printError(&rval)),
 		(int)strlen(STACK_HEAD) + LINE_SIZE - 1, "%d");
-	success &= EXPECT_STR_HAS(printed, "MOD: LLL");
-	success &= EXPECT_EQL(rval, 0, "%d");
+	success &= ASSERT_STR_HAS(printed, "MOD: LLL");
+	success &= ASSERT_EQL(rval, 0, "%d");
 
 	/** The stack empties and prints as its heading again. **/
-	success &= EXPECT_EQL(mssClearError(), 0, "%d");
-	success &= EXPECT_STR_EQL(printError(&rval), STACK_HEAD);
-	success &= EXPECT_EQL(mssEndSession(NULL), 0, "%d");
+	success &= ASSERT_EQL(mssClearError(), 0, "%d");
+	success &= ASSERT_STR_EQL(printError(&rval), STACK_HEAD);
+	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
     return success;
     }
