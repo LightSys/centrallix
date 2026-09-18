@@ -22,7 +22,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "xhash.h"
@@ -55,14 +54,14 @@ static bool doTest(void)
     XHashTable hash;
 
 	/** A nonzero key length selects fixed length binary keys. **/
-	success &= EXPECT_EQL(check(xhInit(&hash, HASH_ROWS, KEY_LEN)), 0, "%d");
+	success &= EXPECT_EQL(xhInit(&hash, HASH_ROWS, KEY_LEN), 0, "%d");
 	success &= EXPECT_EQL(hash.KeyLen, KEY_LEN, "%d");
 	success &= EXPECT_EQL(hash.nItems, 0, "%d");
 
 	/** Add each pair. **/
 	for (int i = 0; i < KEY_COUNT; i++)
 	    {
-	    success &= EXPECT_EQL(check(xhAdd(&hash, keys[i], data[i])), 0, "%d");
+	    success &= EXPECT_EQL(xhAdd(&hash, keys[i], data[i]), 0, "%d");
 	    success &= EXPECT_EQL(hash.nItems, i + 1, "%d");
 	    }
 
@@ -86,7 +85,7 @@ static bool doTest(void)
 	success &= EXPECT_EQL(xhRemove(&hash, other_key), -1, "%d");
 
 	/** Removing by an equal copy of a key removes the original entry. **/
-	success &= EXPECT_EQL(check(xhRemove(&hash, long_key)), 0, "%d");
+	success &= EXPECT_EQL(xhRemove(&hash, long_key), 0, "%d");
 	success &= EXPECT_EQL(xhLookup(&hash, keys[0]), NULL, "%p");
 	success &= EXPECT_EQL(hash.nItems, KEY_COUNT - 1, "%d");
 
@@ -95,9 +94,9 @@ static bool doTest(void)
 	    success &= EXPECT_EQL(xhLookup(&hash, keys[i]), data[i], "%p");
 
 	/** Clean up. **/
-	success &= EXPECT_EQL(check(xhClear(&hash, NULL, NULL)), 0, "%d");
+	success &= EXPECT_EQL(xhClear(&hash, NULL, NULL), 0, "%d");
 	success &= EXPECT_EQL(hash.nItems, 0, "%d");
-	success &= EXPECT_EQL(check(xhDeInit(&hash)), 0, "%d");
+	success &= EXPECT_EQL(xhDeInit(&hash), 0, "%d");
 
     return success;
     }

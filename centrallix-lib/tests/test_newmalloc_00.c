@@ -22,7 +22,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 #include "range.h"
 
 /** Tested module. **/
@@ -55,7 +54,8 @@ static int mockErrorFn(char* error_msg)
 	while (len > err_buf_size - err_buf_i)
 	    {
 	    err_buf_size *= 2;
-	    err_buf = checkPtr(realloc(err_buf, err_buf_size));
+	    err_buf = realloc(err_buf, err_buf_size);
+	    EXPECT_NOT_NULL(err_buf);
 	    }
 
 	err_buf_i += snprintf(
@@ -86,7 +86,8 @@ static bool doTest(void)
 	srand(seed_counter++);
 
 	/** Initialize the mock error function. **/
-	err_buf = checkPtr(malloc(err_buf_size = 256));
+	err_buf = malloc(err_buf_size = 256);
+	EXPECT_NOT_NULL(err_buf);
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
 	nmSetErrFunction(mockErrorFn);
 
@@ -101,12 +102,14 @@ static bool doTest(void)
 	success &= EXPECT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Random data, varying sizes. **/
-	void** data = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
-	void** test = checkPtr(malloc(TEST_LIMIT * sizeof(void*)));
+	void** data = malloc(TEST_LIMIT * sizeof(void*));
+	void** test = malloc(TEST_LIMIT * sizeof(void*));
+	success &= EXPECT_NOT_NULL(data);
+	success &= EXPECT_NOT_NULL(test);
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
 	    success &= EXPECT_NOT_NULL(test[i] = nmSysMalloc(i));
-	    data[i] = randomInit(checkPtr(malloc(i)), i);
+	    success &= EXPECT_NOT_NULL(data[i] = randomInit(malloc(i), i));
 	    memcpy(test[i], data[i], i); /* Write test data into test memory. */
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)

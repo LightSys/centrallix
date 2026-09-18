@@ -2,7 +2,7 @@
 /* Centrallix Application Server System					*/
 /* Centrallix Base Library						*/
 /*									*/
-/* Copyright (C) 2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2025-2026 LightSys Technology Services, Inc.		*/
 /*									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -25,7 +25,6 @@
 /** Test dependencies. **/
 #include "test_utils.h"
 #include "newmalloc.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "xarray.h"
@@ -67,24 +66,23 @@ static bool doTest(void)
 	const int value_not = possible_value_not;
 
 	/** Create a new xarray. **/
-	pXArray xa = checkPtr(xaNew(2));
-	success &= EXPECT_EQL(xa != NULL, true, "%d");
-	if (xa == NULL) return false;
+	pXArray xa = xaNew(2);
+	if (!EXPECT_NOT_NULL(xa)) return false;
 
 	/** A new xarray should have 0 items. **/
 	success &= EXPECT_EQL(xaCount(xa), 0, "%d");
 
 	/** Test adding an item. **/
-	int* v1 = checkPtr(nmMalloc(sizeof(int)));
-	if (v1 == NULL) return false;
+	int* v1 = nmMalloc(sizeof(int));
+	if (!EXPECT_NOT_NULL(v1)) return false;
 	*v1 = value1;
 	success &= EXPECT_EQL(xaAddItem(xa, v1), 0, "%d");
 	success &= EXPECT_EQL(xaCount(xa), 1, "%d");
 	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 0), value1, "%d");
 
 	/** Test adding another item. **/
-	int* v2 = checkPtr(nmMalloc(sizeof(int)));
-	if (v2 == NULL) return false;
+	int* v2 = nmMalloc(sizeof(int));
+	if (!EXPECT_NOT_NULL(v2)) return false;
 	*v2 = value2;
 	success &= EXPECT_EQL(xaAddItem(xa, v2), 1, "%d");
 	success &= EXPECT_EQL(xaCount(xa), 2, "%d");
@@ -97,8 +95,8 @@ static bool doTest(void)
 	success &= EXPECT_EQL(xaFindItemR(xa, v1), 0, "%d");
 
 	/** Test finding items that don't exist. **/
-	int* v_not = checkPtr(nmMalloc(sizeof(int)));
-	if (v_not == NULL) return false;
+	int* v_not = nmMalloc(sizeof(int));
+	if (!EXPECT_NOT_NULL(v_not)) return false;
 	*v_not = value_not;
 	success &= EXPECT_EQL(xaFindItem(xa, NULL), -1, "%d");
 	success &= EXPECT_EQL(xaFindItemR(xa, NULL), -1, "%d");
@@ -107,24 +105,24 @@ static bool doTest(void)
 	nmFree(v_not, sizeof(int)); v_not = NULL;
 
 	/** Insert before index 1. **/
-	int* v3 = checkPtr(nmMalloc(sizeof(int)));
-	if (v3 == NULL) return false;
+	int* v3 = nmMalloc(sizeof(int));
+	if (!EXPECT_NOT_NULL(v3)) return false;
 	*v3 = value3;
 	success &= EXPECT_EQL(xaInsertBefore(xa, 1, v3), 1, "%d");
 	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 1), value3, "%d");
 	success &= EXPECT_EQL(xaCount(xa), 3, "%d");
 
 	/** Insert after index 2. **/
-	int* v4 = checkPtr(nmMalloc(sizeof(int)));
-	if (v4 == NULL) return false;
+	int* v4 = nmMalloc(sizeof(int));
+	if (!EXPECT_NOT_NULL(v4)) return false;
 	*v4 = value4;
 	success &= EXPECT_EQL(xaInsertAfter(xa, 2, v4), 3, "%d");
 	success &= EXPECT_EQL(*(int*)xaGetItem(xa, 3), value4, "%d");
 	success &= EXPECT_EQL(xaCount(xa), 4, "%d");
 
 	/** xaSetItem() beyond current end should create NULL gaps. **/
-	int* vset = checkPtr(nmMalloc(sizeof(int)));
-	if (vset == NULL) return false;
+	int* vset = nmMalloc(sizeof(int));
+	if (!EXPECT_NOT_NULL(vset)) return false;
 	*vset = value5;
 	success &= EXPECT_EQL(xaSetItem(xa, 5, vset), 5, "%d");
 	success &= EXPECT_EQL(xaCount(xa), 6, "%d");

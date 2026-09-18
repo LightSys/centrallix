@@ -27,7 +27,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "xhash.h"
@@ -44,7 +43,7 @@ static bool doTest(void)
     XHashTable hash;
 
 	/** A key length of zero selects NUL-terminated string keys. **/
-	success &= EXPECT_EQL(check(xhInit(&hash, HASH_ROWS, 0)), 0, "%d");
+	success &= EXPECT_EQL(xhInit(&hash, HASH_ROWS, 0), 0, "%d");
 	success &= EXPECT_EQL(hash.nRows, HASH_ROWS, "%d");
 	success &= EXPECT_EQL(hash.KeyLen, 0, "%d");
 	success &= EXPECT_EQL(hash.nItems, 0, "%d");
@@ -63,7 +62,7 @@ static bool doTest(void)
 	/** Add each pair.  The table stores the pointers it is given. **/
 	for (int i = 0; i < KEY_COUNT; i++)
 	    {
-	    success &= EXPECT_EQL(check(xhAdd(&hash, keys[i], data[i])), 0, "%d");
+	    success &= EXPECT_EQL(xhAdd(&hash, keys[i], data[i]), 0, "%d");
 	    success &= EXPECT_EQL(xhLookup(&hash, keys[i]), data[i], "%p");
 	    success &= EXPECT_EQL(hash.nItems, i + 1, "%d");
 	    }
@@ -91,15 +90,15 @@ static bool doTest(void)
 	success &= EXPECT_EQL(hash.nItems, KEY_COUNT, "%d");
 
 	/** The empty string is a usable key. **/
-	success &= EXPECT_EQL(check(xhAdd(&hash, "", data[0])), 0, "%d");
+	success &= EXPECT_EQL(xhAdd(&hash, "", data[0]), 0, "%d");
 	success &= EXPECT_EQL(xhLookup(&hash, ""), data[0], "%p");
-	success &= EXPECT_EQL(check(xhRemove(&hash, "")), 0, "%d");
+	success &= EXPECT_EQL(xhRemove(&hash, ""), 0, "%d");
 	success &= EXPECT_EQL(hash.nItems, KEY_COUNT, "%d");
 
 	/** Remove each key.  A removed key cannot be found or removed again. **/
 	for (int i = 0; i < KEY_COUNT; i++)
 	    {
-	    success &= EXPECT_EQL(check(xhRemove(&hash, keys[i])), 0, "%d");
+	    success &= EXPECT_EQL(xhRemove(&hash, keys[i]), 0, "%d");
 	    success &= EXPECT_EQL(xhLookup(&hash, keys[i]), NULL, "%p");
 	    success &= EXPECT_EQL(xhRemove(&hash, keys[i]), -1, "%d");
 	    success &= EXPECT_EQL(hash.nItems, KEY_COUNT - i - 1, "%d");
@@ -107,20 +106,20 @@ static bool doTest(void)
 
 	/** Two tables are independent, even when given the same keys. **/
 	XHashTable other;
-	success &= EXPECT_EQL(check(xhInit(&other, HASH_ROWS, 0)), 0, "%d");
-	success &= EXPECT_EQL(check(xhAdd(&hash, keys[0], data[0])), 0, "%d");
-	success &= EXPECT_EQL(check(xhAdd(&other, keys[0], data[1])), 0, "%d");
+	success &= EXPECT_EQL(xhInit(&other, HASH_ROWS, 0), 0, "%d");
+	success &= EXPECT_EQL(xhAdd(&hash, keys[0], data[0]), 0, "%d");
+	success &= EXPECT_EQL(xhAdd(&other, keys[0], data[1]), 0, "%d");
 	success &= EXPECT_EQL(xhLookup(&hash, keys[0]), data[0], "%p");
 	success &= EXPECT_EQL(xhLookup(&other, keys[0]), data[1], "%p");
-	success &= EXPECT_EQL(check(xhRemove(&other, keys[0])), 0, "%d");
+	success &= EXPECT_EQL(xhRemove(&other, keys[0]), 0, "%d");
 	success &= EXPECT_EQL(xhLookup(&hash, keys[0]), data[0], "%p");
 	success &= EXPECT_EQL(hash.nItems, 1, "%d");
 	success &= EXPECT_EQL(other.nItems, 0, "%d");
-	success &= EXPECT_EQL(check(xhDeInit(&other)), 0, "%d");
+	success &= EXPECT_EQL(xhDeInit(&other), 0, "%d");
 
 	/** Clean up. **/
-	success &= EXPECT_EQL(check(xhRemove(&hash, keys[0])), 0, "%d");
-	success &= EXPECT_EQL(check(xhDeInit(&hash)), 0, "%d");
+	success &= EXPECT_EQL(xhRemove(&hash, keys[0]), 0, "%d");
+	success &= EXPECT_EQL(xhDeInit(&hash), 0, "%d");
 
     return success;
     }

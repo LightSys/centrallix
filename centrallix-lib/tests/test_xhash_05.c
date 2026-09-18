@@ -20,7 +20,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "xhash.h"
@@ -55,7 +54,7 @@ static bool doTest(void)
 	    {
 	    int hash = xh_internal_ComputeHash(key, KEY_LEN, rows[r]);
 	    success &= EXPECT_RANGE(hash, 0, rows[r] - 1, "%d");
-	    success &= EXPECT_EQL(check(xhInitialize()), 0, "%d");
+	    success &= EXPECT_EQL(xhInitialize(), 0, "%d");
 	    success &= EXPECT_EQL(xh_internal_ComputeHash(key, KEY_LEN, rows[r]), hash, "%d");
 
 	    /** An empty key hashes to the first row of any table. **/

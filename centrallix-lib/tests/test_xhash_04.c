@@ -20,7 +20,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "xhash.h"
@@ -36,7 +35,7 @@ static bool doTest(void)
     char keys[KEY_COUNT][KEY_SIZE];
     int used_rows = 0;
 
-	success &= EXPECT_EQL(check(xhInit(&hash, HASH_ROWS, 0)), 0, "%d");
+	success &= EXPECT_EQL(xhInit(&hash, HASH_ROWS, 0), 0, "%d");
 
 	/*** Each key doubles as its own data, giving every entry a unique
 	 *** pointer to look up.  The keys share the stack of an mtask thread,
@@ -45,7 +44,7 @@ static bool doTest(void)
 	for (int i = 0; i < KEY_COUNT; i++)
 	    {
 	    snprintf(keys[i], sizeof(keys[i]), "spread-key-%d", i);
-	    success &= EXPECT_EQL(check(xhAdd(&hash, keys[i], keys[i])), 0, "%d");
+	    success &= EXPECT_EQL(xhAdd(&hash, keys[i], keys[i]), 0, "%d");
 	    }
 	success &= EXPECT_EQL(hash.nItems, KEY_COUNT, "%d");
 
@@ -55,14 +54,14 @@ static bool doTest(void)
 
 	/** Removing every key empties every row. **/
 	for (int i = 0; i < KEY_COUNT; i++)
-	    success &= EXPECT_EQL(check(xhRemove(&hash, keys[i])), 0, "%d");
+	    success &= EXPECT_EQL(xhRemove(&hash, keys[i]), 0, "%d");
 	for (int i = 0; i < HASH_ROWS; i++)
 	    if (hash.Rows.Items[i] != NULL) used_rows++;
 	success &= EXPECT_EQL(used_rows, 0, "%d");
 	success &= EXPECT_EQL(hash.nItems, 0, "%d");
 
 	/** Clean up. **/
-	success &= EXPECT_EQL(check(xhDeInit(&hash)), 0, "%d");
+	success &= EXPECT_EQL(xhDeInit(&hash), 0, "%d");
 
     return success;
     }

@@ -21,7 +21,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "newmalloc.h"

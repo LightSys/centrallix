@@ -22,7 +22,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 
 /** Tested module. **/
 #include "xhash.h"
@@ -75,13 +74,13 @@ static bool doTest(void)
     int remaining_count = 0;
 
 	/** One row means every key collides. **/
-	success &= EXPECT_EQL(check(xhInit(&hash, 1, 0)), 0, "%d");
+	success &= EXPECT_EQL(xhInit(&hash, 1, 0), 0, "%d");
 	success &= EXPECT_EQL(hash.nItems, 0, "%d");
 
 	/** Build the chain. **/
 	for (int i = 0; i < CHAIN_COUNT; i++)
 	    {
-	    success &= EXPECT_EQL(check(xhAdd(&hash, keys[i], data[i])), 0, "%d");
+	    success &= EXPECT_EQL(xhAdd(&hash, keys[i], data[i]), 0, "%d");
 	    success &= EXPECT_EQL(hash.nItems, i + 1, "%d");
 	    }
 	success &= checkChain(&hash, keys, CHAIN_COUNT);
@@ -105,7 +104,7 @@ static bool doTest(void)
 	    {
 	    if (isRemoved(i))
 		{
-		success &= EXPECT_EQL(check(xhRemove(&hash, keys[i])), 0, "%d");
+		success &= EXPECT_EQL(xhRemove(&hash, keys[i]), 0, "%d");
 		removed_count++;
 		}
 	    else
@@ -123,17 +122,17 @@ static bool doTest(void)
 	success &= checkChain(&hash, remaining, remaining_count);
 
 	/** A removed key can be added back, landing at the end of the chain. **/
-	success &= EXPECT_EQL(check(xhAdd(&hash, keys[0], data[0])), 0, "%d");
+	success &= EXPECT_EQL(xhAdd(&hash, keys[0], data[0]), 0, "%d");
 	success &= EXPECT_EQL(xhLookup(&hash, keys[0]), data[0], "%p");
 	success &= EXPECT_EQL(hash.nItems, CHAIN_COUNT - REMOVED_COUNT + 1, "%d");
 	remaining[remaining_count++] = keys[0];
 	success &= checkChain(&hash, remaining, remaining_count);
 
 	/** Clean up. **/
-	success &= EXPECT_EQL(check(xhClear(&hash, NULL, NULL)), 0, "%d");
+	success &= EXPECT_EQL(xhClear(&hash, NULL, NULL), 0, "%d");
 	success &= EXPECT_EQL(hash.nItems, 0, "%d");
 	success &= EXPECT_EQL(hash.Rows.Items[0], NULL, "%p");
-	success &= EXPECT_EQL(check(xhDeInit(&hash)), 0, "%d");
+	success &= EXPECT_EQL(xhDeInit(&hash), 0, "%d");
 
     return success;
     }
