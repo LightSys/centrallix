@@ -184,7 +184,7 @@ long long test(char** tname)
 	capture_fd = open(capture_path, O_RDWR | O_TRUNC, 0600);
 	if (capture_fd < 0)
 	    {
-	    printFail("could not open the file to capture stdout into");
+	    fprintf(stderr, "  > could not open the file to capture stdout into\n");
 	    tmpFileDeInit(capture_path);
 	    tmpFileDeInit(auth_path);
 	    return -1;

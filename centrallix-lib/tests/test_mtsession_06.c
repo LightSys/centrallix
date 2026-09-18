@@ -75,7 +75,7 @@ static char* printError(int* rval)
 	    return printed;
 	    }
 	if (length == (int)sizeof(printed) - 1)
-	    printFail("the printed text did not fit the buffer");
+	    fprintf(stderr, "  > the printed text did not fit the buffer\n");
 	printed[length] = '\0';
 	read_offset += length;
 
@@ -157,7 +157,7 @@ long long test(char** tname)
 	read_fd = open(print_path, O_RDONLY);
 	if (!print_file || read_fd < 0)
 	    {
-	    printFail("could not open the file to print to");
+	    fprintf(stderr, "  > could not open the file to print to\n");
 	    tmpFileDeInit(print_path);
 	    tmpFileDeInit(auth_path);
 	    return -1;

@@ -158,13 +158,13 @@ long long test(char** tname)
 	if (genCred(SALT, 4, "password", CRED_BUF_SIZE)
 		|| strncmp(cred, "$1$", 3) || (int)strlen(cred) != MD5_CRED_LEN)
 	    {
-	    printFail("crypt() here does not produce $1$ MD5 credentials");
+	    fprintf(stderr, "  > crypt() here does not produce $1$ MD5 credentials\n");
 	    return -1;
 	    }
 	if (genCred(SALT, 4, "password", DES_CRED_SIZE)
 		|| (int)strlen(cred) != DES_CRED_LEN)
 	    {
-	    printFail("crypt() here does not produce DES credentials");
+	    fprintf(stderr, "  > crypt() here does not produce DES credentials\n");
 	    return -1;
 	    }
 
