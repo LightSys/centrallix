@@ -820,8 +820,9 @@ cluster_i_parseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the algorithm attribute. **/
 	char* algorithm;
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "algorithm"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "algorithm",
 	    DATA_T_STRING,
 	    POD(&algorithm),
 	    0,
@@ -876,8 +877,9 @@ cluster_i_parseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
     {
 	/** Get the similarity_measure attribute. **/
 	char* measure;
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "similarity_measure"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "similarity_measure",
 	    DATA_T_STRING,
 	    POD(&measure),
 	    0,
@@ -947,8 +949,9 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	if (check(objCurrentDate(&source_data->DateCreated)) != 0) goto err_free;
 	
 	/** Get source. **/
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "source"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "source",
 	    DATA_T_STRING,
 	    POD(&buf),
 	    0,
@@ -960,8 +963,9 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	if (UNLIKELY(source_data->SourcePath == NULL)) goto err_free;
 	
 	/** Get the attribute name to use when querying keys from the source. **/
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "key_attr"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "key_attr",
 	    DATA_T_STRING,
 	    POD(&buf),
 	    0,
@@ -973,8 +977,9 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	if (UNLIKELY(source_data->KeyAttr == NULL)) goto err_free;
 	
 	/** Get the attribute name to use for querying data from the source. **/
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "data_attr"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "data_attr",
 	    DATA_T_STRING,
 	    POD(&buf),
 	    0,
@@ -1102,8 +1107,9 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    
 	    /** Get window_size. **/
 	    int window_size;
-	    if (UNLIKELY(stGetAttrValueOSML(
-		stLookup(inf, "window_size"),
+	    if (UNLIKELY(stGetObjAttrValueOSML(
+		inf,
+		"window_size",
 		DATA_T_INTEGER,
 		POD(&window_size),
 		0,
@@ -1124,8 +1130,9 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get num_clusters. **/
 	int num_clusters;
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "num_clusters"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "num_clusters",
 	    DATA_T_INTEGER,
 	    POD(&num_clusters),
 	    0,
@@ -1143,8 +1150,9 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get min_improvement. **/
 	double improvement;
-	result = stGetAttrValueOSML(
-	    stLookup(inf, "min_improvement"),
+	result = stGetObjAttrValueOSML(
+	    inf,
+	    "min_improvement",
 	    DATA_T_DOUBLE,
 	    POD(&improvement),
 	    0,
@@ -1167,8 +1175,9 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get max_iterations. **/
 	int max_iterations;
-	result = stGetAttrValueOSML(
-	    stLookup(inf, "max_iterations"),
+	result = stGetObjAttrValueOSML(
+	    inf,
+	    "max_iterations",
 	    DATA_T_INTEGER,
 	    POD(&max_iterations),
 	    0,
@@ -1190,8 +1199,9 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get seed. **/
 	int seed;
-	result = stGetAttrValueOSML(
-	    stLookup(inf, "seed"),
+	result = stGetObjAttrValueOSML(
+	    inf,
+	    "seed",
 	    DATA_T_INTEGER,
 	    POD(&seed),
 	    0,
@@ -1417,8 +1427,9 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	
 	/** Search for the source cluster. **/
 	char* source_cluster_name;
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "source"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "source",
 	    DATA_T_STRING,
 	    POD(&source_cluster_name),
 	    0,
@@ -1457,8 +1468,9 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    }
 	
 	/** Get threshold attribute. **/
-	if (UNLIKELY(stGetAttrValueOSML(
-	    stLookup(inf, "threshold"),
+	if (UNLIKELY(stGetObjAttrValueOSML(
+	    inf,
+	    "threshold",
 	    DATA_T_DOUBLE,
 	    POD(&search_data->Threshold),
 	    0,
