@@ -21,6 +21,7 @@
 /* 		- fprintMem() for printing memory stats.		*/
 /************************************************************************/
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #ifdef	__cplusplus

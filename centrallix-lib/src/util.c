@@ -24,6 +24,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "expect.h"
@@ -177,7 +178,7 @@ snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value)
     return (int)ti;
     }
 
-/*** Print summary the current memory in use to the file pointer.
+/*** Print a summary of the current memory in use to the file pointer.
  ***
  *** @param out The file pointer for printing.  Defaults to stdout when NULL.
  *** @returns 0 if successful, or -1 if an error occurs.
@@ -245,7 +246,6 @@ fprintMem(FILE* out)
 
 	/** Clean up. **/
 	if (LIKELY(fp != NULL)) warnFail(fclose(fp));
-	
 
 	return rval;
     }

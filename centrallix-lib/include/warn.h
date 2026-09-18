@@ -39,7 +39,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
  *** code, aka. any not zero int.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the warning message if an warning occurs.
+ *** 	included in the warning message if a warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define warnFail(result) \
@@ -53,7 +53,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
 /*** Prints a warning if the result of the passed function call is negative.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the warning message if an warning occurs.
+ *** 	included in the warning message if a warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define warnNeg(result) \
@@ -67,7 +67,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
 /*** Prints a warning if the result of the passed function call is NAN.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the warning message if an warning occurs.
+ *** 	included in the warning message if a warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define warnDouble(result) \
@@ -81,7 +81,7 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
 /*** Prints a warning if the result of the passed function call is NULL.
  *** 
  *** @param result The expression to check.  The text of this expression is
- *** 	included in the warning message if an warning occurs.
+ *** 	included in the warning message if a warning occurs.
  *** @returns The result of the checked expression.
  ***/
 #define warnNull(result) \
