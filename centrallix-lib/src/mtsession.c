@@ -581,29 +581,37 @@ mssClearError()
 
 
 /*** mssPrintError - prints the current error stack out to the given file
- *** descriptor.
+ *** descriptor.  Error handling in this function is a bit strange because
+ *** it's on the error handling path, so we can't call mssError().
  ***/
-int 
+int
 mssPrintError(pFile fd)
     {
-    int i;
-    pMtSession s;
-    char sbuf[200];
+    XString str;
+    int rval = -1, tmp;
 
-	/** Get session. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (fd == NULL) goto end;
+	if (warnFail(xsInit(&str))) goto end;
 
-	/** Print the error stack. **/
-	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
-	fdWrite(fd,sbuf,strlen(sbuf),0,0);
-	for(i=s->ErrList.nItems-1;i>=0;i--)
+	/** Format the stack once, so both error printers agree on the layout. **/
+	tmp = warnFail(mssStringError(&str));
+	if (tmp != 0)
 	    {
-	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
-	    fdWrite(fd,sbuf,strlen(sbuf),0,0);
+	    rval = tmp;
+	    goto end;
 	    }
+	if (warnNeg(fdWrite(fd, xsString(&str), xsLength(&str), 0, 0)) < 0) goto end;
 
-    return 0;
+	warnFail(xsDeInit(&str));
+	
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (rval != 0) /* Make sure we print something if a failure happenned. */
+	    fprintf(stderr, "Warning: Failed to print session errors.\n");
+
+	return rval;
     }
 
 
