@@ -26,11 +26,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "check.h"
 #include "expect.h"
 #include "mtsession.h"
 #include "newmalloc.h"
 #include "range.h"
+#include "warn.h"
 
 #include "util.h"
 
@@ -193,7 +193,7 @@ fprintMem(FILE* out)
 	    out = stdout;
 
 	/** Open the OS stats file to read memory. ***/
-	FILE* fp = fopen("/proc/self/statm", "r");
+	fp = fopen("/proc/self/statm", "r");
 	if (UNLIKELY(fp == NULL))
 	    {
 	    mssError(1, "UTIL",
@@ -244,7 +244,7 @@ fprintMem(FILE* out)
 	    mssError(0, "UTIL", "Failed to print memory.");
 
 	/** Clean up. **/
-	if (LIKELY(fp != NULL)) check(fclose(fp)); /* Failure ignored. */
+	if (LIKELY(fp != NULL)) warnFail(fclose(fp));
 	
 
 	return rval;
