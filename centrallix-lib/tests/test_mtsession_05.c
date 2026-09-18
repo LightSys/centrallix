@@ -82,10 +82,10 @@ static bool doTest(void)
 	 *** logged instead; what gets logged is test 09's business, so stdout
 	 *** is put away for the call.
 	 ***/
-	if (!quietStart(&saved_stdout)) return false;
+	if (!quietStart(STDOUT_FILENO, &saved_stdout)) return false;
 	errno = ENOENT;
 	mssErrorErrno(1, "MOD", "message");
-	if (!quietEnd(saved_stdout)) return false;
+	if (!quietEnd(STDOUT_FILENO, saved_stdout)) return false;
 	success &= ASSERT_EQL(errorCount(), -1, "%d");
 
 	success &= ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d");

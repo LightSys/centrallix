@@ -166,10 +166,10 @@ static bool doTest(void)
 	 ***/
 	close(auth_fd);
 	if (!tmpFileDeInit(auth_path)) return false;
-	if (!quietStart(&saved_stdout)) return false;
+	if (!quietStart(STDOUT_FILENO, &saved_stdout)) return false;
 	rval = mssAuthenticate(USERNAME, PASSWORD, 0);
 	bypass_rval = mssAuthenticate(USERNAME, PASSWORD, 1);
-	if (!quietEnd(saved_stdout)) return false;
+	if (!quietEnd(STDOUT_FILENO, saved_stdout)) return false;
 	success &= ASSERT_EQL(rval, -1, "%d");
 	success &= ASSERT_EQL(bypass_rval, -1, "%d");
 	success &= ASSERT_EQL(thGetParam(NULL, "mss"), NULL, "%p");

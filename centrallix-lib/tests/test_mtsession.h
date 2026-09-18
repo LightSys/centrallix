@@ -136,32 +136,34 @@ static inline int tmpFileRead(char* path, char* buf, int buf_size)
     }
 
 
-/*** Save stdout, then ignore all data written to it.
+/*** Save a standard stream, then ignore all data written to it.
  ***
+ *** @param quiet_fd The descriptor to silence, STDOUT_FILENO or STDERR_FILENO.
+ *** @param saved_fd Receives the descriptor that quietEnd() restores from.
  *** @returns true if successful, false otherwise.
  ***/
-static inline bool quietStart(int* saved_stdout)
+static inline bool quietStart(int quiet_fd, int* saved_fd)
     {
     int fd;
 
-	fflush(stdout);
-	*saved_stdout = dup(STDOUT_FILENO);
-	if (*saved_stdout < 0)
+	fflush(NULL); /* Flush all. */
+	*saved_fd = dup(quiet_fd);
+	if (*saved_fd < 0)
 	    {
-	    perror("quietStart: could not save stdout");
+	    perror("quietStart: could not save the stream");
 	    return false;
 	    }
 	fd = open("/dev/null", O_WRONLY);
 	if (fd < 0)
 	    {
 	    perror("quietStart: could not open /dev/null");
-	    close(*saved_stdout);
+	    close(*saved_fd);
 	    return false;
 	    }
-	if (dup2(fd, STDOUT_FILENO) < 0)
+	if (dup2(fd, quiet_fd) < 0)
 	    {
-	    perror("quietStart: could not redirect stdout");
-	    close(*saved_stdout);
+	    perror("quietStart: could not redirect the stream");
+	    close(*saved_fd);
 	    close(fd);
 	    return false;
 	    }
@@ -171,21 +173,23 @@ static inline bool quietStart(int* saved_stdout)
     }
 
 
-/*** Restore stdout after quietStart().
+/*** Restore a stream after quietStart().
  ***
+ *** @param quiet_fd The descriptor that was silenced.
+ *** @param saved_fd The descriptor quietStart() gave back.
  *** @returns true if successful, false otherwise.
  ***/
-static inline bool quietEnd(int saved_stdout)
+static inline bool quietEnd(int quiet_fd, int saved_fd)
     {
     bool success = true;
 
-	fflush(stdout);
-	if (dup2(saved_stdout, STDOUT_FILENO) < 0)
+	fflush(NULL); /* Flush all. */
+	if (dup2(saved_fd, quiet_fd) < 0)
 	    {
-	    perror("quietEnd: could not restore stdout");
+	    perror("quietEnd: could not restore the stream");
 	    success = false;
 	    }
-	close(saved_stdout);
+	close(saved_fd);
 
     return success;
     }
