@@ -8,19 +8,19 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the     */
 /* included file "COPYING".                                             */
 /*                                                                      */
-/* Module:      check.c, check.h                                        */
+/* Module:      warn.c, warn.h                                          */
 /* Author:      Israel Fuller                                           */
 /* Date:        October 13, 2025                                        */
-/* Description: A utility to help with error checking on function       */
-/*              return values, especially for library functions.        */
+/* Description: A utility wrapper to print warnings when a function     */
+/*              call misbehaves.  Not for printing errors.              */
 /************************************************************************/
 
 #include <errno.h>
 #include <stdio.h>
 
-#include "check.h"
 #include "mtsession.h"
 #include "strtcpy.h"
+#include "warn.h"
 
 #define ERR_BUF_SIZE 1024
 

@@ -1,5 +1,5 @@
-#ifndef CHECK_H
-#define	CHECK_H
+#ifndef WARN_H
+#define	WARN_H
 
 /************************************************************************/
 /* Centrallix Application Server System                                 */
@@ -11,11 +11,11 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the     */
 /* included file "COPYING".                                             */
 /*                                                                      */
-/* Module:      check.c, check.h                                        */
+/* Module:      warn.c, warn.h                                          */
 /* Author:      Israel Fuller                                           */
 /* Date:        October 13, 2025                                        */
-/* Description: A utility wrapper to print warnings when a function	*/
-/* 		call misbehaves.  Not for printing errors.		*/
+/* Description: A utility wrapper to print warnings when a function     */
+/*              call misbehaves.  Not for printing errors.              */
 /************************************************************************/
 
 #include <errno.h>
@@ -92,4 +92,4 @@ void printWarningInternal(const int error_code, const char* c_str, const char* f
 	_r; \
     })
 
-#endif	/* CHECK_H */
+#endif	/* WARN_H */
