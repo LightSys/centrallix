@@ -24,7 +24,7 @@
 #include "xstring.h"
 #include "xhash.h"
 #include "strtcpy.h"
-#include "check.h"
+#include "warn.h"
 #include "cxsec.h"
 
 /************************************************************************/
@@ -487,8 +487,8 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 
 	/** Heap allocate a larger error message buffer, if possible. **/
 	err_msg_size = MSS_ERROR_BUF_SIZE;
-	err_msg = checkPtr(nmSysMalloc(MSS_ERROR_BUF_SIZE));
-	if (err_msg == NULL)
+	err_msg = warnNull(nmSysMalloc(MSS_ERROR_BUF_SIZE));
+	if (UNLIKELY(err_msg == NULL))
 	    {
 	    /** Heap alloc failed, fall back to stack buffer. **/
 	    err_msg = &err_msg_buf[0];
@@ -498,26 +498,26 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	err_msg[0] = '\0';
 
 	/** Prevent issues from interlacing this function with prints to stdout. **/
-	check(fflush(stdout)); /* Failure ignored. */
+	warnFail(fflush(stdout));
 
 	/** Add line number to error message. **/
-	strtcatf(err_msg, err_msg_size, &i, "%s:%d: ", file, line);
+	warnNeg(strtcatf(err_msg, err_msg_size, &i, "%s:%d: ", file, line));
 
 	/** Write the module to the start of the error message. */
-	strtcatf(err_msg, err_msg_size, &i, "%s: ", module);
+	warnNeg(strtcatf(err_msg, err_msg_size, &i, "%s: ", module));
 
 	/** Process the message format with all the same rules as printf(). **/
 	va_list args;
 	va_start(args, message);
-	strtcatf_va(err_msg, err_msg_size, &i, message, args);
+	warnNeg(strtcatf_va(err_msg, err_msg_size, &i, message, args));
 	va_end(args);
 
-	/** Get current session. **/
+	/** Get current session (fails if running outside session context). **/
 	pMtSession s = thGetParam(NULL, "mss");
 	const bool log_error = (s == NULL || MSS.LogAllErrors);
 
 	/** Use standard logging without a session context, if needed. **/
-	if (log_error) 
+	if (log_error)
 	    {
 	    /** Use the requested logging method. **/
 	    if (strcmp(MSS.LogMethod, "syslog") == 0)
@@ -537,10 +537,10 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	if (s != NULL)
 	    {
 	    /** Clear the error context, if requested. **/
-	    if (clr) check(mssClearError()); /* Failure ignored. */
+	    if (clr) warnFail(mssClearError()); /* Failure ignored. */
 
 	    /** Allocate space and construct the error text. **/
-	    char* allocated_err_msg = checkPtr(nmSysStrdup(err_msg));
+	    char* allocated_err_msg = warnNull(nmSysStrdup(err_msg));
 	    if (allocated_err_msg == NULL)
 		{
 		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
@@ -548,7 +548,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 		}
 
 	    /** Store the error. **/
-	    if (checkPos(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
+	    if (warnNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
 		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
 		nmSysFree(allocated_err_msg);
@@ -558,7 +558,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 
     end:
 	/** Clean up. **/
-	if (err_msg != NULL && is_heap_error_msg)
+	if (LIKELY(err_msg != NULL && is_heap_error_msg))
 	    nmSysFree(err_msg);
 
 	return;
