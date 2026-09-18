@@ -690,8 +690,8 @@ ifcContains(IfcHandle h, int category, char* member)
 	/** make sure that's a legit category for the given type **/
 	if (category < 0 || category >= IFC.NumCategories[h->Type])
 	    {
-	    mssError(1, "IFC", "illegal category number '%d' for category '%s' of handle '%s'",
-		category, IFC.CategoryNames[h->Type], h->DefPath);
+	    mssError(1, "IFC", "illegal category number '%d' for handle '%s' (type %d has %d categories)",
+		category, h->DefPath, h->Type, IFC.NumCategories[h->Type]);
 	    return -1;
 	    }
 	
@@ -715,8 +715,8 @@ ifcGetProperties(IfcHandle h, int category, char* member)
 	/** make sure that's a legit category for the given type **/
 	if (category < 0 || category >= IFC.NumCategories[h->Type])
 	    {
-	    mssError(1, "IFC", "illegal category number '%d' for category '%s' of handle '%s'",
-		category, IFC.CategoryNames[h->Type], h->DefPath);
+	    mssError(1, "IFC", "illegal category number '%d' for handle '%s' (type %d has %d categories)",
+		category, h->DefPath, h->Type, IFC.NumCategories[h->Type]);
 	    return NULL;
 	    }
 	
@@ -728,7 +728,7 @@ ifcGetProperties(IfcHandle h, int category, char* member)
 	if (count == i)
 	    {
 	    mssError(1, "IFC", "'%s' is not a member of category '%s' of handle '%s v%d.%d'", member,
-		IFC.CategoryNames[h->Type], h->DefPath, h->MajorVersion, h->MinorVersion);
+		IFC.CategoryNames[h->Type][category], h->DefPath, h->MajorVersion, h->MinorVersion);
 	    return NULL;
 	    }
 	return objOpen(h->ObjSession, xaGetItem(&(h->Properties[category]), i), O_RDONLY, 0600, "system/structure");
