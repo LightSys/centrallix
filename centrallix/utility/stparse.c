@@ -557,7 +557,7 @@ stGetExpression(pStructInf this, int nval)
 int
 stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     {
-    return stGetAttrValueOSML(this, type, pod, nval, NULL, NULL);
+    return stGetAttrValueOSML(this, type, pod, nval, NULL, NULL, 0);
     }
 
 
@@ -578,7 +578,7 @@ stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
 	    return 1;
 	    }
 
-    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL, NULL);
+    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL, NULL, 0);
     }
 
 
@@ -586,7 +586,7 @@ stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
  *** in the context of an OSML session.
  ***/
 int
-stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist)
+stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist, int domain)
     {
     pExpression find_exp;
     pParamObjects my_objlist = objlist;
@@ -615,6 +615,8 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 		my_objlist = expCreateParamList();
 		my_objlist->Session = sess;
 		}
+	    if (domain != 0)
+		expBindExpression(find_exp, my_objlist, domain);
 	    expEvalTree(find_exp, my_objlist);
 	    if (!objlist)
 		expFreeParamList(my_objlist);
