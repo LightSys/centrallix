@@ -298,20 +298,4 @@ int mqRegisterQueryDriver(pQueryDriver drv);
 
 /*** Query set-up functions ***/
 
-/*** INTERNAL functions ***/
-char* mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlist, int* attrid, int* astobjid);
-int mq_internal_FreeQS(pQueryStructure qstree);
-pQueryStructure mq_internal_AllocQS(int type);
-pQueryStructure mq_internal_FindItem(pQueryStructure tree, int type, pQueryStructure next);
-pQueryElement mq_internal_AllocQE();
-int mq_internal_FreeQE(pQueryElement qe);
-int mq_internal_AddOrderBy(pQueryElement qe, pExpression exp);
-int mq_internal_ClearOrderBy(pQueryElement qe);
-int mq_internal_nOrderBy(pQueryElement qe);
-pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
-int mq_internal_FreePseudoObject(pPseudoObject p);
-int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
-handle_t mq_internal_FindCollection(pMultiQuery mq, char* collection);
-void mq_internal_CheckYield(pMultiQuery mq);
-
 #endif  /* not defined _MULTIQUERY_H */

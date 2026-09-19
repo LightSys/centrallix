@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
+#include "obj_private.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/xarray.h"
