@@ -1160,8 +1160,7 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    param_list,
 	    EXPR_F_RUNSERVER
 	);
-	if (UNLIKELY(result == -1)) goto err_free;
-	else if (result == 1) cluster_data->MinImprovement = CI_DEFAULT_MIN_IMPROVEMENT;
+	if (result == 1) cluster_data->MinImprovement = CI_DEFAULT_MIN_IMPROVEMENT;
 	else if (result == 0)
 	    {
 	    if (-1.0 <= improvement && improvement <= 1.0)
@@ -1172,6 +1171,7 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		goto err_free;
 		}
 	    }
+	else goto err_free;
 	
 	/** Get max_iterations. **/
 	int max_iterations;
@@ -1185,8 +1185,8 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    param_list,
 	    EXPR_F_RUNSERVER
 	);
-	if (UNLIKELY(result == -1)) goto err_free;
-	if (result == 0)
+	if (result == 1) cluster_data->MaxIterations = CI_DEFAULT_MAX_ITERATIONS;
+	else if (result == 0)
 	    {
 	    if (max_iterations < 1)
 		{
@@ -1195,7 +1195,7 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		}
 	    cluster_data->MaxIterations = (unsigned int)max_iterations;
 	    }
-	else cluster_data->MaxIterations = CI_DEFAULT_MAX_ITERATIONS;
+	else goto err_free;
 	
 	/** Get seed. **/
 	int seed;
@@ -1209,8 +1209,8 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    param_list,
 	    EXPR_F_RUNSERVER
 	);
-	if (UNLIKELY(result == -1)) goto err_free;
-	if (result == 0)
+	if (result == 1) cluster_data->Seed = CI_NO_SEED;
+	else if (result == 0)
 	    {
 	    if (UNLIKELY(seed < 1))
 		{
@@ -1219,7 +1219,7 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		}
 	    cluster_data->Seed = (unsigned int)seed;
 	    }
-	else cluster_data->Seed = CI_NO_SEED;
+	else goto err_free;
 	
 	/** Search for sub-clusters. **/
 	if (check(xaInit(&sub_clusters, CI_INITIAL_SUBCLUSTERS)) != 0) goto err_free;
