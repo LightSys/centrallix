@@ -8,6 +8,7 @@
 #include "cxlib/exception.h"
 #include "stparse_ne.h"
 #include "stparse.h"
+#include "cxlib/check.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/xstring.h"
 #include "cxlib/newmalloc.h"
@@ -557,7 +558,7 @@ stGetExpression(pStructInf this, int nval)
 int
 stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
     {
-    return stGetAttrValueOSML(this, type, pod, nval, NULL, NULL);
+    return stGetAttrValueOSML(this, type, pod, nval, NULL, NULL, 0);
     }
 
 
@@ -568,37 +569,45 @@ stGetAttrValue(pStructInf this, int type, pObjData pod, int nval)
 int
 stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value)
     {
-    pStructInf attr_inf;
-
-	/** Find the attribute **/
-	attr_inf = stLookup(this, attrname);
-	if (!attr_inf)
-	    {
-	    /** NULL value - attribute does not exist **/
-	    return 1;
-	    }
-
-    return stGetAttrValueOSML(attr_inf, type, value, 0, NULL, NULL);
+    return stGetObjAttrValueOSML(this, attrname, type, value, 0, NULL, NULL, 0);
     }
-
 
 /*** stGetAttrValueOSML - return the value of an expression, evaluated
  *** in the context of an OSML session.
  ***/
 int
-stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist)
+stGetObjAttrValueOSML(pStructInf this, char* attrname, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist, int domain)
+    {
+	if (this == NULL)
+	    {
+	    mssError(0, "ST", "stGetObjAttrValueOSML(NULL, ...) failed: Cannot get attribute value from null struct inf.");
+	    return -1;
+	    }
+
+	/** Look up the requested inf. */
+	pStructInf target_inf = stLookup(this, attrname);
+	if (target_inf == NULL) return 1; /* Null value for nonexistent attribute. */
+
+	return stGetAttrValueOSML(target_inf, type, pod, nval, sess, objlist, domain);
+    }
+
+/*** stGetAttrValueOSML - return the value of an expression, evaluated
+ *** in the context of an OSML session.
+ ***/
+int
+stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist, int domain)
     {
     pExpression find_exp;
     pParamObjects my_objlist = objlist;
+    int rval = -1;
 
-	/** Do some error-cascade checking. **/
-	if (!this) return -1;
-	
+	/** Handle edge cases. **/
+	if (this == NULL) return -1; /* Skip end error handler which uses this. */
 	ASSERTMAGIC(this, MGK_STRUCTINF);
 
 	/** Get the correct expression **/
-	find_exp = stGetExpression(this, nval);
-	if (!find_exp) return -1;
+	find_exp = checkPtr(stGetExpression(this, nval));
+	if (find_exp == NULL) goto end;
 
 	/** expression code? **/
 	if (type == DATA_T_CODE && (find_exp->Flags & (EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)))
@@ -607,14 +616,19 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	    return 0;
 	    }
 
-	/** If external ref, do eval **/
-	if ((find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE)) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
+	/*** If binding to a domain or external ref, do eval.  If a domain is
+	 *** specified, we ignore the coverage mask because expBindExpression()
+	 *** overwrites it with the resolved mask.
+	 ***/
+	if ((domain != 0 || (find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE))) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
 	    if (!objlist)
 		{
-		my_objlist = expCreateParamList();
+		my_objlist = checkPtr(expCreateParamList());
 		my_objlist->Session = sess;
 		}
+	    if (domain != 0)
+		expBindExpression(find_exp, my_objlist, domain);
 	    expEvalTree(find_exp, my_objlist);
 	    if (!objlist)
 		expFreeParamList(my_objlist);
@@ -622,9 +636,30 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 
 	/** Correct type requested? **/
 	if (find_exp->Flags & EXPR_F_NULL) return 1;
-	if (type != DATA_T_ANY && type != find_exp->DataType) return -1;
+	
+	/** Check for data type mismatch. **/
+	if (type != DATA_T_ANY && type != find_exp->DataType)
+	    {
+	    mssError(1, "ST",
+		"Expected ['%s' : %s], but got type %s.",
+		this->Name, objTypeToStr(type), objTypeToStr(find_exp->DataType)
+	    );
+	    goto end;
+	    }
 
-    return expExpressionToPod(find_exp, find_exp->DataType, pod);
+	/** Get the expression value. **/
+	rval = expExpressionToPod(find_exp, find_exp->DataType, pod);
+
+    end:
+        if (UNLIKELY(rval < 0))
+	    {
+	    mssError(1, "ST",
+		"Failed to parse attribute \"%s\" from group \"%s\"",
+		this->Name, this->Parent->Name
+	    );
+	    }
+
+	return rval;
     }
 
 
@@ -1785,5 +1820,3 @@ stPrint_ne(pStruct inf)
     {
     return stPrint_ne_r(inf, 0);
     }
-
-

@@ -392,7 +392,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    }
 
 	/** Get SQL string **/
-	if (stGetAttrValueOSML(stLookup(inf->Node->Data,"sql"), DATA_T_STRING, POD(&sql), 0, obj->Session, inf->ObjList) != 0)
+	if (stGetAttrValueOSML(stLookup(inf->Node->Data,"sql"), DATA_T_STRING, POD(&sql), 0, obj->Session, inf->ObjList, 0) != 0)
 	    {
 	    mssError(1,"QY","'sql' property must be supplied for query objects");
 	    goto error;
@@ -957,4 +957,3 @@ qyInitialize()
 
     return 0;
     }
-
