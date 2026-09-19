@@ -14,6 +14,7 @@ AC_PROG_AWK
 AC_PATH_PROG([GZIP], [gzip], [])
 AC_PATH_PROG([STRIP], [strip], [])
 AC_PATH_PROG([SED], [sed], [])
+AC_PATH_PROG([NODE], [node], [])
 AC_PROG_INSTALL
 AC_CACHE_SAVE
 
