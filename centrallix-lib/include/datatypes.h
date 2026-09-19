@@ -83,6 +83,15 @@ typedef struct _BN
 #define DATA_T_CODE		9	/* code; function/expression/etc */
 #define DATA_T_BINARY		10
 
+/** Supported Encodings **/
+#define ENCODING_INVALID	-1
+#define ENCODING_ASCII		 0
+#define ENCODING_LATIN_1	 1
+#define ENCODING_UTF_8		 2
+#define ENCODING_CP_1252	 3
+#define ENCODING_VANCO_UTF8	 4	/* treats Windows-1252 characters as UTF-8 code points */
+
+
 /** structure used to handle data pointers (GetAttrValue, etc) **/
 typedef union _POD
     {
