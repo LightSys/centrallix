@@ -1,21 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,6 +29,15 @@
 /*		objectsource widget and the visual sub-widgets		*/
 /* See centrallix-sysdoc/HTFormsInterface.md for more information. */
 /************************************************************************/
+
+#include <string.h>
+#include <strings.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 
 /*** htformRender - generate the HTML code for the form 'glue'
@@ -210,42 +206,73 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** create our instance variable **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) 
+	    {
+	    mssError(0, "HTFORM", "Failed to add container linkage.");
+	    goto err;
+	    }
 
 	/** Script include to add functions **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_form.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0)) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_form.js", 0)) goto err;
 
 	/** Write out the init line for this instance of the form
 	 **   the name of this instance was defined to be global up above
 	 **   and fm_current is defined in htdrv_page.c 
 	 **/
-	htrAddScriptInit_va(s,"    form_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), {aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, cd:%INT, cdis:%INT, amrg:%INT, me:%INT, name:'%STR&SYM', _3b:%[wgtrGetNodeRef(ns,\"%STR&SYM\")%]%[null%], ro:%INT, ao:%INT, af:%INT, osrc:%['%STR&SYM'%]%[null%], tro:%INT, em:%INT, nf:%['%STR&SYM'%]%[null%], nfw:%['%STR&SYM'%]%[null%], pf:%['%STR&SYM'%]%[null%], pfw:%['%STR&SYM'%]%[null%], il:'%STR&JSSTR'});\n",
-		name,allowquery,allownew,allowmodify,allowview,allownodata,allowdelete,confirmdelete, confirmdiscard, allowmerge,
-		multienter,name,
-		strcmp(_3bconfirmwindow,"null") != 0, _3bconfirmwindow, strcmp(_3bconfirmwindow,"null") == 0,
-		readonly,allowobscure,autofocus,
-		*osrc != '\0', osrc, *osrc == '\0',
-		tro, enter_mode,
-		*link_next != '\0', link_next, *link_next == '\0',
-		*link_next_within != '\0', link_next_within, *link_next_within == '\0',
-		*link_prev != '\0', link_prev, *link_prev == '\0',
-		*link_prev_within != '\0', link_prev_within, *link_prev_within == '\0',
-		interlock_with
-		);
-	htrAddScriptInit_va(s,"    wgtrGetNodeRef(ns,\"%STR&SYM\").ChangeMode('NoData');\n",name);
-
-	/** Check for and render all subobjects. **/
-	/** non-visual, don't consume a z level **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
+	const int null_confirm_window = (strcmp(_3bconfirmwindow, "null") == 0);
+	const int no_osrc = (osrc == NULL || osrc[0] == '\0');
+	const int no_link_next = (link_next == NULL || link_next[0] == '\0');
+	const int no_link_next_within = (link_next_within == NULL || link_next_within[0] == '\0');
+	const int no_link_prev = (link_prev == NULL || link_prev[0] == '\0');
+	const int no_link_prev_within = (link_prev_within == NULL || link_prev_within[0] == '\0');
+	if (htrAddScriptInit_va(s,
+	    "\t{ "
+		"const node = wgtrGetNodeRef(ns, '%STR&SYM'); "
+		"form_init(node, { "
+		    "aq:%INT, an:%INT, am:%INT, av:%INT, and:%INT, ad:%INT, "
+		    "cd:%INT, cdis:%INT, amrg:%INT, me:%INT, name:'%STR&SYM', "
+		    "_3b:%[wgtrGetNodeRef(ns, '%STR&SYM')%]%[null%], "
+		    "ro:%INT, ao:%INT, af:%INT, "
+		    "osrc:%['%STR&SYM'%]%[null%], "
+		    "tro:%INT, em:%INT, "
+		    "nf:%['%STR&SYM'%]%[null%], "
+		    "nfw:%['%STR&SYM'%]%[null%], "
+		    "pf:%['%STR&SYM'%]%[null%], "
+		    "pfw:%['%STR&SYM'%]%[null%], "
+		    "il:'%STR&JSSTR', "
+		"});"
+		"node.ChangeMode('NoData');"
+	    "}\n",
+	    name,
+	    allowquery, allownew, allowmodify, allowview, allownodata, allowdelete,
+	    confirmdelete, confirmdiscard, allowmerge, multienter, name,
+	    (!null_confirm_window), _3bconfirmwindow, (null_confirm_window),
+	    readonly, allowobscure, autofocus,
+	    (!no_osrc), osrc, (no_osrc),
+	    tro, enter_mode,
+	    (!no_link_next), link_next, (no_link_next),
+	    (!no_link_next_within), link_next_within, (no_link_next_within),
+	    (!no_link_prev), link_prev, (no_link_prev),
+	    (!no_link_prev_within), link_prev_within, (no_link_prev_within),
+	    interlock_with
+	) != 0) 
 	    {
-	    if (strcmp(tree->Type, "widget/connector") == 0)
-		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
-	    else
-		htrRenderWidget(s, xaGetItem(&(tree->Children), i), z);
+	    mssError(0, "HTFORM", "Failed to write JS init call.");
+	    goto err;
 	    }
-	
-    return 0;
+
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z) != 0) goto err;
+
+	return 0;
+
+    err:
+	mssError(0, "HTFORM",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -264,30 +291,6 @@ htformInitialize()
 	strcpy(drv->Name,"DHTML Form Widget");
 	strcpy(drv->WidgetName,"form");
 	drv->Render = htformRender;
-
-	/** Add our actions **/
-	htrAddAction(drv,"Clear");
-	htrAddAction(drv,"Delete");
-	htrAddAction(drv,"Discard");
-	htrAddAction(drv,"Edit");
-	htrAddAction(drv,"First");
-	htrAddAction(drv,"Last");
-	htrAddAction(drv,"New");
-	htrAddAction(drv,"Next");
-	htrAddAction(drv,"Prev");
-	htrAddAction(drv,"Query");
-	htrAddAction(drv,"QueryExec");
-	htrAddAction(drv,"QueryToggle");
-	htrAddAction(drv,"Save");
-
-	/* these don't really do much, since the form doesn't have a layer, so nothing can find it... */
-	htrAddEvent(drv,"StatusChange");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"NoData");
-	htrAddEvent(drv,"View");
-	htrAddEvent(drv,"Modify");
-	htrAddEvent(drv,"Query");
-	htrAddEvent(drv,"QueryExec");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

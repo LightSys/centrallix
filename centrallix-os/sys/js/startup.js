@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2006 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -30,10 +30,9 @@ function startup()
     // are we mobile?
     var is_mobile = (window.navigator.userAgent.indexOf('Mobile') >= 0);
 
-    loc = loc.replace(new RegExp('([?&])cx__geom[^&]*([&]?)'),
-	    function (str,p1,p2) { return p2?p1:''; });
-    loc = loc.replace(new RegExp('([?&])cx__lkey[^&]*([&]?)'),
-	    function (str,p1,p2) { return p2?p1:''; });
+    const op = (str, p1, p2) => (p2) ? p1 : '';
+    loc = loc.replace(new RegExp('([?&])cx__geom[^&]*(&?)'), op);
+    loc = loc.replace(new RegExp('([?&])cx__lkey[^&]*(&?)'), op);
     if (loc.indexOf('?') >= 0)
         loc += '&';
     else

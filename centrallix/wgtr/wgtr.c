@@ -31,23 +31,34 @@
 /* See centrallix-sysdoc/WidgetTree.md for more information. */
 /************************************************************************/
 
-
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "obj.h"
-#include "wgtr.h"
+#include <strings.h>
+
 #include "apos.h"
-#include "hints.h"
-#include "param.h"
-#include "endorsement_utils.h"
-#include "cxlib/xarray.h"
 #include "cxlib/datatypes.h"
+#include "cxlib/expect.h"
 #include "cxlib/magic.h"
-#include "cxlib/xhash.h"
-#include "cxlib/strtcpy.h"
+#include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
-#include "ht_render.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/range.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxss/cxss.h"
+#include "endorsement_utils.h"
+#include "expression.h"
+#include "hints.h"
+#include "iface.h"
+#include "obj.h"
+#include "param.h"
+#include "ptod.h"
+#include "stparse_ne.h"
+#include "wgtr.h"
+
 
 #define WGTR_MAX_PARAMS		(24)
 
@@ -284,10 +295,16 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 	if (match->r_y >= 0) tree->r_y = match->r_y;
 	if (match->r_width >= 0) tree->r_width = match->r_width;
 	if (match->r_height >= 0) tree->r_height = match->r_height;
-	if (match->fl_x >= 0) tree->fl_x = match->fl_x;
-	if (match->fl_y >= 0) tree->fl_y = match->fl_y;
-	if (match->fl_width >= 0) tree->fl_width = match->fl_width;
-	if (match->fl_height >= 0) tree->fl_height = match->fl_height;
+	if (match->fl_width >= 0)
+	    {
+	    tree->fl_width = match->fl_width;
+	    tree->Flags |= (match->Flags & WGTR_F_FLWIDTHSET);
+	    }
+	if (match->fl_height >= 0)
+	    {
+	    tree->fl_height = match->fl_height;
+	    tree->Flags |= (match->Flags & WGTR_F_FLHEIGHTSET);
+	    }
 
 	/** Check for substitutions **/
 	for(prop=objGetFirstAttr(tree_obj);prop;prop=objGetNextAttr(tree_obj))
@@ -357,7 +374,7 @@ wgtrCopyInTemplate(pWgtrNode tree, pObject tree_obj, pWgtrNode match, char* base
 		}
 	    if ((new_node = wgtrNewNode(new_name, subtree->Type, subtree->ObjSession, 
 			subtree->r_x, subtree->r_y, subtree->r_width, subtree->r_height, 
-			subtree->fl_x, subtree->fl_y, subtree->fl_width, subtree->fl_height)) == NULL)
+			subtree->fl_width, subtree->fl_height)) == NULL)
 		return -1;
 
 	    if (wgtrSetupNode(new_node) < 0)
@@ -576,7 +593,7 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 	/*memcpy(my_templates, templates, sizeof(my_templates));*/
 
 	/** create this node **/
-	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, 100, 100, -1, -1)) == NULL)
+	if ( (this_node = wgtrNewNode(name, type, obj->Session, -1, -1, -1, -1, -1, -1)) == NULL)
 	    {
 	    mssError(0, "WGTR", "Couldn't create node %s", name);
 	    goto error;
@@ -648,10 +665,16 @@ wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates
 		else if (!strcmp(prop_name,"y")) this_node->r_y = val.Integer;
 		else if (!strcmp(prop_name,"width")) this_node->r_width = val.Integer;
 		else if (!strcmp(prop_name,"height")) this_node->r_height = val.Integer;
-		else if (!strcmp(prop_name,"fl_x")) this_node->fl_x = val.Integer;
-		else if (!strcmp(prop_name,"fl_y")) this_node->fl_y = val.Integer;
-		else if (!strcmp(prop_name,"fl_width")) this_node->fl_width = val.Integer;
-		else if (!strcmp(prop_name,"fl_height")) this_node->fl_height = val.Integer;
+		else if (!strcmp(prop_name,"fl_width"))
+		    {
+		    this_node->fl_width = val.Integer;
+		    this_node->Flags |= WGTR_F_FLWIDTHSET;
+		    }
+		else if (!strcmp(prop_name,"fl_height"))
+		    {
+		    this_node->fl_height = val.Integer;
+		    this_node->Flags |= WGTR_F_FLHEIGHTSET;
+		    }
 		else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
 		}
 	    else wgtrAddProperty(this_node, prop_name, prop_type, &val, rval == 1);
@@ -783,8 +806,8 @@ wgtr_internal_AddChildren(pObject obj, pWgtrNode this_node, pWgtrNode templates[
 			    /** compute actual offsets that would have been used had the
 			     ** widget really been rendered.
 			     **/
-			    nxo = child_node->x + child_node->left;
-			    nyo = child_node->y + child_node->top;
+			    nxo = child_node->x + child_node->inset_left;
+			    nyo = child_node->y + child_node->inset_top;
 
 			    /** Now we no longer need the widget. **/
 			    wgtrFree(child_node);
@@ -1307,12 +1330,18 @@ wgtrGetPropertyType(pWgtrNode widget, char* name)
     pObjProperty prop = NULL;
 
 	ASSERTMAGIC(widget, MGK_WGTR);
-	if (!strcmp(name, "name")) return DATA_T_STRING;
-	else if (!strcmp(name, "outer_type")) return DATA_T_STRING;
-	else if (!strcmp(name, "x") || !strcmp(name, "y") || !strcmp(name, "width") || !strcmp(name, "height") ||
-		 !strcmp(name, "r_x") || !strcmp(name, "r_y") || !strcmp(name, "r_width") || !strcmp(name, "r_height") ||
-		 !strcmp(name, "fl_x") || !strcmp(name, "fl_y") || !strcmp(name, "fl_width") || !strcmp(name, "fl_height"))
+	if (strcmp(name, "name") == 0 || strcmp(name, "outer_type") == 0)
+	    return DATA_T_STRING;
+	else if (strcmp(name, "x") == 0 || strcmp(name, "y") == 0 || strcmp(name, "width") == 0 || strcmp(name, "height") == 0 ||
+		 strcmp(name, "r_x") == 0 || strcmp(name, "r_y") == 0 || strcmp(name, "r_width") == 0 || strcmp(name, "r_height") == 0 ||
+		 strcmp(name, "fl_width") == 0 || strcmp(name, "fl_height") == 0 ||
+		 strcmp(name, "fl_parent_w") == 0 || strcmp(name, "fl_parent_h") == 0)
 	    return DATA_T_INTEGER;
+	else if (strcmp(name, "fl_scale_x") == 0 || strcmp(name, "fl_scale_y") == 0 ||
+		 strcmp(name, "fl_scale_w") == 0 || strcmp(name, "fl_scale_h") == 0 ||
+		 strcmp(name, "fx") == 0 || strcmp(name, "fy") == 0 || strcmp(name, "fw") == 0 || strcmp(name, "fh") == 0)
+	    return DATA_T_DOUBLE;
+
 	count = xaCount(&(widget->Properties));
 	for (i=0;i<count;i++)
 	    {
@@ -1348,10 +1377,27 @@ wgtrGetPropertyValue(pWgtrNode widget, char* name, int datatype, pObjData val)
 		}
 	    else if (!strncmp(name, "fl_", 3))
 		{
-		if (!strcmp(name+3, "x")) { val->Integer = widget->fl_x; return 0; }
-		if (!strcmp(name+3, "y")) { val->Integer = widget->fl_y; return 0; }
 		if (!strcmp(name+3, "width")) { val->Integer = widget->fl_width; return 0; }
 		if (!strcmp(name+3, "height")) { val->Integer = widget->fl_height; return 0; }
+		if (!strcmp(name+3, "parent_w")) { val->Integer = widget->fl_parent_w; return 0; }
+		if (!strcmp(name+3, "parent_h")) { val->Integer = widget->fl_parent_h; return 0; }
+		}
+	    }
+	else if (datatype == DATA_T_DOUBLE)
+	    {
+	    if (strncmp(name, "fl_scale_", 9) == 0)
+		{
+		if 	(strcmp(name+9, "x") == 0) { val->Double = widget->fl_scale_x; return 0; }
+		else if (strcmp(name+9, "y") == 0) { val->Double = widget->fl_scale_y; return 0; }
+		else if (strcmp(name+9, "w") == 0) { val->Double = widget->fl_scale_w; return 0; }
+		else if (strcmp(name+9, "h") == 0) { val->Double = widget->fl_scale_h; return 0; }
+		}
+	    else if (strncmp(name, "f", 1) == 0)
+		{
+		if 	(strcmp(name+1, "x") == 0) { val->Double = widget->fx; return 0; }
+		else if (strcmp(name+1, "y") == 0) { val->Double = widget->fy; return 0; }
+		else if (strcmp(name+1, "w") == 0) { val->Double = widget->fw; return 0; }
+		else if (strcmp(name+1, "h") == 0) { val->Double = widget->fh; return 0; }
 		}
 	    }
 	else if (datatype == DATA_T_STRING)
@@ -1549,7 +1595,7 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 pWgtrNode 
 wgtrNewNode(	char* name, char* type, pObjSession s,
 		int rx, int ry, int rwidth, int rheight,
-		int flx, int fly, int flwidth, int flheight)
+		int flwidth, int flheight)
     {
     pWgtrNode node;
 
@@ -1568,18 +1614,24 @@ wgtrNewNode(	char* name, char* type, pObjSession s,
 	node->y = node->r_y = ry;
 	node->width = node->r_width = rwidth;
 	node->height = node->r_height = rheight;
-	node->fl_x = flx;
-	node->fl_y = fly;
 	node->fl_width = flwidth;
 	node->fl_height = flheight;
+	node->fl_parent_h = -1;
+	node->fl_parent_w = -1;
+	node->fl_scale_x = 0.0;
+	node->fl_scale_y = 0.0;
+	node->fl_scale_w = 0.0;
+	node->fl_scale_h = 0.0;
 	node->ObjSession = s;
 	node->Parent = NULL;
-	node->min_height = 0;
-	node->min_width = 0;
+	node->min_height = node->min_width = 0;
 	node->LayoutGrid = NULL;
 	node->Root = node;  /* this will change when it is added as a child */
 	node->DMPrivate = NULL;
-	node->top = node->bottom = node->right = node->left = 0;
+	node->inset_top = 0;
+	node->inset_bottom = 0;
+	node->inset_right = 0;
+	node->inset_left = 0;
 	node->Verified = 0;
 
 	xaInit(&(node->Properties), 16);
@@ -1610,6 +1662,49 @@ wgtrSetupNode(pWgtrNode node)
     }
 
     
+/*** wgtrSetInsets() - Declares the space that a widget needs in its outer box
+ *** (x/y/width/height) for its UI (e.g. title bars, tabs, or scrollbars).
+ *** The remaining space is the widget's client area where children are laid
+ *** out.  Widget drivers should call this from their New() function, using
+ *** values based on what their rendering driver needs to draw.
+ ***
+ *** Insets shrink the client area but do not alter its coordinate space.
+ *** Children always render from (0,0), although the top and left insets may
+ *** shift where that point is rendered.
+ ***
+ *** A widget cannot be laid out in a space too small for its insets, so this
+ *** function raises min_width/min_height to cover the insets.
+ ***
+ *** @param node   The widget node on which insets are to be set.
+ *** @param top    The number of px required at the top of the widget.
+ *** @param bottom The number of px required at the bottom of the widget.
+ *** @param left   The number of px required at the left of the widget.
+ *** @param right  The number of px required at the right of the widget.
+ ***/
+void
+wgtrSetInsets(pWgtrNode node, int top, int bottom, int left, int right)
+    {
+	if (UNLIKELY(node == NULL))
+	    {
+	    fprintf(stderr,
+		"Warning: Call to wgtrSetInsets(null, %d, %d, %d, %d) with null widget tree node?!\n",
+		top, bottom, left, right
+	    );
+	    return;
+	    }
+	ASSERTMAGIC(node, MGK_WGTR);
+
+	node->inset_top = top;
+	node->inset_bottom = bottom;
+	node->inset_left = left;
+	node->inset_right = right;
+
+	/** Raise min_width and min_height to cover insets (if needed). **/
+	node->min_width  = max(node->min_width,  left + right);
+	node->min_height = max(node->min_height, top + bottom);
+    }
+
+
 int 
 wgtrDeleteChild(pWgtrNode widget, char* child_name)
     {
@@ -2066,14 +2161,12 @@ wgtrInitialize()
 	wgtddInitialize();
 	wgtebInitialize();
 	wgtexInitialize();
-	wgtfbInitialize();
 	wgtformInitialize();
 	wgtfsInitialize();
 	wgtfuInitialize();
 	wgtsetInitialize();
 	wgthintInitialize();
 	wgthtmlInitialize();
-	wgtibtnInitialize();
 	wgtimgInitialize();
 	wgtlblInitialize();
 	wgtmenuInitialize();
@@ -2091,7 +2184,6 @@ wgtrInitialize()
 	wgttblInitialize();
 	wgttermInitialize();
 	wgttxInitialize();
-	wgttbtnInitialize();
 	wgttmInitialize();
 	wgttreeInitialize();
 	wgtvblInitialize();
@@ -2283,39 +2375,88 @@ wgtrRenameProperty(pWgtrNode tree, char* oldname, char* newname)
     }
 
 
-/*** wgtrGetContainerHeight() - returns the height of the (visual) container
- *** of a widget.
+/*** wgtrGetHtmlContainer() - returns the nearest ancestor that emits an HTML
+ *** container for its children, or the root if none of them do.  Returns NULL
+ *** only if the widget has no parent.
  ***/
-int
-wgtrGetContainerHeight(pWgtrNode tree)
+pWgtrNode
+wgtrGetHtmlContainer(pWgtrNode widget)
     {
-    int c_height;
-    do  {
-	tree = tree->Parent;
-	} while(tree->Parent && (tree->Flags & WGTR_F_NONVISUAL));
-    c_height = tree->height - 2;
-    if (!strcmp(tree->Type, "widget/childwindow"))
-	c_height -= 24;
-    else if (!strcmp(tree->Type, "widget/scrollpane"))
-	c_height += 2;
-    return c_height;
+	if (UNLIKELY(widget == NULL)) return NULL;
+    
+	pWgtrNode parent = widget->Parent;
+	while (parent != NULL && parent->Parent != NULL && !(parent->Flags & WGTR_F_VISUAL_CONTAINER))
+	    parent = parent->Parent;
+
+    return parent;
     }
 
 
-/*** wgtrGetContainerWidth() - returns the width of the (visual) container
- *** of a widget.
- ***/
+/** wgtrGetContainerWidth() - returns the width of the widget's HTML container. **/
 int
 wgtrGetContainerWidth(pWgtrNode tree)
     {
-    int c_width;
-    do  {
-	tree = tree->Parent;
-	} while(tree->Parent && (tree->Flags & WGTR_F_NONVISUAL));
-    c_width = tree->width - 2;
-    if (!strcmp(tree->Type, "widget/scrollpane"))
-	c_width = c_width + 2 - 18;
-    return c_width;
+	if (UNLIKELY(tree == NULL))
+	    {
+	    fprintf(stderr, "Warning: Call to wgtrGetContainerWidth(null) with null widget tree node?!\n");
+	    return -1;
+	    }
+
+	/** Find container. **/
+	pWgtrNode container = tree;
+	do container = wgtrGetHtmlContainer(container);
+	while (container != NULL && container->width < 0);
+
+	/** Check for getter failure. **/
+	if (UNLIKELY(container == NULL))
+	    {
+	    /*** We can't use mssError() here because, when the return value
+	     *** is passed to qprintf(), it reports a bad value and our error
+	     *** is cleared.
+	     ***/
+	    fprintf(stderr,
+		"Warning: No HTML container with a known width for \"%s\":\"%s\".\n",
+		tree->Name, tree->Type
+	    );
+	    return -1;
+	    }
+
+    /** Return parent width. **/
+    return tree->fl_parent_w = container->width - (container->inset_left + container->inset_right);
+    }
+
+
+/** wgtrGetContainerHeight() - returns the height of the widget's HTML container. **/
+int
+wgtrGetContainerHeight(pWgtrNode tree)
+    {
+	if (UNLIKELY(tree == NULL))
+	    {
+	    fprintf(stderr, "Warning: Call to wgtrGetContainerHeight(null) with null widget tree node?!\n");
+	    return -1;
+	    }
+
+	/** Find container. **/
+	pWgtrNode container = tree;
+	do container = wgtrGetHtmlContainer(container);
+	while (container != NULL && container->height < 0);
+
+	/** Check for getter failure. **/
+	if (UNLIKELY(container == NULL))
+	    {
+	    /*** We can't use mssError() here because, when the return value
+	     *** is passed to qprintf(), it reports a bad value and our error
+	     *** is cleared.
+	     ***/
+	    fprintf(stderr,
+		"Warning: No HTML container with a known height for \"%s\":\"%s\".\n",
+		tree->Name, tree->Type
+	    );
+	    return -1;
+	    }
+
+    /** Return parent height. **/
+    return tree->fl_parent_h = container->height - (container->inset_top + container->inset_bottom);
     }
 
 
@@ -2329,37 +2470,6 @@ wgtrGetTemplatePath(pWgtrNode tree, int n)
     return tree->TemplatePaths[n];
     }
 
-
-/*** wgtrMoveChildren() - given a widget tree node, adjust the positioning
- *** of all children by the given amount.  If some children are nonvisual,
- *** then this function adjusts the children in those nonvisual containers,
- *** as well.
- ***/
-int
-wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset)
-    {
-    int cnt = xaCount(&tree->Children);
-    int i;
-    pWgtrNode child;
-
-	for(i=0;i<cnt;i++)
-	    {
-	    child = xaGetItem(&tree->Children, i);
-	    if (child->Flags & WGTR_F_NONVISUAL)
-		{
-		wgtrMoveChildren(child, x_offset, y_offset);
-		}
-	    else
-		{
-		child->x += x_offset;
-		child->pre_x += x_offset;
-		child->y += y_offset;
-		child->pre_y += y_offset;
-		}
-	    }
-
-    return 0;
-    }
 
 /*** wgtrRenderObject() - does a wgtrParseOpenObject, wgtrVerify, and
  *** wgtrRender, as well as handling any application defined parameters
