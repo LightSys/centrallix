@@ -602,11 +602,7 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
     int rval = -1;
 
 	/** Handle edge cases. **/
-	if (this == NULL)
-	    {
-	    mssError(0, "ST", "stGetAttrValueOSML(NULL, ...) failed: Cannot get attribute value from null struct inf.");
-	    return -1; /* Skip end error handler because it uses this. */
-	    }
+	if (this == NULL) return -1; /* Skip end error handler which uses this. */
 	ASSERTMAGIC(this, MGK_STRUCTINF);
 
 	/** Get the correct expression **/
