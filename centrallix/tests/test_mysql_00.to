@@ -1,0 +1,17 @@
+##NAME MySQL Basic Insert
+
+# make sure clean start
+query delete from /tests/Driver_DB/typeTests/rows
+
+# insert test values
+query insert into /tests/Driver_DB/typeTests/rows select dates = '2020-02-02', monies = convert('money', 20.0200), ints = -1000, strings = 'two twos', bits = 0, floats = 22222.22222, blobs = 'just a longer string to test this'
+query insert into /tests/Driver_DB/typeTests/rows select dates = '2024-03-14 01:59:26', monies = convert('money', 3.14), ints = 0, strings = 'pi', bits = 1, floats = 3.14159265358979323846, blobs = '3.1415926535897932384626433832795028841971693993751058209749445923078, etc.'
+query insert into /tests/Driver_DB/typeTests/rows select dates = '3333-03-30 01:59:26', monies = convert('money', 3.3333), ints = 2000, strings = '', bits = 0, floats = -10000.0, blobs = '!@#$%^&*()_-+=[{}]:;\'"/?\\|.,<>~`'
+
+
+# test that values inserted properly 
+csv select * from /tests/Driver_DB/typeTests/rows
+
+# cleanup
+query delete from /tests/Driver_DB/typeTests/rows
+csv select * from /tests/Driver_DB/typeTests/rows
