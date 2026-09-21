@@ -42,11 +42,12 @@
 #include <string.h>
 #include <time.h>
 
-#include "check.h"
 #include "clusters.h"
 #include "expect.h"
+#include "mtsession.h"
 #include "newmalloc.h"
 #include "range.h"
+#include "warn.h"
 #include "xarray.h"
 
 /** This file has additional documentation in string_similarity.md. **/
@@ -159,8 +160,13 @@ caBuildVector(const char* str)
 	
 	/** Allocate memory to store the characters. **/
 	unsigned int num_chars = 0u;
-	chars = checkPtr(nmSysMalloc((strlen(str) + 2u) * sizeof(unsigned char)));
-	if (UNLIKELY(chars == NULL)) goto err_free;
+	const size_t chars_size = (strlen(str) + 2u) * sizeof(unsigned char);
+	chars = nmSysMalloc(chars_size);
+	if (UNLIKELY(chars == NULL))
+	    {
+	    mssError(1, "CA", "nmSysMalloc(%zu) failed.", chars_size);
+	    goto err_free;
+	    }
 	
 	/** Store characters. **/
 	chars[num_chars++] = CA_BOUNDARY_CHAR; /* Starting boundary character. */
@@ -183,10 +189,16 @@ caBuildVector(const char* str)
 	    }
 	chars[num_chars++] = CA_BOUNDARY_CHAR; /* Ending boundary character. */
 	
+	/** Allocate space for char pair hashes. **/
+	const size_t char_pairs_size = num_chars * sizeof(CharPair);
+	char_pairs = nmSysMalloc(char_pairs_size);
+	if (UNLIKELY(char_pairs == NULL))
+	    {
+	    mssError(1, "CA", "nmSysMalloc(%zu) failed.", char_pairs_size);
+	    goto err_free;
+	    }
 	
 	/** Compute character pair hashes. **/
-	char_pairs = checkPtr(nmSysMalloc(num_chars * sizeof(CharPair)));
-	if (UNLIKELY(char_pairs == NULL)) goto err_free;
 	const unsigned int num_pairs = num_chars - 1u;
 	for (unsigned int i = 0u; i < num_pairs; i++)
 	    {
@@ -209,8 +221,13 @@ caBuildVector(const char* str)
 	
 	
 	/** Allocate space for the sparse vector. **/
-	sparse_vector = checkPtr(nmSysMalloc((num_pairs * 2u + 1u) * sizeof(int)));
-	if (sparse_vector == NULL) goto err_free;
+	const size_t sparse_vector_size = (num_pairs * 2u + 1u) * sizeof(int);
+	sparse_vector = nmSysMalloc(sparse_vector_size);
+	if (UNLIKELY(sparse_vector == NULL))
+	    {
+	    mssError(1, "CA", "nmSysMalloc(%zu) failed.", sparse_vector_size);
+	    goto err_free;
+	    }
 	
 	/** Build the sparse vector from the character pairs. **/
 	unsigned int cur = 0u, dim = 0u;
@@ -247,8 +264,13 @@ caBuildVector(const char* str)
 	
 	
 	/** Trim extra space wasted by identical hashes. **/
-	trimmed_sparse_vector = checkPtr(nmSysRealloc(sparse_vector, cur * sizeof(int)));
-	if (trimmed_sparse_vector == NULL) goto err_free;
+	const size_t trimmed_sparse_vector_size = cur * sizeof(int);
+	trimmed_sparse_vector = nmSysRealloc(sparse_vector, trimmed_sparse_vector_size);
+	if (UNLIKELY(trimmed_sparse_vector == NULL))
+	    {
+	    mssError(1, "CA", "nmSysMalloc(%zu) failed.", trimmed_sparse_vector_size);
+	    goto err_free;
+	    }
 	sparse_vector = NULL; /* Mark memory freed by nmSysRealloc() no longer valid. */
 	
 	/** Return the result. **/
@@ -517,12 +539,25 @@ caEditDist(const char* str1, const char* str2, const size_t str1_length, const s
 	 ***/
 	const size_t str1_len = (str1_length == 0u) ? strlen(str1) : str1_length;
 	const size_t str2_len = (str2_length == 0u) ? strlen(str2) : str2_length;
-	lev_matrix = checkPtr(nmSysMalloc((str1_len + 1) * sizeof(unsigned int*)));
-	if (lev_matrix == NULL) goto end;
+	const size_t lev_matrix_size = (str1_len + 1) * sizeof(unsigned int*);
+	const size_t lev_matrix_entry_size = (str2_len + 1) * sizeof(unsigned int);
+	lev_matrix = nmSysMalloc(lev_matrix_size);
+	if (UNLIKELY(lev_matrix == NULL))
+	    {
+	    mssError(1, "CA", "nmSysMalloc(%zu) failed.", lev_matrix_size);
+	    goto end;
+	    }
 	for (unsigned int i = 0u; i < str1_len + 1u; i++)
 	    {
-	    lev_matrix[i] = checkPtr(nmSysMalloc((str2_len + 1) * sizeof(unsigned int)));
-	    if (lev_matrix[i] == NULL) goto end;
+	    lev_matrix[i] = nmSysMalloc(lev_matrix_entry_size);
+	    if (UNLIKELY(lev_matrix[i] == NULL))
+		{
+		mssError(1, "CA",
+		    "nmSysMalloc(%zu) failed for entry #%u/%zu.",
+		    lev_matrix_entry_size, i + 1u, str1_len + 1u
+		);
+		goto end;
+		}
 	    }
 	
 	/*** Base case #0:
@@ -587,14 +622,23 @@ caEditDist(const char* str1, const char* str2, const size_t str1_length, const s
 	    }
 	result = (int)unsigned_result;
 	
-	/** Cleanup. **/
     end:
-	if (lev_matrix != NULL)
+	if (UNLIKELY(result < 0))
+	    {
+	    mssError(0, "CA",
+		    "caEditDist(\"%s\", \"%s\", %zu, %zu) failed.",
+		    str1, str2, str1_length, str2_length
+	    );
+	    }
+	
+	/** Cleanup. **/
+	if (LIKELY(lev_matrix != NULL))
 	    {
 	    for (unsigned int i = 0u; i < str1_len + 1u; i++)
 		{
-		if (lev_matrix[i] == NULL) break;
-		else nmSysFree(lev_matrix[i]);
+		if (LIKELY(lev_matrix[i] != NULL))
+		    nmSysFree(lev_matrix[i]);
+		else break;
 		}
 	    nmSysFree(lev_matrix);
 	    }
@@ -622,20 +666,31 @@ caEditDist(const char* str1, const char* str2, const size_t str1_length, const s
 double
 caCosCompare(void* v1, void* v2)
     {
-	/** Input validation checks. **/
+	/** Input edge cases. **/
 	if (v1 == NULL || v2 == NULL) return 0.0;
 	if (v1 == v2) return 1.0;
 	
-	/** Input validation checks. **/
+	/** Empty vector edge cases. **/
 	const pVector vec1 = v1, vec2 = v2;
 	const bool v1_empty = (vec1 == NULL || caIsEmpty(vec1) || caHasNoPairs(vec1));
 	const bool v2_empty = (vec2 == NULL || caIsEmpty(vec2) || caHasNoPairs(vec2));
 	if (v1_empty && v2_empty) return 1.0;
 	if (v1_empty && !v2_empty) return 0.0;
 	if (!v1_empty && v2_empty) return 0.0;
-    
-    /** Apply rounding to avoid annoying floating point issues before returning. **/
-    return round(ca_i_sparseSimilarity(vec1, vec2) * 1000000.0) / 1000000.0;
+	
+	const double similarity = ca_i_sparseSimilarity(vec1, vec2);
+	if (UNLIKELY(isnan(similarity)))
+	    {
+	    mssError(1, "CA", "ca_i_sparseSimilarity(%p, %p) failed.", vec1, vec2);
+	    goto err;
+	    }
+	
+	/** Apply rounding to avoid annoying floating point issues before returning. **/
+	return round(similarity * 1000000.0) / 1000000.0;
+	
+    err:
+	mssError(0, "CA", "caCosCompare(%p, %p) failed.", v1, v2);
+	return NAN;
     }
 
 /*** Compares two strings using their Levenshtein edit distance to compute a
@@ -653,14 +708,18 @@ caCosCompare(void* v1, void* v2)
  *** 	family without needing a messy typecast to avoid the compiler warning.
  *** 	However, behavior is undefined if `v1` and `v2` are not `char*`s.
  *** 
- *** @param str1 A `char*` to the first string to compare.
- *** @param str2 A `char*` to the second string to compare.
+ *** @param s1 A `char*` to the first string to compare.
+ *** @param s2 A `char*` to the second string to compare.
  *** @returns The Levenshtein similarity between the two strings,
  *** 	or NAN on failure.
  ***/
 double
-caLevCompare(void* str1, void* str2)
+caLevCompare(void* s1, void* s2)
     {
+	/** Convert types. **/
+	const char* str1 = s1;
+	const char* str2 = s2;
+	
 	/** Input validation checks. **/
 	if (str1 == NULL || str2 == NULL) return 0.0;
 	if (str1 == str2) return 1.0;
@@ -672,15 +731,29 @@ caLevCompare(void* str1, void* str2)
 	if (len1 != 0lu && len2 == 0lu) return 0.0;
 	if (len1 == 0lu && len2 != 0lu) return 0.0;
 	
+	/*** It's difficult to know if we are the first to detect an error
+	 *** later in this function, so clear the error stack before hand
+	 *** to avoid stale error data.
+	 ***/
+	mssClearError();
+	
 	/** Compute levenshtein edit distance. **/
-	const int edit_dist = checkPos(caEditDist((const char*)str1, (const char*)str2, len1, len2));
-	if (edit_dist < 0) return NAN;
+	const int edit_dist = caEditDist((const char*)str1, (const char*)str2, len1, len2);
+	if (UNLIKELY(edit_dist < 0)) goto err;
 	
 	/** Normalize edit distance into a similarity measure. **/
 	const double normalized_similarity = 1.0 - (double)edit_dist / (double)max(len1, len2);
     
-    /** Apply rounding to avoid annoying floating point issues before returning. **/
-    return round(normalized_similarity * 1000000.0) / 1000000.0;
+	/** Apply rounding to avoid annoying floating point issues. **/
+	const double rounded_similarity = round(normalized_similarity * 1000000.0) / 1000000.0;
+	if (UNLIKELY(isnan(rounded_similarity))) goto err;
+	
+	/** Success. **/
+	return rounded_similarity;
+	
+    err:
+	mssError(0, "CA", "caLevCompare(\"%s\", \"%s\") failed.", str1, str2);
+	return NAN;
     }
 
 /*** Check if two sparse vectors are identical, typically used for debugging
@@ -734,9 +807,13 @@ ca_i_getClusterSize(
 	 *** loop in caKmeans().  Also, caKmeans() may be called multiple
 	 *** times with the same k value, increasing this benefit.
 	 ***/
-	cluster_sums = checkPtr(nmMalloc(num_clusters * sizeof(double)));
-	cluster_counts = checkPtr(nmMalloc(num_clusters * sizeof(unsigned int)));
-	if (cluster_sums == NULL || cluster_counts == NULL) goto end;
+	cluster_sums = nmMalloc(num_clusters * sizeof(double));
+	cluster_counts = nmMalloc(num_clusters * sizeof(unsigned int));
+	if (UNLIKELY(cluster_sums == NULL || cluster_counts == NULL))
+	    {
+	    mssError(1, "CA", "Allocation failed for %u clusters.", num_clusters);
+	    goto end;
+	    }
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
 	    cluster_sums[i] = 0.0;
@@ -767,6 +844,14 @@ ca_i_getClusterSize(
 	result = cluster_total / num_valid_clusters;
 	
     end:
+	if (UNLIKELY(isnan(result)))
+	    {
+	    mssError(0, "CA",
+		"ca_i_getClusterSize() failed on %u vectors and %u clusters.",
+		num_vectors, num_clusters
+	    );
+	    }
+	
 	/** Clean up. **/
 	if (cluster_sums != NULL) nmFree(cluster_sums, num_clusters * sizeof(double));
 	if (cluster_counts != NULL) nmFree(cluster_counts, num_clusters * sizeof(unsigned int));
@@ -821,22 +906,42 @@ caKmeans(
     pCentroid* new_centroids = NULL;
     unsigned int cluster_counts[num_clusters];
     
+	/** Edge cases. **/
+	if (UNLIKELY(false
+	    || vectors == NULL
+	    || labels == NULL
+	    || vector_sims == NULL
+	    || num_vectors == 0u
+	    || num_clusters == 0u
+	    || max_iter == 0u
+	    || isnan(min_improvement)
+	))
+	    goto end;
+        
 	/** Initialize labels. **/
 	memset(labels, 0u, num_vectors * sizeof(unsigned int));
 	
 	/** Allocate space to store centroids and new_centroids. **/
 	/** Dynamic allocation is required because these densely allocated arrays might be up to 500KB! **/
 	const size_t centroids_size = num_clusters * sizeof(pCentroid);
-	centroids = checkPtr(nmMalloc(centroids_size));
-	new_centroids = checkPtr(nmMalloc(centroids_size));
-	if (centroids == NULL || new_centroids == NULL) goto end;
+	centroids = nmMalloc(centroids_size);
+	new_centroids = nmMalloc(centroids_size);
+	if (centroids == NULL || new_centroids == NULL)
+	    {
+	    mssError(1, "CA", "nmMalloc(%zu) failed.", centroids_size);
+	    goto end;
+	    }
 	memset(centroids, 0, centroids_size);
 	memset(new_centroids, 0, centroids_size);
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
-	    centroids[i] = checkPtr(nmMalloc(CENTROID_SIZE));
-	    new_centroids[i] = checkPtr(nmMalloc(CENTROID_SIZE));
-	    if (centroids[i] == NULL || new_centroids[i] == NULL) goto end;
+	    centroids[i] = nmMalloc(CENTROID_SIZE);
+	    new_centroids[i] = nmMalloc(CENTROID_SIZE);
+	    if (centroids[i] == NULL || new_centroids[i] == NULL)
+		{
+		mssError(1, "CA", "nmMalloc(%zu) failed.", CENTROID_SIZE);
+		goto end;
+		}
 	    memset(centroids[i], 0, CENTROID_SIZE);
 	    memset(new_centroids[i], 0, CENTROID_SIZE);
 	    }
@@ -924,8 +1029,8 @@ caKmeans(
 	    
 	    /** Is there enough improvement? **/
 	    if (min_improvement <= -1.0) continue; /** Skip check if it will never end the loop. **/
-	    const double average_cluster_size = checkDouble(ca_i_getClusterSize(vectors, num_vectors, labels, centroids, num_clusters));
-	    if (isnan(average_cluster_size)) goto end;
+	    const double average_cluster_size = ca_i_getClusterSize(vectors, num_vectors, labels, centroids, num_clusters);
+	    if (UNLIKELY(isnan(average_cluster_size))) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;
 	    if (improvement < min_improvement) break;
 	    old_average_cluster_size = average_cluster_size;
@@ -942,6 +1047,15 @@ caKmeans(
 	successful = true;
 	
     end:
+	if (!successful)
+	    {
+	    mssError(0, "CA",
+		"caKmeans(%p, %u, %u, %u, %lf, %p, %p, %s) failed.",
+		vectors, num_vectors, num_clusters, max_iter, min_improvement,
+		labels, vector_sims, (auto_seed) ? "true" : "false"
+	    );
+	    }
+	
 	/** Clean up. **/
 	if (centroids != NULL)
 	    {
@@ -1055,8 +1169,12 @@ caSlidingSearch(
 	    {
 	    /** Guess that we will need space for two pairs per data point. **/
 	    const int guess_size = num_data * 2;
-	    pairs = checkPtr(xaNew(guess_size));
-	    if (pairs == NULL) goto err;
+	    pairs = xaNew(guess_size);
+	    if (UNLIKELY(pairs == NULL))
+		{
+		mssError(1, "CA", "xaNew(%d)", guess_size);
+		goto err;
+		}
 	    }
 	const int num_starting_pairs = pairs->nItems;
 	
@@ -1067,20 +1185,25 @@ caSlidingSearch(
 	    const unsigned int window_end = min(i + window_size, num_data);
 	    for (unsigned int j = window_start; j < window_end; j++)
 		{
-		const double sim = checkDouble(similarity(data[i], data[j]));
-		if (isnan(sim) || sim < 0.0 || 1.0 < sim)
+		const double sim = similarity(data[i], data[j]);
+		if (UNLIKELY(isnan(sim) || sim < 0.0 || 1.0 < sim))
 		    {
-		    fprintf(stderr, "Invalid similarity %g.\n", sim);
+		    mssError(0, "CA", "Invalid similarity %g.", sim);
 		    goto err_free;
 		    }
 		if (sim > threshold) /* Pair found! */
 		    {
-		    pPair pair = (pPair)checkPtr(nmMalloc(sizeof(Pair)));
-		    if (pair == NULL) goto err_free;
+		    const size_t pair_size = sizeof(Pair);
+		    pPair pair = nmMalloc(pair_size);
+		    if (UNLIKELY(pair == NULL))
+			{
+			mssError(1, "CA", "nmMalloc(%zu)", pair_size);
+			goto err_free;
+			}
 		    pair->i = i;
 		    pair->j = j;
 		    pair->similarity = sim;
-		    if (checkPos(xaAddItem(pairs, (void*)pair)) < 0) goto err_free;
+		    warnNeg(xaAddItem(pairs, (void*)pair));
 		    }
 		}
 	    }
@@ -1092,7 +1215,7 @@ caSlidingSearch(
 	/** Error cleanup: Free the pairs that we added to the XArray. **/
 	while (pairs->nItems > num_starting_pairs)
 	    nmFree(pairs->Items[--pairs->nItems], sizeof(Pair));
-	if (maybe_pairs == NULL) check(xaFree(pairs)); /* Failure ignored. */
+	if (maybe_pairs == NULL) warnFail(xaFree(pairs));
     
     err:
 	return NULL;
