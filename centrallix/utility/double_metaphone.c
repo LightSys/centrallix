@@ -77,20 +77,17 @@
 
 /*** Note to future programmers reading this file (by Israel Fuller):
  *** 
- *** This file was copied from a GitHub Repo with proper licensing (in case
- *** you didn't read the legal stuff above), so feel free to check it out.
+ *** This file was copied from a GitHub Repo with licensing (see above).
  *** 
- *** As for this code, I've modified it to use styling and memory allocation
- *** consistent with the rest of the Centrallix codebase. Also, I have added
- *** documentation comments and extensive test cases (at the end of the file),
- *** however, these reflect my own (possibly incorrect) understanding, which
- *** might not line up with the original author.
+ *** As for this code, I've modified it to use styling, memory management, and
+ *** libraries used to be consistent Centrallix.  I also wrote comments and
+ *** tests based on my own understanding, so they might not accurately reflect
+ *** the original author's intent.
  *** 
- *** To be honest, though, trying to make this code as readable as possible
- *** was very challenging due to all the messy boolean algebra. If there is
- *** ever a professional linguist reading this, please factor out some of the
- *** logic into local variables with descriptive names so that the rest of us
- *** can read this code without our eyes glazing over.
+ *** To be honest, trying to make this code as readable as possible was by no
+ *** means easy, due to the complex boolean algebra.  If a linguist ever reads
+ *** this, please factor out some logic into local variables with descriptive
+ *** names so that the rest of us can read this without our eyes glazing over.
  *** 
  *** If you have any questions, please feel free to reach out to me or Greg.
  *** 
