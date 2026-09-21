@@ -30,36 +30,36 @@
 static bool doTest(void)
     {
     bool success = true;
-	
+
 	/** Basic tests of Levenshtein edit distance similarity. **/
-	success &= ASSERT_RANGE(caLevCompare("hello", "hello"), 0.99, 1.0, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hello", "hello!"), 0.8, 1.0, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hello", "asdfkh"), 0.0, 0.1, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hello", "aaaaaaaaaaaaaaaaa"), 0.0, 0.1, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hello", "nope"), 0.0, 0.2, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hello", "noepo"), 0.15, 0.25, "%g");
-	success &= ASSERT_RANGE(caLevCompare("below", "hello!"), 0.4, 0.6, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "smitten"), 0.65, 0.85, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hello", "bobbobbobbob"), 0.0, 0.1, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hello", ""), 0.0, 0.05, "%g");
-	success &= ASSERT_RANGE(caLevCompare("", ""), 0.99, 1.0, "%g");
-	success &= ASSERT_RANGE(caLevCompare("blooooop", "blob"), 0.3, 0.5, "%g");
-	success &= ASSERT_RANGE(caLevCompare("", "!"), 0.0, 0.01, "%g");
-	success &= ASSERT_RANGE(caLevCompare("h", "h"), 0.99, 1.0, "%g");
-	success &= ASSERT_RANGE(caLevCompare("hi", "hi"), 0.99, 1.0, "%g");
-	
+	success &= ASSERT_RANGE(caLevCompare("hello",    "hello"),             0.99, 1.0,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("hello",    "hello!"),            0.8,  1.0,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("hello",    "asdfkh"),            0.0,  0.1,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("hello",    "aaaaaaaaaaaaaaaaa"), 0.0,  0.1,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("hello",    "nope"),              0.0,  0.2,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("hello",    "noepo"),             0.15, 0.25, "%g");
+	success &= ASSERT_RANGE(caLevCompare("below",    "hello!"),            0.4,  0.6,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten",   "smitten"),           0.65, 0.85, "%g");
+	success &= ASSERT_RANGE(caLevCompare("hello",    "bobbobbobbob"),      0.0,  0.1,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("hello",    ""),                  0.0,  0.05, "%g");
+	success &= ASSERT_RANGE(caLevCompare("",         ""),                  0.99, 1.0,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("blooooop", "blob"),              0.3,  0.5,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("",         "!"),                 0.0,  0.01, "%g");
+	success &= ASSERT_RANGE(caLevCompare("h",        "h"),                 0.99, 1.0,  "%g");
+	success &= ASSERT_RANGE(caLevCompare("hi",       "hi"),                0.99, 1.0,  "%g");
+
 	/** Kitten tests with specific edit operations. **/
-	success &= ASSERT_RANGE(caLevCompare("kitten", "kitten"), 0.99, 1.0, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "skitten"), 0.8, 0.9, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "itten"), 0.8, 0.9, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "mitten"), 0.8, 0.9, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "smitten"), 0.7, 0.8, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "iktten"), 0.8, 0.9, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "kittens"), 0.8, 0.9, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "kitte"), 0.8, 0.9, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "kittem"), 0.8, 0.9, "%g");
-	success &= ASSERT_RANGE(caLevCompare("kitten", "kittne"), 0.8, 0.9, "%g");
-    
+	success &= ASSERT_RANGE(caLevCompare("kitten", "kitten"),  0.99, 1.0, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "skitten"), 0.8,  0.9, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "itten"),   0.8,  0.9, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "mitten"),  0.8,  0.9, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "smitten"), 0.7,  0.8, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "iktten"),  0.8,  0.9, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "kittens"), 0.8,  0.9, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "kitte"),   0.8,  0.9, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "kittem"),  0.8,  0.9, "%g");
+	success &= ASSERT_RANGE(caLevCompare("kitten", "kittne"),  0.8,  0.9, "%g");
+
     return success;
     }
 
