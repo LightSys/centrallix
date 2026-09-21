@@ -70,9 +70,9 @@
 /* 		improved version of the original Metaphone algorithm	*/
 /* 		written by Philips'. This implementation was written by	*/
 /* 		Maurice Aubrey for C/C++ with bug fixes provided by	*/
-/* 		Kevin Atkinson. It was revised by Israel Fuller to	*/
-/* 		better align with the Centrallix coding style and	*/
-/* 		standards so that it could be included here.		*/
+/* 		Kevin Atkinson. It was heavily revised by Israel Fuller	*/
+/* 		to align with the Centrallix coding style and make use	*/
+/* 		of the centrallix libraries.				*/
 /************************************************************************/
 
 /*** Note to future programmers reading this file (by Israel Fuller):
@@ -99,229 +99,135 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "cxlib/check.h"
 #include "cxlib/newmalloc.h"
-#include "cxlib/strtcpy.h"
+#include "cxlib/xstring.h"
+#include "cxlib/warn.h"
 #include "cxlib/expect.h"
 
-typedef struct
-    {
-    char* str;
-    size_t length;
-    size_t bufsize;
-    int free_str_on_destroy;
-    }
-    MetaString, *pMetaString;
-
-/*** Allocates a new MetaString.
+/*** Convert all characters of an XString to uppercase.
  *** 
- *** @param init_str The initial size of the string.
- *** @returns The new MetaString, or NULL if an error occurs.
- ***/
-pMetaString
-meta_i_newString(const char* init_str)
-    {
-    pMetaString s;
-    char empty_string[] = "";
-    
-	s = (pMetaString)checkPtr(nmSysMalloc(sizeof(MetaString)));
-	if (UNLIKELY(s == NULL)) goto err_free;
-	
-	if (init_str == NULL)
-	    init_str = empty_string;
-	
-	s->length = strlen(init_str);
-	/** Preallocate a bit more for potential growth. **/
-	s->bufsize = s->length + 7u;
-	
-	s->str = (char*)checkPtr(nmSysMalloc(s->bufsize * sizeof(char)));
-	if (UNLIKELY(s->str == NULL)) goto err_free;
-	
-	strtcpy(s->str, init_str, s->bufsize);
-	s->free_str_on_destroy = 1;
-    
-	return s;
-	
-    err_free:
-	if (s != NULL)
-	    {
-	    if (s->str != NULL) nmSysFree(s->str);
-	    nmSysFree(s);
-	    }
-	
-	return NULL;
-    }
-
-/*** Frees a MetaString.
- *** 
- *** @param s The MetaString.
- ***/
-void
-meta_i_destroyString(pMetaString s)
-    {
-	if (UNLIKELY(s == NULL))
-	    return;
-	
-	if (s->free_str_on_destroy && s->str != NULL)
-	    nmSysFree(s->str);
-	
-	nmSysFree(s);
-    
-    return;
-    }
-
-/*** Increases a MetaString's buffer size.
- *** 
- *** @param s The pMetaString being modified.
- *** @param chars_needed Minimum number of characters to increase buffer size.
+ *** @param s The XString being modified.
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
-meta_i_increaseBuffer(pMetaString s, const size_t chars_needed)
+meta_i_makeUpper(pXString s)
     {
-	s->bufsize += chars_needed + 8u;
-	s->str = checkPtr(nmSysRealloc(s->str, s->bufsize * sizeof(char)));
-	if (UNLIKELY(s->str == NULL)) return -1;
+	/** Handle edge cases. **/
+	if (UNLIKELY(s == NULL)) return -1;
+	
+	/** Get the xstring character buffer. **/
+	char* buf = xsString(s);
+	const int length = xsLength(s);
+	if (UNLIKELY(buf == NULL)) return -1;
+	if (UNLIKELY(length < 0)) return -1;
+	
+	/** Uppercase each character. **/
+	for (int i = 0; i < length; i++)
+	    buf[i] = (char)toupper(buf[i]);
     
     return 0;
     }
 
-/*** Convert all characters of a MetaString to uppercase.
- *** 
- *** @param s The MetaString being modified.
+/*** @param s The XString being checked.
+ *** @param pos The character location to check within the XString.
+ *** @returns The character at the position in the XString, or
+ ***          '\0' if the position is not in the XString.
  ***/
-void
-meta_i_makeUpper(pMetaString s)
+char
+meta_i_getCharAt(pXString s, unsigned int pos)
     {
-	for (char* i = s->str; i[0] != '\0'; i++)
-	    *i = (char)toupper(*i);
-    
-    return;
-    }
-
-/*** @param s The MetaString being checked.
- *** @param pos The character location to check within the MetaString.
- *** @returns 1 if the location is out of bounds for the MetaString,
- ***          0 otherwise.
- ***/
-bool
-meta_i_isOutOfBounds(pMetaString s, unsigned int pos)
-    {
-    return (s->length <= pos);
-    }
-
-/*** Checks if a character in a MetaString is a vowel.
- *** 
- *** @param s The MetaString being checked.
- *** @param pos The character location to check within the MetaString.
- ***/
-bool
-meta_i_isVowel(pMetaString s, unsigned int pos)
-    {
-	if (UNLIKELY(meta_i_isOutOfBounds(s, pos))) return 0;
+	/** Handle edge cases. **/
+	if (UNLIKELY(s == NULL)) return '\0';
 	
-	const char c = *(s->str + pos);
+	/** A position past INT_MAX has wrapped, so it is out of bounds. **/
+	if (UNLIKELY(pos > (unsigned int)INT_MAX)) return '\0';
+    
+    return xsCharAt(s, (int)pos);
+    }
+
+/*** Checks if a character in an XString is a vowel.
+ *** 
+ *** @param s The XString being checked.
+ *** @param pos The character location to check within the XString.
+ ***/
+bool
+meta_i_isVowel(pXString s, unsigned int pos)
+    {
+	const char c = meta_i_getCharAt(s, pos);
     
     return ((c == 'A') || (c == 'E') || (c == 'I') ||
 	    (c == 'O') || (c == 'U') || (c == 'Y'));
     }
 
-/*** Search a MetaString for "W", "K", "CZ", or "WITZ", which indicate that the
+/*** Search an XString for "W", "K", "CZ", or "WITZ", which indicate that the
  *** string is Slavo Germanic.
  *** 
- *** @param s The MetaString to be searched.
- *** @returns 1 if the MetaString is Slavo Germanic, or 0 otherwise. 
+ *** @param s The XString to be searched.
+ *** @returns 1 if the XString is Slavo Germanic, or 0 otherwise. 
  ***/
 bool
-meta_i_isSlavoGermanic(pMetaString s)
+meta_i_isSlavoGermanic(pXString s)
     {
-    return (strstr(s->str, "W") != NULL)
-	|| (strstr(s->str, "K") != NULL)
-	|| (strstr(s->str, "CZ") != NULL)
-	|| (strstr(s->str, "WITZ") != NULL);
-    }
-
-/*** @param s The MetaString being checked.
- *** @param pos The character location to check within the MetaString.
- *** @returns The character at the position in the MetaString, or
- ***          '\0' if the position is not in the MetaString.
- ***/
-char
-meta_i_getCharAt(pMetaString s, unsigned int pos)
-    {
-    return (UNLIKELY(meta_i_isOutOfBounds(s, pos))) ? '\0' : ((char) *(s->str + pos));
+	/** Handle edge cases. **/
+	if (UNLIKELY(s == NULL)) return false;
+    
+    return (xsFind(s, "W", 1, 0) >= 0)
+	|| (xsFind(s, "K", 1, 0) >= 0)
+	|| (xsFind(s, "CZ", 2, 0) >= 0)
+	|| (xsFind(s, "WITZ", 4, 0) >= 0);
     }
 
 /*** Checks for to see if any of a list of strings appear in a the given
- *** MetaString after the given start position.
+ *** XString after the given start position.
  *** 
  *** @attention - Note that the START value is 0 based.
  *** 
- *** @param s The MetaString being modified.
+ *** @param s The XString being checked.
  *** @param start The zero-based start of at which to begin searching
- *** 	within the MetaString.
- *** @param length The length of the character strings being checked.
+ *** 	within the XString.
  *** @returns 1 if any of the character sequences appear after the start
- *** 	in the MetaString and 0 otherwise.
+ *** 	in the XString and 0 otherwise.
  ***/
 bool
-meta_i_isStrAt(pMetaString s, unsigned int start, ...)
+meta_i_isStrAt(pXString s, unsigned int start, ...)
     {
     va_list ap;
     bool found = false;
     
-	/** Should never happen. **/
-	if (UNLIKELY(meta_i_isOutOfBounds(s, start)))
-	    return false;
-	
-	const char* pos = (s->str + start);
 	va_start(ap, start);
 	
 	char* test;
 	do
 	    {
+	    /** An empty string terminates the argument list. **/
 	    test = va_arg(ap, char*);
-	    if (test[0] != '\0' && (strncmp(pos, test, strlen(test)) == 0))
+	    if (test[0] == '\0')
+		break;
+	    
+	    /** Reading through meta_i_getCharAt() cannot run off the end. **/
+	    int i;
+	    for (i = 0; test[i] != '\0'; i++)
+		{
+		if (meta_i_getCharAt(s, start + (unsigned int)i) != test[i])
+		    break;
+		}
+	    if (test[i] == '\0')
 		{
 		found = true;
 		break;
 		}
 	    }
-	while (test[0] != '\0');
+	while (true);
 	
 	va_end(ap);
     
     return found;
-    }
-
-/*** Adds a string to a MetaString, expanding the MetaString if needed.
- *** 
- *** @param s The MetaString being modified.
- *** @param new_str The string being added.
- *** @returns 0 if successful, or -1 if an error occurs.
- ***/
-int
-meta_i_addStr(pMetaString s, const char* new_str)
-    {
-	if (UNLIKELY(new_str == NULL))
-	    return -1;
-	
-	/** Increase the buffer to the required size. **/
-	const size_t add_length = strlen(new_str);
-	const size_t new_length = s->length + add_length + 1;
-	if (UNLIKELY(new_length > s->bufsize) && check(meta_i_increaseBuffer(s, add_length)) != 0)
-	    return -1;
-	
-	/** Write the data to the buffer. **/
-	strtcat(s->str, new_str, s->bufsize);
-	s->length += add_length;
-    
-    return 0;
     }
 
 /*** Computes double metaphone.
@@ -344,7 +250,17 @@ int
 metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
     {
     int ret = -1;
+    XString original, primary, secondary;
     
+	/** xsInit() always leaves a buffer, so NULL marks one it never reached. **/
+	original.String = NULL;
+	primary.String = NULL;
+	secondary.String = NULL;
+	
+	if (UNLIKELY(xsInit(&original) != 0)) goto end_free;
+	if (UNLIKELY(xsInit(&primary) != 0)) goto end_free;
+	if (UNLIKELY(xsInit(&secondary) != 0)) goto end_free;
+	
 	/** Edge cases. **/
 	if (UNLIKELY(str == NULL))
 	    {
@@ -372,38 +288,32 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 	unsigned int current = 0;
 	const unsigned int last = (unsigned int)(length - 1);
 	
-	/** Pad original so we can index beyond end. **/
-	pMetaString original = checkPtr(meta_i_newString(str));
-	if (UNLIKELY(original == NULL)) goto end_free;
-	meta_i_makeUpper(original);
-	if (check(meta_i_addStr(original, "     ")) != 0) goto end_free;
-	
-	/** Allocate the primary and secondary output strings. **/
-	pMetaString primary = checkPtr(meta_i_newString(""));
-	pMetaString secondary = checkPtr(meta_i_newString(""));
-	if (UNLIKELY(primary == NULL || secondary == NULL)) goto end_free;
+	/** Uppercase the input, and pad it so we can index beyond the end. **/
+	if (xsConcatenate(&original, (char*)str, (int)length) < 0) goto end_free;
+	if (meta_i_makeUpper(&original) != 0) goto end_free;
+	if (xsConcatenateLiteral(&original, "     ") < 0) goto end_free;
 	
 	/** Skip these if they are at start of a word. **/
-	if (meta_i_isStrAt(original, 0, "GN", "KN", "PN", "WR", "PS", ""))
+	if (meta_i_isStrAt(&original, 0, "GN", "KN", "PN", "WR", "PS", ""))
 	    current += 1;
 	
 	/** Initial 'X' is pronounced 'Z' e.g. 'Xavier' **/
-	const char first_char = meta_i_getCharAt(original, 0);
+	const char first_char = meta_i_getCharAt(&original, 0);
 	if (first_char == 'X')
 	    {
-	    if (check(meta_i_addStr(primary, "S")) != 0) goto end_free; /* 'Z' maps to 'S' */
-	    if (check(meta_i_addStr(secondary, "S")) != 0) goto end_free;
+	    if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free; /* 'Z' maps to 'S' */
+	    if (xsConcatenateLiteral(&secondary, "S") < 0) goto end_free;
 	    current += 1;
 	    }
 	
 	/** Precomputing this is useful. **/
-	const bool is_slavo_germanic = meta_i_isSlavoGermanic(original);
+	const bool is_slavo_germanic = meta_i_isSlavoGermanic(&original);
 	
 	/** Main loop. **/
 	while (current < length)
 	    {
-	    const char cur_char = meta_i_getCharAt(original, current);
-	    const char next_char = meta_i_getCharAt(original, current + 1);
+	    const char cur_char = meta_i_getCharAt(&original, current);
+	    const char next_char = meta_i_getCharAt(&original, current + 1);
 	    switch (cur_char)
 		{
 		case 'A':
@@ -416,8 +326,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    if (current == 0)
 			{
 			/** All init vowels now map to 'A'. **/
-			if (check(meta_i_addStr(primary, "A") != 0)) goto end_free;
-			if (check(meta_i_addStr(secondary, "A") != 0)) goto end_free;
+			if (xsConcatenateLiteral(&primary, "A") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "A") < 0) goto end_free;
 			}
 		    current += 1;
 		    break;	
@@ -426,8 +336,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		case 'B':
 		    {
 		    /** "-mb", e.g", "dumb", already skipped over... **/
-		    if (check(meta_i_addStr(primary, "P") != 0)) goto end_free;
-		    if (check(meta_i_addStr(secondary, "P") != 0)) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "P") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "P") < 0) goto end_free;
 		    
 		    current += (next_char == 'B') ? 2 : 1;
 		    break;
@@ -438,46 +348,46 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    /** Various germanic. **/
 		    if (
 			(current > 1)
-			&& !meta_i_isVowel(original, current - 2)
-			&& meta_i_isStrAt(original, (current - 1), "ACH", "")
-			&& meta_i_getCharAt(original, current + 2) != 'I'
+			&& !meta_i_isVowel(&original, current - 2)
+			&& meta_i_isStrAt(&original, (current - 1), "ACH", "")
+			&& meta_i_getCharAt(&original, current + 2) != 'I'
 			&& (
-			    meta_i_getCharAt(original, current + 2) != 'E'
-			    || meta_i_isStrAt(original, (current - 2), "BACHER", "MACHER", "")
+			    meta_i_getCharAt(&original, current + 2) != 'E'
+			    || meta_i_isStrAt(&original, (current - 2), "BACHER", "MACHER", "")
 			)
 		       )
 			{
-			if (check(meta_i_addStr(primary, "K") != 0)) goto end_free;
-			if (check(meta_i_addStr(secondary, "K") != 0)) goto end_free;
+			if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** Special case 'caesar' **/
-		    if (current == 0 && meta_i_isStrAt(original, current, "CAESAR", ""))
+		    if (current == 0 && meta_i_isStrAt(&original, current, "CAESAR", ""))
 			{
-			if (check(meta_i_addStr(primary, "S") != 0)) goto end_free;
-			if (check(meta_i_addStr(secondary, "S") != 0)) goto end_free;
+			if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "S") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** Italian 'chianti' **/
-		    if (meta_i_isStrAt(original, current, "CHIA", ""))
+		    if (meta_i_isStrAt(&original, current, "CHIA", ""))
 			{
-			if (check(meta_i_addStr(primary, "K") != 0)) goto end_free;
-			if (check(meta_i_addStr(secondary, "K") != 0)) goto end_free;
+			if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
-		    if (meta_i_isStrAt(original, current, "CH", ""))
+		    if (meta_i_isStrAt(&original, current, "CH", ""))
 			{
 			/** Find 'michael' **/
-			if (current > 0 && meta_i_isStrAt(original, current, "CHAE", ""))
+			if (current > 0 && meta_i_isStrAt(&original, current, "CHAE", ""))
 			    {
-			    if (check(meta_i_addStr(primary, "K") != 0)) goto end_free;
-			    if (check(meta_i_addStr(secondary, "X") != 0)) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -485,52 +395,52 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			/** Greek roots e.g. 'chemistry', 'chorus' **/
 			if (
 			    current == 0
-			    && meta_i_isStrAt(original, (current + 1), "HOR", "HYM", "HIA", "HEM", "HARAC", "HARIS", "")
-			    && !meta_i_isStrAt(original, 0, "CHORE", "")
+			    && meta_i_isStrAt(&original, (current + 1), "HOR", "HYM", "HIA", "HEM", "HARAC", "HARIS", "")
+			    && !meta_i_isStrAt(&original, 0, "CHORE", "")
 			   )
 			    {
-			    if (check(meta_i_addStr(primary, "K") != 0)) goto end_free;
-			    if (check(meta_i_addStr(secondary, "K") != 0)) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
 			
 			/** Germanic, greek, or otherwise 'ch' for 'kh' sound. */
 			if (
-			    meta_i_isStrAt(original, 0, "SCH", "VAN ", "VON ", "")
+			    meta_i_isStrAt(&original, 0, "SCH", "VAN ", "VON ", "")
 			    /** 'architect but not 'arch', 'orchestra', 'orchid' **/
-			    || meta_i_isStrAt(original, (current - 2), "ORCHES", "ARCHIT", "ORCHID", "")
-			    || meta_i_isStrAt(original, (current + 2), "T", "S", "")
+			    || meta_i_isStrAt(&original, (current - 2), "ORCHES", "ARCHIT", "ORCHID", "")
+			    || meta_i_isStrAt(&original, (current + 2), "T", "S", "")
 			    || (
-				(current == 0 || meta_i_isStrAt(original, (current - 1), "A", "O", "U", "E", ""))
+				(current == 0 || meta_i_isStrAt(&original, (current - 1), "A", "O", "U", "E", ""))
 				/** e.g., 'wachtler', 'wechsler', but not 'tichner' **/
-				&& meta_i_isStrAt(original, (current + 2), "L", "R", "N", "M", "B", "H", "F", "V", "W", " ", "")
+				&& meta_i_isStrAt(&original, (current + 2), "L", "R", "N", "M", "B", "H", "F", "V", "W", " ", "")
 			       )
 			   )
 			    {
-			    if (check(meta_i_addStr(primary, "K") != 0)) goto end_free;
-			    if (check(meta_i_addStr(secondary, "K") != 0)) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			    }
 			else
 			    {
 			    if (current > 0)
 				{
-				if (meta_i_isStrAt(original, 0, "MC", ""))
+				if (meta_i_isStrAt(&original, 0, "MC", ""))
 				    {
 				    /* e.g., "McHugh" */
-				    if (check(meta_i_addStr(primary, "K") != 0)) goto end_free;
-				    if (check(meta_i_addStr(secondary, "K") != 0)) goto end_free;
+				    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+				    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 				    }
 				else
 				    {
-				    if (check(meta_i_addStr(primary, "X") != 0)) goto end_free;
-				    if (check(meta_i_addStr(secondary, "K") != 0)) goto end_free;
+				    if (xsConcatenateLiteral(&primary, "X") < 0) goto end_free;
+				    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 				    }
 				}
 			    else
 				{
-				if (check(meta_i_addStr(primary, "X") != 0)) goto end_free;
-				if (check(meta_i_addStr(secondary, "X") != 0)) goto end_free;
+				if (xsConcatenateLiteral(&primary, "X") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 				}
 			    }
 			    current += 2;
@@ -538,97 +448,97 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			}
 		    
 		    /** e.g, 'czerny' **/
-		    if (meta_i_isStrAt(original, current, "CZ", "")
-			&& !meta_i_isStrAt(original, (current - 2), "WICZ", ""))
+		    if (meta_i_isStrAt(&original, current, "CZ", "")
+			&& !meta_i_isStrAt(&original, (current - 2), "WICZ", ""))
 			{
-			if (check(meta_i_addStr(primary, "S") != 0)) goto end_free;
-			if (check(meta_i_addStr(secondary, "X") != 0)) goto end_free;
+			if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** e.g., 'focaccia' **/
-		    if (meta_i_isStrAt(original, (current + 1), "CIA", ""))
+		    if (meta_i_isStrAt(&original, (current + 1), "CIA", ""))
 			{
-			if (check(meta_i_addStr(primary, "X") != 0)) goto end_free;
-			if (check(meta_i_addStr(secondary, "X") != 0)) goto end_free;
+			if (xsConcatenateLiteral(&primary, "X") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 			current += 3;
 			break;
 			}
 		    
 		    /** Double 'C' rule. **/
 		    if (
-			meta_i_isStrAt(original, current, "CC", "")
+			meta_i_isStrAt(&original, current, "CC", "")
 			&& !(current == 1 && first_char == 'M') /* McClellan exception. */
 		       )
 			{
 			/** 'bellocchio' but not 'bacchus' **/
 			if (
-			    meta_i_isStrAt(original, (current + 2), "I", "E", "H", "")
-			    && !meta_i_isStrAt(original, (current + 2), "HU", "")
+			    meta_i_isStrAt(&original, (current + 2), "I", "E", "H", "")
+			    && !meta_i_isStrAt(&original, (current + 2), "HU", "")
 			   )
 			    {
 			    /** 'accident', 'accede' 'succeed' **/
 			    if (
-				(current == 1 && meta_i_getCharAt(original, current - 1) == 'A')
-				|| meta_i_isStrAt(original, (current - 1), "UCCEE", "UCCES", "")
+				(current == 1 && meta_i_getCharAt(&original, current - 1) == 'A')
+				|| meta_i_isStrAt(&original, (current - 1), "UCCEE", "UCCES", "")
 			       )
 				{
-				if (check(meta_i_addStr(primary, "KS")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "KS")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "KS") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "KS") < 0) goto end_free;
 				/** 'bacci', 'bertucci', other italian **/
 				}
 			    else
 				{
-				if (check(meta_i_addStr(primary, "X")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "X")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "X") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 				}
 			    current += 3;
 			    break;
 			    }
 			else
 			    { /** Pierce's rule **/
-			    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
 			}
 		    
-		    if (meta_i_isStrAt(original, current, "CK", "CG", "CQ", ""))
+		    if (meta_i_isStrAt(&original, current, "CK", "CG", "CQ", ""))
 			{
-			if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
-		    if (meta_i_isStrAt(original, current, "CI", "CE", "CY", ""))
+		    if (meta_i_isStrAt(&original, current, "CI", "CE", "CY", ""))
 			{
 			/* Italian vs. English */
-			if (meta_i_isStrAt(original, current, "CIO", "CIE", "CIA", ""))
+			if (meta_i_isStrAt(&original, current, "CIO", "CIE", "CIA", ""))
 			    {
-			    if (check(meta_i_addStr(primary, "S")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "X")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 			    }
 			else
 			    {
-			    if (check(meta_i_addStr(primary, "S")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "S")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "S") < 0) goto end_free;
 			    }
 			current += 2;
 			break;
 			}
 		    
 		    /** else **/
-		    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 		    
 		    /** Name sent in 'mac caffrey', 'mac gregor **/
-		    if (meta_i_isStrAt(original, (current + 1), " C", " Q", " G", ""))
+		    if (meta_i_isStrAt(&original, (current + 1), " C", " Q", " G", ""))
 			current += 3;
-		    else if (meta_i_isStrAt(original, (current + 1), "C", "K", "Q", "")
-			     && !meta_i_isStrAt(original, (current + 1), "CE", "CI", ""))
+		    else if (meta_i_isStrAt(&original, (current + 1), "C", "K", "Q", "")
+			     && !meta_i_isStrAt(&original, (current + 1), "CE", "CI", ""))
 			current += 2;
 		    else
 			current += 1;
@@ -637,37 +547,37 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		
 		case 'D':
 		    {
-		    if (meta_i_isStrAt(original, current, "DG", ""))
+		    if (meta_i_isStrAt(&original, current, "DG", ""))
 			{
-			if (meta_i_isStrAt(original, (current + 2), "I", "E", "Y", ""))
+			if (meta_i_isStrAt(&original, (current + 2), "I", "E", "Y", ""))
 			    {
 			    /** e.g. 'edge' **/
-			    if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "J")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "J") < 0) goto end_free;
 			    current += 3;
 			    break;
 			    }
 			else
 			    {
 			    /** e.g. 'edgar' **/
-			    if (check(meta_i_addStr(primary, "TK")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "TK")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "TK") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "TK") < 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
 			}
 		    
-		    if (meta_i_isStrAt(original, current, "DT", "DD", ""))
+		    if (meta_i_isStrAt(&original, current, "DT", "DD", ""))
 			{
-			if (check(meta_i_addStr(primary, "T")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "T")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "T") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "T") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** else **/
-		    if (check(meta_i_addStr(primary, "T")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "T")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "T") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "T") < 0) goto end_free;
 		    current += 1;
 		    break;
 		    }
@@ -675,8 +585,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		case 'F':
 		    {
 		    current += (next_char == 'F') ? 2 : 1;
-		    if (check(meta_i_addStr(primary, "F")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "F")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "F") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "F") < 0) goto end_free;
 		    break;
 		    }
 		
@@ -685,10 +595,10 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    if (next_char == 'H')
 			{
 			/** 'Vghee' */
-			if (current > 0 && !meta_i_isVowel(original, (current - 1)))
+			if (current > 0 && !meta_i_isVowel(&original, (current - 1)))
 			    {
-			    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -698,15 +608,15 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			    /** 'ghislane', 'ghiradelli' **/
 			    if (current == 0)
 				{
-				if (meta_i_getCharAt(original, (current + 2)) == 'I')
+				if (meta_i_getCharAt(&original, (current + 2)) == 'I')
 				    {
-				    if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-				    if (check(meta_i_addStr(secondary, "J")) != 0) goto end_free;
+				    if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+				    if (xsConcatenateLiteral(&secondary, "J") < 0) goto end_free;
 				    }
 				else
 				    {
-				    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-				    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+				    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+				    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 				    }
 				current += 2;
 				break;
@@ -715,11 +625,11 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			
 			if (
 			    /** Parker's rule (with some further refinements) - e.g., 'hugh' **/
-			    (current > 1 && meta_i_isStrAt(original, (current - 2), "B", "H", "D", ""))
+			    (current > 1 && meta_i_isStrAt(&original, (current - 2), "B", "H", "D", ""))
 			    /** e.g., 'bough' **/
-			    || (current > 2 && meta_i_isStrAt(original, (current - 3), "B", "H", "D", ""))
+			    || (current > 2 && meta_i_isStrAt(&original, (current - 3), "B", "H", "D", ""))
 			    /** e.g., 'broughton' **/
-			    || (current > 3 && meta_i_isStrAt(original, (current - 4), "B", "H", ""))
+			    || (current > 3 && meta_i_isStrAt(&original, (current - 4), "B", "H", ""))
 			)
 			    {
 			    current += 2;
@@ -730,17 +640,17 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			    /** e.g., 'laugh', 'McLaughlin', 'cough', 'gough', 'rough', 'tough' **/
 			    if (
 				current > 2
-				&& meta_i_getCharAt(original, (current - 1)) == 'U'
-				&& meta_i_isStrAt(original, (current - 3), "C", "G", "L", "R", "T", "")
+				&& meta_i_getCharAt(&original, (current - 1)) == 'U'
+				&& meta_i_isStrAt(&original, (current - 3), "C", "G", "L", "R", "T", "")
 			       )
 				{
-				if (check(meta_i_addStr(primary, "F")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "F")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "F") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "F") < 0) goto end_free;
 				}
-			    else if (current > 0 && meta_i_getCharAt(original, (current - 1)) != 'I')
+			    else if (current > 0 && meta_i_getCharAt(&original, (current - 1)) != 'I')
 				{
-				if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 				}
 			    
 			    current += 2;
@@ -750,26 +660,26 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    
 		    if (next_char == 'N')
 			{
-			if (current == 1 && !is_slavo_germanic && meta_i_isVowel(original, 0))
+			if (current == 1 && !is_slavo_germanic && meta_i_isVowel(&original, 0))
 			    {
-			    if (check(meta_i_addStr(primary, "KN")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "N")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "KN") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "N") < 0) goto end_free;
 			    }
 			else
 			    /** not e.g. 'cagney' **/
 			    if (
 				next_char != 'Y'
 				&& !is_slavo_germanic
-				&& !meta_i_isStrAt(original, (current + 2), "EY", "")
+				&& !meta_i_isStrAt(&original, (current + 2), "EY", "")
 			       )
 				{
-				if (check(meta_i_addStr(primary, "N")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "KN")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "N") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "KN") < 0) goto end_free;
 				}
 			else
 			    {
-			    if (check(meta_i_addStr(primary, "KN")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "KN")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "KN") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "KN") < 0) goto end_free;
 			    }
 			current += 2;
 			break;
@@ -778,11 +688,11 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    /** 'tagliaro' **/
 		    if (
 			!is_slavo_germanic
-			&& meta_i_isStrAt(original, (current + 1), "LI", "")
+			&& meta_i_isStrAt(&original, (current + 1), "LI", "")
 		       )
 			{
-			if (check(meta_i_addStr(primary, "KL")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "L")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "KL") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "L") < 0) goto end_free;
 			current += 2;
 			break;
 			}
@@ -793,58 +703,58 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			&& (
 			    next_char == 'Y'
 			    || meta_i_isStrAt(
-				original, (current + 1),
+				&original, (current + 1),
 				"ES", "EP", "EB", "EL", "EY", "IB",
 				"IL", "IN", "IE", "EI", "ER", ""
 			    )
 			   )
 		       )
 			{
-			if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "J")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "J") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** -ger-,  -gy- **/
 		    if (
-			(next_char == 'Y' || meta_i_isStrAt(original, (current + 1), "ER", ""))
+			(next_char == 'Y' || meta_i_isStrAt(&original, (current + 1), "ER", ""))
 			/** Exceptions. **/
-			&& !meta_i_isStrAt(original, 0, "DANGER", "RANGER", "MANGER", "")
-			&& !meta_i_isStrAt(original, (current - 1), "E", "I", "RGY", "OGY", "")
+			&& !meta_i_isStrAt(&original, 0, "DANGER", "RANGER", "MANGER", "")
+			&& !meta_i_isStrAt(&original, (current - 1), "E", "I", "RGY", "OGY", "")
 		       )
 			{
-			if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "J")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "J") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** Italian e.g, 'biaggi' **/
 		    if (
-			meta_i_isStrAt(original, (current + 1), "E", "I", "Y", "")
-			|| meta_i_isStrAt(original, (current - 1), "AGGI", "OGGI", "")
+			meta_i_isStrAt(&original, (current + 1), "E", "I", "Y", "")
+			|| meta_i_isStrAt(&original, (current - 1), "AGGI", "OGGI", "")
 		       )
 			{
 			/** Obvious germanic. **/
-			if (meta_i_isStrAt(original, 0, "SCH", "VAN ", "VON ", "")
-			    || meta_i_isStrAt(original, (current + 1), "ET", ""))
+			if (meta_i_isStrAt(&original, 0, "SCH", "VAN ", "VON ", "")
+			    || meta_i_isStrAt(&original, (current + 1), "ET", ""))
 			    {
-			    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 			    }
 			else
 			    {
 			    /** Always soft, if french ending. **/
-			    if (meta_i_isStrAt(original, (current + 1), "IER ", ""))
+			    if (meta_i_isStrAt(&original, (current + 1), "IER ", ""))
 				{
-				if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "J")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "J") < 0) goto end_free;
 				}
 			    else
 				{
-				if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 				}
 			    }
 			current += 2;
@@ -852,8 +762,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    }
 		    
 		    current += (next_char == 'G') ? 2 : 1;
-		    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 		    break;
 		    }
 		
@@ -861,12 +771,12 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    {
 		    /** Only keep if first & before vowel or between 2 vowels. **/
 		    if (
-			(current == 0 || meta_i_isVowel(original, (current - 1)))
-			&& meta_i_isVowel(original, current + 1)
+			(current == 0 || meta_i_isVowel(&original, (current - 1)))
+			&& meta_i_isVowel(&original, current + 1)
 		       )
 			{
-			if (check(meta_i_addStr(primary, "H")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "H")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "H") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "H") < 0) goto end_free;
 			current += 2;
 			}
 		    else /* also takes care of 'HH' */
@@ -877,23 +787,23 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		case 'J':
 		    {
 		    /** Obvious spanish, 'jose', 'san jacinto' **/
-		    const bool has_jose_next = meta_i_isStrAt(original, current, "JOSE", "");
-		    const bool starts_with_san = meta_i_isStrAt(original, 0, "SAN ", "");
+		    const bool has_jose_next = meta_i_isStrAt(&original, current, "JOSE", "");
+		    const bool starts_with_san = meta_i_isStrAt(&original, 0, "SAN ", "");
 		    if (has_jose_next || starts_with_san)
 			{
 			if (
 			    starts_with_san
 			    /** I don't know what this condition means. **/
-			    || (current == 0 && meta_i_getCharAt(original, current + 4) == ' ')
+			    || (current == 0 && meta_i_getCharAt(&original, current + 4) == ' ')
 			   )
 			    {
-			    if (check(meta_i_addStr(primary, "H")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "H")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "H") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "H") < 0) goto end_free;
 			    }
 			else
 			    {
-			    if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "H")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "H") < 0) goto end_free;
 			    }
 			current += 1;
 			break;
@@ -901,8 +811,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    
 		    if (current == 0 && !has_jose_next)
 			{
-			if (check(meta_i_addStr(primary, "J")) != 0) goto end_free; /* Yankelovich/Jankelowicz */
-			if (check(meta_i_addStr(secondary, "A")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free; /* Yankelovich/Jankelowicz */
+			if (xsConcatenateLiteral(&secondary, "A") < 0) goto end_free;
 			}
 		    else
 			{
@@ -910,28 +820,28 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			if (
 			    !is_slavo_germanic
 			    && (next_char == 'A' || next_char == 'O')
-			    && meta_i_isVowel(original, (current - 1))
+			    && meta_i_isVowel(&original, (current - 1))
 			   )
 			    {
-			    if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "H")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "H") < 0) goto end_free;
 			    }
 			else
 			    {
 			    if (current == last)
 				{
-				if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "") < 0) goto end_free;
 				}
 			    else
 				{
 				if (
-				    !meta_i_isStrAt(original, (current + 1), "L", "T", "K", "S", "N", "M", "B", "Z", "")
-				    && !meta_i_isStrAt(original, (current - 1), "S", "K", "L", "")
+				    !meta_i_isStrAt(&original, (current + 1), "L", "T", "K", "S", "N", "M", "B", "Z", "")
+				    && !meta_i_isStrAt(&original, (current - 1), "S", "K", "L", "")
 				   )
 				    {
-				    if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-				    if (check(meta_i_addStr(secondary, "J")) != 0) goto end_free;
+				    if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+				    if (xsConcatenateLiteral(&secondary, "J") < 0) goto end_free;
 				    }
 				}
 			    }
@@ -944,8 +854,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		case 'K':
 		    {
 		    current += (next_char == 'K') ? 2 : 1;
-		    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 		    break;
 		    }
 		
@@ -957,19 +867,19 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			if (
 			    (
 			     current == length - 3
-			     && meta_i_isStrAt(original, (current - 1), "ILLO", "ILLA", "ALLE", "")
+			     && meta_i_isStrAt(&original, (current - 1), "ILLO", "ILLA", "ALLE", "")
 			    )
 			    || (
-				meta_i_isStrAt(original, (current - 1), "ALLE", "")
+				meta_i_isStrAt(&original, (current - 1), "ALLE", "")
 				&& (
-				    meta_i_isStrAt(original, (last - 1), "AS", "OS", "")
-				    || meta_i_isStrAt(original, last, "A", "O", "")
+				    meta_i_isStrAt(&original, (last - 1), "AS", "OS", "")
+				    || meta_i_isStrAt(&original, last, "A", "O", "")
 				   )
 			       )
 			   )
 			    {
-			    if (check(meta_i_addStr(primary, "L")) != 0) goto end_free;
-			    if (check(meta_i_addStr(secondary, "")) != 0) goto end_free;
+			    if (xsConcatenateLiteral(&primary, "L") < 0) goto end_free;
+			    if (xsConcatenateLiteral(&secondary, "") < 0) goto end_free;
 			    current += 2;
 			    break;
 			    }
@@ -977,8 +887,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			}
 		    else
 			current += 1;
-		    if (check(meta_i_addStr(primary, "L")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "L")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "L") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "L") < 0) goto end_free;
 		    break;
 		    }
 		
@@ -986,22 +896,22 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    {
 		    current += (
 			(
-			 meta_i_isStrAt(original, (current - 1), "UMB", "")
-			 && (current + 1 == last || meta_i_isStrAt(original, (current + 2), "ER", ""))
+			 meta_i_isStrAt(&original, (current - 1), "UMB", "")
+			 && (current + 1 == last || meta_i_isStrAt(&original, (current + 2), "ER", ""))
 			)
 			/** 'dumb','thumb' **/
 			|| next_char == 'M'
 		    ) ? 2 : 1;
-		    if (check(meta_i_addStr(primary, "M")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "M")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "M") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "M") < 0) goto end_free;
 		    break;
 		    }
 		
 		case 'N':
 		    {
 		    current += (next_char == 'N') ? 2 : 1;
-		    if (check(meta_i_addStr(primary, "N")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "N")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "N") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "N") < 0) goto end_free;
 		    break;
 		    }
 		
@@ -1009,24 +919,24 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    {
 		    if (next_char == 'H')
 			{
-			if (check(meta_i_addStr(primary, "F")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "F")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "F") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "F") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** Also account for "campbell", "raspberry" **/
-		    current += (meta_i_isStrAt(original, (current + 1), "P", "B", "")) ? 2 : 1;
-		    if (check(meta_i_addStr(primary, "P")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "P")) != 0) goto end_free;
+		    current += (meta_i_isStrAt(&original, (current + 1), "P", "B", "")) ? 2 : 1;
+		    if (xsConcatenateLiteral(&primary, "P") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "P") < 0) goto end_free;
 		    break;
 		    }
 		
 		case 'Q':
 		    {
 		    current += (next_char == 'Q') ? 2 : 1;
-		    if (check(meta_i_addStr(primary, "K")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "K")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 		    break;
 		    }
 		
@@ -1036,12 +946,12 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    const bool no_primary = (
 			!is_slavo_germanic
 			&& current == last
-			&& meta_i_isStrAt(original, (current - 2), "IE", "")
-			&& !meta_i_isStrAt(original, (current - 4), "ME", "MA", "")
+			&& meta_i_isStrAt(&original, (current - 2), "IE", "")
+			&& !meta_i_isStrAt(&original, (current - 4), "ME", "MA", "")
 		    );
 		    
-		    if (check(meta_i_addStr(primary, (no_primary) ? "" : "R")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "R")) != 0) goto end_free;
+		    if (xsConcatenate(&primary, (no_primary) ? "" : "R", -1) < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "R") < 0) goto end_free;
 		    current += (next_char == 'R') ? 2 : 1;
 		    break;
 		}
@@ -1049,69 +959,69 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		case 'S':
 		    {
 		    /** Special cases 'island', 'isle', 'carlisle', 'carlysle' **/
-		    if (meta_i_isStrAt(original, (current - 1), "ISL", "YSL", ""))
+		    if (meta_i_isStrAt(&original, (current - 1), "ISL", "YSL", ""))
 			{
 			current += 1;
 			break;
 			}
 		    
 		    /** Special case 'sugar-' **/
-		    if (current == 0 && meta_i_isStrAt(original, current, "SUGAR", ""))
+		    if (current == 0 && meta_i_isStrAt(&original, current, "SUGAR", ""))
 			{
-			if (check(meta_i_addStr(primary, "X")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "S")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "X") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "S") < 0) goto end_free;
 			current += 1;
 			break;
 			}
 		    
-		    if (meta_i_isStrAt(original, current, "SH", ""))
+		    if (meta_i_isStrAt(&original, current, "SH", ""))
 			{
-			const bool germanic = meta_i_isStrAt(original, (current + 1), "HEIM", "HOEK", "HOLM", "HOLZ", "");
-			const char* sound = (germanic) ? "S" : "X";
-			if (check(meta_i_addStr(primary, sound)) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, sound)) != 0) goto end_free;
+			const bool germanic = meta_i_isStrAt(&original, (current + 1), "HEIM", "HOEK", "HOLM", "HOLZ", "");
+			char* sound = (germanic) ? "S" : "X";
+			if (xsConcatenate(&primary, sound, -1) < 0) goto end_free;
+			if (xsConcatenate(&secondary, sound, -1) < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    /** Italian & Armenian. **/
-		    if (meta_i_isStrAt(original, current, "SIO", "SIA", "SIAN", ""))
+		    if (meta_i_isStrAt(&original, current, "SIO", "SIA", "SIAN", ""))
 			{
-			if (check(meta_i_addStr(primary, "S")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, (is_slavo_germanic) ? "S" : "X")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+			if (xsConcatenate(&secondary, (is_slavo_germanic) ? "S" : "X", -1) < 0) goto end_free;
 			current += 3;
 			break;
 			}
 		    
 		    /** german & anglicisations, e.g. 'smith' match 'schmidt', 'snider' match 'schneider' **/
 		    /** also, -sz- in slavic language although in hungarian it is pronounced 's' **/
-		    if (current == 0 && meta_i_isStrAt(original, (current + 1), "M", "N", "L", "W", ""))
+		    if (current == 0 && meta_i_isStrAt(&original, (current + 1), "M", "N", "L", "W", ""))
 			{
-			if (check(meta_i_addStr(primary, "S")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "X")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 			current += 1;
 			break;
 			}
-		    if (meta_i_isStrAt(original, (current + 1), "Z", ""))
+		    if (meta_i_isStrAt(&original, (current + 1), "Z", ""))
 			{
-			if (check(meta_i_addStr(primary, "S")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "X")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
-		    if (meta_i_isStrAt(original, current, "SC", ""))
+		    if (meta_i_isStrAt(&original, current, "SC", ""))
 			{
 			/** Schlesinger's rule. **/
-			if (meta_i_getCharAt(original, current + 2) == 'H')
+			if (meta_i_getCharAt(&original, current + 2) == 'H')
 			    {
 			    /** Dutch origin, e.g. 'school', 'schooner' **/
-			    if (meta_i_isStrAt(original, (current + 3), "OO", "ER", "EN", "UY", "ED", "EM", ""))
+			    if (meta_i_isStrAt(&original, (current + 3), "OO", "ER", "EN", "UY", "ED", "EM", ""))
 				{
 				/** 'schermerhorn', 'schenker' **/
-				const bool x_sound = meta_i_isStrAt(original, (current + 3), "ER", "EN", "");
-				if (check(meta_i_addStr(primary, (x_sound) ? "X" : "SK")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, "SK")) != 0) goto end_free;
+				const bool x_sound = meta_i_isStrAt(&original, (current + 3), "ER", "EN", "");
+				if (xsConcatenate(&primary, (x_sound) ? "X" : "SK", -1) < 0) goto end_free;
+				if (xsConcatenateLiteral(&secondary, "SK") < 0) goto end_free;
 				current += 3;
 				break;
 				}
@@ -1119,66 +1029,66 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 				{
 				const bool s_sound = (
 				    current == 0
-				    && !meta_i_isVowel(original, 3)
-				    && meta_i_getCharAt(original, 3) != 'W'
+				    && !meta_i_isVowel(&original, 3)
+				    && meta_i_getCharAt(&original, 3) != 'W'
 				);
-				if (check(meta_i_addStr(primary, "X")) != 0) goto end_free;
-				if (check(meta_i_addStr(secondary, (s_sound) ? "S" : "X")) != 0) goto end_free;
+				if (xsConcatenateLiteral(&primary, "X") < 0) goto end_free;
+				if (xsConcatenate(&secondary, (s_sound) ? "S" : "X", -1) < 0) goto end_free;
 				current += 3;
 				break;
 				}
 			    }
 			
 			/** Default case. **/
-			const char* sound = (meta_i_isStrAt(original, (current + 2), "E", "I", "Y", "")) ? "S" : "SK";
-			if (check(meta_i_addStr(primary, sound)) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, sound)) != 0) goto end_free;
+			char* sound = (meta_i_isStrAt(&original, (current + 2), "E", "I", "Y", "")) ? "S" : "SK";
+			if (xsConcatenate(&primary, sound, -1) < 0) goto end_free;
+			if (xsConcatenate(&secondary, sound, -1) < 0) goto end_free;
 			current += 3;
 			break;
 			}
 		    
 		    /** French e.g. 'resnais', 'artois' **/
-		    const bool no_primary = (current == last && meta_i_isStrAt(original, (current - 2), "AI", "OI", ""));
-		    if (check(meta_i_addStr(primary, (no_primary) ? "" : "S")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "S")) != 0) goto end_free;
-		    current += (meta_i_isStrAt(original, (current + 1), "S", "Z", "")) ? 2 : 1;
+		    const bool no_primary = (current == last && meta_i_isStrAt(&original, (current - 2), "AI", "OI", ""));
+		    if (xsConcatenate(&primary, (no_primary) ? "" : "S", -1) < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "S") < 0) goto end_free;
+		    current += (meta_i_isStrAt(&original, (current + 1), "S", "Z", "")) ? 2 : 1;
 		    break;
 		    }
 		
 		case 'T':
 		    {
-		    if (meta_i_isStrAt(original, current, "TIA", "TCH", "TION", ""))
+		    if (meta_i_isStrAt(&original, current, "TIA", "TCH", "TION", ""))
 			{
-			if (check(meta_i_addStr(primary, "X")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "X")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "X") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 			current += 3;
 			break;
 			}
 		    
-		    if (meta_i_isStrAt(original, current, "TH", "TTH", ""))
+		    if (meta_i_isStrAt(&original, current, "TH", "TTH", ""))
 			{
 			/** Special case 'thomas', 'thames' or germanic. **/
 			char* primary_char = (
-			    meta_i_isStrAt(original, (current + 2), "OM", "AM", "")
-			    || meta_i_isStrAt(original, 0, "SCH", "VAN ", "VON ", "")
+			    meta_i_isStrAt(&original, (current + 2), "OM", "AM", "")
+			    || meta_i_isStrAt(&original, 0, "SCH", "VAN ", "VON ", "")
 			) ? "T" : "0"; /* Zero, not O. */
 			
-			if (check(meta_i_addStr(primary, primary_char)) != 0) goto end_free; 
-			if (check(meta_i_addStr(secondary, "T")) != 0) goto end_free;
+			if (xsConcatenate(&primary, primary_char, -1) < 0) goto end_free; 
+			if (xsConcatenateLiteral(&secondary, "T") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
-		    if (check(meta_i_addStr(primary, "T")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "T")) != 0) goto end_free;
-		    current += (meta_i_isStrAt(original, (current + 1), "T", "D", "")) ? 2 : 1;
+		    if (xsConcatenateLiteral(&primary, "T") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "T") < 0) goto end_free;
+		    current += (meta_i_isStrAt(&original, (current + 1), "T", "D", "")) ? 2 : 1;
 		    break;
 		    }
 		
 		case 'V':
 		    {
-		    if (check(meta_i_addStr(primary, "F")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, "F")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "F") < 0) goto end_free;
+		    if (xsConcatenateLiteral(&secondary, "F") < 0) goto end_free;
 		    current += (next_char == 'V') ? 2 : 1;
 		    break;
 		    }
@@ -1186,39 +1096,39 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		case 'W':
 		    {
 		    /** Can also be in middle of word. **/
-		    if (meta_i_isStrAt(original, current, "WR", ""))
+		    if (meta_i_isStrAt(&original, current, "WR", ""))
 			{
-			if (check(meta_i_addStr(primary, "R")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "R")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "R") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "R") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
-		    const bool next_is_vowel = meta_i_isVowel(original, current + 1);
-		    if (current == 0 && (next_is_vowel || meta_i_isStrAt(original, current, "WH", "")))
+		    const bool next_is_vowel = meta_i_isVowel(&original, current + 1);
+		    if (current == 0 && (next_is_vowel || meta_i_isStrAt(&original, current, "WH", "")))
 			{
 			/** Wasserman should match Vasserman. **/
-			if (check(meta_i_addStr(primary, "A")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, (next_is_vowel) ? "F" : "A")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "A") < 0) goto end_free;
+			if (xsConcatenate(&secondary, (next_is_vowel) ? "F" : "A", -1) < 0) goto end_free;
 			}
 		    
 		    /** Arnow should match Arnoff. **/
-		    if ((current == last && meta_i_isVowel(original, current - 1))
-			|| meta_i_isStrAt(original, (current - 1), "EWSKI", "EWSKY", "OWSKI", "OWSKY", "")
-			|| meta_i_isStrAt(original, 0, "SCH", "")
+		    if ((current == last && meta_i_isVowel(&original, current - 1))
+			|| meta_i_isStrAt(&original, (current - 1), "EWSKI", "EWSKY", "OWSKI", "OWSKY", "")
+			|| meta_i_isStrAt(&original, 0, "SCH", "")
 		       )
 			{
-			if (check(meta_i_addStr(primary, "")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "F")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "F") < 0) goto end_free;
 			current += 1;
 			break;
 			}
 		    
 		    /** Polish e.g. 'filipowicz' **/
-		    if (meta_i_isStrAt(original, current, "WICZ", "WITZ", ""))
+		    if (meta_i_isStrAt(&original, current, "WICZ", "WITZ", ""))
 			{
-			if (check(meta_i_addStr(primary, "TS")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "FX")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "TS") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "FX") < 0) goto end_free;
 			current += 4;
 			break;
 			}
@@ -1234,17 +1144,17 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    const bool silent = (
 			current == last
 			&& (
-			    meta_i_isStrAt(original, (current - 2), "AU", "OU", "")
-			    || meta_i_isStrAt(original, (current - 3), "IAU", "EAU", "")
+			    meta_i_isStrAt(&original, (current - 2), "AU", "OU", "")
+			    || meta_i_isStrAt(&original, (current - 3), "IAU", "EAU", "")
 			)
 		    );
 		    if (!silent)
 			{
-			if (check(meta_i_addStr(primary, "KS")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "KS")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "KS") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "KS") < 0) goto end_free;
 			}
 		    
-		    current += (meta_i_isStrAt(original, (current + 1), "C", "X", "")) ? 2 : 1;
+		    current += (meta_i_isStrAt(&original, (current + 1), "C", "X", "")) ? 2 : 1;
 		    break;
 		    }
 		
@@ -1253,18 +1163,18 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    /** Chinese pinyin e.g. 'zhao' **/
 		    if (next_char == 'H')
 			{
-			if (check(meta_i_addStr(primary, "J")) != 0) goto end_free;
-			if (check(meta_i_addStr(secondary, "J")) != 0) goto end_free;
+			if (xsConcatenateLiteral(&primary, "J") < 0) goto end_free;
+			if (xsConcatenateLiteral(&secondary, "J") < 0) goto end_free;
 			current += 2;
 			break;
 			}
 		    
 		    const bool has_t_sound = (
-			meta_i_isStrAt(original, (current + 1), "ZO", "ZI", "ZA", "")
-			|| (is_slavo_germanic && current > 0 && meta_i_getCharAt(original, (current - 1)) != 'T')
+			meta_i_isStrAt(&original, (current + 1), "ZO", "ZI", "ZA", "")
+			|| (is_slavo_germanic && current > 0 && meta_i_getCharAt(&original, (current - 1)) != 'T')
 		    );
-		    if (check(meta_i_addStr(primary, "S")) != 0) goto end_free;
-		    if (check(meta_i_addStr(secondary, (has_t_sound) ? "TS" : "S")) != 0) goto end_free;
+		    if (xsConcatenateLiteral(&primary, "S") < 0) goto end_free;
+		    if (xsConcatenate(&secondary, (has_t_sound) ? "TS" : "S", -1) < 0) goto end_free;
 		    current += (next_char == 'Z') ? 2 : 1;
 		    break;
 		    }
@@ -1274,18 +1184,31 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		}
 	    }
 	
-	/** Write the output strings. **/
-	*primary_code = primary->str;
-	*secondary_code = secondary->str;
-	primary->free_str_on_destroy = 0;
-	secondary->free_str_on_destroy = 0;
+	/** Get the output strings. **/
+	char* primary_str = xsString(&primary);
+	char* secondary_str = xsString(&secondary);
+	if (UNLIKELY(primary_str == NULL || secondary_str == NULL)) goto end_free;
+	
+	/** Allocate buffers for returning the output strings. **/
+	void* primary_code_buf = nmSysStrdup(primary_str);
+	void* secondary_code_buf = nmSysStrdup(secondary_str);
+	if (UNLIKELY(primary_code_buf == NULL || secondary_code_buf == NULL))
+	    {
+	    if (primary_code_buf != NULL) nmSysFree(primary_code_buf);
+	    if (secondary_code_buf != NULL) nmSysFree(secondary_code_buf);
+	    goto end_free;
+	    }
+	
+	/** Success. **/
+	*primary_code = primary_code_buf;
+	*secondary_code = secondary_code_buf;
 	ret = 0;
 	
     end_free:
 	if (UNLIKELY(ret != 0)) fprintf(stderr, "Error: metaDoubleMetaphone() failed (error code %d).\n", ret);
-	meta_i_destroyString(original);
-	meta_i_destroyString(primary);
-	meta_i_destroyString(secondary);
+	if (secondary.String != NULL) warnFail(xsDeInit(&secondary));
+	if (primary.String != NULL) warnFail(xsDeInit(&primary));
+	if (original.String != NULL) warnFail(xsDeInit(&original));
 	
 	return ret;
     }
