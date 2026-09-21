@@ -681,7 +681,7 @@ caCosCompare(void* v1, void* v2)
 	const double similarity = ca_i_sparseSimilarity(vec1, vec2);
 	if (UNLIKELY(isnan(similarity)))
 	    {
-	    mssError(1, "CA", "ca_i_sparseSimilarity(%p, %p) failed.", vec1, vec2);
+	    mssError(1, "CA", "ca_i_sparseSimilarity() failed.");
 	    goto err;
 	    }
 	
@@ -689,7 +689,7 @@ caCosCompare(void* v1, void* v2)
 	return round(similarity * 1000000.0) / 1000000.0;
 	
     err:
-	mssError(0, "CA", "caCosCompare(%p, %p) failed.", v1, v2);
+	mssError(0, "CA", "caCosCompare() failed.");
 	return NAN;
     }
 
@@ -1050,9 +1050,15 @@ caKmeans(
 	if (!successful)
 	    {
 	    mssError(0, "CA",
-		"caKmeans(%p, %u, %u, %u, %lf, %p, %p, %s) failed.",
-		vectors, num_vectors, num_clusters, max_iter, min_improvement,
-		labels, vector_sims, (auto_seed) ? "true" : "false"
+		"caKmeans(%s, %u, %u, %u, %lf, %s, %s, %s) failed.",
+		(vectors == NULL) ? "NULL" : "vectors",
+		num_vectors,
+		num_clusters,
+		max_iter,
+		min_improvement,
+		(labels == NULL) ? "NULL" : "labels",
+		(vector_sims == NULL) ? "NULL" : "vector_sims",
+		(auto_seed) ? "true" : "false"
 	    );
 	    }
 	
