@@ -34,7 +34,7 @@
 /*    b) the "Artistic License" (5).					*/
 /* 									*/
 /* Citations:								*/
-/*    1: https://github.com/gitpan/Text-metaDoubleMetaphone		*/
+/*    1: https://github.com/gitpan/Text-DoubleMetaphone			*/
 /*    2: https://dev.perl.org/licenses/gpl1.html			*/
 /*    3: http://www.fsf.org						*/
 /*    4: http://www.fsf.org/licenses/licenses.html#GNUGPL		*/
@@ -94,7 +94,6 @@
  *** Original Source: https://github.com/gitpan/Text-DoubleMetaphone
  ***/
 
-#include <assert.h>
 #include <ctype.h>
 #include <limits.h>
 #include <stdarg.h>
@@ -106,13 +105,14 @@
 #include "cxlib/xstring.h"
 #include "cxlib/warn.h"
 #include "cxlib/expect.h"
+#include "double_metaphone.h"
 
 /*** Convert all characters of an XString to uppercase.
  *** 
  *** @param s The XString being modified.
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
-int
+static int
 meta_i_makeUpper(pXString s)
     {
 	/** Handle edge cases. **/
@@ -126,7 +126,7 @@ meta_i_makeUpper(pXString s)
 	
 	/** Uppercase each character. **/
 	for (int i = 0; i < length; i++)
-	    buf[i] = (char)toupper(buf[i]);
+	    buf[i] = (char)toupper((unsigned char)buf[i]);
     
     return 0;
     }
@@ -136,7 +136,7 @@ meta_i_makeUpper(pXString s)
  *** @returns The character at the position in the XString, or
  ***          '\0' if the position is not in the XString.
  ***/
-char
+static char
 meta_i_getCharAt(pXString s, unsigned int pos)
     {
 	/** Handle edge cases. **/
@@ -153,7 +153,7 @@ meta_i_getCharAt(pXString s, unsigned int pos)
  *** @param s The XString being checked.
  *** @param pos The character location to check within the XString.
  ***/
-bool
+static bool
 meta_i_isVowel(pXString s, unsigned int pos)
     {
 	const char c = meta_i_getCharAt(s, pos);
@@ -162,13 +162,13 @@ meta_i_isVowel(pXString s, unsigned int pos)
 	    (c == 'O') || (c == 'U') || (c == 'Y'));
     }
 
-/*** Search an XString for "W", "K", "CZ", or "WITZ", which indicate that the
+/*** Search an XString for "W", "K", or "CZ", which indicate that the
  *** string is Slavo Germanic.
  *** 
  *** @param s The XString to be searched.
  *** @returns 1 if the XString is Slavo Germanic, or 0 otherwise. 
  ***/
-bool
+static bool
 meta_i_isSlavoGermanic(pXString s)
     {
 	/** Handle edge cases. **/
@@ -176,8 +176,7 @@ meta_i_isSlavoGermanic(pXString s)
     
     return (xsFind(s, "W", 1, 0) >= 0)
 	|| (xsFind(s, "K", 1, 0) >= 0)
-	|| (xsFind(s, "CZ", 2, 0) >= 0)
-	|| (xsFind(s, "WITZ", 4, 0) >= 0);
+	|| (xsFind(s, "CZ", 2, 0) >= 0);
     }
 
 /*** Checks for to see if any of a list of strings appear in a the given
@@ -191,7 +190,7 @@ meta_i_isSlavoGermanic(pXString s)
  *** @returns 1 if any of the character sequences appear after the start
  *** 	in the XString and 0 otherwise.
  ***/
-bool
+static bool
 meta_i_isStrAt(pXString s, unsigned int start, ...)
     {
     va_list ap;
@@ -229,11 +228,19 @@ meta_i_isStrAt(pXString s, unsigned int start, ...)
 
 /*** Computes double metaphone.
  *** 
+ *** On success the caller owns both strings and must release them with
+ *** nmSysFree().  On failure neither pointer is written.
+ *** 
  *** Example Usage:
  *** ```c
  *** char* primary_code;
  *** char* secondary_code;
- *** metaDoubleMetaphone(input, &primary_code, &secondary_code);
+ *** if (metaDoubleMetaphone(input, &primary_code, &secondary_code) != 0) return -1;
+ *** 
+ *** printf("%s %s\n", primary_code, secondary_code);
+ *** 
+ *** nmSysFree(primary_code);
+ *** nmSysFree(secondary_code);
  *** ```
  *** 
  *** @param str The string to compute.
