@@ -21,7 +21,6 @@
 #include <stdlib.h>
 
 /** Test dependencies. **/
-#include "check.h"
 #include "newmalloc.h"
 #include "test_utils.h"
 
@@ -36,12 +35,12 @@ static int cmp_Pairs(const void* v1, const void* v2)
     return Pair1->i - Pair2->i;
     }
 
-static void freePairs(pXArray xPairs)
+static bool freePairs(pXArray xPairs)
     {
 	/** The search functions hand ownership of each pair to the caller. **/
 	while (xPairs->nItems > 0)
 	    nmFree(xPairs->Items[--xPairs->nItems], sizeof(Pair));
-	check(xaDeInit(xPairs));
+	return ASSERT_EQL(xaDeInit(xPairs), 0, "%d");
     }
 
 #define ASSERT_PAIR(Pair, k1, k2, sim_min, sim_max) \
@@ -82,7 +81,7 @@ static bool doTest(void)
 	/** Test complete search. **/
 	{
 	    XArray xPairs;
-	    if (check(xaInit(&xPairs, 4)) != 0) return false;
+	    if (!ASSERT_EQL(xaInit(&xPairs, 4), 0, "%d")) return false;
 	    success &= ASSERT_EQL(caCompleteSearch(data, 6, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
@@ -100,13 +99,13 @@ static bool doTest(void)
 	    success &= ASSERT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
 	    success &= ASSERT_PAIR(Pairs[1], 0, 5, 0.8, 1.0);
 	    success &= ASSERT_PAIR(Pairs[2], 1, 5, 0.8, 1.0);
-	    freePairs(&xPairs);
+	    success &= freePairs(&xPairs);
 	}
 	
 	/** Test sliding search: Large window. **/
 	{
 	    XArray xPairs;
-	    if (check(xaInit(&xPairs, 4)) != 0) return false;
+	    if (!ASSERT_EQL(xaInit(&xPairs, 4), 0, "%d")) return false;
 	    success &= ASSERT_EQL(caSlidingSearch(data, 6, 5, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
@@ -124,13 +123,13 @@ static bool doTest(void)
 	    success &= ASSERT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
 	    // success &= ASSERT_PAIR(Pairs[1], 0, 5, 0.8, 1.0); /* Sliding search misses this pair. */
 	    success &= ASSERT_PAIR(Pairs[1], 1, 5, 0.8, 1.0);
-	    freePairs(&xPairs);
+	    success &= freePairs(&xPairs);
 	}
 	
 	/** Test sliding search: Small window. **/
 	{
 	    XArray xPairs;
-	    if (check(xaInit(&xPairs, 4)) != 0) return false;
+	    if (!ASSERT_EQL(xaInit(&xPairs, 4), 0, "%d")) return false;
 	    success &= ASSERT_EQL(caSlidingSearch(data, 6, 2, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
@@ -148,7 +147,7 @@ static bool doTest(void)
 	    success &= ASSERT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
 	    // success &= ASSERT_PAIR(Pairs[1], 0, 5, 0.8, 1.0); /* Sliding search misses this pair. */
 	    // success &= ASSERT_PAIR(Pairs[2], 1, 5, 0.8, 1.0); /* Sliding search misses this pair. */
-	    freePairs(&xPairs);
+	    success &= freePairs(&xPairs);
 	}
     
     return success;

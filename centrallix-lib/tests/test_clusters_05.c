@@ -22,7 +22,6 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
-#include "check.h"
 #include "xhash.h"
 
 /** Tested module. **/
@@ -155,30 +154,30 @@ static bool doTest(void)
 	
 	/** Set up the mock similarity function. **/
 	XHashTable sim_table;
-	if (check(xhInit(&sim_table, 64, 0)) != 0) return false;
+	if (!ASSERT_EQL(xhInit(&sim_table, 64, 0), 0, "%d")) return false;
 	mock_sims = &sim_table;
 	success_ptr = &success;
 	
 	/** Completely different strings are similar. **/
 	double str1_str = 0.2, str1_str2 = 0.1, str1_eight = 0.8;
-	if (check(xhAdd(&sim_table, "str1|str",   (void*)&str1_str)) != 0) return false;
-	if (check(xhAdd(&sim_table, "str1|str2",  (void*)&str1_str2)) != 0) return false;
-	if (check(xhAdd(&sim_table, "str1|eight", (void*)&str1_eight)) != 0) return false;
+	success &= ASSERT_EQL(xhAdd(&sim_table, "str1|str",   (void*)&str1_str), 0, "%d");
+	success &= ASSERT_EQL(xhAdd(&sim_table, "str1|str2",  (void*)&str1_str2), 0, "%d");
+	success &= ASSERT_EQL(xhAdd(&sim_table, "str1|eight", (void*)&str1_eight), 0, "%d");
 	success &= ASSERT_STR_EQL(caMostSimilar("str1", (void*[]){"str2", "str", "eight"}, 3, getSimMock, 0.0), "eight");
 	success &= ASSERT_STR_EQL(caMostSimilar("str1", (void*[]){"str2", "str", "eight"}, 3, getSimMock, 0.9), NULL);
-	if (check(xhClear(&sim_table, do_nothing, NULL)) != 0) return false;
+	success &= ASSERT_EQL(xhClear(&sim_table, do_nothing, NULL), 0, "%d");
 	
 	/** Nans are skipped. **/
 	double val_nan = 0.8, val_vals = NAN, val_val = 0.2;
-	if (check(xhAdd(&sim_table, "val|nan",  (void*)&val_nan))  != 0) return false;
-	if (check(xhAdd(&sim_table, "val|vals", (void*)&val_vals)) != 0) return false;
-	if (check(xhAdd(&sim_table, "val|val",  (void*)&val_val))  != 0) return false;
+	success &= ASSERT_EQL(xhAdd(&sim_table, "val|nan",  (void*)&val_nan),  0, "%d");
+	success &= ASSERT_EQL(xhAdd(&sim_table, "val|vals", (void*)&val_vals), 0, "%d");
+	success &= ASSERT_EQL(xhAdd(&sim_table, "val|val",  (void*)&val_val),  0, "%d");
 	success &= ASSERT_STR_EQL(caMostSimilar("val", (void*[]){"val", "vals", "nan"}, 3, getSimMock, 0.0), "nan");
 	success &= ASSERT_STR_EQL(caMostSimilar("val", (void*[]){"val", "vals", "nan"}, 3, getSimMock, 0.9), NULL);
-	if (check(xhClear(&sim_table, do_nothing, NULL)) != 0) return false;
+	success &= ASSERT_EQL(xhClear(&sim_table, do_nothing, NULL), 0, "%d");
 	
 	/** Clean up. **/
-	if (check(xhDeInit(&sim_table)) != 0) return false;
+	success &= ASSERT_EQL(xhDeInit(&sim_table), 0, "%d");
     
     return success;
     }
