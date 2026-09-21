@@ -41,8 +41,8 @@
     char _trunc[strlen(_expect) + 1]; \
     strcpy(_trunc, _expect); \
     if (_buf_size > 0 && (size_t)_len >= _buf_size) _trunc[_buf_size - 1] = '\0'; \
-    EXPECT_EQL(_len, (int)strlen(_expect), "%d") && \
-	(_buf_size == 0 || EXPECT_STR_EQL((buf), _trunc)); \
+    ASSERT_EQL(_len, (int)strlen(_expect), "%d") && \
+	(_buf_size == 0 || ASSERT_STR_EQL((buf), _trunc)); \
     })
 
 #define TEST_SNPRINT_COMMAS_LLU(buf, buf_size, value, expect) \

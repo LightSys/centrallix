@@ -21,6 +21,7 @@
 /* 		- fprintMem() for printing memory stats.		*/
 /************************************************************************/
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #ifdef	__cplusplus
@@ -44,7 +45,7 @@ extern "C" {
 
     int snprintBytes(char* buf, const size_t buf_size, unsigned long bytes);
     int snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value);
-    void fprintMem(FILE* out);
+    int fprintMem(FILE* out);
 
 #ifdef	__cplusplus
 }

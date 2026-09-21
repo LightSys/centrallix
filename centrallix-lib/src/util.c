@@ -24,11 +24,14 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
-#include "check.h"
+#include "expect.h"
+#include "mtsession.h"
 #include "newmalloc.h"
 #include "range.h"
+#include "warn.h"
 
 #include "util.h"
 
@@ -175,39 +178,57 @@ snprintCommasLlu(char* buf, size_t buf_size, unsigned long long value)
     return (int)ti;
     }
 
-/** Print summary the current memory in use to the file pointer. **/
-void
+/*** Print a summary of the current memory in use to the file pointer.
+ ***
+ *** @param out The file pointer for printing.  Defaults to stdout when NULL.
+ *** @returns 0 if successful, or -1 if an error occurs.
+ ***/
+int
 fprintMem(FILE* out)
     {
-	FILE* fp = fopen("/proc/self/statm", "r");
-	if (fp == NULL) { perror("fopen()"); return; }
+    FILE* fp = NULL;
+    int rval = -1;
+
+	/** Handle edge cases. **/
+	if (out == NULL)
+	    out = stdout;
+
+	/** Open the OS stats file to read memory. ***/
+	fp = fopen("/proc/self/statm", "r");
+	if (UNLIKELY(fp == NULL))
+	    {
+	    mssError(1, "UTIL",
+		"fopen(\"/proc/self/statm\", \"r\") failed: %s.",
+		strerror(errno)
+	    );
+	    goto end;
+	    }
 	
 	/** Get page counts. **/
 	long size, resident, share, text, lib, data, dt;
-	if (fscanf(fp, "%ld %ld %ld %ld %ld %ld %ld",
-	    &size, &resident, &share, &text, &lib, &data, &dt) != 7)
+	if (UNLIKELY(fscanf(fp, "%ld %ld %ld %ld %ld %ld %ld",
+	    &size, &resident, &share, &text, &lib, &data, &dt) != 7))
 	    {
-	    fprintf(stderr, "Failed to read memory info\n");
-	    check(fclose(fp)); /* Failure ignored. */
-	    return;
+	    mssError(1, "UTIL", "Failed to read memory info.");
+	    goto end;
 	    }
-	check(fclose(fp)); /* Failure ignored. */
 	
 	/** Get page size. **/
 	const long page_size = sysconf(_SC_PAGESIZE); /* in bytes */
-	if (page_size < 0)
+	if (UNLIKELY(page_size < 0))
 	    {
-	    if (page_size != -1)
-		fprintf(stderr, "Unexpected value for page size: %ld.\n", page_size);
-	    
-	    printFail("Failed to get page size");
-	    return;
+	    mssError(1, "UTIL", "Failed to get page size (error code: %ld).", page_size);
+	    goto end;
 	    }
 	
 	/** Get the number of resident bytes used. **/
 	const unsigned long resident_bytes = (unsigned long)resident * (unsigned long)page_size;
 	char buf[SNPRINT_BYTES_BUF_SIZE];
-	snprintBytes(buf, sizeof(buf), resident_bytes);
+	if (snprintBytes(buf, sizeof(buf), resident_bytes) < 0)
+	    {
+	    mssError(1, "UTIL", "Failed to format memory info.");
+	    goto end;
+	    }
 	
 	/** fprintf() out data. **/
 	fprintf(out, "Memory used: %lu bytes (%s)\n", resident_bytes, buf);
@@ -216,5 +237,15 @@ fprintMem(FILE* out)
 	    share * page_size, text * page_size, lib * page_size, data * page_size
 	);
     
-    return;
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (rval != 0)
+	    mssError(0, "UTIL", "Failed to print memory.");
+
+	/** Clean up. **/
+	if (LIKELY(fp != NULL)) warnFail(fclose(fp));
+
+	return rval;
     }

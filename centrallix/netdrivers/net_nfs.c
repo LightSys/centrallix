@@ -1516,7 +1516,7 @@ nnfs_internal_get_inode(void* data, xdrproc_t func)
 	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((readdirargs*)data)->dir,(xdrproc_t)xdr_fhandle);
 	}
-    mssError("NNFS",0,"Error getting inode from %p (%p)\n",data,func);
+    mssError(0,"NNFS","Error getting inode from %p (%p)",data,func);
     CXSEC_EXIT(NFS_FN_KEY);
     return 0;
     }
@@ -2141,13 +2141,13 @@ nnfs_internal_mount_listener(void* v)
 				}
 			    else
 				{
-				mssError(0,"NNFS","Bad mountd procedure requested: %lu\n",(unsigned long)msg_in.rm_call.cb_proc);
+				mssError(0,"NNFS","Bad mountd procedure requested: %lu",(unsigned long)msg_in.rm_call.cb_proc);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROC_UNAVAIL;
 				}
 			    }
 			else
 			    {
-			    mssError(0,"NNFS","Invalid mount version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_vers);
+			    mssError(0,"NNFS","Invalid mount version requested: %lu",(unsigned long)msg_in.rm_call.cb_vers);
 			    msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 			    msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 			    msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -2155,13 +2155,13 @@ nnfs_internal_mount_listener(void* v)
 			}
 		    else
 			{
-			mssError(0,"NNFS","Invalid program requested: %lu\n",(unsigned long)msg_in.rm_call.cb_prog);
+			mssError(0,"NNFS","Invalid program requested: %lu",(unsigned long)msg_in.rm_call.cb_prog);
 			msg_out.rm_reply.rp_acpt.ar_stat = PROG_UNAVAIL;
 			}
 		    }
 		else
 		    {
-		    mssError(0,"NNFS","Invalid RPC version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_rpcvers);
+		    mssError(0,"NNFS","Invalid RPC version requested: %lu",(unsigned long)msg_in.rm_call.cb_rpcvers);
 		    msg_out.rm_reply.rp_stat = MSG_DENIED;
 		    msg_out.rm_reply.rp_rjct.rj_vers.low = 2;
 		    msg_out.rm_reply.rp_rjct.rj_vers.high = 2;
