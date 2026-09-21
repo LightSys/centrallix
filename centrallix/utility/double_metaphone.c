@@ -256,7 +256,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
     int ret = -1;
     XString original, primary, secondary;
     
-	/** xsInit() always leaves a buffer, so NULL marks one it never reached. **/
+	/** xsInit() always sets .String, so NULL marks an uninitialized xstring. **/
 	original.String = NULL;
 	primary.String = NULL;
 	secondary.String = NULL;
