@@ -48,6 +48,7 @@
   - [xsDeInit()](#xsdeinit)
   - [xsCheckAlloc()](#xscheckalloc)
   - [xsConcatenate()](#xsconcatenate)
+  - [xsConcatenateLiteral()](#xsconcatenateliteral)
   - [xsCopy()](#xscopy)
   - [xsStringEnd()](#xsstringend)
   - [xsConcatPrintf()](#xsconcatprintf)
@@ -143,6 +144,21 @@ This function concatenates the `text` string onto the end of the XString's value
     /** Print will probably work fine. **/
     printf("A pointer to the second sentence is '%s'\n", xs->String + offset);
     ```
+
+
+## xsConcatenateLiteral()
+```c
+#define xsConcatenateLiteral(this, lit) /* ... */
+```
+This macro wraps [`xsConcatenate()`](#xsconcatenate) for the common case of adding a string literal.  It takes the length from `sizeof(lit)` at compile time, so the literal is not measured with `strlen()` on every call.
+
+```c
+xsConcatenateLiteral(&xs, "SELECT * FROM ");   /* Instead of passing -1. */
+```
+
+The argument must be a string literal.  Passing a pointer is a compile error, because `sizeof()` on a pointer would give the size of the pointer rather than the length of the text.  A macro that expands to a literal is fine, as are adjacent literals (`"a" "b"`).
+
+Because the length comes from `sizeof()`, it covers the whole literal.  An embedded null (`'\0'`) is therefore concatenated like any other character, where `xsConcatenate()` with `len` of -1 would stop at it.
 
 
 ## xsCopy()

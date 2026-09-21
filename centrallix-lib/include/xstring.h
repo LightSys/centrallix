@@ -74,7 +74,18 @@ int xsConcatQPrintf(pXString this, char* fmt, ...);
 pXString xsNew();
 void xsFree(pXString this);
 
+/*** xsConcatenateLiteral - concatenates a string literal, taking its length
+ *** from sizeof() at compile time (faster than measuring with strlen() at
+ *** run time).
+ ***
+ *** Note: The "" causes a compiler error a pointer is passed because it's  
+ *** length is not known at compile time. Use xsConcatenate() for these.
+ ***
+ *** Note: The length covers the whole literal, so an embedded null ('\0') is
+ *** concatenated rather than treated as the end of the text.
+ ***/
+#define xsConcatenateLiteral(this, lit) xsConcatenate((this), (lit), (int)(sizeof("" lit) - 1))
+
 #define XS_U_SEEK	2
 
 #endif /* _XSTRING_H */
-
