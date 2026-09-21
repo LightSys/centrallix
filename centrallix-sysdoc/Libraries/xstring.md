@@ -65,6 +65,7 @@
   - [xsGenPrintf()](#xsgenprintf)
   - [xsString()](#xsstring)
   - [xsLength()](#xslength)
+  - [xsCharAt()](#xscharat)
   - [xsQPrintf_va(), xsQPrintf(), & xsConcatQPrintf()](#xsqprintf_va-xsqprintf--xsconcatqprintf)
 
 
@@ -274,6 +275,13 @@ This function returns the stored string after checking for various errors, or re
 xsLength(pXString this);
 ```
 This function returns the length of the string in constant time (since this value is stored in `this->Length`) checking for various errors, or returns `NULL` if an error occurs.
+
+
+## xsCharAt()
+```c
+char xsCharAt(pXString this, int pos);
+```
+This function returns the character at `pos`, or `'\0'` if `pos` falls outside the string.  Use it instead of indexing the buffer from [`xsString()`](#xsstring), which is not bounds checked.  Note that a position past the end and a negative position both read as `'\0'`, so a caller walking off either end of the string gets the same result as they would from reading the~~~~ null-terminator.
 
 
 ## xsQPrintf_va(), xsQPrintf(), & xsConcatQPrintf()

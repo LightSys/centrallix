@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -54,6 +54,7 @@ int xsCopy(pXString this, char* text, int len);
 char* xsString(pXString this);
 char* xsStringEnd(pXString this);
 int xsLength(pXString this);
+char xsCharAt(pXString this, int pos);
 int xsPrintf(pXString this, char* fmt, ...);
 int xsConcatPrintf(pXString this, char* fmt, ...);
 int xsWrite(pXString this, char* buf, int len, int offset, int flags);
