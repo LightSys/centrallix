@@ -8,7 +8,7 @@
 #include "cxlib/exception.h"
 #include "stparse_ne.h"
 #include "stparse.h"
-#include "cxlib/check.h"
+#include "cxlib/warn.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/xstring.h"
 #include "cxlib/newmalloc.h"
@@ -606,8 +606,12 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	ASSERTMAGIC(this, MGK_STRUCTINF);
 
 	/** Get the correct expression **/
-	find_exp = checkPtr(stGetExpression(this, nval));
-	if (find_exp == NULL) goto end;
+	find_exp = stGetExpression(this, nval);
+	if (UNLIKELY(find_exp == NULL))
+	    {
+	    mssError(1, "ST", "stGetExpression(this, %d) failed.", nval);
+	    goto end;
+	    }
 
 	/** expression code? **/
 	if (type == DATA_T_CODE && (find_exp->Flags & (EXPR_F_RUNCLIENT | EXPR_F_RUNSERVER)))
@@ -622,16 +626,25 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	 ***/
 	if ((domain != 0 || (find_exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE))) && !(find_exp->Flags & EXPR_F_RUNCLIENT))
 	    {
-	    if (!objlist)
+	    if (objlist == NULL)
 		{
-		my_objlist = checkPtr(expCreateParamList());
+		my_objlist = expCreateParamList();
+		if (UNLIKELY(my_objlist == NULL))
+		    {
+		    mssError(1, "ST", "expCreateParamList() failed.");
+		    goto end;
+		    }
 		my_objlist->Session = sess;
 		}
 	    if (domain != 0)
 		expBindExpression(find_exp, my_objlist, domain);
-	    expEvalTree(find_exp, my_objlist);
-	    if (!objlist)
-		expFreeParamList(my_objlist);
+	    if (expEvalTree(find_exp, my_objlist) < 0)
+		{
+		mssError(0, "ST", "Failed to evaluate expression tree.");
+		goto end;
+		}
+	    if (objlist == NULL)
+		warnFail(expFreeParamList(my_objlist));
 	    }
 
 	/** Correct type requested? **/
