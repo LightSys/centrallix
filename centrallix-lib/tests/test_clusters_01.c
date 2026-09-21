@@ -37,9 +37,9 @@ static bool doTest(void)
 	memset(AAA, 'A', num_edits);
 	memset(BBB, 'B', num_edits);
 	AAA[num_edits] = BBB[num_edits] = '\0';
-	success &= EXPECT_EQL(caEditDist(AAA, "", 0, 0), num_edits, "%d");
-	success &= EXPECT_EQL(caEditDist("", BBB, 0, 0), num_edits, "%d");
-	success &= EXPECT_EQL(caEditDist(AAA, BBB, 0, 0), num_edits, "%d");
+	success &= ASSERT_EQL(caEditDist(AAA, "", 0, 0), num_edits, "%d");
+	success &= ASSERT_EQL(caEditDist("", BBB, 0, 0), num_edits, "%d");
+	success &= ASSERT_EQL(caEditDist(AAA, BBB, 0, 0), num_edits, "%d");
     
     return success;
     }

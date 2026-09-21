@@ -44,13 +44,13 @@ static void freePairs(pXArray xPairs)
 	check(xaDeInit(xPairs));
     }
 
-#define EXPECT_PAIR(Pair, k1, k2, sim_min, sim_max) \
+#define ASSERT_PAIR(Pair, k1, k2, sim_min, sim_max) \
     ({ \
 	bool success = true; \
 	pPair d = (Pair); \
-	success &= EXPECT_EQL(d->i, k1, "%u"); \
-	success &= EXPECT_EQL(d->j, k2, "%u"); \
-	success &= EXPECT_RANGE(d->similarity, sim_min, sim_max, "%g"); \
+	success &= ASSERT_EQL(d->i, k1, "%u"); \
+	success &= ASSERT_EQL(d->j, k2, "%u"); \
+	success &= ASSERT_RANGE(d->similarity, sim_min, sim_max, "%g"); \
 	success; \
     })
     
@@ -70,20 +70,20 @@ static bool doTest(void)
 	};
 	
 	/** Check error cases. **/
-	success &= EXPECT_EQL(caCompleteSearch(NULL, 6, caLevCompare,  0.8,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(caCompleteSearch(data, 0, caLevCompare,  0.8,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(caCompleteSearch(data, 6, NULL,            0.8,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare,  1.1,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare, -0.1,      NULL), NULL, "%p");
-	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare,  INFINITY, NULL), NULL, "%p");
-	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare, -INFINITY, NULL), NULL, "%p");
-	success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare,  NAN,      NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(NULL, 6, caLevCompare,  0.8,      NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(data, 0, caLevCompare,  0.8,      NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(data, 6, NULL,          0.8,      NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(data, 6, caLevCompare,  1.1,      NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(data, 6, caLevCompare, -0.1,      NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(data, 6, caLevCompare,  INFINITY, NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(data, 6, caLevCompare, -INFINITY, NULL), NULL, "%p");
+	success &= ASSERT_EQL(caCompleteSearch(data, 6, caLevCompare,  NAN,      NULL), NULL, "%p");
 	
 	/** Test complete search. **/
 	{
 	    XArray xPairs;
 	    if (check(xaInit(&xPairs, 4)) != 0) return false;
-	    success &= EXPECT_EQL(caCompleteSearch(data, 6, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
+	    success &= ASSERT_EQL(caCompleteSearch(data, 6, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
 		{
@@ -96,10 +96,10 @@ static bool doTest(void)
 		    }
 		}
 	    qsort(Pairs, xPairs.nItems, sizeof(pPair), cmp_Pairs);
-	    success &= EXPECT_EQL(xPairs.nItems, 3, "%d");
-	    success &= EXPECT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
-	    success &= EXPECT_PAIR(Pairs[1], 0, 5, 0.8, 1.0);
-	    success &= EXPECT_PAIR(Pairs[2], 1, 5, 0.8, 1.0);
+	    success &= ASSERT_EQL(xPairs.nItems, 3, "%d");
+	    success &= ASSERT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
+	    success &= ASSERT_PAIR(Pairs[1], 0, 5, 0.8, 1.0);
+	    success &= ASSERT_PAIR(Pairs[2], 1, 5, 0.8, 1.0);
 	    freePairs(&xPairs);
 	}
 	
@@ -107,7 +107,7 @@ static bool doTest(void)
 	{
 	    XArray xPairs;
 	    if (check(xaInit(&xPairs, 4)) != 0) return false;
-	    success &= EXPECT_EQL(caSlidingSearch(data, 6, 5, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
+	    success &= ASSERT_EQL(caSlidingSearch(data, 6, 5, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
 		{
@@ -120,10 +120,10 @@ static bool doTest(void)
 		    }
 		}
 	    qsort(Pairs, xPairs.nItems, sizeof(pPair), cmp_Pairs);
-	    success &= EXPECT_EQL(xPairs.nItems, 2, "%d");
-	    success &= EXPECT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
-	    // success &= EXPECT_PAIR(Pairs[1], 0, 5, 0.8, 1.0); /* Sliding search misses this pair. */
-	    success &= EXPECT_PAIR(Pairs[1], 1, 5, 0.8, 1.0);
+	    success &= ASSERT_EQL(xPairs.nItems, 2, "%d");
+	    success &= ASSERT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
+	    // success &= ASSERT_PAIR(Pairs[1], 0, 5, 0.8, 1.0); /* Sliding search misses this pair. */
+	    success &= ASSERT_PAIR(Pairs[1], 1, 5, 0.8, 1.0);
 	    freePairs(&xPairs);
 	}
 	
@@ -131,7 +131,7 @@ static bool doTest(void)
 	{
 	    XArray xPairs;
 	    if (check(xaInit(&xPairs, 4)) != 0) return false;
-	    success &= EXPECT_EQL(caSlidingSearch(data, 6, 2, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
+	    success &= ASSERT_EQL(caSlidingSearch(data, 6, 2, caLevCompare, 0.8, &xPairs), &xPairs, "%p");
 	    pPair* Pairs = (pPair*)xPairs.Items;
 	    for (unsigned int i = 0u; i < xPairs.nItems; i++)
 		{
@@ -144,10 +144,10 @@ static bool doTest(void)
 		    }
 		}
 	    qsort(Pairs, xPairs.nItems, sizeof(pPair), cmp_Pairs);
-	    success &= EXPECT_EQL(xPairs.nItems, 1, "%d");
-	    success &= EXPECT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
-	    // success &= EXPECT_PAIR(Pairs[1], 0, 5, 0.8, 1.0); /* Sliding search misses this pair. */
-	    // success &= EXPECT_PAIR(Pairs[2], 1, 5, 0.8, 1.0); /* Sliding search misses this pair. */
+	    success &= ASSERT_EQL(xPairs.nItems, 1, "%d");
+	    success &= ASSERT_PAIR(Pairs[0], 0, 1, 0.8, 1.0);
+	    // success &= ASSERT_PAIR(Pairs[1], 0, 5, 0.8, 1.0); /* Sliding search misses this pair. */
+	    // success &= ASSERT_PAIR(Pairs[2], 1, 5, 0.8, 1.0); /* Sliding search misses this pair. */
 	    freePairs(&xPairs);
 	}
     

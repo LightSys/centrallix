@@ -39,22 +39,22 @@ static bool doTest(void)
 	#define vec(s) STORE(caBuildVector(s))
 	
 	/** Edge case: Null string. **/
-	success &= EXPECT_EQL(caBuildVector(NULL), NULL, "%p");
+	success &= ASSERT_EQL(caBuildVector(NULL), NULL, "%p");
 	
 	/** Edge case: Empty string. **/
-	success &= EXPECT_VEC_EQL(vec(""), ((int[]){-172, 11, -78}));
+	success &= ASSERT_VEC_EQL(vec(""), ((int[]){-172, 11, -78}));
 	
 	/** Single letter cases. **/
-	success &= EXPECT_VEC_EQL(vec("a"), ((int[]){-204, 12, -25, 12, -20}));
-	success &= EXPECT_VEC_EQL(vec("b"), ((int[]){-151, 13, -11, 13, -87}));
-	success &= EXPECT_VEC_EQL(vec("v"), ((int[]){-221, 7, -19, 7, -9}));
+	success &= ASSERT_VEC_EQL(vec("a"), ((int[]){-204, 12, -25, 12, -20}));
+	success &= ASSERT_VEC_EQL(vec("b"), ((int[]){-151, 13, -11, 13, -87}));
+	success &= ASSERT_VEC_EQL(vec("v"), ((int[]){-221, 7, -19, 7, -9}));
 	
 	/** Multi-letter cases. **/
-	success &= EXPECT_VEC_EQL(vec("def"), ((int[]){-79, 4, -51, 2, -4, 7, -64, 9, -49}));
-	success &= EXPECT_VEC_EQL(vec("vec"), ((int[]){-37, 1, -175, 12, -18, 6, -8, 7, -9}));
+	success &= ASSERT_VEC_EQL(vec("def"), ((int[]){-79, 4, -51, 2, -4, 7, -64, 9, -49}));
+	success &= ASSERT_VEC_EQL(vec("vec"), ((int[]){-37, 1, -175, 12, -18, 6, -8, 7, -9}));
 	
 	/** White space and punctuation should be ignored. **/
-	success &= EXPECT_VEC_EQL(vec("Yippee!!!"), vec(">>->y  i!&P^^_pe$/\n?e"));
+	success &= ASSERT_VEC_EQL(vec("Yippee!!!"), vec(">>->y  i!&P^^_pe$/\n?e"));
 	
 	/** Clean up using the free list. **/
 	if (index >= max_index)
