@@ -62,7 +62,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "cxlib/check.h"
 #include "cxlib/clusters.h"
 #include "cxlib/expect.h"
 #include "cxlib/mtask.h"
@@ -521,13 +520,22 @@ exp_fn_i_allocResultString(pExpression tree, const size_t required_space)
 	else
 	    {
 	    /** We need to allocate new memory. **/
-	    char* result = checkPtr(nmSysMalloc(required_space * sizeof(char)));
-	    if (result == NULL) return -1;
+	    const size_t required_size = required_space * sizeof(char);
+	    char* result = nmSysMalloc(required_size);
+	    if (UNLIKELY(result == NULL))
+		{
+		mssError(1, "EXP", "nmSysMalloc(%zu) failed.", required_size);
+		goto err;
+		}
 	    tree->String = result;
 	    tree->Alloc = 1;
 	    }
     
-    return 0;
+	return 0;
+	
+    err:
+	mssError(0, "EXP", "Failed to allocate result string.");
+	return -1;
     }
 
 
@@ -1596,8 +1604,12 @@ exp_fn_lztrim(pExpression tree)
 	    }
 	
 	/** Extract the arg string. **/
-	pExpression maybe_str = checkPtr(tree->Children.Items[0]);
-	if (UNLIKELY(maybe_str == NULL)) return -1;
+	pExpression maybe_str = tree->Children.Items[0];
+	if (UNLIKELY(maybe_str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument.", tree->Name);
+	    return -1;
+	    }
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    /** Propagate null values. **/
@@ -1605,8 +1617,12 @@ exp_fn_lztrim(pExpression tree)
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
 	    }
-	char* str = checkPtr(maybe_str->String);
-	if (UNLIKELY(str == NULL)) return -1;
+	char* str = maybe_str->String;
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument string.", tree->Name);
+	    return -1;
+	    }
 	
 	/*** We don't need to allocate new memory or copy anything because we
 	 *** can simply point to the first character in the previous string
@@ -1641,8 +1657,12 @@ exp_fn_ltrim(pExpression tree)
 	    }
 	
 	/** Extract the arg string. **/
-	pExpression maybe_str = checkPtr(tree->Children.Items[0]);
-	if (UNLIKELY(maybe_str == NULL)) return -1;
+	pExpression maybe_str = tree->Children.Items[0];
+	if (UNLIKELY(maybe_str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument.", tree->Name);
+	    return -1;
+	    }
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    /** Propagate null values. **/
@@ -1650,8 +1670,12 @@ exp_fn_ltrim(pExpression tree)
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
 	    }
-	char* str = checkPtr(maybe_str->String);
-	if (UNLIKELY(str == NULL)) return -1;
+	char* str = maybe_str->String;
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument string.", tree->Name);
+	    return -1;
+	    }
 	
 	/*** We don't need to allocate new memory or copy anything because we
 	 *** can simply point to the first character in the previous string
@@ -1687,8 +1711,12 @@ exp_fn_rtrim(pExpression tree)
 	    }
 	
 	/** Extract the arg string. **/
-	pExpression maybe_str = checkPtr(tree->Children.Items[0]);
-	if (UNLIKELY(maybe_str == NULL)) return -1;
+	pExpression maybe_str = tree->Children.Items[0];
+	if (UNLIKELY(maybe_str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument.", tree->Name);
+	    return -1;
+	    }
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
 	    /** Propagate null values. **/
@@ -1696,8 +1724,12 @@ exp_fn_rtrim(pExpression tree)
 	    tree->DataType = DATA_T_STRING;
 	    return 0;
 	    }
-	char* str = checkPtr(maybe_str->String);
-	if (UNLIKELY(str == NULL)) return -1;
+	char* str = maybe_str->String;
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument string.", tree->Name);
+	    return -1;
+	    }
 	
 	/** Trim spaces from the end of the string. **/
 	/** Note: Only spaces are trimmed, as with similar trim functions in most SQL languages. **/
@@ -1713,7 +1745,7 @@ exp_fn_rtrim(pExpression tree)
 	    }
 	
 	/** We need to copy to remove spaces (str is owned by a child expression). **/
-	if (check(exp_fn_i_allocResultString(tree, n + 1)) != 0) return -1;
+	if (exp_fn_i_allocResultString(tree, n + 1) != 0) return -1;
 	memcpy(tree->String, str, n);
 	tree->String[n] = '\0';
 	
@@ -1734,6 +1766,11 @@ exp_fn_trim(pExpression tree)
 	
 	/** Temporarily override the arg0 str pointer with the result from ltrim(). **/
 	pExpression arg0 = tree->Children.Items[0];
+	if (UNLIKELY(arg0 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument.", tree->Name);
+	    return -1;
+	    }
 	char* arg0_str = arg0->String;
 	arg0->String = tree->String;
 	tree->Alloc = 0;
@@ -3817,7 +3854,7 @@ exp_fn_i_doMath(pExpression tree, double (*math)(), int arg_num)
 	double n[4] = {0.0, 0.0, 0.0, 0.0};
 	for (int i = 0; i < arg_num; i++)
 	    {
-	    if (check(exp_fn_i_getNumber(tree->Children.Items[i], &(n[i]))) != 0)
+	    if (exp_fn_i_getNumber(tree->Children.Items[i], &(n[i])) != 0)
 		{
 		mssError(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i);
 		return -1;
@@ -3865,14 +3902,14 @@ exp_fn_log(pExpression tree)
 	
 	/** Extract args. **/
 	double number, base;
-	if (check(exp_fn_i_getNumber(checkPtr(tree->Children.Items[0]), &number)) != 0)
+	if (UNLIKELY(exp_fn_i_getNumber(tree->Children.Items[0], &number) != 0))
 	    {
 	    mssError(0, "EXP", "%s(...): Failed to get arg1 (number).", tree->Name);
 	    return -1;
 	    }
 	if (tree->Children.nItems > 1)
 	    {
-	    if (check(exp_fn_i_getNumber(checkPtr(tree->Children.Items[1]), &base)) != 0)
+	    if (UNLIKELY(exp_fn_i_getNumber(tree->Children.Items[1], &base) != 0))
 		{
 		mssError(0, "EXP", "%s(...): Failed to get arg2 (base).", tree->Name);
 		return -1;
@@ -4565,18 +4602,27 @@ exp_fn_metaphone(pExpression tree)
 	    goto end_free;
 	    }
 	
-	/** Extract string param. **/
-	pExpression maybe_str = checkPtr(tree->Children.Items[0]);
-	if (UNLIKELY(maybe_str == NULL)) goto end_free;
+	/** Extract the arg string. **/
+	pExpression maybe_str = tree->Children.Items[0];
+	if (UNLIKELY(maybe_str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument.", tree->Name);
+	    goto end_free;
+	    }
 	if (maybe_str->Flags & EXPR_F_NULL)
 	    {
+	    /** Propagate null values. **/
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_STRING;
 	    ret = 0;
 	    goto end_free;
 	    }
-	const char* str = checkPtr(maybe_str->String);
-	if (UNLIKELY(str == NULL)) goto end_free;
+	char* str = maybe_str->String;
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument string.", tree->Name);
+	    goto end_free;
+	    }
 	const size_t str_len = strlen(str);
 	if (UNLIKELY(str_len == 0u))
 	    {
@@ -4598,7 +4644,7 @@ exp_fn_metaphone(pExpression tree)
 	/** Store the results. **/
     store_data:;
 	const size_t length = strlen(primary) + 1lu + strlen(secondary) + 1lu;
-	if (check(exp_fn_i_allocResultString(tree, length)) != 0) goto end_free;
+	if (exp_fn_i_allocResultString(tree, length) != 0) goto end_free;
 	sprintf(tree->String, "%s%c%s", primary, CA_BOUNDARY_CHAR, secondary);
 	tree->DataType = DATA_T_STRING;
 	ret = 0;
@@ -4637,18 +4683,36 @@ exp_fn_compare(pExpression tree)
 	    }
 	
 	/** Extract strings. **/
-	pExpression maybe_str1 = checkPtr(tree->Children.Items[0]);
-	pExpression maybe_str2 = checkPtr(tree->Children.Items[1]);
-	if (UNLIKELY(maybe_str1 == NULL || maybe_str2 == NULL)) goto err;
+	pExpression maybe_str1 = tree->Children.Items[0];
+	pExpression maybe_str2 = tree->Children.Items[1];
+	if (UNLIKELY(maybe_str1 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument.", tree->Name);
+	    goto err;
+	    }
+	if (UNLIKELY(maybe_str2 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get second argument.", tree->Name);
+	    goto err;
+	    }
 	if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_DOUBLE;
 	    return 0;
 	    }
-	char* str1 = checkPtr(maybe_str1->String);
-	char* str2 = checkPtr(maybe_str2->String);
-	if (UNLIKELY(str1 == NULL || str2 == NULL)) goto err;
+	char* str1 = maybe_str1->String;
+	char* str2 = maybe_str2->String;
+	if (UNLIKELY(str1 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument string.", tree->Name);
+	    goto err;
+	    }
+	if (UNLIKELY(str2 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get second argument string.", tree->Name);
+	    goto err;
+	    }
 	
 	/** Handle either cos_compare() or lev_compare(). **/
 	if (tree->Name[0] == 'c')
@@ -4656,8 +4720,8 @@ exp_fn_compare(pExpression tree)
 	    int ret;
 	    
 	    /** Build vectors. **/
-	    const pVector v1 = checkPtr(caBuildVector(str1));
-	    const pVector v2 = checkPtr(caBuildVector(str2));
+	    const pVector v1 = caBuildVector(str1);
+	    const pVector v2 = caBuildVector(str2);
 	    if (UNLIKELY(v1 == NULL || v2 == NULL))
 		{
 		mssError(1, "EXP",
@@ -4682,7 +4746,7 @@ exp_fn_compare(pExpression tree)
 	    }
 	else
 	    { /* lev_compare() */
-	    const double lev_sim = checkDouble(caLevCompare(str1, str2));
+	    const double lev_sim = caLevCompare(str1, str2);
 	    if (UNLIKELY(isnan(lev_sim)))
 		{
 		mssError(1, "EXP",
@@ -4718,22 +4782,40 @@ exp_fn_levenshtein(pExpression tree)
 	    }
 	
 	/** Extract strings. **/
-	pExpression maybe_str1 = checkPtr(tree->Children.Items[0]);
-	pExpression maybe_str2 = checkPtr(tree->Children.Items[1]);
-	if (UNLIKELY(maybe_str1 == NULL || maybe_str2 == NULL)) return -1;
+	pExpression maybe_str1 = tree->Children.Items[0];
+	pExpression maybe_str2 = tree->Children.Items[1];
+	if (UNLIKELY(maybe_str1 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument.", tree->Name);
+	    return -1;
+	    }
+	if (UNLIKELY(maybe_str2 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get second argument.", tree->Name);
+	    return -1;
+	    }
 	if (maybe_str1->Flags & EXPR_F_NULL || maybe_str2->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    tree->DataType = DATA_T_INTEGER;
 	    return 0;
 	    }
-	char* str1 = checkPtr(maybe_str1->String);
-	char* str2 = checkPtr(maybe_str2->String);
-	if (UNLIKELY(str1 == NULL || str2 == NULL)) return -1;
+	char* str1 = maybe_str1->String;
+	char* str2 = maybe_str2->String;
+	if (UNLIKELY(str1 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get first argument string.", tree->Name);
+	    return -1;
+	    }
+	if (UNLIKELY(str2 == NULL))
+	    {
+	    mssError(1, "EXP", "%s(?): Failed to get second argument string.", tree->Name);
+	    return -1;
+	    }
 	
 	/** Compute edit distance. **/
 	/** Length 0 is provided for both strings so that the function will compute it for us. **/
-	const int edit_dist = checkPos(caEditDist(str1, str2, 0lu, 0lu));
+	const int edit_dist = caEditDist(str1, str2, 0lu, 0lu);
 	if (UNLIKELY(edit_dist < 0))
 	    {
 	    mssError(1, "EXP", "%s(\"%s\", \"%s\"): Failed to compute edit distance.", tree->Name, str1, str2);
