@@ -4104,7 +4104,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    {
 	    case TARGET_NODE:
 		{
-		unsigned int index = query_data->RowIndex++;
+		unsigned int index = query_data->RowIndex + 1;
 		
 		/** Fetch a cluster at the current index. **/
 		const unsigned int n_cluster_datas = node_data->nClusterDatas;
@@ -4113,6 +4113,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    /** Fetch a cluster. **/
 		    result_data->TargetType = TARGET_CLUSTER;
 		    result_data->TargetData = node_data->ClusterDatas[index];
+		    query_data->RowIndex++; /* Consume fetched entry. */
 		    break;
 		    }
 		else index -= n_cluster_datas;
@@ -4124,6 +4125,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    /** Fetch a search. **/
 		    result_data->TargetType = TARGET_SEARCH;
 		    result_data->TargetData = node_data->SearchDatas[index];
+		    query_data->RowIndex++; /* Consume fetched entry. */
 		    break;
 		    }
 		else index -= n_search_datas;
