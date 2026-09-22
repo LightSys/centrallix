@@ -44,13 +44,14 @@
 #include <string.h>
 #include <strings.h>
 
-#include "cxlib/check.h"
 #include "cxlib/clusters.h"
 #include "cxlib/expect.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
 #include "cxlib/util.h"
+#include "cxlib/warn.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "expression.h"
@@ -835,7 +836,7 @@ cluster_i_parseClusteringAlgorithm(pStructInf inf, pParamObjects param_list)
 	    return ALGORITHM_NULL;
 	    }
 	
-	/** Parse known clustering algorithms. **/
+	/** Check for any known clustering algorithms. **/
 	if (strcasecmp(algorithm, "none")           == 0) return ALGORITHM_NONE;
 	if (strcasecmp(algorithm, "sliding-window") == 0) return ALGORITHM_SLIDING_WINDOW;
 	if (strcasecmp(algorithm, "k-means")        == 0) return ALGORITHM_KMEANS;
@@ -892,7 +893,7 @@ cluster_i_parseSimilarityMeasure(pStructInf inf, pParamObjects param_list)
 	    return SIMILARITY_NULL;
 	    }
 	
-	/** Parse known clustering algorithms. **/
+	/** Check for any known similarity measure. **/
 	if (strcasecmp(measure, "cosine") == 0)      return SIMILARITY_COSINE;
 	if (strcasecmp(measure, "levenshtein") == 0) return SIMILARITY_LEVENSHTEIN;
 	
@@ -934,19 +935,51 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
     char* buf = NULL;
     pSourceData source_data = NULL;
     
-	/** Magic checks. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse source data from NULL struct inf.");
+	    return NULL; /* Skip error handler, which expects a valid struct inf. */
+	    }
 	ASSERTMAGIC(inf, MGK_STRUCTINF);
+	if (UNLIKELY(param_list == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse source data with NULL param_list.");
+	    goto err_free;
+	    }
+	if (UNLIKELY(path == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse source data with NULL path.");
+	    goto err_free;
+	    }
+	
+	/*** Knowing that an error has started and the error stack must be
+	 *** cleared is sometimes not possible in this function, so clear it
+	 *** while we know no errors are happening. **/
+	mssClearError();
 	
 	/** Allocate SourceData. **/
-	source_data = (pSourceData)checkPtr(nmMalloc(sizeof(SourceData)));
-	if (UNLIKELY(source_data == NULL)) goto err_free;
+	source_data = nmMalloc(sizeof(SourceData));
+	if (UNLIKELY(source_data == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(SourceData));
+	    goto err_free;
+	    }
 	memset(source_data, 0, sizeof(SourceData));
 	SETMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Initialize obvious values for SourceData. **/
-	source_data->Name = (char*)checkPtr(nmSysStrdup(inf->Name));
-	if (UNLIKELY(source_data->Name == NULL)) goto err_free;
-	if (check(objCurrentDate(&source_data->DateCreated)) != 0) goto err_free;
+	source_data->Name = nmSysStrdup(inf->Name);
+	if (UNLIKELY(source_data->Name == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", inf->Name);
+	    goto err_free;
+	    }
+	if (UNLIKELY(objCurrentDate(&source_data->DateCreated) != 0))
+	    {
+	    mssError(1, "Cluster", "objCurrentDate() failed.");
+	    goto err_free;
+	    }
 	
 	/** Get source. **/
 	if (UNLIKELY(stGetObjAttrValueOSML(
@@ -958,9 +991,17 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    param_list->Session,
 	    param_list,
 	    EXPR_F_RUNSERVER
-	) != 0)) goto err_free;
-	source_data->SourcePath = (char*)checkPtr(nmSysStrdup(buf));
-	if (UNLIKELY(source_data->SourcePath == NULL)) goto err_free;
+	) != 0))
+	    {
+	    mssError(0, "Cluster", "Failed to get required 'source' attribute.");
+	    goto err_free;
+	    }
+	source_data->SourcePath = nmSysStrdup(buf);
+	if (UNLIKELY(source_data->SourcePath == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", buf);
+	    goto err_free;
+	    }
 	
 	/** Get the attribute name to use when querying keys from the source. **/
 	if (UNLIKELY(stGetObjAttrValueOSML(
@@ -972,9 +1013,17 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    param_list->Session,
 	    param_list,
 	    EXPR_F_RUNSERVER
-	) != 0)) goto err_free;
-	source_data->KeyAttr = (char*)checkPtr(nmSysStrdup(buf));
-	if (UNLIKELY(source_data->KeyAttr == NULL)) goto err_free;
+	) != 0))
+	    {
+	    mssError(0, "Cluster", "Failed to get required 'key_attr' attribute.");
+	    goto err_free;
+	    }
+	source_data->KeyAttr = nmSysStrdup(buf);
+	if (UNLIKELY(source_data->KeyAttr == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", buf);
+	    goto err_free;
+	    }
 	
 	/** Get the attribute name to use for querying data from the source. **/
 	if (UNLIKELY(stGetObjAttrValueOSML(
@@ -986,17 +1035,30 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    param_list->Session,
 	    param_list,
 	    EXPR_F_RUNSERVER
-	) != 0)) goto err_free;
-	source_data->DataAttr = (char*)checkPtr(nmSysStrdup(buf));
-	if (UNLIKELY(source_data->DataAttr == NULL)) goto err_free;
+	) != 0))
+	    {
+	    mssError(0, "Cluster", "Failed to get required 'data_attr' attribute.");
+	    goto err_free;
+	    }
+	source_data->DataAttr = nmSysStrdup(buf);
+	if (UNLIKELY(source_data->DataAttr == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", buf);
+	    goto err_free;
+	    }
 	
 	/** Create cache entry key. **/
 	const size_t len = strlen(path)
 	    + strlen(source_data->SourcePath)
 	    + strlen(source_data->KeyAttr)
 	    + strlen(source_data->DataAttr) + 5lu;
-	source_data->CacheKey = (char*)checkPtr(nmSysMalloc(len * sizeof(char)));
-	if (UNLIKELY(source_data->CacheKey == NULL)) goto err_free;
+	const size_t cache_key_size = len * sizeof(char);
+	source_data->CacheKey = nmSysMalloc(cache_key_size);
+	if (UNLIKELY(source_data->CacheKey == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", cache_key_size);
+	    goto err_free;
+	    }
 	snprintf(source_data->CacheKey, len,
 	    "%s?%s->%s:%s",
 	    path, source_data->SourcePath, source_data->KeyAttr, source_data->DataAttr
@@ -1017,14 +1079,20 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	    }
 	
 	/** Cache miss: Add the new object to the cache for next time. **/
-	if (check(xhAdd(&ClusterDriverCaches.SourceDataCache, source_data->CacheKey, (void*)source_data)) != 0)
+	if (xhAdd(&ClusterDriverCaches.SourceDataCache, source_data->CacheKey, (void*)source_data) != 0)
+	    {
+	    mssError(1, "Cluster",
+		"Failed to add source data to cache hash table with cache_key: \"%s\".",
+		source_data->CacheKey
+	    );
 	    goto err_free;
+	    }
 	
 	/** Success. **/
 	return source_data;
 	
-	/** Error handling. **/
     err_free:
+	/** Error handling. **/
 	if (source_data != NULL)
 	    {
 	    if (source_data->CacheKey != NULL) nmSysFree(source_data->CacheKey);
@@ -1062,27 +1130,57 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
     XArray sub_clusters = {0};
     char* cache_key = NULL;
     
-	if (thExcessiveRecursion())
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse cluster data from NULL struct inf.");
+	    return NULL; /* Skip error handler, which expects a valid struct inf. */
+	    }
+	ASSERTMAGIC(inf, MGK_STRUCTINF);
+	if (UNLIKELY(param_list == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse cluster data from NULL param_list.");
+	    goto err_free;
+	    }
+	
+	/** Recursion check. **/
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1, "Cluster", "Resource exhaustion occurred while parsing cluster data.");
 	    goto err_free;
 	    }
 	
 	/** Verify source_data value. **/
-	if (UNLIKELY(source_data == NULL)) goto err_free;
+	if (UNLIKELY(source_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse cluster data from NULL source data.");
+	    goto err_free;
+	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Allocate space for data struct. **/
-	cluster_data = checkPtr(nmMalloc(sizeof(ClusterData)));
-	if (UNLIKELY(cluster_data == NULL)) goto err_free;
+	cluster_data = nmMalloc(sizeof(ClusterData));
+	if (UNLIKELY(cluster_data == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(ClusterData));
+	    goto err_free;
+	    }
 	memset(cluster_data, 0, sizeof(ClusterData));
 	SETMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 	
 	/** Basic fields. **/
-	cluster_data->Name = checkPtr(nmSysStrdup(inf->Name));
-	if (UNLIKELY(cluster_data->Name == NULL)) goto err_free;
+	cluster_data->Name = nmSysStrdup(inf->Name);
+	if (UNLIKELY(cluster_data->Name == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", inf->Name);
+	    goto err_free;
+	    }
 	cluster_data->SourceData = source_data;
-	if (check(objCurrentDate(&cluster_data->DateCreated)) != 0) goto err_free;
+	if (UNLIKELY(objCurrentDate(&cluster_data->DateCreated) != 0))
+	    {
+	    mssError(1, "Cluster", "objCurrentDate() failed.");
+	    goto err_free;
+	    }
 	
 	/** Get algorithm. **/
 	cluster_data->ClusterAlgorithm = cluster_i_parseClusteringAlgorithm(inf, param_list);
@@ -1097,7 +1195,11 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	
 	/** Get similarity_measure. **/
 	cluster_data->SimilarityMeasure = cluster_i_parseSimilarityMeasure(inf, param_list);
-	if (UNLIKELY(cluster_data->SimilarityMeasure == SIMILARITY_NULL)) goto err_free;
+	if (UNLIKELY(cluster_data->SimilarityMeasure == SIMILARITY_NULL))
+	    {
+	    mssError(0, "Cluster", "Failed to parse similarity measure.");
+	    goto err_free;
+	    }
 	
 	/** Handle sliding window case. **/
 	if (cluster_data->ClusterAlgorithm == ALGORITHM_SLIDING_WINDOW)
@@ -1116,7 +1218,11 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		param_list->Session,
 		param_list,
 		EXPR_F_RUNSERVER
-	    ) != 0)) goto err_free;
+	    ) != 0))
+		{
+		mssError(0, "Cluster", "Failed to get required 'window_size' attribute.");
+		goto err_free;
+		}
 	    if (window_size < 1)
 		{
 		mssError(1, "Cluster", "Invalid value for [window_size : uint > 0]: %d", window_size);
@@ -1139,7 +1245,11 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    param_list->Session,
 	    param_list,
 	    EXPR_F_RUNSERVER
-	) != 0)) goto err_free;
+	) != 0))
+	    {
+	    mssError(0, "Cluster", "Failed to get required 'num_clusters' attribute.");
+	    goto err_free;
+	    }
 	if (num_clusters < 2)
 	    {
 	    mssError(1, "Cluster", "Invalid value for [num_clusters : uint > 1]: %d", num_clusters);
@@ -1171,7 +1281,11 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		goto err_free;
 		}
 	    }
-	else goto err_free;
+	else
+	    {
+	    mssError(0, "Cluster", "Failed to check for optional 'min_improvement' attribute.");
+	    goto err_free;
+	    }
 	
 	/** Get max_iterations. **/
 	int max_iterations;
@@ -1195,7 +1309,11 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		}
 	    cluster_data->MaxIterations = (unsigned int)max_iterations;
 	    }
-	else goto err_free;
+	else
+	    {
+	    mssError(0, "Cluster", "Failed to check for optional 'max_iterations' attribute.");
+	    goto err_free;
+	    }
 	
 	/** Get seed. **/
 	int seed;
@@ -1219,23 +1337,36 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		}
 	    cluster_data->Seed = (unsigned int)seed;
 	    }
-	else goto err_free;
+	else
+	    {
+	    mssError(0, "Cluster", "Failed to check for optional 'seed' attribute.");
+	    goto err_free;
+	    }
 	
 	/** Search for sub-clusters. **/
-	if (check(xaInit(&sub_clusters, CI_INITIAL_SUBCLUSTERS)) != 0) goto err_free;
+	if (xaInit(&sub_clusters, CI_INITIAL_SUBCLUSTERS))
+	    {
+	    mssError(1, "Cluster",
+		"Failed to allocate an XArray of %d subclusters.",
+		CI_INITIAL_SUBCLUSTERS
+	    );
+	    goto err_free;
+	    }
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
-	    pStructInf sub_inf = checkPtr(inf->SubInf[i]);
+	    pStructInf sub_inf = inf->SubInf[i];
 	    if (UNLIKELY(sub_inf == NULL))
 		{
-		mssError(1, "Cluster", "Failed to get %uth subinf.", i);
-		goto err_free;
+		mssError(1, "Cluster", "Failed to get subinf #%u/%u.", i + 1, inf->nSubInf);
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf. */
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
+	    if (UNLIKELY(name == NULL))
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->name. */
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = checkPos(stStructType(sub_inf));
+	    const int struct_type = stStructType(sub_inf);
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1252,7 +1383,7 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 			}
 		    if (is_valid) continue; /* Next inf. */
 		    
-		    /** Give the user a warning, and attempt to give them a hint. **/
+		    /** Give the user a warning, and attempt to give a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster \"%s\".\n", name, inf->Name);
 		    if (cluster_i_tryHint(name, CLUSTER_ATTRS, N_INPUT_CLUSTER_ATTRS));
 		    else if (strcasecmp(name, "k") == 0) cluster_i_giveHint("num_clusters");
@@ -1264,11 +1395,15 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		case ST_T_SUBGROUP:
 		    {
 		    /** Select array by group type. **/
-		    char* group_type = checkPtr(sub_inf->UsrType);
-		    if (group_type == NULL) goto err_free;
+		    char* group_type = sub_inf->UsrType;
+		    if (UNLIKELY(group_type == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get group type.");
+			goto err_sub_inf;
+			}
 		    if (strcmp(group_type, "cluster/cluster") != 0)
 			{
-			mssError(1, "Cluster",
+			fprintf(stderr,
 			    "Warning: Unknown group [\"%s\" : \"%s\"] in cluster \"%s\".\n",
 			    name, group_type, inf->Name
 			);
@@ -1278,38 +1413,63 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		    
 		    /** Subcluster found. **/
 		    pClusterData sub_cluster = cluster_i_parseClusterData(sub_inf, param_list, source_data);
-		    if (sub_cluster == NULL) goto err_free;
+		    if (UNLIKELY(sub_cluster == NULL)) goto err_sub_inf;
 		    sub_cluster->Parent = cluster_data;
-		    if (checkPos(xaAddItem(&sub_clusters, sub_cluster)) < 0) goto err_free;
+		    if (UNLIKELY(xaAddItem(&sub_clusters, sub_cluster) < 0))
+			{
+			mssError(1, "Cluster", "Failed to add parsed subcluster to XArray.");
+			goto err_sub_inf;
+			}
 		    
 		    break;
 		    }
 		
 		default:
 		    {
-		    mssError(1, "Cluster",
-			"Warning: Unknown struct type %d in cluster \"%s\".",
-			struct_type, inf->Name
+		    fprintf(stderr,
+			"Warning: Unknown struct type %d in cluster data.\n",
+			struct_type
 		    );
-		    goto err_free;
+		    continue; /* Skip it. */
 		    }
 		}
+	    
+	    /** Success. **/
+	    continue;
+	    
+    err_sub_inf:
+	    mssError(0, "Cluster",
+		"Failed to parse \"%s\", the #%u/%u subinf of %s.",
+		sub_inf->Name, i + 1, inf->nSubInf, inf->Name
+	    );
+	    goto err_free;
 	    }
+	
+	/** Post sub-inf parsing cleanup. */
 	cluster_data->nSubClusters = sub_clusters.nItems;
-	cluster_data->SubClusters = (ClusterData**)checkPtr(xaToArray(&sub_clusters));
-	if (UNLIKELY(cluster_data->SubClusters == NULL)) goto err_free;
-	check(xaDeInit(&sub_clusters)); /* Failure ignored. */
+	cluster_data->SubClusters = (ClusterData**)xaToArray(&sub_clusters);
+	if (UNLIKELY(cluster_data->SubClusters == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get cluster data array.");
+	    goto err_free;
+	    }
+	warnFail(xaDeInit(&sub_clusters));
 	sub_clusters.nAlloc = 0;
 	
-	/** Create the cache_key. **/
     parsing_done:;
+	/** Create the cache_key. **/
 	switch (cluster_data->ClusterAlgorithm)
 	    {
 	    case ALGORITHM_NONE:
 		{
 		const size_t len = strlen(source_data->CacheKey) + strlen(cluster_data->Name) + 8lu;
-		cache_key = checkPtr(nmSysMalloc(len * sizeof(char)));
-		if (UNLIKELY(cache_key == NULL)) goto err_free;
+		const size_t cache_key_size = len * sizeof(char);
+		cache_key = nmSysMalloc(cache_key_size);
+		if (UNLIKELY(cache_key == NULL))
+		    {
+		    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", cache_key_size);
+		    goto err_free;
+		    }
 		snprintf(cache_key, len, "%s/%s?%u",
 		    source_data->CacheKey,
 		    cluster_data->Name,
@@ -1321,8 +1481,13 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    case ALGORITHM_SLIDING_WINDOW:
 		{
 		const size_t len = strlen(source_data->CacheKey) + strlen(cluster_data->Name) + 16lu;
-		cache_key = checkPtr(nmSysMalloc(len * sizeof(char)));
-		if (UNLIKELY(cache_key == NULL)) goto err_free;
+		const size_t cache_key_size = len * sizeof(char);
+		cache_key = nmSysMalloc(cache_key_size);
+		if (UNLIKELY(cache_key == NULL))
+		    {
+		    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", cache_key_size);
+		    goto err_free;
+		    }
 		snprintf(cache_key, len, "%s/%s?%u&%u&%u",
 		    source_data->CacheKey,
 		    cluster_data->Name,
@@ -1336,8 +1501,13 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    default:
 		{
 		const size_t len = strlen(source_data->CacheKey) + strlen(cluster_data->Name) + 32lu;
-		cache_key = checkPtr(nmSysMalloc(len * sizeof(char)));
-		if (UNLIKELY(cache_key == NULL)) goto err_free;
+		const size_t cache_key_size = len * sizeof(char);
+		cache_key = nmSysMalloc(cache_key_size);
+		if (UNLIKELY(cache_key == NULL))
+		    {
+		    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", cache_key_size);
+		    goto err_free;
+		    }
 		snprintf(cache_key, len, "%s/%s?%u&%u&%u&%g&%u",
 		    source_data->CacheKey,
 		    cluster_data->Name,
@@ -1367,11 +1537,20 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    }
 	
 	/** Cache miss. **/
-	if (check(xhAdd(&ClusterDriverCaches.ClusterDataCache, cache_key, (void*)cluster_data)) != 0) goto err_free;
+	if (xhAdd(&ClusterDriverCaches.ClusterDataCache, cache_key, (void*)cluster_data) != 0)
+	    {
+	    mssError(1, "Cluster",
+		"Failed to add cluster data to cache hash table with cache_key: \"%s\".",
+		cache_key
+	    );
+	    goto err_free;
+	    }
+	
+	/** Success. **/
 	return cluster_data;
 	
-	/** Error cleanup. **/
     err_free:
+	/** Error cleanup. **/
 	if (cache_key != NULL) nmSysFree(cache_key);
 	
 	if (sub_clusters.nAlloc != 0)
@@ -1382,12 +1561,12 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 		if (cur == NULL) break;
 		cluster_i_freeClusterData(cur, true);
 		}
-	    check(xaDeInit(&sub_clusters)); /* Failure ignored. */
+	    warnFail(xaDeInit(&sub_clusters));
 	    }
 	
 	if (cluster_data != NULL) cluster_i_freeClusterData(cluster_data, false);
 	
-	mssError(0, "Cluster", "Failed to parse cluster from group \"%s\".", inf->Name);
+	mssError(0, "Cluster", "Failed to parse cluster from group \"%s\":\"%s\".", inf->Name, inf->UsrType);
 	return NULL;
     }
 
@@ -1408,22 +1587,51 @@ static pSearchData
 cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
     {
     pSearchData search_data = NULL;
-    char* key = NULL;
+    char* cache_key = NULL;
     
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse search data from NULL struct inf.");
+	    return NULL; /* Skip error handler, which expects a valid struct inf. */
+	    }
+	ASSERTMAGIC(inf, MGK_STRUCTINF);
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse search data from NULL node_data.");
+	    goto err_free;
+	    }
+	
 	/** Extract values. **/
-	pParamObjects param_list = checkPtr(node_data->ParamList);
-	if (UNLIKELY(param_list == NULL)) goto err_free;
+	pParamObjects param_list = node_data->ParamList;
+	if (UNLIKELY(param_list == NULL))
+	    {
+	    mssError(1, "Cluster", "Node data has NULL ParamList!");
+	    goto err_free;
+	    }
 	
 	/** Allocate space for search struct. **/
-	search_data = checkPtr(nmMalloc(sizeof(SearchData)));
-	if (UNLIKELY(search_data == NULL)) goto err_free;
+	search_data = nmMalloc(sizeof(SearchData));
+	if (UNLIKELY(search_data == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(SearchData));
+	    goto err_free;
+	    }
 	memset(search_data, 0, sizeof(SearchData));
 	SETMAGIC(search_data, MGK_CL_SEARCH_DATA);
 	
 	/** Get basic information. **/
-	search_data->Name = checkPtr(nmSysStrdup(inf->Name));
-	if (UNLIKELY(search_data->Name == NULL)) goto err_free;
-	if (check(objCurrentDate(&search_data->DateCreated)) != 0) goto err_free;
+	search_data->Name = nmSysStrdup(inf->Name);
+	if (UNLIKELY(search_data->Name == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", inf->Name);
+	    goto err_free;
+	    }
+	if (UNLIKELY(objCurrentDate(&search_data->DateCreated) != 0))
+	    {
+	    mssError(1, "Cluster", "objCurrentDate() failed.");
+	    goto err_free;
+	    }
 	
 	/** Search for the source cluster. **/
 	char* source_cluster_name;
@@ -1436,7 +1644,11 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    param_list->Session,
 	    param_list,
 	    EXPR_F_RUNSERVER
-	) != 0)) goto err_free;
+	) != 0))
+	    {
+	    mssError(0, "Cluster", "Failed to get required 'source' attribute for search.");
+	    goto err_free;
+	    }
 	for (unsigned int i = 0; i < node_data->nClusterDatas; i++)
 	    {
 	    pClusterData cluster_data = node_data->ClusterDatas[i];
@@ -1448,14 +1660,17 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 		break;
 		}
 	    
-	    /** Note: Subclusters should probably be parsed here, if they were implemented. **/
+	    /** Note: Subclusters should probably be investigated here, if they were implemented. **/
 	    }
 	
 	/** Did we find the requested source? **/
 	if (UNLIKELY(search_data->SourceCluster == NULL))
 	    {
 	    /** Print error. **/
-	    mssError(1, "Cluster", "Could not find cluster \"%s\" for search \"%s\".", source_cluster_name, search_data->Name);
+	    mssError(1, "Cluster",
+		"Could not find cluster \"%s\" for search \"%s\".",
+		source_cluster_name, search_data->Name
+	    );
 	    
 	    /** Attempt to give a hint. **/
 	    char* cluster_names[node_data->nClusterDatas];
@@ -1477,7 +1692,11 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    param_list->Session,
 	    param_list,
 	    EXPR_F_RUNSERVER
-	) != 0)) goto err_free;
+	) != 0))
+	    {
+	    mssError(0, "Cluster", "Failed to get required 'threshold' attribute for search.");
+	    goto err_free;
+	    }
 	if (UNLIKELY(search_data->Threshold <= 0.0 || 1.0 <= search_data->Threshold))
 	    {
 	    mssError(1, "Cluster",
@@ -1489,23 +1708,28 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	
 	/** Get similarity measure. **/
 	search_data->SimilarityMeasure = cluster_i_parseSimilarityMeasure(inf, param_list);
-	if (UNLIKELY(search_data->SimilarityMeasure == SIMILARITY_NULL)) goto err_free;
+	if (UNLIKELY(search_data->SimilarityMeasure == SIMILARITY_NULL))
+	    {
+	    mssError(0, "Cluster", "Failed to parse similarity measure.");
+	    goto err_free;
+	    }
 	
 	/** Check for additional data to warn the user about. **/
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
-	    pStructInf sub_inf = checkPtr(inf->SubInf[i]);
+	    pStructInf sub_inf = inf->SubInf[i];
 	    if (UNLIKELY(sub_inf == NULL))
 		{
 		mssError(1, "Cluster", "Failed to get subinf #%u/%u.", i + 1, inf->nSubInf);
-		goto err_free;
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf. */
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
-	    char* name = checkPtr(sub_inf->Name);
-	    if (UNLIKELY(name == NULL)) goto err_free;
+	    char* name = sub_inf->Name;
+	    if (UNLIKELY(name == NULL))
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->name. */
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = checkPos(stStructType(sub_inf));
+	    const int struct_type = stStructType(sub_inf);
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1522,7 +1746,7 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 			}
 		    if (is_valid) continue; /* Next inf. */
 		    
-		    /** Give the user a warning, and attempt to give them a hint. **/
+		    /** Give the user a warning, and attempt to give a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in search \"%s\".\n", name, inf->Name);
 		    cluster_i_tryHint(name, SEARCH_ATTRS, N_INPUT_SEARCH_ATTRS);
 		    
@@ -1532,8 +1756,12 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 		case ST_T_SUBGROUP:
 		    {
 		    /** The spec does not specify any valid sub-groups for searches. **/
-		    char* group_type = checkPtr(sub_inf->UsrType);
-		    if (UNLIKELY(group_type == NULL)) goto err_free;
+		    char* group_type = sub_inf->UsrType;
+		    if (UNLIKELY(group_type == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get group type.");
+			goto err_sub_inf;
+			}
 		    fprintf(stderr,
 			"Warning: Unknown group [\"%s\" : \"%s\"] in search \"%s\".\n",
 			name, group_type, inf->Name
@@ -1543,22 +1771,37 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 		
 		default:
 		    {
-		    mssError(1, "Cluster",
-			"Warning: Unknown struct type %d in search \"%s\".",
-			struct_type, inf->Name
+		    fprintf(stderr,
+			"Warning: Unknown struct type %d in search data.\n",
+			struct_type
 		    );
-		    goto err_free;
+		    continue; /* Skip it. */
 		    }
 		}
+	    
+	    /** Success. **/
+	    continue;
+	    
+    err_sub_inf:
+	    mssError(0, "Cluster",
+		"Failed to parse \"%s\", the #%u/%u subinf of %s.",
+		sub_inf->Name, i + 1, inf->nSubInf, inf->Name
+	    );
+	    goto err_free;
 	    }
 	
 	/** Create cache entry key. **/
-	char* source_key = search_data->SourceCluster->CacheKey;
-	const size_t len = strlen(source_key) + strlen(search_data->Name) + 16lu;
-	key = checkPtr(nmSysMalloc(len * sizeof(char)));
-	if (UNLIKELY(key == NULL)) goto err_free;
-	snprintf(key, len, "%s/%s?%g&%u",
-	    source_key,
+	char* source_cache_key = search_data->SourceCluster->CacheKey;
+	const size_t cache_key_len = strlen(source_cache_key) + strlen(search_data->Name) + 16lu;
+	const size_t cache_key_size = cache_key_len * sizeof(char);
+	cache_key = nmSysMalloc(cache_key_size);
+	if (UNLIKELY(cache_key == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", cache_key_size);
+	    goto err_free;
+	    }
+	snprintf(cache_key, cache_key_len, "%s/%s?%g&%u",
+	    source_cache_key,
 	    search_data->Name,
 	    search_data->Threshold,
 	    search_data->SimilarityMeasure
@@ -1566,31 +1809,38 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	pXHashTable search_cache = &ClusterDriverCaches.SearchDataCache;
 	
 	/** Check for a cached version. **/
-	pSearchData search_maybe = (pSearchData)xhLookup(search_cache, key);
+	pSearchData search_maybe = (pSearchData)xhLookup(search_cache, cache_key);
 	if (search_maybe != NULL)
 	    { /* Cache hit. */
 	    ASSERTMAGIC(search_maybe, MGK_CL_SEARCH_DATA);
 	    
 	    /** Free the parsed search that we no longer need. **/
 	    if (LIKELY(search_data != NULL)) cluster_i_freeSearchData(search_data);
-	    if (LIKELY(key != NULL)) nmSysFree(key);
+	    if (LIKELY(cache_key != NULL)) nmSysFree(cache_key);
 	    
 	    /** Return the cached search. **/
 	    return search_maybe;
 	    }
 	
 	/** Cache miss. **/
-	if (check(xhAdd(search_cache, key, (void*)search_data)) != 0)
+	if (xhAdd(search_cache, cache_key, (void*)search_data) != 0)
+	    {
+	    mssError(1, "Cluster",
+		"Failed to add search data to cache hash table with cache_key: \"%s\".",
+		cache_key
+	    );
 	    goto err_free;
+	    }
 	
 	/** Done. **/
 	return search_data;
 	
-	/** Error cleanup. **/
     err_free:
-	if (search_data != NULL) cluster_i_freeSearchData(search_data);
-	
 	mssError(0, "Cluster", "Failed to parse SearchData from group \"%s\".", inf->Name);
+	
+	/** Error cleanup. **/
+	if (search_data != NULL) cluster_i_freeSearchData(search_data);
+	if (cache_key != NULL) nmSysFree(cache_key);
 	
 	return NULL;
     }
@@ -1618,28 +1868,54 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
     XArray cluster_infs = {0};
     XArray search_infs = {0};
     
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse node data from NULL struct inf.");
+	    return NULL; /* Skip error handler, which expects a valid struct inf. */
+	    }
 	ASSERTMAGIC(inf, MGK_STRUCTINF);
+	if (UNLIKELY(parent == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to parse node data from NULL parent object.");
+	    return NULL; /* Skip error handler, which expects a valid path. */
+	    }
 	ASSERTMAGIC(parent, MGK_OBJECT);
 	
 	/** Get file path. **/
-	char* path = checkPtr(objFilePath(parent));
-	if (UNLIKELY(path == NULL)) goto err_free;
+	char* path = objFilePath(parent);
+	if (UNLIKELY(path == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get parent file path.");
+	    goto err_free;
+	    }
 	
 	/** Allocate node struct data. **/
-	node_data = checkPtr(nmMalloc(sizeof(NodeData)));
-	if (UNLIKELY(node_data == NULL)) goto err_free;
+	node_data = nmMalloc(sizeof(NodeData));
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(NodeData));
+	    goto err_free;
+	    }
 	memset(node_data, 0, sizeof(NodeData));
 	SETMAGIC(node_data, MGK_CL_NODE_DATA);
 	node_data->Parent = parent;
 	
 	/** Set up param list. **/
-	node_data->ParamList = checkPtr(expCreateParamList());
-	if (UNLIKELY(node_data->ParamList == NULL)) goto err_free;
-	node_data->ParamList->Session = checkPtr(parent->Session);
-	if (UNLIKELY(node_data->ParamList->Session == NULL)) goto err_free;
+	node_data->ParamList = expCreateParamList();
+	if (UNLIKELY(node_data->ParamList == NULL))
+	    {
+	    mssError(1, "Cluster", "expCreateParamList() failed.");
+	    goto err_free;
+	    }
+	node_data->ParamList->Session = parent->Session;
+	if (UNLIKELY(node_data->ParamList->Session == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get session because parent->Session is NULL.");
+	    goto err_free;
+	    }
 	ret = expAddParamToList(node_data->ParamList, "parameters", (void*)node_data, 0);
-	if (ret != 0)
+	if (UNLIKELY(ret != 0))
 	    {
 	    mssError(0, "Cluster", "Failed to add parameters to the param list scope (error code %d).", ret);
 	    goto err_free;
@@ -1660,22 +1936,28 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    }
 	
 	/** Detect relevant groups. **/
-	if (check(xaInit(&param_infs, CI_INITIAL_INFS)) != 0) goto err_free;
-	if (check(xaInit(&cluster_infs, CI_INITIAL_INFS)) != 0) goto err_free;
-	if (check(xaInit(&search_infs, CI_INITIAL_INFS)) != 0) goto err_free;
+	if (xaInit(&param_infs, CI_INITIAL_INFS) != 0
+	    || xaInit(&cluster_infs, CI_INITIAL_INFS) != 0
+	    || xaInit(&search_infs, CI_INITIAL_INFS) != 0
+	)   {
+	    mssError(1, "Cluster", "Failed to initialize an XArray of size %u.", CI_INITIAL_INFS);
+	    goto err_free;
+	    }
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
 	    {
-	    pStructInf sub_inf = checkPtr(inf->SubInf[i]);
+	    pStructInf sub_inf = inf->SubInf[i];
 	    if (UNLIKELY(sub_inf == NULL))
 		{
-		mssError(1, "Cluster", "Failed to get %uth subinf.", i);
-		goto err_free;
+		mssError(1, "Cluster", "Failed to get subinf #%u/%u.", i + 1, inf->nSubInf);
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf. */
 		}
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
+	    if (UNLIKELY(name == NULL))
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->name. */
 	    
 	    /** Handle various struct types. **/
-	    const int struct_type = checkPos(stStructType(sub_inf));
+	    const int struct_type = stStructType(sub_inf);
 	    switch (struct_type)
 		{
 		case ST_T_ATTRIB:
@@ -1692,7 +1974,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 			}
 		    if (is_valid) continue; /* Next inf. */
 		    
-		    /** Give the user a warning, and attempt to give them a hint. **/
+		    /** Give the user a warning, and attempt to give a hint. **/
 		    fprintf(stderr, "Warning: Unknown attribute '%s' in cluster driver root node \"%s\".\n", name, inf->Name);
 		    cluster_i_tryHint(name, ROOT_ATTRS, N_INPUT_ROOT_ATTRS);
 		    
@@ -1701,26 +1983,39 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 		
 		case ST_T_SUBGROUP:
 		    {
-		    char* group_type = checkPtr(sub_inf->UsrType);
-		    if (UNLIKELY(group_type == NULL)) goto err_free;
+		    char* group_type = sub_inf->UsrType;
+		    if (UNLIKELY(group_type == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get group type.");
+			goto err_sub_inf;
+			}
 		    if (strcmp(group_type, "cluster/parameter") == 0)
 			{
-			if (checkPos(xaAddItem(&param_infs, sub_inf) < 0))
-			    goto err_free;
+			if (UNLIKELY(xaAddItem(&param_infs, sub_inf) < 0))
+			    {
+			    mssError(1, "Cluster", "Failed to add detected param inf to XArray.");
+			    goto err_sub_inf;
+			    }
 			}
 		    else if (strcmp(group_type, "cluster/cluster") == 0)
 			{
-			if (checkPos(xaAddItem(&cluster_infs, sub_inf) < 0))
-			    goto err_free;
+			if (UNLIKELY(xaAddItem(&cluster_infs, sub_inf) < 0))
+			    {
+			    mssError(1, "Cluster", "Failed to add detected cluster inf to XArray.");
+			    goto err_sub_inf;
+			    }
 			}
 		    else if (strcmp(group_type, "cluster/search") == 0)
 			{
-			if (checkPos(xaAddItem(&search_infs, sub_inf) < 0))
-			    goto err_free;
+			if (UNLIKELY(xaAddItem(&search_infs, sub_inf) < 0))
+			    {
+			    mssError(1, "Cluster", "Failed to add detected search inf to XArray.");
+			    goto err_sub_inf;
+			    }
 			}
 		    else
 			{
-			/** Give the user a warning, and attempt to give them a hint. **/
+			/** Give the user a warning, and attempt to give a hint. **/
 			fprintf(stderr,
 			    "Warning: Unknown group type \"%s\" on group \"%s\".\n",
 			    group_type, sub_inf->Name
@@ -1737,13 +2032,23 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 		
 		default:
 		    {
-		    mssError(1, "Cluster",
-			"Warning: Unknown struct type %d in search \"%s\".",
-			struct_type, inf->Name
+		    fprintf(stderr,
+			"Warning: Unknown struct type %d in node data.\n",
+			struct_type
 		    );
-		    goto err_free;
+		    continue; /* Skip it. */
 		    }
 		}
+	    
+	    /** Success. **/
+	    continue;
+	    
+    err_sub_inf:
+	    mssError(0, "Cluster",
+		"Failed to parse \"%s\", the #%u/%u subinf of %s.",
+		sub_inf->Name, i + 1, inf->nSubInf, inf->Name
+	    );
+	    goto err_free;
 	    }
 	
 	/** Extract OpenCtl for use below. **/
@@ -1759,8 +2064,12 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	/** Allocate space to store params. **/
 	node_data->nParams = param_infs.nItems;
 	const size_t params_size = node_data->nParams * sizeof(pParam);
-	node_data->Params = checkPtr(nmSysMalloc(params_size));
-	if (node_data->Params == NULL) goto err_free;
+	node_data->Params = nmSysMalloc(params_size);
+	if (UNLIKELY(node_data->Params == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", params_size);
+	    goto err_free;
+	    }
 	memset(node_data->Params, 0, params_size);
 	
 	/** Iterate over each param in the structure file. **/
@@ -1780,8 +2089,15 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    /** Check each provided param to see if the user provided value. **/
 	    for (unsigned int j = 0u; j < num_provided_params; j++)
 		{
-		pStruct provided_param = checkPtr(provided_params[j]);
-		if (UNLIKELY(provided_param == NULL)) goto err_free;
+		pStruct provided_param = provided_params[j];
+		if (UNLIKELY(provided_param == NULL))
+		    {
+		    mssError(1, "Cluster",
+			"Failed to get param #%u/%u.",
+			j + 1, num_provided_params
+		    );
+		    goto err_free;
+		    }
 		
 		/** If this provided param value isn't for the param, ignore it. **/
 		if (UNLIKELY(strcmp(provided_param->Name, param->Name) != 0)) continue;
@@ -1817,7 +2133,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 		goto err_free;
 		}
 	    }
-	check(xaDeInit(&param_infs)); /* Failure ignored. */
+	warnFail(xaDeInit(&param_infs));
 	param_infs.nAlloc = 0;
 	
 	/*** Iterate over provided parameters to warn the user if they
@@ -1825,9 +2141,24 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	 ***/
 	for (unsigned int i = 0u; i < num_provided_params; i++)
 	    {
-	    pStruct provided_param = checkPtr(provided_params[i]);
-	    if (UNLIKELY(provided_param == NULL)) goto err_free;
+	    pStruct provided_param = provided_params[i];
+	    if (UNLIKELY(provided_param == NULL))
+		{
+		mssError(1, "Cluster",
+		    "Failed to get provided param #%u/%u.",
+		    i + 1, num_provided_params
+		);
+		goto err_free;
+		}
 	    char* provided_name = provided_param->Name;
+	    if (UNLIKELY(provided_name == NULL))
+		{
+		mssError(1, "Cluster",
+		    "Failed to get provided param name from param #%u/%u.",
+		    i + 1, num_provided_params
+		);
+		goto err_free;
+		}
 	    
 	    /** Look to see if this provided param actually exists for this driver instance. **/
 	    bool param_exists = false;
@@ -1847,8 +2178,13 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 		);
 		
 		/** Attempt hint. **/
-		char** param_names = checkPtr(nmSysMalloc(node_data->nParams * sizeof(char*)));
-		if (UNLIKELY(param_names == NULL)) goto err_free;
+		const size_t param_name_size = node_data->nParams * sizeof(char*);
+		char** param_names = nmSysMalloc(param_name_size);
+		if (UNLIKELY(param_names == NULL))
+		    {
+		    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", param_name_size);
+		    goto err_free;
+		    }
 		for (unsigned int j = 0u; j < node_data->nParams; j++)
 		    param_names[j] = node_data->Params[j]->Name;
 		cluster_i_tryHint(provided_name, param_names, node_data->nParams);
@@ -1858,24 +2194,36 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	
 	/** Parse source data. **/
 	node_data->SourceData = cluster_i_parseSourceData(inf, node_data->ParamList, path);
-	if (UNLIKELY(node_data->SourceData == NULL)) goto err_free;
+	if (UNLIKELY(node_data->SourceData == NULL))
+	    {
+	    mssError(0, "Cluster", "Failed to parse source data.");
+	    goto err_free;
+	    }
 	
 	/** Parse each cluster. **/
 	node_data->nClusterDatas = cluster_infs.nItems;
 	if (LIKELY(node_data->nClusterDatas > 0))
 	    {
 	    const size_t clusters_size = node_data->nClusterDatas * sizeof(pClusterData);
-	    node_data->ClusterDatas = checkPtr(nmSysMalloc(clusters_size));
-	    if (UNLIKELY(node_data->ClusterDatas == NULL)) goto err_free;
+	    node_data->ClusterDatas = nmSysMalloc(clusters_size);
+	    if (UNLIKELY(node_data->ClusterDatas == NULL))
+		{
+		mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", clusters_size);
+		goto err_free;
+		}
 	    memset(node_data->ClusterDatas, 0, clusters_size);
 	    for (unsigned int i = 0u; i < node_data->nClusterDatas; i++)
 		{
 		node_data->ClusterDatas[i] = cluster_i_parseClusterData(cluster_infs.Items[i], node_data->ParamList, node_data->SourceData);
-		if (node_data->ClusterDatas[i] == NULL) goto err_free;
+		if (UNLIKELY(node_data->ClusterDatas[i] == NULL))
+		    {
+		    mssError(0, "Cluster", "Failed to parse cluster data.");
+		    goto err_free;
+		    }
 		}
 	    }
 	else node_data->ClusterDatas = NULL;
-	check(xaDeInit(&cluster_infs)); /* Failure ignored. */
+	warnFail(xaDeInit(&cluster_infs));
 	cluster_infs.nAlloc = 0;
 	
 	/** Parse each search. **/
@@ -1883,28 +2231,38 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	if (LIKELY(node_data->nSearchDatas > 0))
 	    {
 	    const size_t searches_size = node_data->nSearchDatas * sizeof(pSearchData);
-	    node_data->SearchDatas = checkPtr(nmSysMalloc(searches_size));
-	    if (UNLIKELY(node_data->SearchDatas == NULL)) goto err_free;
+	    node_data->SearchDatas = nmSysMalloc(searches_size);
+	    if (UNLIKELY(node_data->SearchDatas == NULL))
+		{
+		mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", searches_size);
+		goto err_free;
+		}
 	    memset(node_data->SearchDatas, 0, searches_size);
 	    for (unsigned int i = 0u; i < node_data->nSearchDatas; i++)
 		{
 		node_data->SearchDatas[i] = cluster_i_parseSearchData(search_infs.Items[i], node_data);
-		if (node_data->SearchDatas[i] == NULL) goto err_free;
+		if (UNLIKELY(node_data->SearchDatas[i] == NULL))
+		    {
+		    mssError(0, "Cluster", "Failed to parse search data.");
+		    goto err_free;
+		    }
 		}
 	    }
 	else node_data->SearchDatas = NULL;
-	check(xaDeInit(&search_infs)); /* Failure ignored. */
+	warnFail(xaDeInit(&search_infs));
 	search_infs.nAlloc = 0;
 	
 	/** Success. **/
 	return node_data;
 	
     err_free:
-	if (param_infs.nAlloc   != 0) check(xaDeInit(&param_infs));   /* Failure ignored. */
-	if (cluster_infs.nAlloc != 0) check(xaDeInit(&cluster_infs)); /* Failure ignored. */
-	if (search_infs.nAlloc  != 0) check(xaDeInit(&search_infs));  /* Failure ignored. */
-	if (node_data != NULL) cluster_i_freeNodeData(node_data);
 	mssError(0, "Cluster", "Failed to parse node from group \"%s\" in file: %s", inf->Name, path);
+	
+	/** Clean up. **/
+	if (param_infs.nAlloc   != 0) warnFail(xaDeInit(&param_infs));
+	if (cluster_infs.nAlloc != 0) warnFail(xaDeInit(&cluster_infs));
+	if (search_infs.nAlloc  != 0) warnFail(xaDeInit(&search_infs));
+	if (node_data != NULL) cluster_i_freeNodeData(node_data);
     
 	return NULL;
     }
@@ -2011,7 +2369,7 @@ cluster_i_freeSourceData(pSourceData source_data)
 static void
 cluster_i_freeClusterData(pClusterData cluster_data, bool recursive)
     {
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1, "Cluster", "Resource exhaustion occurred while freeing cluster datas.");
 	    return;
@@ -2201,9 +2559,9 @@ cluster_i_clearCaches(void)
 	/*** Free caches in reverse of the order they are created in case
 	 *** cached data relies on its source during the freeing process.
 	 ***/
-	check(xhClearKeySafe(&ClusterDriverCaches.SearchDataCache, cluster_i_cacheFreeSearch, NULL)); /* Failure ignored. */
-	check(xhClearKeySafe(&ClusterDriverCaches.ClusterDataCache, cluster_i_cacheFreeCluster, NULL)); /* Failure ignored. */
-	check(xhClearKeySafe(&ClusterDriverCaches.SourceDataCache, cluster_i_cacheFreeSourceData, NULL)); /* Failure ignored. */
+	warnFail(xhClearKeySafe(&ClusterDriverCaches.SearchDataCache, cluster_i_cacheFreeSearch, NULL));
+	warnFail(xhClearKeySafe(&ClusterDriverCaches.ClusterDataCache, cluster_i_cacheFreeCluster, NULL));
+	warnFail(xhClearKeySafe(&ClusterDriverCaches.SourceDataCache, cluster_i_cacheFreeSourceData, NULL));
     
     return;
     }
@@ -2276,7 +2634,7 @@ cluster_i_sizeOfSourceData(pSourceData source_data)
 static size_t
 cluster_i_sizeOfClusterData(pClusterData cluster_data, bool recursive)
     {
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1, "Cluster", "Resource exhaustion occurred while counting size of cluster data structs.");
 	    return 0u;
@@ -2368,8 +2726,12 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
     XArray data_xarray = {0};
     XArray vector_xarray = {0};
     
-	/** Guard segfaults. **/
-	if (checkPtr(source_data) == NULL) goto end_free;
+	/** Edge cases. **/
+	if (UNLIKELY(source_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to compute source data on NULL source data struct.");
+	    return -1; /* Skip error handler, which expects a valid source data struct. */
+	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** If the vectors are already computed, we're done. **/
@@ -2380,7 +2742,11 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    }
 	
 	/** Record the date and time. **/
-	if (check(objCurrentDate(&source_data->DateComputed)) != 0) goto end_free;
+	if (UNLIKELY(objCurrentDate(&source_data->DateComputed) != 0))
+	    {
+	    mssError(1, "Cluster", "objCurrentDate() failed.");
+	    goto end_free;
+	    }
 	
 	/** Open the source path specified by the .cluster file. **/
 	obj = objOpen(session, source_data->SourcePath, OBJ_O_RDONLY, 0600, "system/directory");
@@ -2399,9 +2765,13 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    }
 	
 	/** Initialize an xarray to store the retrieved data. **/
-	if (check(xaInit(&key_xarray, CI_INITIAL_SOURCE_DATAS)) != 0) goto end_free;
-	if (check(xaInit(&data_xarray, CI_INITIAL_SOURCE_DATAS)) != 0) goto end_free;
-	if (check(xaInit(&vector_xarray, CI_INITIAL_SOURCE_DATAS)) != 0) goto end_free;
+	if (xaInit(&key_xarray, CI_INITIAL_SOURCE_DATAS) != 0
+	    || xaInit(&data_xarray, CI_INITIAL_SOURCE_DATAS) != 0
+	    || xaInit(&vector_xarray, CI_INITIAL_SOURCE_DATAS) != 0
+	)   {
+	    mssError(1, "Cluster", "Failed to initialize an XArray of size %d.", CI_INITIAL_SOURCE_DATAS);
+	    goto end_free;
+	    }
 	
 	/** Fetch data and build vectors. **/
 	pObject entry;
@@ -2521,26 +2891,47 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		}
 	    
 	    /** Store values. **/
-	    key_dup = checkPtr(nmSysStrdup(key));
-	    if (key_dup == NULL) goto entry_free;
-	    data_dup = checkPtr(nmSysStrdup(data));
-	    if (data_dup == NULL) goto entry_free;
+	    key_dup = nmSysStrdup(key);
+	    if (key_dup == NULL)
+		{
+		mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", key);
+		goto entry_free;
+		}
+	    data_dup = nmSysStrdup(data);
+	    if (data_dup == NULL)
+		{
+		mssError(1, "Cluster", "nmSysStrdup(\"%s\") failed.", data);
+		goto entry_free;
+		}
 	    
 	    /** Hand each value to its xarray, which owns it from then on. **/
-	    if (checkPos(xaAddItem(&key_xarray, (void*)key_dup)) < 0) goto entry_free;
+	    if (xaAddItem(&key_xarray, (void*)key_dup) < 0)
+		{
+		mssError(1, "Cluster", "Failed to add key_dup to XArray.");
+		goto entry_free;
+		}
 	    key_dup = NULL;
-	    if (checkPos(xaAddItem(&data_xarray, (void*)data_dup)) < 0) goto entry_free;
+	    if (xaAddItem(&data_xarray, (void*)data_dup) < 0)
+		{
+		mssError(1, "Cluster", "Failed to add data_dup to XArray.");
+		goto entry_free;
+		}
 	    data_dup = NULL;
-	    if (checkPos(xaAddItem(&vector_xarray, (void*)vector)) < 0) goto entry_free;
+	    if (xaAddItem(&vector_xarray, (void*)vector) < 0)
+		{
+		mssError(1, "Cluster", "Failed to add vector to XArray.");
+		goto entry_free;
+		}
 	    vector = NULL;
 	    entry_ok = true;
 	    
     entry_free:
 	    /** Clean up owned memory, then fail if an error occurred. **/
-	    if (vector != NULL) caFreeVector(vector);
-	    if (key_dup != NULL) nmSysFree(key_dup);
-	    if (data_dup != NULL) nmSysFree(data_dup);
-	    check(objClose(entry)); /* Failure ignored. */
+	    if (UNLIKELY(vector != NULL)) caFreeVector(vector);
+	    if (UNLIKELY(key_dup != NULL)) nmSysFree(key_dup);
+	    if (UNLIKELY(data_dup != NULL)) nmSysFree(data_dup);
+	    warnFail(objClose(entry));
+	    
 	    if (UNLIKELY(!entry_ok)) goto end_free;
 	    }
 	
@@ -2552,19 +2943,31 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 	    }
 	
 	/** Trim and store the keys, data strings, and vectors. **/
-	source_data->Keys = (char**)checkPtr(xaToArray(&key_xarray));
-	if (UNLIKELY(source_data->Keys == NULL)) goto end_free;
-	source_data->Strings = (char**)checkPtr(xaToArray(&data_xarray));
-	if (UNLIKELY(source_data->Strings == NULL)) goto end_free;
-	source_data->Vectors = (int**)checkPtr(xaToArray(&vector_xarray));
-	if (UNLIKELY(source_data->Vectors == NULL)) goto end_free;
+	source_data->Keys = (char**)xaToArray(&key_xarray);
+	if (UNLIKELY(source_data->Keys == NULL))
+	    {
+	    mssError(1, "Cluster", "xaToArray(&key_xarray) failed.");
+	    goto end_free;
+	    }
+	source_data->Strings = (char**)xaToArray(&data_xarray);
+	if (UNLIKELY(source_data->Strings == NULL))
+	    {
+	    mssError(1, "Cluster", "xaToArray(&data_xarray) failed.");
+	    goto end_free;
+	    }
+	source_data->Vectors = (int**)xaToArray(&vector_xarray);
+	if (UNLIKELY(source_data->Vectors == NULL))
+	    {
+	    mssError(1, "Cluster", "xaToArray(&vector_xarray) failed.");
+	    goto end_free;
+	    }
 	
 	/** The stored arrays own the values now, so only free the xarrays. **/
-	check(xaDeInit(&key_xarray)); /* Failure ignored. */
+	warnFail(xaDeInit(&key_xarray));
 	key_xarray.nAlloc = 0;
-	check(xaDeInit(&data_xarray)); /* Failure ignored. */
+	warnFail(xaDeInit(&data_xarray));
 	data_xarray.nAlloc = 0;
-	check(xaDeInit(&vector_xarray)); /* Failure ignored. */
+	warnFail(xaDeInit(&vector_xarray));
 	vector_xarray.nAlloc = 0;
 	
 	/** Success. **/
@@ -2613,7 +3016,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		char* key = key_xarray.Items[i];
 		if (key != NULL) nmSysFree(key);
 		}
-	    check(xaDeInit(&key_xarray)); /* Failure ignored. */
+	    warnFail(xaDeInit(&key_xarray));
 	    }
 	if (UNLIKELY(data_xarray.nAlloc != 0))
 	    {
@@ -2622,7 +3025,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		char* str = data_xarray.Items[i];
 		if (str != NULL) nmSysFree(str);
 		}
-	    check(xaDeInit(&data_xarray)); /* Failure ignored. */
+	    warnFail(xaDeInit(&data_xarray));
 	    }
 	if (UNLIKELY(vector_xarray.nAlloc != 0))
 	    {
@@ -2631,12 +3034,12 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
 		pVector vec = vector_xarray.Items[i];
 		if (vec != NULL) caFreeVector(vec);
 		}
-	    check(xaDeInit(&vector_xarray)); /* Failure ignored. */
+	    warnFail(xaDeInit(&vector_xarray));
 	    }
 	
 	/** Clean up query & object structs. **/
-	if (LIKELY(query != NULL)) check(objQueryClose(query)); /* Failure ignored. */
-	if (LIKELY(obj != NULL)) check(objClose(obj)); /* Failure ignored. */
+	if (LIKELY(query != NULL)) warnFail(objQueryClose(query));
+	if (LIKELY(obj != NULL)) warnFail(objClose(obj));
 
 	/** Return the function status code. **/
 	return (successful) ? 0 : -1;
@@ -2660,16 +3063,25 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
     size_t clusters_size = -1;
     size_t sims_size = -1;
     
-	/** Guard segfaults. **/
-	if (checkPtr(cluster_data) == NULL || checkPtr(node_data) == NULL) goto err_free;
+	/** Edge cases. **/
+	if (UNLIKELY(cluster_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to compute cluster data on NULL cluster data struct.");
+	    return -1; /* Skip error handler, which expects a valid cluster data struct. */
+	    }
 	ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to compute cluster data with NULL node data struct.");
+	    goto err_free;
+	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
 	/** If the clusters are already computed, we're done. **/
 	if (LIKELY(cluster_data->Clusters != NULL)) return 0;
 	
 	/** Make source data available. **/
-	pSourceData source_data = checkPtr(node_data->SourceData);
+	pSourceData source_data = node_data->SourceData;
 	if (UNLIKELY(source_data == NULL))
 	    {
 	    mssError(1, "Cluster", "Failed to get source data for cluster computation.");
@@ -2677,9 +3089,19 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 	    }
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
-	/** We need the SourceData vectors to compute clusters. **/
-	pObjSession session = checkPtr(node_data->ParamList->Session);
-	if (UNLIKELY(session == NULL)) goto err_free;
+	/** Ensure that we have computed SourceData vectors for computing clusters. **/
+	pParamObjects param_list = node_data->ParamList;
+	if (UNLIKELY(param_list == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get param list from driver node data.");
+	    goto err_free;
+	    }
+	pObjSession session = param_list->Session;
+	if (UNLIKELY(session == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get session from param list.");
+	    goto err_free;
+	    }
 	ASSERTMAGIC(session, MGK_OBJSESSION);
 	if (UNLIKELY(cluster_i_computeSourceData(source_data, session) != 0))
 	    {
@@ -2689,15 +3111,27 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Record the date and time. **/
-	if (check(objCurrentDate(&cluster_data->DateComputed)) != 0) goto err_free;
+	if (UNLIKELY(objCurrentDate(&cluster_data->DateComputed) != 0))
+	    {
+	    mssError(1, "Cluster", "objCurrentDate() failed.");
+	    goto err_free;
+	    }
 	
 	/** Allocate static memory for finding clusters. **/
 	clusters_size = cluster_data->nClusters * sizeof(Cluster);
 	sims_size = source_data->nDatas * sizeof(double);
-	cluster_data->Clusters = checkPtr(nmSysMalloc(clusters_size));
-	cluster_data->Sims = checkPtr(nmSysMalloc(sims_size));
-	if (UNLIKELY(cluster_data->Clusters == NULL)) goto err_free;
-	if (UNLIKELY(cluster_data->Sims == NULL)) goto err_free;
+	cluster_data->Clusters = nmSysMalloc(clusters_size);
+	cluster_data->Sims = nmSysMalloc(sims_size);
+	if (UNLIKELY(cluster_data->Clusters == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", clusters_size);
+	    goto err_free;
+	    }
+	if (UNLIKELY(cluster_data->Sims == NULL))
+	    {
+	    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", sims_size);
+	    goto err_free;
+	    }
 	memset(cluster_data->Clusters, 0, clusters_size);
 	memset(cluster_data->Sims, 0, sims_size);
 	
@@ -2714,9 +3148,14 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		SETMAGIC(only_cluster, MGK_CL_CLUSTER);
 		
 		/** Add all data points to that cluster. **/
-		only_cluster->Size = source_data->nDatas;
-		only_cluster->Indexes = checkPtr(nmSysMalloc(only_cluster->Size * sizeof(int)));
-		if (UNLIKELY(only_cluster->Indexes == NULL)) goto err_free;
+		const size_t indexes_size = source_data->nDatas * sizeof(int);
+		only_cluster->Size        = source_data->nDatas;
+		only_cluster->Indexes     = nmSysMalloc(indexes_size);
+		if (UNLIKELY(only_cluster->Indexes == NULL))
+		    {
+		    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", indexes_size);
+		    goto err_free;
+		    }
 		for (unsigned int i = 0u; i < only_cluster->Size; i++)
 		    only_cluster->Indexes[i] = i;
 		
@@ -2746,8 +3185,12 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		
 		/** Allocate labels. Note: caKmeans() initializes labels for us. **/
 		const size_t labels_size = source_data->nDatas * sizeof(unsigned int);
-		labels = checkPtr(nmSysMalloc(labels_size));
-		if (UNLIKELY(labels == NULL)) goto err_cleanup;
+		labels = nmSysMalloc(labels_size);
+		if (UNLIKELY(labels == NULL))
+		    {
+		    mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", labels_size);
+		    goto err_cleanup;
+		    }
 		
 		/** Handle seed for caKmeans(). **/
 		const bool auto_seed = (cluster_data->Seed == CI_NO_SEED);
@@ -2782,15 +3225,30 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		
 		/** Allocate temporary xArrays for tracking the indices stored in each cluster. **/
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
-		    if (check(xaInit(&indexes_in_cluster[i], CI_INITIAL_POINTS_PER_CLUSTER)) != 0)
+		    {
+		    if (UNLIKELY(xaInit(&indexes_in_cluster[i], CI_INITIAL_POINTS_PER_CLUSTER) != 0))
 			{
+			mssError(1, "Cluster",
+			    "Failed to initialize XArray for cluster #%u/%u.",
+			    i + 1, cluster_data->nClusters
+			);
 			memset(&indexes_in_cluster[i], 0, sizeof(XArray));
 			goto err_cleanup;
 			}
+		    }
 		
 		/** Iterate through each label and add the index of the data to the specified cluster. **/
 		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
-		    if (checkPos(xaAddItem(&indexes_in_cluster[labels[i]], (void*)i)) < 0) goto err_cleanup;
+		    {
+		    if (xaAddItem(&indexes_in_cluster[labels[i]], (void*)i) < 0)
+			{
+			mssError(1, "Cluster",
+			    "Failed to add index #%llu/%u to XArray for cluster #%u/%u.",
+			    i + 1llu, source_data->nDatas, labels[i] + 1, cluster_data->nClusters
+			);
+			goto err_cleanup;
+			}
+		    }
 		
 		/** Free unused data. **/
 		nmSysFree(labels);
@@ -2806,8 +3264,13 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    /** Store the data in the cluster. **/
 		    cluster->Size = indexes_in_this_cluster->nItems;
 		    if (cluster->Size == 0) goto cluster_cleanup; /* Not a failure, but the array still needs to be freed. */
-		    cluster->Indexes = checkPtr(nmSysMalloc(cluster->Size * sizeof(unsigned int*)));
-		    if (UNLIKELY(cluster->Indexes == NULL)) goto err_cleanup;
+		    const size_t indexes_size = cluster->Size * sizeof(unsigned int*);
+		    cluster->Indexes = nmSysMalloc(indexes_size);
+		    if (UNLIKELY(cluster->Indexes == NULL))
+			{
+			mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", indexes_size);
+			goto err_cleanup;
+			}
 		    for (unsigned int i = 0u; i < indexes_in_this_cluster->nItems; i++)
 			{
 			const unsigned long long index = (unsigned long long)indexes_in_this_cluster->Items[i];
@@ -2825,7 +3288,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 			}
 		    
     cluster_cleanup:
-		    check(xaDeInit(indexes_in_this_cluster)); /* Failure ignored. */
+		    warnFail(xaDeInit(indexes_in_this_cluster));
 		    indexes_in_this_cluster->Items = NULL;
 		    }
 		
@@ -2838,7 +3301,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
 		    {
 		    if (indexes_in_cluster[i].Items == NULL) continue;
-		    check(xaDeInit(&indexes_in_cluster[i])); /* Failure ignored. */
+		    warnFail(xaDeInit(&indexes_in_cluster[i]));
 		    }
 		goto err_free;
 		}
@@ -2909,16 +3372,25 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
     {
     pXArray pairs = NULL;
     
-	/** Guard segfaults. **/
-	if (checkPtr(search_data) == NULL || checkPtr(node_data) == NULL) goto err_free;
+	/** Edge cases. **/
+	if (UNLIKELY(search_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to compute search data on NULL search data struct.");
+	    return -1; /* Skip error handler, which expects a valid search data struct. */
+	    }
 	ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to compute search data with NULL node data struct.");
+	    goto err_free;
+	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
 	/** If the clusters are already computed, we're done. **/
 	if (LIKELY(search_data->Pairs != NULL)) return 0;
 	
 	/** We need the cluster data to be computed before we search it. **/
-	pClusterData cluster_data = checkPtr(search_data->SourceCluster);
+	pClusterData cluster_data = search_data->SourceCluster;
 	if (UNLIKELY(cluster_data == NULL))
 	    {
 	    mssError(1, "Cluster", "Failed to get cluster data for search computation.");
@@ -2936,11 +3408,19 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 	
 	/** Record the date and time. **/
-	if (check(objCurrentDate(&search_data->DateComputed)) != 0) goto err_free;
+	if (UNLIKELY(objCurrentDate(&search_data->DateComputed) != 0))
+	    {
+	    mssError(1, "Cluster", "objCurrentDate() failed.");
+	    goto err_free;
+	    }
 	
 	/** Get the comparison function based on the similarity measure. **/
-	double (*similarity_function)(void *, void *) = checkPtr(cluster_i_similarityMeasureToFunction(search_data->SimilarityMeasure));
-	if (UNLIKELY(similarity_function == NULL)) goto err_free;
+	double (*similarity_function)(void *, void *) = cluster_i_similarityMeasureToFunction(search_data->SimilarityMeasure);
+	if (UNLIKELY(similarity_function == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get similarity measure function.");
+	    goto err_free;
+	    }
 	
 	/** Get a pointer to the data that will be used for the search. **/
 	void** data = NULL;
@@ -2964,14 +3444,14 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	     ***/
 	    
 	    /** Execute sliding search. **/
-	    pairs = checkPtr(caSlidingSearch(
+	    pairs = caSlidingSearch(
 		data,
 		source_data->nDatas,
 		cluster_data->WindowSize,
 		similarity_function,
 		search_data->Threshold,
 		NULL
-	    ));
+	    );
 	    if (UNLIKELY(pairs == NULL))
 		{
 		mssError(1, "Cluster",
@@ -2985,8 +3465,12 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	    {
 	    /** Initialize the pairs array with a size of double the amount of data. **/
 	    const int guess_size = search_data->SourceCluster->SourceData->nDatas * 2;
-	    pairs = checkPtr(xaNew(guess_size));
-	    if (UNLIKELY(pairs == NULL)) goto err_free;
+	    pairs = xaNew(guess_size);
+	    if (UNLIKELY(pairs == NULL))
+		{
+		mssError(1, "Cluster", "xaNew(%d) failed.", guess_size);
+		goto err_free;
+		}
 	    
 	    /** Iterate over each cluster. **/
 	    for (unsigned int i = 0u; i < cluster_data->nClusters; i++)
@@ -3001,8 +3485,13 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		if (cluster_data->nClusters > 1)
 		    {
 		    /** Allocate space. **/
-		    filtered_data = checkPtr(nmSysMalloc(cluster->Size * sizeof(void*)));
-		    if (filtered_data == NULL) goto err_free;
+		    const size_t filtered_data_size = cluster->Size * sizeof(void*);
+		    filtered_data = nmSysMalloc(filtered_data_size);
+		    if (UNLIKELY(filtered_data == NULL))
+			{
+			mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", filtered_data_size);
+			goto err_free;
+			}
 		    free_filtered_data = true;
 		    
 		    /** Add filtered data. **/
@@ -3011,13 +3500,13 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		    }
 		
 		/** Execute complete search. **/
-		const pXArray cluster_pairs = checkPtr(caCompleteSearch(
+		const pXArray cluster_pairs = caCompleteSearch(
 		    filtered_data,
 		    cluster->Size,
 		    similarity_function,
 		    search_data->Threshold,
 		    NULL
-		));
+		);
 		if (free_filtered_data) nmSysFree(filtered_data);
 		if (UNLIKELY(cluster_pairs == NULL))
 		    {
@@ -3034,9 +3523,13 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		    const pPair pair = (pPair)cluster_pairs->Items[i];
 		    pair->i = cluster->Indexes[pair->i];
 		    pair->j = cluster->Indexes[pair->j];
-		    if (checkPos(xaAddItem(pairs, pair)) < 0) goto err_free;
+		    if (UNLIKELY(xaAddItem(pairs, pair) < 0))
+			{
+			mssError(1, "Cluster", "Failed to add new pair to pairs XArray.");
+			goto err_free;
+			}
 		    }
-		check(xaFree(cluster_pairs)); /* Failure ignored. */
+		warnFail(xaFree(cluster_pairs));
 		}
 	    }
 	
@@ -3048,16 +3541,24 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	     *** were computed, but nmSysMalloc(0) may return NULL, so we
 	     *** allocate a 1 byte memory section to be a marker.
 	     ***/
-	    search_data->Pairs = checkPtr(nmSysMalloc(1));
-	    if (search_data->Pairs == NULL) goto err_free;
-	    check(xaFree(pairs)); /* Failure ignored. */
+	    search_data->Pairs = nmSysMalloc(1);
+	    if (UNLIKELY(search_data->Pairs == NULL))
+		{
+		mssError(1, "Cluster", "nmSysMalloc(1) failed.");
+		goto err_free;
+		}
+	    warnFail(xaFree(pairs));
 	    pairs = NULL;
 	    }
 	else
 	    {
-	    search_data->Pairs = (pPair*)checkPtr(xaToArray(pairs));
-	    if (search_data->Pairs == NULL) goto err_free;
-	    check(xaFree(pairs)); /* Failure ignored. */
+	    search_data->Pairs = (pPair*)xaToArray(pairs);
+	    if (UNLIKELY(search_data->Pairs == NULL))
+		{
+		mssError(1, "Cluster", "xaToArray(pairs) failed.");
+		goto err_free;
+		}
+	    warnFail(xaFree(pairs));
 	    pairs = NULL;
 	    }
 	
@@ -3077,7 +3578,7 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		if (pairs->Items[i] != NULL) nmFree(pairs->Items[i], sizeof(Pair));
 		else break;
 		}
-	    check(xaFree(pairs)); /* Failure ignored. */
+	    warnFail(xaFree(pairs));
 	    }
 	
 	mssError(0, "Cluster", "SearchData computation failed for \"%s\".", search_data->Name);
@@ -3101,15 +3602,25 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 static int
 cluster_i_getParamType(void* inf_v, const char* attr_name)
     {
-	pNodeData node_data = checkPtr(inf_v);
-	if (UNLIKELY(node_data == NULL)) return -1;
+	/** Edge cases. **/
+	pNodeData node_data = inf_v;
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get param type from NULL struct inf.");
+	    return -1;
+	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
+	if (UNLIKELY(attr_name == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get param type for null attr name.");
+	    return -1;
+	    }
 	
 	/** Find the parameter. **/
 	for (unsigned int i = 0; i < node_data->nParams; i++)
 	    {
-	    const pParam param = checkPtr(node_data->Params[i]);
-	    if (UNLIKELY(param == NULL)) continue;
+	    const pParam param = warnNull(node_data->Params[i]);
+	    if (UNLIKELY(param == NULL)) continue; /* Skip it. */
 	    if (strcmp(param->Name, attr_name) != 0) continue;
 	    
 	    /** Parameter found. **/
@@ -3147,9 +3658,19 @@ cluster_i_getParamType(void* inf_v, const char* attr_name)
 static int
 cluster_i_getParamValue(void* inf_v, char* attr_name, int datatype, pObjData val)
     {
-	pNodeData node_data = checkPtr(inf_v);
-	if (UNLIKELY(node_data == NULL)) goto err;
+	/** Edge cases. **/
+	pNodeData node_data = inf_v;
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get param type from NULL struct inf.");
+	    return -1;
+	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
+	if (UNLIKELY(attr_name == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get param type for null attr name.");
+	    return -1;
+	    }
     
 	/** Find the parameter. **/
 	for (unsigned int i = 0; i < node_data->nParams; i++)
@@ -3168,7 +3689,14 @@ cluster_i_getParamValue(void* inf_v, char* attr_name, int datatype, pObjData val
 		}
 	    
 	    /** Return param value. **/
-	    if (check(objCopyData(&(param->Value->Data), val, datatype)) != 0) goto err;
+	    if (UNLIKELY(objCopyData(&(param->Value->Data), val, datatype) != 0))
+		{
+		mssError(1, "Cluster",
+		    "Failed to copy param data of type %s (%d).",
+		    objTypeToStr(datatype), datatype
+		);
+		goto err;
+		}
 	    return 0;
 	    }
 	
@@ -3222,11 +3750,11 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	/** Update statistics. **/
 	ClusterStatistics.OpenCalls++;
 	
-	/** Guard segfaults. **/
+	/** Edge cases. **/
 	if (UNLIKELY(parent == NULL))
 	    {
 	    mssError(0, "Cluster", "Warning: Call to clusterOpen(NULL, ...);\n");
-	    return NULL; /* The function failure assumes a valid parent, skip it. */
+	    return NULL; /* Skip error handler, which expects a valid parent. */
 	    }
 	ASSERTMAGIC(parent, MGK_OBJECT);
 	
@@ -3272,8 +3800,12 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	
 	/** Allocate driver instance data. **/
-	driver_data = checkPtr(nmMalloc(sizeof(DriverData)));
-	if (UNLIKELY(driver_data == NULL)) goto err_free;
+	driver_data = nmMalloc(sizeof(DriverData));
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(DriverData));
+	    goto err_free;
+	    }
 	memset(driver_data, 0, sizeof(DriverData));
 	SETMAGIC(driver_data, MGK_CL_DRIVER_DATA);
 	driver_data->NodeData = node_data;
@@ -3412,15 +3944,20 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 int
 clusterClose(void* inf_v, pObjTrxTree* oxt)
     {
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) return -1;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to close NULL driver object.");
+	    return -1;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
 	
 	/** Update statistics. **/
 	ClusterStatistics.CloseCalls++;
 	
 	/** Unlink the driver's node data. **/
-	pNodeData node_data = checkPtr(driver_data->NodeData); /* Failure ignored. */
+	pNodeData node_data = warnNull(driver_data->NodeData);
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
 	if (UNLIKELY(node_data != NULL && --node_data->OpenCount == 0))
 	    cluster_i_freeNodeData(driver_data->NodeData);
@@ -3456,10 +3993,15 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	mssClearError();
     
 	/** Get driver data. **/
-	pDriverData driver_data = checkPtr(inf_v);
-	if (driver_data == NULL) goto err_free;
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to open a query on a NULL driver object.");
+	    return NULL;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
 	
+	/** Fail on target types that don't support queries. **/
 	if (driver_data->TargetType != TARGET_SEARCH
 	    && driver_data->TargetType != TARGET_CLUSTER
 	    && driver_data->TargetType != TARGET_NODE)
@@ -3476,14 +4018,19 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	ClusterStatistics.OpenQueryCalls++;
 	
 	/** Allocate memory for the query. **/
-	query_data = checkPtr(nmMalloc(sizeof(ClusterQuery)));
-	if (UNLIKELY(query_data == NULL)) goto err_free;
+	query_data = nmMalloc(sizeof(ClusterQuery));
+	if (UNLIKELY(query_data == NULL))
+		{
+		mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(ClusterQuery));
+		goto err_free;
+		}
 	
 	/** Initialize the query. **/
 	SETMAGIC(query_data, MGK_CL_QUERY_DATA);
 	query_data->DriverData = (pDriverData)inf_v;
 	query_data->RowIndex = 0u;
 	
+	/** Success. **/
 	return query_data;
 	
     err_free:
@@ -3513,22 +4060,38 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pDriverData result_data = NULL;
     
 	/** Unpack data into local variables. **/
-	pQueryData query_data = checkPtr(qy_v);
-	if (UNLIKELY(query_data == NULL)) goto err_free;
+	pQueryData query_data = qy_v;
+	if (UNLIKELY(query_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to fetch from NULL query object.");
+	    goto err_free;
+	    }
 	ASSERTMAGIC(query_data, MGK_CL_QUERY_DATA);
-	pDriverData driver_data = checkPtr(query_data->DriverData);
-	if (UNLIKELY(driver_data == NULL)) goto err_free;
+	pDriverData driver_data = query_data->DriverData;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to fetch from query object with NULL driver data.");
+	    goto err_free;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
-	pNodeData node_data = checkPtr(driver_data->NodeData);
-	if (UNLIKELY(node_data == NULL)) goto err_free;
+	pNodeData node_data = driver_data->NodeData;
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to fetch from query object with NULL node data.");
+	    goto err_free;
+	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
     
 	/** Update statistics. **/
 	ClusterStatistics.FetchCalls++;
 	
 	/** Allocate result struct. **/
-	result_data = checkPtr(nmMalloc(sizeof(DriverData)));
-	if (UNLIKELY(result_data == NULL)) goto err_free;
+	result_data = nmMalloc(sizeof(DriverData));
+	if (UNLIKELY(result_data == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(DriverData));
+	    goto err_free;
+	    }
 	
 	/** Default initialization. **/
 	SETMAGIC(result_data, MGK_CL_DRIVER_DATA);
@@ -3575,8 +4138,12 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    case TARGET_CLUSTER:
 		{
 		/** Ensure the required data is computed. **/
-		pClusterData target = (pClusterData)checkPtr(driver_data->TargetData);
-		if (UNLIKELY(target == NULL)) goto err_free;
+		pClusterData target = (pClusterData)driver_data->TargetData;
+		if (UNLIKELY(target == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get cluster target for fetch.");
+		    goto err_free;
+		    }
 		ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
 		if (UNLIKELY(cluster_i_computeClusterData(target, node_data) != 0))
 		    {
@@ -3597,8 +4164,12 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    case TARGET_SEARCH:
 		{
 		/** Ensure the required data is computed. **/
-		pSearchData target = (pSearchData)checkPtr(driver_data->TargetData);
-		if (UNLIKELY(target == NULL)) goto err_free;
+		pSearchData target = (pSearchData)driver_data->TargetData;
+		if (UNLIKELY(target == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get search target for fetch.");
+		    goto err_free;
+		    }
 		ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
 		if (UNLIKELY(cluster_i_computeSearchData(target, node_data) != 0))
 		    {
@@ -3657,7 +4228,11 @@ clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
 	/** Cast the query data. **/
 	pQueryData query_data = qy_v;
-	if (checkPtr(qy_v) == NULL) return -1;
+	if (UNLIKELY(query_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to close NULL query object.");
+	    return -1;
+	    }
 	ASSERTMAGIC(query_data, MGK_CL_QUERY_DATA);
 	
 	/** Free the query data. **/
@@ -3681,10 +4256,16 @@ clusterQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
     {
-	/** Extract target type from driver data. **/
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) goto err;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get an attribute type from a NULL driver object.");
+	    return -1;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
+	
+	/** Extract target type from driver data. **/
 	const TargetType target_type = driver_data->TargetType;
 	
 	/** Update statistics. **/
@@ -3767,9 +4348,6 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    }
 	
 	return DATA_T_UNAVAILABLE;
-	
-    err:
-    return -1;
     }
 
 
@@ -3798,10 +4376,16 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
     {
     TargetType target_type = -1;
     
-	/** Extract target type from driver data. **/
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) goto err;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get an attribute value from a NULL driver object.");
+	    return -1; /* Skip the error handler which expects a valid inf_v struct. */
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
+	
+	/** Extract target type from driver data. **/
 	target_type = driver_data->TargetType;
     
 	/** Update statistics. **/
@@ -3835,8 +4419,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		{
 		case TARGET_NODE:
 		    {
-		    pSourceData source_data = checkPtr(driver_data->TargetData);
-		    if (source_data == NULL) goto err;
+		    pSourceData source_data = driver_data->TargetData;
+		    if (UNLIKELY(source_data == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get source data.");
+			goto err;
+			}
 		    ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 		    val->String = source_data->Name;
 		    break;
@@ -3845,8 +4433,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_CLUSTER:
 		case TARGET_CLUSTER_ENTRY:
 		    {
-		    pClusterData cluster_data = checkPtr(driver_data->TargetData);
-		    if (cluster_data == NULL) goto err;
+		    pClusterData cluster_data = driver_data->TargetData;
+		    if (UNLIKELY(cluster_data == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get cluster data.");
+			goto err;
+			}
 		    ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 		    val->String = cluster_data->Name;
 		    break;
@@ -3855,8 +4447,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_SEARCH:
 		case TARGET_SEARCH_ENTRY:
 		    {
-		    pSearchData search_data = checkPtr(driver_data->TargetData);
-		    if (search_data == NULL) goto err;
+		    pSearchData search_data = driver_data->TargetData;
+		    if (UNLIKELY(search_data == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get search data.");
+			goto err;
+			}
 		    ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
 		    val->String = search_data->Name;
 		    break;
@@ -3940,8 +4536,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_CLUSTER:
 		case TARGET_CLUSTER_ENTRY:
 		    {
-		    pClusterData cluster_data = checkPtr(driver_data->TargetData);
-		    if (cluster_data == NULL) goto err;
+		    pClusterData cluster_data = driver_data->TargetData;
+		    if (UNLIKELY(cluster_data == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get cluster data.");
+			goto err;
+			}
 		    ASSERTMAGIC(cluster_data, MGK_CL_CLUSTER_DATA);
 		    if (cluster_data->DateCreated.Value == 0) return 1; /* DateCreated not set: return null - should never occur */
 		    else val->DateTime = &cluster_data->DateCreated;
@@ -3951,8 +4551,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_SEARCH:
 		case TARGET_SEARCH_ENTRY:
 		    {
-		    pSearchData search_data = checkPtr(driver_data->TargetData);
-		    if (search_data == NULL) goto err;
+		    pSearchData search_data = driver_data->TargetData;
+		    if (UNLIKELY(search_data == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get search data.");
+			goto err;
+			}
 		    ASSERTMAGIC(search_data, MGK_CL_SEARCH_DATA);
 		    if (search_data->DateCreated.Value == 0) return 1; /* DateCreated not set: return null - should never occur */
 		    else val->DateTime = &search_data->DateCreated;
@@ -3975,22 +4579,36 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		case TARGET_CLUSTER:
 		case TARGET_CLUSTER_ENTRY:
 		    {
-		    pClusterData target = checkPtr((pClusterData)driver_data->TargetData);
-		    if (target == NULL) goto err;
+		    pClusterData target = driver_data->TargetData;
+		    if (UNLIKELY(target == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get cluster data target.");
+			goto err;
+			}
 		    ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
-		    if (target->DateComputed.Value == 0) return 1; /* DateComputed not set: return null */
+		    
+		    if (UNLIKELY(target->DateComputed.Value == 0))
+			return 1; /* DateComputed not set: return null */
 		    else val->DateTime = &target->DateComputed;
+		    
 		    return 0;
 		    }
 		
 		case TARGET_SEARCH:
 		case TARGET_SEARCH_ENTRY:
 		    {
-		    pSearchData target = checkPtr((pSearchData)driver_data->TargetData);
-		    if (target == NULL) goto err;
+		    pSearchData target = driver_data->TargetData;
+		    if (UNLIKELY(target == NULL))
+			{
+			mssError(1, "Cluster", "Failed to get search data target.");
+			goto err;
+			}
 		    ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
-		    if (target->DateComputed.Value == 0) return 1; /* DateComputed not set: return null */
+		    
+		    if (UNLIKELY(target->DateComputed.Value == 0))
+			return 1; /* DateComputed not set: return null */
 		    else val->DateTime = &target->DateComputed;
+		    
 		    return 0;
 		    }
 		}
@@ -4005,8 +4623,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    {
 	    case TARGET_NODE:
 		{
-		pSourceData source_data = checkPtr(driver_data->TargetData);
-		if (source_data == NULL) goto err;
+		pSourceData source_data = driver_data->TargetData;
+		if (UNLIKELY(source_data == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get source data.");
+		    goto err;
+		    }
 		ASSERTMAGIC(source_data, MGK_CL_SOURCE_DATA);
 		
 		if (strcmp(attr_name, "source") == 0)
@@ -4029,8 +4651,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    
 	    case TARGET_CLUSTER:
 		{
-		pClusterData target = checkPtr(driver_data->TargetData);
-		if (target == NULL) goto err;
+		pClusterData target = driver_data->TargetData;
+		if (UNLIKELY(target == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get cluster data target.");
+		    goto err;
+		    }
 		ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
 		
 		if (strcmp(attr_name, "algorithm") == 0)
@@ -4072,8 +4698,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    
 	    case TARGET_SEARCH:
 		{
-		pSearchData target = checkPtr(driver_data->TargetData);
-		if (target == NULL) goto err;
+		pSearchData target = driver_data->TargetData;
+		if (UNLIKELY(target == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get search data target.");
+		    goto err;
+		    }
 		ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
 		
 		if (strcmp(attr_name, "source") == 0)
@@ -4095,8 +4725,12 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    
 	    case TARGET_CLUSTER_ENTRY:
 		{
-		pClusterData target = checkPtr(driver_data->TargetData);
-		if (target == NULL) goto err;
+		pClusterData target = driver_data->TargetData;
+		if (UNLIKELY(target == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get cluster data target.");
+		    goto err;
+		    }
 		ASSERTMAGIC(target, MGK_CL_CLUSTER_DATA);
 		pCluster target_cluster = &target->Clusters[driver_data->TargetIndex];
 		ASSERTMAGIC(target_cluster, MGK_CL_CLUSTER);
@@ -4111,13 +4745,24 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 			nmFree(vec, sizeof(StringVec));
 			}
 		    
-		    /** Allocate and initialize the requested data. **/
-		    vec = val->StringVec = checkPtr(nmMalloc(sizeof(StringVec)));
-		    if (vec == NULL) goto err;
+		    /** Allocate a string vec for the requested data. **/
+		    vec = val->StringVec = nmMalloc(sizeof(StringVec));
+		    if (UNLIKELY(vec == NULL))
+			{
+			mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(StringVec));
+			goto err;
+			}
 		    memset(vec, 0, sizeof(StringVec));
+		    
+		    /** Initialize the string vec. **/
+		    const size_t strings_size = target_cluster->Size * sizeof(char*);
+		    vec->Strings = nmSysMalloc(strings_size);
+		    if (UNLIKELY(vec->Strings == NULL))
+			{
+			mssError(1, "Cluster", "nmSysMalloc(%zu) failed.", strings_size);
+			goto err;
+			}
 		    vec->nStrings = target_cluster->Size;
-		    vec->Strings = checkPtr(nmSysMalloc(target_cluster->Size * sizeof(char*)));
-		    if (vec->Strings == NULL) goto err;
 		    for (unsigned int i = 0u; i < target_cluster->Size; i++)
 			vec->Strings[i] = target->SourceData->Strings[target_cluster->Indexes[i]];
 		    
@@ -4129,11 +4774,19 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    
 	    case TARGET_SEARCH_ENTRY:
 		{
-		pSearchData target = checkPtr(driver_data->TargetData);
-		if (target == NULL) goto err;
+		pSearchData target = driver_data->TargetData;
+		if (UNLIKELY(target == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get search data target.");
+		    goto err;
+		    }
 		ASSERTMAGIC(target, MGK_CL_SEARCH_DATA);
-		pPair target_dup = checkPtr(target->Pairs[driver_data->TargetIndex]);
-		if (target_dup == NULL) goto err;
+		pPair target_dup = target->Pairs[driver_data->TargetIndex];
+		if (UNLIKELY(target_dup == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get target duplicate.");
+		    goto err;
+		    }
 		
 		if (strcmp(attr_name, "sim") == 0)
 		    {
@@ -4197,15 +4850,25 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
     pObjPresentationHints hints = NULL;
     pParamObjects tmp_list = NULL;
     
-	/** Extract target type from driver data. **/
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) goto err_free;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get presentation hints from a NULL driver object.");
+	    return NULL; /* Skip the error handler, which expects a valid inf_v struct. */
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
+	
+	/** Extract target type from driver data. **/
 	const TargetType target_type = driver_data->TargetType;
 	
 	/** Malloc presentation hints struct. **/
-	hints = checkPtr(nmMalloc(sizeof(ObjPresentationHints)));
-	if (UNLIKELY(hints == NULL)) goto err_free;
+	hints = nmMalloc(sizeof(ObjPresentationHints));
+	if (UNLIKELY(hints == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(ObjPresentationHints));
+	    goto err_free;
+	    }
 	memset(hints, 0, sizeof(ObjPresentationHints));
 	
 	/** Hints that are the same for all attributes. **/
@@ -4215,8 +4878,12 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	hints->StyleMask |= OBJ_PH_STYLE_READONLY | OBJ_PH_STYLE_CREATEONLY | OBJ_PH_STYLE_NOTNULL;
 	
 	/** Temporary param list for compiling expressions. **/
-	tmp_list = checkPtr(expCreateParamList());
-	if (UNLIKELY(hints == NULL)) goto err_free;
+	tmp_list = expCreateParamList();
+	if (UNLIKELY(tmp_list == NULL))
+	    {
+	    mssError(1, "Cluster", "expCreateParamList() failed.");
+	    goto err_free;
+	    }
 	
 	/** Search for the requested attribute through attributes common to all instances. **/
 	if (strcmp(attr_name, "name") == 0)
@@ -4242,17 +4909,17 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    }
 	if (strcmp(attr_name, "internal_type") == 0)
 	    {
-	    if (check(xaInit(&(hints->EnumList), 5)) == 0)
+	    if (warnFail(xaInit(&(hints->EnumList), 5)) == 0)
 		{
-		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("system/cluster"))));  /* Failure ignored. */
-		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/cluster")))); /* Failure ignored. */
-		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/entry"))));   /* Failure ignored. */
-		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("cluster/search"))));  /* Failure ignored. */
-		checkPos(xaAddItem(&(hints->EnumList), checkPtr(nmSysStrdup("search/entry"))));    /* Failure ignored. */
+		warnNeg(xaAddItem(&(hints->EnumList), warnNull(nmSysStrdup("system/cluster"))));
+		warnNeg(xaAddItem(&(hints->EnumList), warnNull(nmSysStrdup("cluster/cluster"))));
+		warnNeg(xaAddItem(&(hints->EnumList), warnNull(nmSysStrdup("cluster/entry"))));
+		warnNeg(xaAddItem(&(hints->EnumList), warnNull(nmSysStrdup("cluster/search"))));
+		warnNeg(xaAddItem(&(hints->EnumList), warnNull(nmSysStrdup("search/entry"))));
 		}
 	    hints->Length = 16;
 	    hints->VisualLength = 16;
-	    hints->FriendlyName = checkPtr(nmSysStrdup("Internal Type")); /* Failure ignored. */
+	    hints->FriendlyName = warnNull(nmSysStrdup("Internal Type"));
 	    hints->Style     |= OBJ_PH_STYLE_HIDDEN | OBJ_PH_STYLE_LOWERCASE;
 	    hints->StyleMask |= OBJ_PH_STYLE_HIDDEN | OBJ_PH_STYLE_LOWERCASE;
 	    goto end;
@@ -4269,7 +4936,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		{
 		hints->Length = 24;
 		hints->VisualLength = 20;
-		hints->Format = checkPtr(nmSysStrdup("datetime")); /* Failure ignored. */
+		hints->Format = warnNull(nmSysStrdup("datetime"));
 		goto end;
 		}
 	    else
@@ -4287,21 +4954,21 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    {
 		    hints->Length = _PC_PATH_MAX;
 		    hints->VisualLength = 64;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Source Path")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Source Path"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "key_attr") == 0)
 		    {
 		    hints->Length = 255;
 		    hints->VisualLength = 32;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Key Attribute Name")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Key Attribute Name"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "data_attr") == 0)
 		    {
 		    hints->Length = 255;
 		    hints->VisualLength = 32;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Data Attribute Name")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Data Attribute Name"));
 		    goto end;
 		    }
 		break;
@@ -4310,59 +4977,59 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "num_clusters") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = checkPtr(expCompileExpression("1", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MaxValue = checkPtr(expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = warnNull(expCompileExpression("1", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MaxValue = warnNull(expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Other hints. **/
 		    hints->Length = 8;
 		    hints->VisualLength = 4;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Number of Clusters")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Number of Clusters"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "min_improvement") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->DefaultExpr = checkPtr(expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MIN_IMPROVEMENT), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->DefaultExpr = warnNull(expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MIN_IMPROVEMENT), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MinValue = warnNull(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MaxValue = warnNull(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
 		    hints->VisualLength = 8;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Minimum Improvement Threshold")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Minimum Improvement Threshold"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "max_iterations") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->DefaultExpr = checkPtr(expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MAX_ITERATIONS), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MinValue = checkPtr(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MaxValue = checkPtr(expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->DefaultExpr = warnNull(expCompileExpression(CI_STRINGIFY_CONSTANT(CI_DEFAULT_MAX_ITERATIONS), tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MinValue = warnNull(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MaxValue = warnNull(expCompileExpression("2147483647", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Other hints. **/
 		    hints->Length = 8;
 		    hints->VisualLength = 4;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Maximum Iterations")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Maximum Iterations"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "algorithm") == 0)
 		    {
 		    /** Enum values. **/
-		    if (check(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)) == 0)
+		    if (warnFail(xaInit(&(hints->EnumList), N_CLUSTERING_ALGORITHMS)) == 0)
 			{
 			for (unsigned int i = 0u; i < N_CLUSTERING_ALGORITHMS; i++)
 			    {
-			    char* cluster_string = checkPtr(nmSysStrdup(cluster_i_clusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])));
+			    char* cluster_string = warnNull(nmSysStrdup(cluster_i_clusteringAlgorithmToString(ALL_CLUSTERING_ALGORITHMS[i])));
 			    if (cluster_string == NULL) continue; /* Skip this. */
-			    checkPos(xaAddItem(&(hints->EnumList), cluster_string)); /* Failure ignored. */
+			    warnNeg(xaAddItem(&(hints->EnumList), cluster_string));
 			    }
 			}
 		    
 		    /** Min and max values. **/
-		    hints->MinValue = checkPtr(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = warnNull(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    char buf[8];
 		    snprintf(buf, sizeof(buf), "%u", N_CLUSTERING_ALGORITHMS - 1u);
-		    hints->MaxValue = checkPtr(expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = warnNull(expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Display flags. **/
 		    hints->Style     |= OBJ_PH_STYLE_BUTTONS;
@@ -4371,7 +5038,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Other hints. **/
 		    hints->Length = 24;
 		    hints->VisualLength = 20;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Clustering Algorithm")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Clustering Algorithm"));
 		    goto end;
 		    }
 		/** Fall-through: Start of overlapping region. **/
@@ -4380,13 +5047,13 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		if (strcmp(attr_name, "similarity_measure") == 0)
 		    {
 		    /** Enum values. **/
-		    if (check(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)) == 0)
+		    if (warnFail(xaInit(&(hints->EnumList), N_SIMILARITY_MEASURES)) == 0)
 			{
 			for (unsigned int i = 0u; i < N_SIMILARITY_MEASURES; i++)
 			    {
-			    char* similarity_string = checkPtr(nmSysStrdup(cluster_i_similarityMeasureToString(ALL_SIMILARITY_MEASURES[i])));
+			    char* similarity_string = warnNull(nmSysStrdup(cluster_i_similarityMeasureToString(ALL_SIMILARITY_MEASURES[i])));
 			    if (similarity_string == NULL) continue; /* Skip this. */
-			    checkPos(xaAddItem(&(hints->EnumList), similarity_string)); /* Failure ignored. */
+			    warnNeg(xaAddItem(&(hints->EnumList), similarity_string));
 			    }
 			}
 			
@@ -4395,15 +5062,15 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    hints->StyleMask |= OBJ_PH_STYLE_BUTTONS;
 		    
 		    /** Min and max values. **/
-		    hints->MinValue = checkPtr(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = warnNull(expCompileExpression("0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    char buf[8];
 		    snprintf(buf, sizeof(buf), "%u", N_SIMILARITY_MEASURES - 1u);
-		    hints->MaxValue = checkPtr(expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MaxValue = warnNull(expCompileExpression(buf, tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Other hints. **/
 		    hints->Length = 32;
 		    hints->VisualLength = 20;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Similarity Measure")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Similarity Measure"));
 		    goto end;
 		    }
 		
@@ -4414,19 +5081,19 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    {
 		    hints->Length = 64;
 		    hints->VisualLength = 32;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Source Cluster Name")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Source Cluster Name"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "threshold") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = warnNull(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MaxValue = warnNull(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
 		    hints->VisualLength = 8;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Similarity Threshold")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Similarity Threshold"));
 		    goto end;
 		    }
 		break;
@@ -4438,19 +5105,19 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    /** Other hints. **/
 		    hints->Length = 65536;
 		    hints->VisualLength = 256;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Cluster Data")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Cluster Data"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "sim") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = warnNull(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MaxValue = warnNull(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
 		    hints->VisualLength = 8;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Similarity")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Similarity"));
 		    goto end;
 		    }
 		break;
@@ -4462,26 +5129,26 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    {
 		    hints->Length = 255;
 		    hints->VisualLength = 32;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Key 1")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Key 1"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "key2") == 0)
 		    {
 		    hints->Length = 255;
 		    hints->VisualLength = 32;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Key 2")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Key 2"));
 		    goto end;
 		    }
 		if (strcmp(attr_name, "sim") == 0)
 		    {
 		    /** Min and max values. **/
-		    hints->MinValue = checkPtr(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
-		    hints->MaxValue = checkPtr(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0)); /* Failure ignored. */
+		    hints->MinValue = warnNull(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
+		    hints->MaxValue = warnNull(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
 		    
 		    /** Other hints. **/
 		    hints->Length = 16;
 		    hints->VisualLength = 8;
-		    hints->FriendlyName = checkPtr(nmSysStrdup("Similarity")); /* Failure ignored. */
+		    hints->FriendlyName = warnNull(nmSysStrdup("Similarity"));
 		    goto end;
 		    }
 		break;
@@ -4495,23 +5162,23 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	/** No checks matched the requested attribute. **/
 	cluster_i_unknownAttribute(attr_name, driver_data->TargetType);
 	
-    err_free:
-	/** Error cleanup. **/
-	if (hints != NULL) nmFree(hints, sizeof(ObjPresentationHints));
-	hints = NULL;
-	
+    err_free:;
 	/** Construct the clearest error message that we can. **/
 	char* name = NULL;
 	char* internal_type = NULL;
-	check(clusterGetAttrValue(inf_v, "name", DATA_T_STRING, POD(&name), NULL)); /* Failure ignored. */
-	check(clusterGetAttrValue(inf_v, "internal_type", DATA_T_STRING, POD(&internal_type), NULL)); /* Failure ignored. */
+	warnFail(clusterGetAttrValue(inf_v, "name", DATA_T_STRING, POD(&name), NULL));
+	warnFail(clusterGetAttrValue(inf_v, "internal_type", DATA_T_STRING, POD(&internal_type), NULL));
 	mssError(0, "Cluster",
 	    "Failed to get presentation hints for '%s' on object '%s' : \"%s\".",
 	    attr_name, name, internal_type
 	);
 	
+	/** Error cleanup. **/
+	if (hints != NULL) nmFree(hints, sizeof(ObjPresentationHints));
+	hints = NULL;
+	
     end:
-	if (tmp_list != NULL) check(expFreeParamList(tmp_list)); /* Failure ignored. */
+	if (tmp_list != NULL) warnFail(expFreeParamList(tmp_list));
     
     return hints;
     }
@@ -4530,8 +5197,13 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 char*
 clusterGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     {
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) return NULL;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get first attribute from NULL driver object.");
+	    return NULL;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
 	
 	driver_data->TargetAttrIndex = 0u;
@@ -4553,8 +5225,13 @@ clusterGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
 char*
 clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
     {
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) return NULL;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get next attribute from NULL driver object.");
+	    return NULL;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
     
 	const unsigned int i = driver_data->TargetAttrIndex++;
@@ -4585,11 +5262,22 @@ clusterGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 int
 clusterInfo(void* inf_v, pObjectInfo info)
     {
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) goto err;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get cluster info for NULL cluster object.");
+	    goto err;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
-	pNodeData node_data = checkPtr(driver_data->NodeData);
-	if (UNLIKELY(node_data == NULL)) goto err;
+	
+	/** Get node data. **/
+	pNodeData node_data = driver_data->NodeData;
+	if (UNLIKELY(node_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get node data from driver data.");
+	    goto err;
+	    }
 	ASSERTMAGIC(node_data, MGK_CL_NODE_DATA);
     
 	/** Reset flags buffer. **/
@@ -4627,8 +5315,12 @@ clusterInfo(void* inf_v, pObjectInfo info)
 	    
 	    case TARGET_SEARCH:
 		{
-		pSearchData search_data = checkPtr(driver_data->TargetData);
-		if (UNLIKELY(search_data == NULL)) goto err;
+		pSearchData search_data = driver_data->TargetData;
+		if (UNLIKELY(search_data == NULL))
+		    {
+		    mssError(1, "Cluster", "Failed to get search data.");
+		    goto err;
+		    }
 		
 		info->Flags |= OBJ_INFO_F_CAN_HAVE_SUBOBJ;
 		if (search_data->Pairs != NULL)
@@ -4678,8 +5370,13 @@ clusterInfo(void* inf_v, pObjectInfo info)
 char*
 clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt)
     {
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) return NULL;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get first method from NULL driver object.");
+	    return NULL;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
 	
 	driver_data->TargetMethodIndex = 0u;
@@ -4701,11 +5398,16 @@ clusterGetFirstMethod(void* inf_v, pObjTrxTree* oxt)
 char*
 clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
     {
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) return NULL;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to get next method from NULL driver object.");
+	    return NULL;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
     
-    if (driver_data->TargetMethodIndex >= METHOD_NAMES_COUNT) return NULL;
+	if (driver_data->TargetMethodIndex >= METHOD_NAMES_COUNT) return NULL;
     
     return METHOD_NAMES[driver_data->TargetMethodIndex++];
     }
@@ -4851,8 +5553,13 @@ cluster_i_cacheFreeSearch(pXHashEntry entry, void* unused)
 int
 clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt)
     {
-	pDriverData driver_data = checkPtr(inf_v);
-	if (UNLIKELY(driver_data == NULL)) goto err;
+	/** Get driver data. **/
+	pDriverData driver_data = inf_v;
+	if (UNLIKELY(driver_data == NULL))
+	    {
+	    mssError(1, "Cluster", "Failed to execute method on NULL driver object.");
+	    return -1;
+	    }
 	ASSERTMAGIC(driver_data, MGK_CL_DRIVER_DATA);
     
 	/** Cache management method. **/
@@ -4886,32 +5593,44 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    
 	    if (show)
 		{
-		/** Print cache info table. **/
+		/** Print cache info table headers. **/
 		int ret = 0;
 		unsigned int source_bytes = 0u, cluster_bytes = 0u, search_bytes = 0u;
-		bool failed = false;
 		printf("\nShowing cache for ");
 		if (path != NULL) printf("\"%s\":\n", path);
 		else printf("all files:\n");
 		printf("%-8s %-16s %-12s %s\n", "Type", "Name", "Size", "Entry CacheKey");
-		failed |= (check(xhForEach(
+		
+		/** Print source data cache. **/
+		if (UNLIKELY(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
 		    cluster_i_printEntry,
 		    (int)CI_SOURCE_DATA, &source_bytes, &skip_uncomputed, path
-		)) != 0);
-		failed |= (check(xhForEach(
+		)) != 0)
+		    {
+		    mssError(0, "Cluster", "Failed to print source data cache.");
+		    ret = -1;
+		    }
+		
+		/** Print cluster data cache. **/
+		if (UNLIKELY(xhForEach(
 		    &ClusterDriverCaches.ClusterDataCache,
 		    cluster_i_printEntry,
 		    (int)CI_CLUSTER_DATA, &cluster_bytes, &skip_uncomputed, path
-		)) != 0);
-		failed |= (check(xhForEach(
+		)) != 0)
+		    {
+		    mssError(0, "Cluster", "Failed to print cluster data cache.");
+		    ret = -1;
+		    }
+		
+		/** Print search data cache. **/
+		if (UNLIKELY(xhForEach(
 		    &ClusterDriverCaches.SearchDataCache,
 		    cluster_i_printEntry,
 		    (int)CI_SEARCH_DATA, &search_bytes, &skip_uncomputed, path
-		)) != 0);
-		if (failed)
+		)) != 0)
 		    {
-		    mssError(0, "Cluster", "Unexpected error occurred while showing caches.");
+		    mssError(0, "Cluster", "Failed to print search data cache.");
 		    ret = -1;
 		    }
 		    
@@ -4920,7 +5639,8 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		    + (unsigned int)ClusterDriverCaches.SourceDataCache.nItems
 		    + (unsigned int)ClusterDriverCaches.ClusterDataCache.nItems
 		    + (unsigned int)ClusterDriverCaches.SearchDataCache.nItems;
-		if (total_caches < skip_uncomputed) printf("All caches skipped, nothing to show...\n");
+		if (total_caches < skip_uncomputed)
+		    printf("All caches skipped, nothing to show...\n");
 		
 		/** Print stats. **/
 		char buf[SNPRINT_BYTES_BUF_SIZE];
@@ -4936,7 +5656,8 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		printf("%-8s %-4d %-12s\n\n", "Total", total_caches, buf);
 		
 		/** Print skip stats (if anything was skipped.) **/
-		if (skip_uncomputed > 1llu) printf("Skipped %llu uncomputed caches.\n\n", skip_uncomputed - 1llu);
+		if (skip_uncomputed > 1llu)
+		    printf("Skipped %llu uncomputed caches.\n\n", skip_uncomputed - 1llu);
 		
 		return ret;
 		}
@@ -5102,20 +5823,44 @@ int
 clusterInitialize(void)
     {
 	/** Allocate the driver. **/
-	pObjDriver drv = checkPtr(nmMalloc(sizeof(ObjDriver)));
-	if (UNLIKELY(drv == NULL)) goto err_free;
+	pObjDriver drv = nmMalloc(sizeof(ObjDriver));
+	if (UNLIKELY(drv == NULL))
+	    {
+	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(ObjDriver));
+	    goto err_free;
+	    }
 	memset(drv, 0, sizeof(ObjDriver));
 	
 	/** Initialize caches. **/
 	// memset(&ClusterDriverCaches, 0, sizeof(ClusterDriverCaches));
-	if (check(xhInit(&ClusterDriverCaches.SourceDataCache, CI_CACHE_HASHTABLE_ROWS, 0)) != 0) goto err_free;
-	if (check(xhInit(&ClusterDriverCaches.ClusterDataCache, CI_CACHE_HASHTABLE_ROWS, 0)) != 0) goto err_free;
-	if (check(xhInit(&ClusterDriverCaches.SearchDataCache, CI_CACHE_HASHTABLE_ROWS, 0)) != 0) goto err_free;
+	if (UNLIKELY(xhInit(&ClusterDriverCaches.SourceDataCache, CI_CACHE_HASHTABLE_ROWS, 0) != 0))
+	    {
+	    mssError(1, "Cluster", "Failed to allocate the hash table for the source data cache.");
+	    goto err_free;
+	    }
+	if (UNLIKELY(xhInit(&ClusterDriverCaches.ClusterDataCache, CI_CACHE_HASHTABLE_ROWS, 0) != 0))
+	    {
+	    mssError(1, "Cluster", "Failed to allocate the hash table for the cluster data cache.");
+	    goto err_free;
+	    }
+	if (UNLIKELY(xhInit(&ClusterDriverCaches.SearchDataCache, CI_CACHE_HASHTABLE_ROWS, 0) != 0))
+	    {
+	    mssError(1, "Cluster", "Failed to allocate the hash table for the search data cache.");
+	    goto err_free;
+	    }
 	
 	/** Setup the structure. **/
-	if (checkPtr(strcpy(drv->Name, "cluster - Clustering Driver")) == NULL) goto err_free;
-	if (check(xaInit(&drv->RootContentTypes, 1)) != 0) goto err_free;
-	if (checkPos(xaAddItem(&drv->RootContentTypes, "system/cluster")) < 0) goto err_free;
+	strtcpy(drv->Name, "cluster - Clustering Driver", sizeof(drv->Name));
+	if (UNLIKELY(xaInit(&drv->RootContentTypes, 1) != 0))
+	    {
+	    mssError(1, "Cluster", "Failed to allocate the XArray table for the driver's root content types.");
+	    goto err_free;
+	    }
+	if (UNLIKELY(xaAddItem(&drv->RootContentTypes, "system/cluster") < 0))
+	    {
+	    mssError(1, "Cluster", "Failed to add \"system/cluster\" to the drv->RootContentTypes XArray.");
+	    goto err_free;
+	    }
 	
 	drv->Capabilities = 0; /* TODO: Greg - Should I indicate any capabilities? */
 	
@@ -5149,7 +5894,11 @@ clusterInitialize(void)
 	drv->GetQueryIdentityPath = NULL;
 	
 	/** Register the driver. **/
-	if (check(objRegisterDriver(drv)) != 0) goto err_free;
+	if (objRegisterDriver(drv) != 0)
+	    {
+	    mssError(1, "Cluster", "Failed to register driver.");
+	    goto err_free;
+	    }
 	
 	/** Register structs used in this project with the newmalloc memory management system. **/
 	nmRegister(sizeof(SourceData), "ClusterSourceData");
@@ -5166,12 +5915,12 @@ clusterInitialize(void)
 	
     err_free:
 	/** Error cleanup. **/
-	if (ClusterDriverCaches.SourceDataCache.nRows != 0) check(xhDeInit(&ClusterDriverCaches.SourceDataCache)); /* Failure ignored. */
-	if (ClusterDriverCaches.ClusterDataCache.nRows != 0) check(xhDeInit(&ClusterDriverCaches.ClusterDataCache)); /* Failure ignored. */
-	if (ClusterDriverCaches.SearchDataCache.nRows != 0) check(xhDeInit(&ClusterDriverCaches.SearchDataCache)); /* Failure ignored. */
+	if (ClusterDriverCaches.SourceDataCache.nRows != 0) warnFail(xhDeInit(&ClusterDriverCaches.SourceDataCache));
+	if (ClusterDriverCaches.ClusterDataCache.nRows != 0) warnFail(xhDeInit(&ClusterDriverCaches.ClusterDataCache));
+	if (ClusterDriverCaches.SearchDataCache.nRows != 0) warnFail(xhDeInit(&ClusterDriverCaches.SearchDataCache));
 	if (drv != NULL)
 	    {
-	    if (drv->RootContentTypes.nAlloc != 0) check(xaDeInit(&drv->RootContentTypes)); /* Failure ignored. */
+	    if (drv->RootContentTypes.nAlloc != 0) warnFail(xaDeInit(&drv->RootContentTypes));
 	    nmFree(drv, sizeof(ObjDriver));
 	    }
 	
