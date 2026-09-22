@@ -22,6 +22,7 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
+#include "warn.h"
 #include "xhash.h"
 
 /** Tested module. **/
@@ -184,6 +185,9 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
+    /** Hide warning noise when this test deliberately causes failures. **/
+    WarnPrintEnabled = 0;
+
     *tname = "cluster-05 caMostSimilar()";
     return loopTest(doTest) * 39;
     }

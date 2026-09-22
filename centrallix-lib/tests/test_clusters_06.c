@@ -23,6 +23,7 @@
 /** Test dependencies. **/
 #include "newmalloc.h"
 #include "test_utils.h"
+#include "warn.h"
 
 /** Tested module. **/
 #include "clusters.h"
@@ -155,6 +156,9 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
+    /** Hide warning noise when this test deliberately causes failures. **/
+    WarnPrintEnabled = 0;
+
     *tname = "cluster-06 Searching";
     return loopTest(doTest) * 3;
     }

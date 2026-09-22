@@ -22,6 +22,7 @@
 
 /** Test dependencies. **/
 #include "test_utils.h"
+#include "warn.h"
 
 /** Tested module. **/
 #include "clusters.h"
@@ -65,6 +66,9 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
+    /** Hide warning noise when this test deliberately causes failures. **/
+    WarnPrintEnabled = 0;
+
     *tname = "cluster-04 caLevCompare()";
     return loopTest(doTest) * 25;
     }
