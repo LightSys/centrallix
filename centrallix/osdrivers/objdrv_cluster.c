@@ -3233,7 +3233,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    }
 		
 		/** Iterate through each label and add the index of the data to the specified cluster. **/
-		for (unsigned long long i = 0llu; i < source_data->nDatas; i++)
+		for (unsigned long i = 0lu; i < source_data->nDatas; i++)
 		    {
 		    if (xaAddItem(&indexes_in_cluster[labels[i]], (void*)i) < 0)
 			{
@@ -3268,7 +3268,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 			}
 		    for (unsigned int i = 0u; i < indexes_in_this_cluster->nItems; i++)
 			{
-			const unsigned long long index = (unsigned long long)indexes_in_this_cluster->Items[i];
+			const unsigned long index = (unsigned long)indexes_in_this_cluster->Items[i];
 			if (UNLIKELY(index > __UINT32_MAX__))
 			    {
 			    mssError(1, "Cluster",
