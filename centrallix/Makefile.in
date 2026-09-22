@@ -645,7 +645,7 @@ etc/centrallix.init: etc/centrallix.init.in
 clean:
 	@rm -f */*.o */*/*.o
 	@rm -f */*.so */*/*.so
-	@rm -f centrallix test_obj lsclient sfedit test_prt
+	@rm -f centrallix test_obj lsclient sfedit test_prt cxpasswd linksign
 	@rm -f *.o
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
