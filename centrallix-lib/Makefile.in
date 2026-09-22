@@ -61,7 +61,7 @@ PROFILE=@PROFILE@
 COVERAGE=@COVERAGE@
 CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g -lm
 MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g -O0
-TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
+TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS)) -DCX_TESTING
 
 XSTATICFILES=mtask.o mtlexer.o memstr.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o clusters.o qprintf.o strtcpy.o util.o timer.o warn.o range.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
