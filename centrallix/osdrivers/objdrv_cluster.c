@@ -1553,16 +1553,8 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	/** Error cleanup. **/
 	if (cache_key != NULL) nmSysFree(cache_key);
 	
-	if (sub_clusters.nAlloc != 0)
-	    {
-	    for (unsigned int i = 0u; i < sub_clusters.nItems; i++)
-		{
-		pClusterData cur = sub_clusters.Items[i];
-		if (cur == NULL) break;
-		cluster_i_freeClusterData(cur, true);
-		}
-	    warnFail(xaDeInit(&sub_clusters));
-	    }
+	/** The cluster cache owns the subclusters so we only free the XArray. **/
+	if (sub_clusters.nAlloc != 0) warnFail(xaDeInit(&sub_clusters));
 	
 	if (cluster_data != NULL) cluster_i_freeClusterData(cluster_data, false);
 	
