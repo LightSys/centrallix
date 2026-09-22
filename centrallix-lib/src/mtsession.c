@@ -480,30 +480,66 @@ mssEndSession(pMtSession s)
 void
 mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
     {
-    XString err_msg;
-    va_list args;
-
-	warnFail(xsInit(&err_msg));
+    char* err_msg = NULL;
+    char fallback_msg[256];
+    XString err_msg_xstring; err_msg_xstring.String = NULL;
 
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	warnFail(fflush(stdout));
 
-	/*** Write the source location and the module in front of the message.
-	 *** xsConcatPrintf() only implements a subset of printf(), but %s and %d
-	 *** are both implemented.
-	 ***/
-	warnNeg(xsConcatPrintf(&err_msg, "%s:%d: %s: ", file, line, module));
+	/** Attempt to format the error into an XString. **/
+	if (warnFail(xsInit(&err_msg_xstring)) == 0)
+	    {
+	    bool format_ok = true;
 
-	/*** Append the caller's message.  This goes through xsGenPrintf_va()
-	 *** rather than xsConcatPrintf() because the latter does not use
-	 *** vsnprintf() so it only supports some printf() functionality.
-	 *** xsWrite() appends when given no XS_U_SEEK.
-	 ***/
-	va_start(args, message);
-	warnNeg(xsGenPrintf_va(xsWrite, &err_msg, NULL, NULL, message, args));
-	va_end(args);
+	    /*** Write the source location and the module in front of the message.
+	     *** xsConcatPrintf() only implements a subset of printf(), but %s and %d
+	     *** are both implemented.
+	     ***/
+	    format_ok &= (warnNeg(xsConcatPrintf(&err_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
 
-	/** Get current session (fails if running outside session context). **/
+	    /*** Append the caller's message.  This goes through xsGenPrintf_va()
+	     *** rather than xsConcatPrintf() because the latter does not use
+	     *** vsnprintf() so it only supports some printf() functionality.
+	     *** xsWrite() appends when given no XS_U_SEEK.
+	     ***/
+	    va_list args;
+	    va_start(args, message);
+	    format_ok &= (warnNeg(xsGenPrintf_va(xsWrite, &err_msg_xstring, NULL, NULL, message, args)) >= 0);
+	    va_end(args);
+
+	    /** Get the error message from the xstring. **/
+	    if (format_ok) err_msg = warnNull(xsString(&err_msg_xstring));
+	    }
+
+	/*** Fallback: If formatting fails, format into a fixed-size buffer on
+	 *** the stack instead.  A truncated message is better than a generic
+	 *** fail or a silent error that logs nothing.
+	 ***/
+	if (UNLIKELY(err_msg == NULL))
+	    {
+	    fprintf(stderr, "%s:%d: %s: Failed to format the error message with an XString.\n", file, line, module);
+
+	    /** Write the source location and the module in front of the message. **/
+	    int prefix_len = snprintf(fallback_msg, sizeof(fallback_msg), "%s:%d: %s: ", file, line, module);
+	    if (prefix_len < 0 || (size_t)prefix_len >= sizeof(fallback_msg)) prefix_len = 0;
+
+	    /** Append the caller's message. **/
+	    va_list args;
+	    va_start(args, message);
+	    if (warnNeg(vsnprintf(fallback_msg + prefix_len, sizeof(fallback_msg) - prefix_len, message, args)) >= 0)
+		err_msg = fallback_msg;
+	    va_end(args);
+	    }
+
+	/** Fallback: If all formatting fails, just use the unformatted message. **/
+	if (UNLIKELY(err_msg == NULL))
+	    {
+	    fprintf(stderr, "Failed to format the error message at all.\n");
+	    err_msg = message;
+	    }
+
+	/** Get current session (returns NULL if running outside session context). **/
 	pMtSession s = thGetParam(NULL, "mss");
 	const bool log_error = (s == NULL || MSS.LogAllErrors);
 
@@ -514,13 +550,13 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    if (strcmp(MSS.LogMethod, "syslog") == 0)
 		{
 		if (s == NULL)
-		    syslog(LOG_ERR, "System: %.256s\n", xsString(&err_msg));
+		    syslog(LOG_ERR, "System: %.256s\n", err_msg);
 		else
-		    syslog(LOG_WARNING, "User '%s': %.256s\n", s->UserName, xsString(&err_msg));
+		    syslog(LOG_WARNING, "User '%s': %.256s\n", s->UserName, err_msg);
 		}
 	    else if (strcmp(MSS.LogMethod, "stdout") == 0)
 		{
-		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", xsString(&err_msg));
+		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", err_msg);
 		warnFail(fflush(stdout));
 		}
 	    }
@@ -532,17 +568,17 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    if (clr) mssClearError();
 
 	    /** Allocate space and construct the error text. **/
-	    char* allocated_err_msg = warnNull(nmSysStrdup(xsString(&err_msg)));
-	    if (allocated_err_msg == NULL)
+	    char* allocated_err_msg = warnNull(nmSysStrdup(err_msg));
+	    if (UNLIKELY(allocated_err_msg == NULL))
 		{
-		fprintf(stderr, "Failed to store error message: %s\n", xsString(&err_msg));
+		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
 		goto end; /* Give up. */
 		}
 
 	    /** Store the error. **/
 	    if (warnNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
-		fprintf(stderr, "Failed to add error message to session error list: %s\n", xsString(&err_msg));
+		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
 		nmSysFree(allocated_err_msg);
 		goto end; /* Give up. */
 		}
@@ -550,7 +586,11 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 
     end:
 	/** Clean up. **/
-	warnFail(xsDeInit(&err_msg));
+	if (LIKELY(err_msg_xstring.String != NULL))
+	    warnFail(xsDeInit(&err_msg_xstring));
+
+	/** Force all warnings/errors to be printed. **/
+	warnFail(fflush(stderr));
 
 	return;
     }
@@ -578,7 +618,7 @@ mssClearError()
 int
 mssPrintError(pFile fd)
     {
-    XString str;
+    XString str; str.String = NULL;
     int rval = -1, tmp;
 
 	if (fd == NULL) goto end;
@@ -593,14 +633,16 @@ mssPrintError(pFile fd)
 	    }
 	if (warnNeg(fdWrite(fd, xsString(&str), xsLength(&str), 0, 0)) < 0) goto end;
 
-	warnFail(xsDeInit(&str));
-	
 	/** Success. **/
 	rval = 0;
 
     end:
 	if (rval != 0) /* Make sure we print something if a failure happenned. */
 	    fprintf(stderr, "Warning: Failed to print session errors.\n");
+
+	/** Clean up. **/
+	if (LIKELY(str.String != NULL))
+	    warnFail(xsDeInit(&str));
 
 	return rval;
     }
