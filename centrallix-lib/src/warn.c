@@ -45,11 +45,13 @@ printWarningInternal(const int error_code, const char* c_str, const char* file_n
 	if (error_code != -1)
 	    strtcatf(extra_info_buf, sizeof(extra_info_buf), &i, " (error code %d)", error_code);
 
+#ifndef CX_TESTING /* Skip warnings in tests to reduce noise. */
 	/** Print the warning message. **/
 	fprintf(stderr,
 	    "%s:%d: Warning! %s%s.\n",
 	    file_name, line_number, c_str, extra_info_buf
 	);
+#endif
 
     return;
     }

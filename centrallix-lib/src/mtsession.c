@@ -564,6 +564,7 @@ mssClearError()
     {
 	/** Get session pointer. **/
 	pMtSession s = warnNull(thGetParam(NULL, "mss"));
+	if (s == NULL) return; /* No errors to clear. */
 
 	/** Free all error strings in the error list/error stack. **/
 	warnFail(xaClear(&s->ErrList, (void*)nmSysFree, NULL));
