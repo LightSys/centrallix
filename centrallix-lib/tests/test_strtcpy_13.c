@@ -85,7 +85,10 @@ test(char** tname)
 
 	/** Only run the conversion cases where the platform really fails. **/
 	setlocale(LC_ALL, "C");
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], unconvertible) < 0);
+	#pragma GCC diagnostic pop
 	if (!can_fail)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
 	ncases = nbad + 3 + (can_fail ? nfmts * npfx : 0);
