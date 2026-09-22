@@ -5882,7 +5882,11 @@ clusterInitialize(void)
 	    }
 	
 	/** Setup the structure. **/
-	strtcpy(drv->Name, "cluster - Clustering Driver", sizeof(drv->Name));
+	if (strtcpy(drv->Name, "cluster - Clustering Driver", sizeof(drv->Name)) < 0)
+	    {
+	    mssError(1, "Cluster", "Failed to write driver name.");
+	    goto err_free;
+	    }
 	if (UNLIKELY(xaInit(&drv->RootContentTypes, 1) != 0))
 	    {
 	    mssError(1, "Cluster", "Failed to allocate the XArray table for the driver's root content types.");
