@@ -578,7 +578,7 @@ mssClearError()
 int
 mssPrintError(pFile fd)
     {
-    XString str;
+    XString str = { .AllocLen = 0 };
     int rval = -1, tmp;
 
 	if (fd == NULL) goto end;
@@ -593,14 +593,15 @@ mssPrintError(pFile fd)
 	    }
 	if (warnNeg(fdWrite(fd, xsString(&str), xsLength(&str), 0, 0)) < 0) goto end;
 
-	warnFail(xsDeInit(&str));
-	
 	/** Success. **/
 	rval = 0;
 
     end:
 	if (rval != 0) /* Make sure we print something if a failure happenned. */
 	    fprintf(stderr, "Warning: Failed to print session errors.\n");
+
+	/** Clean up. **/
+	if (str.AllocLen > 0) warnFail(xsDeInit(&str));
 
 	return rval;
     }
