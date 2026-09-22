@@ -129,6 +129,11 @@ int caKmeans(
     })
 #endif
 
+/*** A function which takes two data items and returns their similarity, a
+ *** value between `0.0` (completely different) and `1.0` (identical).
+ ***/
+typedef double (*pSimilarityFn)(void*, void*);
+
 /** Comparison functions (see ca_search()). **/
 double caCosCompare(void* v1, void* v2);
 double caLevCompare(void* str1, void* str2);
@@ -139,19 +144,19 @@ void* caMostSimilar(
     void* target,
     void** data,
     const unsigned int num_data,
-    double (*similarity)(void*, void*),
+    pSimilarityFn similarity,
     const double threshold);
 pXArray caSlidingSearch(
     void** data,
     const unsigned int num_data,
     const unsigned int window_size,
-    double (*similarity)(void*, void*),
+    pSimilarityFn similarity,
     const double threshold,
     pXArray maybe_pairs);
 pXArray caCompleteSearch(
     void** data,
     const unsigned int num_data,
-    double (*similarity)(void*, void*),
+    pSimilarityFn similarity,
     const double threshold,
     pXArray maybe_pairs);
 

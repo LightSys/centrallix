@@ -1105,7 +1105,7 @@ caMostSimilar(
     void* target,
     void** data,
     const unsigned int num_data,
-    double (*similarity)(void*, void*),
+    pSimilarityFn similarity,
     const double threshold)
     {
     void* most_similar = NULL;
@@ -1155,7 +1155,7 @@ caSlidingSearch(
     void** data,
     const unsigned int num_data,
     const unsigned int window_size,
-    double (*similarity)(void*, void*),
+    pSimilarityFn similarity,
     const double threshold,
     pXArray maybe_pairs)
     {
@@ -1245,7 +1245,7 @@ pXArray
 caCompleteSearch(
     void** data,
     const unsigned int num_data,
-    double (*similarity)(void*, void*),
+    pSimilarityFn similarity,
     const double threshold,
     pXArray maybe_pairs)
     {

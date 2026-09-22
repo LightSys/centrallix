@@ -173,7 +173,8 @@ cluster_i_similarityMeasureToString(SimilarityMeasure similarity_measure)
  *** 	if an error occurs, in which case it always calls mssError() to give
  *** 	an error message.
  ***/
-double (*cluster_i_similarityMeasureToFunction(SimilarityMeasure similarity_measure))(void*, void*)
+pSimilarityFn
+cluster_i_similarityMeasureToFunction(SimilarityMeasure similarity_measure)
     {
     switch (similarity_measure)
 	{
@@ -3410,10 +3411,10 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 	    }
 	
 	/** Get the comparison function based on the similarity measure. **/
-	double (*similarity_function)(void *, void *) = cluster_i_similarityMeasureToFunction(search_data->SimilarityMeasure);
+	pSimilarityFn similarity_function = cluster_i_similarityMeasureToFunction(search_data->SimilarityMeasure);
 	if (UNLIKELY(similarity_function == NULL))
 	    {
-	    mssError(1, "Cluster", "Failed to get similarity measure function.");
+	    mssError(0, "Cluster", "Failed to get similarity measure function.");
 	    goto err_free;
 	    }
 	
