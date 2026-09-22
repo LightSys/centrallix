@@ -1085,6 +1085,9 @@ function tbld_update_detail(dw)
 
 	    // Add to this row and show it.
 	    this.detail.push(dw);
+	    this.detail.sort(
+		(a,b)=>{return a.display_order - b.display_order}
+	    );
 	    this.appendChild(dw);
 	    $(dw).css
 		({
@@ -2400,6 +2403,7 @@ function tbld_init(param)
 	pg_reveal_register_triggerer(dw);
 	dw.display_for = 1;
 	dw.is_visible = 0;
+	dw.display_order = i;
 	ifc_init_widget(dw);
 	var ie = dw.ifcProbeAdd(ifEvent);
 	ie.Add("Open");
