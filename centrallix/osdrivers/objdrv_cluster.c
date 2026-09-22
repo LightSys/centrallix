@@ -732,7 +732,10 @@ int clusterCommit(void* inf_v, pObjTrxTree *oxt);
 /** ANCHOR[id=parsing] **/
 // LINK #functions
 
-/** Format a hint to give to the user. **/
+/*** Format a hint to print to the user.
+ *** 
+ *** @param hint The text of the guess to print as a hint.
+ ***/
 static void cluster_i_giveHint(const char* hint)
     {
 	fprintf(stderr, "  > Hint: Did you mean \"%s\"?\n", hint);
@@ -5406,7 +5409,20 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 
 
 // LINK #functions
-/** Intended for use in `xhForEach()`. **/
+/*** Prints a hash table entry that is assumed to be from one of the caches.
+ ***
+ *** @attention - Intended for use in `xhForEach()`.
+ ***  
+ *** @param entry The hash table entry to print.
+ *** @param args Several arguments that control the printing:
+ *** 	- The type of driver struct data being printed: either source data,
+ *** 	  cluster data, or search data.
+ *** 	- A pointer to an unsigned int storing the total number of bytes
+ *** 	  used by the entry printed.
+ *** 	- A pointer to ?.
+ *** @returns 0 if successful,
+ ***         -1 if an error occurs.
+ ***/
 static int
 cluster_i_printEntry(pXHashEntry entry, va_list args)
     {
@@ -5486,17 +5502,26 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	goto increment_total;
 	
     no_print:
-	(*less_ptr)++;
+	if (less_ptr != NULL)
+	    (*less_ptr)++;
 	
     increment_total:
-	*total_bytes_ptr += bytes;
+	if (total_bytes_ptr != NULL)
+	    *total_bytes_ptr += bytes;
     
     return 0;
     }
 
 
 // LINK #functions
-/** Intended for use in `xhClearKeySafe()`. **/
+/*** Free the source data stored in a hash table entry that is assumed to be
+ *** from the source data cache.
+ *** 
+ *** @attention - Intended for use in `xhClearKeySafe()`.
+ *** 
+ *** @param entry The hash table entry to use for freeing.
+ *** @param unused An unused pointer.
+ ***/
 static void
 cluster_i_cacheFreeSourceData(pXHashEntry entry, void* unused)
     {
@@ -5509,7 +5534,14 @@ cluster_i_cacheFreeSourceData(pXHashEntry entry, void* unused)
 
 
 // LINK #functions
-/** Intended for use in `xhClearKeySafe()`. **/
+/*** Free the cluster data stored in a hash table entry that is assumed to be
+ *** from the cluster data cache.
+ *** 
+ *** @attention - Intended for use in `xhClearKeySafe()`.
+ *** 
+ *** @param entry The hash table entry to use for freeing.
+ *** @param unused An unused pointer.
+ ***/
 static void
 cluster_i_cacheFreeCluster(pXHashEntry entry, void* unused)
     {
@@ -5522,7 +5554,14 @@ cluster_i_cacheFreeCluster(pXHashEntry entry, void* unused)
 
 
 // LINK #functions
-/** Intended for use in `xhClearKeySafe()`. **/
+/*** Free the search data stored in a hash table entry that is assumed to be
+ *** from the search data cache.
+ *** 
+ *** @attention - Intended for use in `xhClearKeySafe()`.
+ *** 
+ *** @param entry The hash table entry to use for freeing.
+ *** @param unused An unused pointer.
+ ***/
 static void
 cluster_i_cacheFreeSearch(pXHashEntry entry, void* unused)
     {
@@ -5581,7 +5620,8 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		show = true;
 		path = objFilePath(driver_data->NodeData->Parent);
 		}
-	    if (strcmp(param->String, "show_all") == 0) show = true;
+	    if (strcmp(param->String, "show_all") == 0)
+		show = true;
 	    
 	    if (show)
 		{
