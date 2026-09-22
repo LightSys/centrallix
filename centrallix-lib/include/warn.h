@@ -24,6 +24,9 @@
 
 #include "expect.h"
 
+/** Set to zero to silence all warnings.  Cleared by the test drivers. **/
+extern int WarnPrintEnabled;
+
 /** Internal warning printer (forward declaration). **/
 void printWarningInternal(const int error_code, const char* c_str, const char* file_name, const int line_number);
 #define printWarning(error_code, c_str) printWarningInternal(error_code, (c_str), __FILE__, __LINE__)

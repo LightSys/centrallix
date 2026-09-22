@@ -24,6 +24,13 @@
 
 #define ERR_BUF_SIZE 1024
 
+/*** Set to zero to silence warnings.  The test drivers clear this so that
+ *** test output is not buried in warning noise.  A compile-time check cannot
+ *** do this job: the library is built once, without CX_TESTING, and the test
+ *** binaries just link the result.
+ ***/
+int WarnPrintEnabled = 1;
+
 /*** Function for printing an error when code fails.
  *** 
  *** @param error_code The error code number returned by a failing C function (or -1 if not applicable).
@@ -34,6 +41,9 @@
 void
 printWarningInternal(const int error_code, const char* c_str, const char* file_name, const int line_number)
     {
+	if (!WarnPrintEnabled)
+	    return;
+
 	/** Store errno before any library call of ours can overwrite it. **/
 	const int saved_errno = errno;
 
@@ -45,13 +55,11 @@ printWarningInternal(const int error_code, const char* c_str, const char* file_n
 	if (error_code != -1)
 	    strtcatf(extra_info_buf, sizeof(extra_info_buf), &i, " (error code %d)", error_code);
 
-#ifndef CX_TESTING /* Skip warnings in tests to reduce noise. */
 	/** Print the warning message. **/
 	fprintf(stderr,
 	    "%s:%d: Warning! %s%s.\n",
 	    file_name, line_number, c_str, extra_info_buf
 	);
-#endif
 
     return;
     }
