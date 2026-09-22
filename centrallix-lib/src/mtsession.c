@@ -529,7 +529,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	if (s != NULL)
 	    {
 	    /** Clear the error context, if requested. **/
-	    if (clr) warnFail(mssClearError());
+	    if (clr) mssClearError();
 
 	    /** Allocate space and construct the error text. **/
 	    char* allocated_err_msg = warnNull(nmSysStrdup(xsString(&err_msg)));
@@ -559,15 +559,14 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 /*** mssClearError - removes all error messages from the current error
  *** stack.
  ***/
-int
+void
 mssClearError()
     {
 	/** Get session pointer. **/
-	pMtSession s = thGetParam(NULL, "mss");
-	if (s == NULL) return -1;
+	pMtSession s = warnNull(thGetParam(NULL, "mss"));
 
 	/** Free all error strings in the error list/error stack. **/
-	return xaClear(&s->ErrList, (void*)nmSysFree, NULL);
+	warnFail(xaClear(&s->ErrList, (void*)nmSysFree, NULL));
     }
 
 
