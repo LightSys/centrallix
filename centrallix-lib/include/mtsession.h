@@ -95,7 +95,7 @@ void mss_i_error(int clr, char* module, char* file, int line, char* message, ...
     mss_i_error(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
 #define mssErrorErrno(clear, module, message, ...) \
     mss_i_error(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
-int mssClearError();
+void mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
 int mssUserError(pXString str);
