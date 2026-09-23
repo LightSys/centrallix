@@ -2358,6 +2358,8 @@ cluster_i_freeSourceData(pSourceData source_data)
 
 // LINK #functions
 /*** Free pClusterData struct with an option to recursively free subclusters.
+ *** The recursive version may leak some memory if the stack recursion limit
+ *** is reached.
  *** 
  *** @param cluster_data The cluster data struct to free.
  *** @param recursive Whether to recursively free subclusters.
