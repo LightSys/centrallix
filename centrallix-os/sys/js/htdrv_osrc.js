@@ -206,10 +206,13 @@ function osrc_query_text_handler(aparam)
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
 
-    // Evaluate default expression on parameters...
+    // Evaluate default expressions and values for parameters...
     for(var pn in this.params)
 	{
-	this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:null});
+	let paramval = null;
+	if (typeof aparam[pn] != 'undefined' && pn != 'query' && pn != 'objname' && pn != 'min_length' && pn != 'use_having' && pn != 'field_list')
+	    paramval = aparam[pn];
+	this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:paramval});
 	}
 
     // build the search string from the criteria and field list
