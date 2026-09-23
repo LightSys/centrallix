@@ -136,7 +136,10 @@ static bool doTest(void)
 	success &= ASSERT_STR_HAS(errorStack(), "FMT: s=text d=-7 c=X pct=%");
 
 	/** A message with nothing in it, from a module with no name. **/
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wformat-zero-length"
 	mssError(1, "", "");
+	#pragma GCC diagnostic pop
 	success &= ASSERT_EQL(errorCount(), 1, "%d");
 	success &= ASSERT_STR_EQL(userError(), "");
 
