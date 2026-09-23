@@ -24,7 +24,7 @@
 /** Tested module. **/
 #include "xhash.h"
 
-/*** These are internal functions, so we use forward forward declarations to
+/*** These are internal functions, so we use forward declarations to
  *** make them available for testing.
  ***/
 int xhInitialize();

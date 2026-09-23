@@ -100,8 +100,8 @@ static bool doTest(void)
 	*v_not = value_not;
 	success &= ASSERT_EQL(xaFindItem(xa, NULL), -1, "%d");
 	success &= ASSERT_EQL(xaFindItemR(xa, NULL), -1, "%d");
-	success &= ASSERT_EQL(xaFindItem(xa, &v_not), -1, "%d");
-	success &= ASSERT_EQL(xaFindItemR(xa, &v_not), -1, "%d");
+	success &= ASSERT_EQL(xaFindItem(xa, v_not), -1, "%d");
+	success &= ASSERT_EQL(xaFindItemR(xa, v_not), -1, "%d");
 	nmFree(v_not, sizeof(int)); v_not = NULL;
 
 	/** Insert before index 1. **/

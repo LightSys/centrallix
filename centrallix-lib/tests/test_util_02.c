@@ -30,7 +30,7 @@
 /*** Call an snprint-style function and check both what it wrote and what it
  *** returned.
  *** `expect` is the untruncated result so that we can expect the return to be
- *** the correct length while requring the function to write exactly as much as
+ *** the correct length while requiring the function to write exactly as much as
  *** `buf_size` allows.  Nothing is written when `buf_size` is zero.
  ***/
 #define TEST_SNPRINT(fn, buf, buf_size, value, expect) \

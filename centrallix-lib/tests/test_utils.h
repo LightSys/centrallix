@@ -46,8 +46,7 @@
 
 /*** Assert a value to be true.
  *** 
- *** @param v1 The value.
- *** @param v2 The second value.
+ *** @param v The value.
  *** @returns true if successful, false otherwise.
  ***/
 #define ASSERT_TRUE(v) \
@@ -66,7 +65,7 @@
  *** @param v2 The second value.
  *** @param sp The specifier to print the values if there is an error. This
  ***    MUST be a string known to the compiler at compile time, such as a
- ***    sting literal or a macro that expands to one.
+ ***    string literal or a macro that expands to one.
  *** @returns true if successful, false otherwise.
  ***/
 #define ASSERT_EQL(v1, v2, sp) \
@@ -117,11 +116,11 @@
 	{ \
 	const size_t buf_len = max(7, _len + 1); \
 	char _tmp1[buf_len]; \
-	if (str1 == NULL) strcpy(_tmp1, "(null)"); \
+	if (_str1 == NULL) strcpy(_tmp1, "(null)"); \
 	else STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
 	\
 	char _tmp2[buf_len]; \
-	if (str2 == NULL) strcpy(_tmp2, "(null)"); \
+	if (_str2 == NULL) strcpy(_tmp2, "(null)"); \
 	else STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
 	\
 	fprintf(stderr, \
@@ -160,7 +159,7 @@
  *** @param max_v The maximum acceptable value.
  *** @param sp The specifier to print the values if there is an error. This
  ***    MUST be a string known to the compiler at compile time, such as a
- ***    sting literal or a macro that expands to one.
+ ***    string literal or a macro that expands to one.
  *** @returns true if successful, false otherwise.
  ***/
 #define ASSERT_RANGE(v, min_v, max_v, sp) \
