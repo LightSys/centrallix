@@ -189,5 +189,5 @@ long long test(char** tname)
     WarnPrintEnabled = 0;
 
     *tname = "cluster-05 caMostSimilar()";
-    return loopTest(doTest) * 39;
+    return loopTest(doTest) * 38;
     }
