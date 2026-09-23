@@ -69,26 +69,26 @@ This function initializes the session manager and sets global variables used in 
 ```c
 char* mssUserName();
 ```
-This function returns the current user name, or `NULL` an error occurs.
+This function returns the current user name, or `NULL` if an error occurs.
 
 
 ## mssPassword()
 ```c
 char* mssPassword();
 ```
-This function returns the current user's password that they used to log into Centrallix, or `NULL` an error occurs.
+This function returns the current user's password that they used to log into Centrallix, or `NULL` if an error occurs.
 
 
 ## mssSetParam()
 ```c
-int mssSetParam(char* paramname, char* param);
+int mssSetParam(char* paramname, void* param);
 ```
-This function sets the session parameter of the provided name (`paramname`) to the provided value (`param`).  The parameter MUST be a string value.  This function returns 0 if successful, or -1 an error occurs.
+This function sets the session parameter of the provided name (`paramname`) to the provided value (`param`).  The parameter MUST be a string value.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## mssGetParam()
 ```c
-char* mssGetParam(char* paramname);
+void* mssGetParam(char* paramname);
 ```
 Returns the value of a session parameter of the provided name (`paramname`), or `NULL` if an error occurs.  Common session parameters include:
 - `dfmt`: The current date format.
@@ -100,18 +100,18 @@ Returns the value of a session parameter of the provided name (`paramname`), or 
 ```c
 void mssError(int clr, char* module, char* message, ...);
 ```
-Formats and caches an error message for return to the user.  This function returns 0 if successful, or -1 if an error occurred.
+Formats and caches an error message for return to the user.
 
 | Parameter | Type          | Description
 | --------- | ------------- | ------------
-| crl       | int           | If set to 1, all previous error messages are cleared. Set this when the error is initially discovered and no other module is likely to have made a relevant `mssError()` call for the current error.
+| clr       | int           | If set to 1, all previous error messages are cleared. Set this when the error is initially discovered and no other module is likely to have made a relevant `mssError()` call for the current error.
 | module    | char*         | A two-to-five letter abbreviation of the module reporting the error.  This is typically the module or driver's abbreviation prefix in full uppercase letters (although that is not required).  This is intended to help the developer find the source of the error faster.
 | message   | char*         | A string error message, accepting format specifiers like `%d` and `%s` which are supplied by the argument list, similar to `printf()`.
 | ...       | ...           | Parameters for the formatting.
 
 Errors that occur inside a session context are normally stored up and not printed until other MSS module routines are called to fetch the errors.  Errors occurring outside a session context (such as in Centrallix's network listener) are printed to Centrallix's standard output immediately.
 
-The `mssError()` function is not required to be called at every function nesting level when an error occurs.  For example, if the expression compiler returns -1 indicating that a compilation error occurred, it has probably already added one or more error messages to the error list.  The calling function should only call `mssError()` if doing so would provide additional context or other useful information (e.g. _What_ expression failed compilation? _Why_ as an expression being compiled? etc.).  However, it is far easier to give too little information that too much, so it can often be best to err on the side of calling `mssError()` with information that might be irrelevant, rather than skipping it and leaving the developer confused.
+The `mssError()` function is not required to be called at every function nesting level when an error occurs.  For example, if the expression compiler returns -1 indicating that a compilation error occurred, it has probably already added one or more error messages to the error list.  The calling function should only call `mssError()` if doing so would provide additional context or other useful information (e.g. _What_ expression failed compilation? _Why_ was an expression being compiled? etc.).  However, it is far easier to give too little information than too much, so it can often be best to err on the side of calling `mssError()` with information that might be irrelevant, rather than skipping it and leaving the developer confused.
 
 - 📖 **Note**: The `mssError()` routines do not cause the calling function to return or exit.  The function must still clean up after itself and return an appropriate value (such as `-1` or `NULL`) to indicate failure.
 

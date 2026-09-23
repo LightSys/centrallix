@@ -57,7 +57,7 @@ The `MTASK` module provides simple and easy TCP/IP connectivity.  It includes ma
 
 ## netConnectTCP()
 ```c
-pFile netConnectTCP(char* host_name, char* service_name, int flags);
+pFile netConnectTCP(const char* host_name, const char* service_name, int flags);
 ```
 This function creates a client socket and connects it to a server on a given TCP service/port and host name.  It takes the following three parameters:
 - `host_name`: The host name or ascii string for the host's ip address.
@@ -73,17 +73,17 @@ This function returns the connection file descriptor if successful, or `NULL` if
 ```c
 int netCloseTCP(pFile net_filedesc, int linger_msec, int flags);
 ```
-This function closes a network connection (either a TCP listening, server, or client socket).  It will also optionally waits up to `linger_msec` milliseconds (1/1000 seconds) for any data written to the connection to make it to the other end before performing the close.  If `linger_msec` is set to 0, the connection is aborted (reset).  The linger time can be set to 1000 msec or so if no writes were performed on the connection prior to the close.  If a large amount of writes were performed immediately prior to the close, offering to linger for a few more seconds (perhaps 5 or 10 by specifying 5000 or 10000 msec) can be a good idea.
+This function closes a network connection (either a TCP listening, server, or client socket).  It will also optionally wait up to `linger_msec` milliseconds (1/1000 seconds) for any data written to the connection to make it to the other end before performing the close.  If `linger_msec` is set to 0, the connection is aborted (reset).  The linger time can be set to 1000 msec or so if no writes were performed on the connection prior to the close.  If a large amount of writes were performed immediately prior to the close, offering to linger for a few more seconds (perhaps 5 or 10 by specifying 5000 or 10000 msec) can be a good idea.
 
 
 ## fdWrite()
 ```c
-int fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags);
+int fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags);
 ```
-This function writes data to an open file descriptor, from a given `buffer` and `length` of data to write.  It also takes an optional seek `offset` and and `flags`, which can be zero or more of:
+This function writes data to an open file descriptor, from a given `buffer` and `length` of data to write.  It also takes an optional seek `offset` and `flags`, which can be zero or more of:
 - `FD_U_NOBLOCK` - If the write can't be performed immediately, don't perform it at all.
 - `FD_U_SEEK` - The `offset` value is valid.  Seek to it before writing.  Not allowed for network connections.
-- `FD_U_PACKET` - *ALL* of the data specified by `length` in `buffer` must be written.  Normal `write()` semantics in UNIX state that not all data has to be written, and the number of bytes actually written is returned.  Setting this flag makes sure all data is really written before returning.
+- `FD_U_PACKET` - *ALL* the data specified by `length` in `buffer` must be written.  Normal `write()` semantics in UNIX state that not all data has to be written, and the number of bytes actually written is returned.  Setting this flag makes sure all data is really written before returning.
 
 
 ## fdRead()

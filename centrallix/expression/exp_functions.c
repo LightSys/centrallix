@@ -83,11 +83,11 @@
  *** @param Datatypes An array of datatypes (terminated with a -1). Set to NULL
  *** 	to accept any datatype as valid for this argument.
  *** @param Flags Flags to require other properties about an argument. If the
- *** 	flag a required behavior for specific types, the requirement will be
+ *** 	flag is a required behavior for specific types, the requirement will be
  *** 	skipped for other types.
  *** 
  *** Valid Flags:
- *** 	- `EXP_ARG_OPTIONAL`: The arg is optional. It is not valid a required
+ *** 	- `EXP_ARG_OPTIONAL`: The arg is optional. It is not valid to have a required
  *** 	   argument after an optional one.
  *** 	- `EXP_ARG_NOT_NULL`: Expect the arg to not be null.
  *** 	- `EXP_ARG_FORCE_TYPE`: Run type check on null args (not recommended).
@@ -1589,7 +1589,7 @@ int exp_fn_reverse(pExpression tree, pParamObjects objlist, pExpression i0, pExp
     return 0;
     }
 
-/** Leading zero trim. */
+/** Leading zero trim. **/
 int
 exp_fn_lztrim(pExpression tree)
     {
@@ -1682,7 +1682,7 @@ exp_fn_ltrim(pExpression tree)
 	 *** that isn't trimmed.
 	 ***/
 	
-	/** Iterate until we find the a character that isn't a space. **/
+	/** Iterate until we find a character that isn't a space. **/
 	/** Note: Only spaces are trimmed, as with similar trim functions in most SQL languages. **/
 	while (*str == ' ') str++;
 	

@@ -132,7 +132,7 @@ char* obj_default_null_fmt = "NULL";
 /*** Parse the given string into a datatype. The case of the first character
  *** is ignored, but all other characters must be capitalized correctly.
  *** 
- *** @attention - This function is optimized to prevent performance hits
+ *** @attention - This function is optimized to prevent performance hits in
  *** 	situations where it may need to be called many thousands of times.
  *** 
  *** @param str The string to be parsed to a datatype.

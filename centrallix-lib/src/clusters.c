@@ -25,7 +25,7 @@
 /* Module:	clusters.c, clusters.h					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	September 29, 2025					*/
-/* Description	Clustering library used to cluster and search data with	*/
+/* Description:	Clustering library used to cluster and search data with	*/
 /*		cosine or Levenshtein (aka. edit distance) similarity 	*/
 /*		measures. Used by the "clustering driver".		*/
 /*		For more information on how to use this library, see	*/
@@ -268,7 +268,7 @@ caBuildVector(const char* str)
 	trimmed_sparse_vector = nmSysRealloc(sparse_vector, trimmed_sparse_vector_size);
 	if (UNLIKELY(trimmed_sparse_vector == NULL))
 	    {
-	    mssError(1, "CA", "nmSysMalloc(%zu) failed.", trimmed_sparse_vector_size);
+	    mssError(1, "CA", "nmSysRealloc(%zu) failed.", trimmed_sparse_vector_size);
 	    goto err_free;
 	    }
 	sparse_vector = NULL; /* Mark memory freed by nmSysRealloc() no longer valid. */
@@ -299,7 +299,7 @@ caFreeVector(pVector sparse_vector)
 
 /*** Parse a token from a sparsely allocated vector and write its value to
  *** `token_value`.  The number of dimensions consumed in the process is
- *** written `dims_consumed`.
+ *** written to `dims_consumed`.
  *** 
  *** @param token The sparse vector token to be parsed.
  *** @param dims_consumed The location to store the number of dimensions
@@ -457,7 +457,7 @@ ca_i_sparseSimilarity(const pVector v1, const pVector v2)
 	/** Optimization: Skip computing magnitudes for completely different vectors. **/
 	if (dot_product == 0u) return 0.0;
     
-    /** Return the difference score. **/
+    /** Return the similarity score. **/
     return (double)dot_product / (ca_i_magnitudeSparse(v1) * ca_i_magnitudeSparse(v2));
     }
 
@@ -466,7 +466,7 @@ ca_i_sparseSimilarity(const pVector v1, const pVector v2)
  *** 
  *** @param v1 Sparse vector #1.
  *** @param v2 Sparse vector #2.
- *** @returns Similarity between 0 and 1 where
+ *** @returns Difference between 0 and 1 where
  ***     1 indicates completely different and
  ***     0 indicates identical.
  ***/
@@ -499,7 +499,7 @@ ca_i_sparseSimilarityToCentroid(const pVector v1, const pCentroid c1)
 	    dim += dims_consumed;
 	    }
     
-    /** Return the difference score. **/
+    /** Return the similarity score. **/
     return dot_product / (ca_i_magnitudeSparse(v1) * ca_i_magnitudeDense(c1));
     }
 
@@ -507,7 +507,7 @@ ca_i_sparseSimilarityToCentroid(const pVector v1, const pCentroid c1)
  *** allocated centroid by subtracting their dot product from 1.0.
  *** 
  *** @param v1 Sparse vector #1.
- *** @param c1 Dense centroid #2.
+ *** @param c1 Dense centroid #1.
  *** @returns Difference between 0 and 1 where
  ***     1 indicates completely different and
  ***     0 indicates identical.
@@ -616,7 +616,7 @@ caEditDist(const char* str1, const char* str2, const size_t str1_length, const s
 	if (unsigned_result > INT_MAX)
 	    {
 	    fprintf(stderr,
-		"Warning: Integer overflow detected in caEditDist(\"%s\", \"%s\", %lu, %lu) = %u > %d\n",
+		"Warning: Integer overflow detected in caEditDist(\"%s\", \"%s\", %zu, %zu) = %u > %d\n",
 		str1, str2, str1_length, str2_length, unsigned_result, INT_MAX
 	    );
 	    }
@@ -699,14 +699,14 @@ caCosCompare(void* v1, void* v2)
  *** either OR BOTH strings are NULL, this function returns `0.0`.
  *** 
  *** @attention - Note: Unlike `caCosCompare()`, punctuation, whitespace,
- *** 	etc. are NOT ignored.  In fact, this functions supports strings that
+ *** 	etc. are NOT ignored.  In fact, this function supports strings that
  *** 	contain ANY valid ASCII characters other than the NULL-terminator,
  *** 	which is used to terminate the string.
  *** 
  *** @attention - This function takes `void*` instead of `char*` so that it
  *** 	can be used as the similarity function in the ca_search() function
  *** 	family without needing a messy typecast to avoid the compiler warning.
- *** 	However, behavior is undefined if `v1` and `v2` are not `char*`s.
+ *** 	However, behavior is undefined if `s1` and `s2` are not `char*`s.
  *** 
  *** @param s1 A `char*` to the first string to compare.
  *** @param s2 A `char*` to the second string to compare.
@@ -879,7 +879,7 @@ ca_i_getClusterSize(
  *** 	each clustering iteration. If this is not met, the iterations stop.
  *** 	Pass -1.0 to disable this and iterate for as long as the centroids keep
  *** 	changing (or until `max_iter` is reached).
- *** @param labels Initialized by this function to stores the final cluster
+ *** @param labels Initialized by this function to store the final cluster
  *** 	identities of the vectors after clustering is completed. Each value
  *** 	will be `0 <= n < num_clusters`.  This buffer can be uninitialized.
  *** @param vector_sims An array of num_vectors elements, allocated by the
@@ -910,7 +910,6 @@ caKmeans(
 	if (UNLIKELY(false
 	    || vectors == NULL
 	    || labels == NULL
-	    || vector_sims == NULL
 	    || num_vectors == 0u
 	    || num_clusters == 0u
 	    || max_iter == 0u
@@ -1178,7 +1177,7 @@ caSlidingSearch(
 	    pairs = xaNew(guess_size);
 	    if (UNLIKELY(pairs == NULL))
 		{
-		mssError(1, "CA", "xaNew(%d)", guess_size);
+		mssError(1, "CA", "xaNew(%d) failed.", guess_size);
 		goto err;
 		}
 	    }
@@ -1203,7 +1202,7 @@ caSlidingSearch(
 		    pPair pair = nmMalloc(pair_size);
 		    if (UNLIKELY(pair == NULL))
 			{
-			mssError(1, "CA", "nmMalloc(%zu)", pair_size);
+			mssError(1, "CA", "nmMalloc(%zu) failed.", pair_size);
 			goto err_free;
 			}
 		    pair->i = i;

@@ -23,7 +23,7 @@
 /* has been included below for the convenience of the reader. This	*/
 /* information was collected and saved on September 5th, 2025 and may	*/
 /* differ from current information. For the most up to date copy of	*/
-/* this information, please use  the link provided above.		*/
+/* this information, please use the link provided above.		*/
 /* 									*/
 /*    Perl5 is Copyright © 1993 and later, by Larry Wall and others.	*/
 /* 									*/
@@ -71,7 +71,7 @@
 /* 		Lawrence Philips which he published in the June, 2000	*/
 /* 		issue of C/C++ Users Journal. Double Metaphone is an	*/
 /* 		improved version of the original Metaphone algorithm	*/
-/* 		written by Philips'. This implementation was written by	*/
+/* 		written by Philips. This implementation was written by	*/
 /* 		Maurice Aubrey for C/C++ with bug fixes provided by	*/
 /* 		Kevin Atkinson. It was revised by Israel Fuller to	*/
 /* 		better align with the Centrallix coding style and	*/

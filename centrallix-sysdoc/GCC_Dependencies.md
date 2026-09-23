@@ -2,7 +2,7 @@
 
 Author: Israel Fuller
 
-Date: Descember 4, 2025
+Date: December 4, 2025
 
 ## Table of Contents
 - [GCC Dependencies](#gcc-dependencies)

@@ -78,7 +78,7 @@ void xsFree(pXString this);
  *** from sizeof() at compile time (faster than measuring with strlen() at
  *** run time).
  ***
- *** Note: The "" causes a compiler error a pointer is passed because it's  
+ *** Note: The "" causes a compiler error if a pointer is passed because its
  *** length is not known at compile time. Use xsConcatenate() for these.
  ***
  *** Note: The length covers the whole literal, so an embedded null ('\0') is

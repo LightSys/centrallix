@@ -28,7 +28,7 @@
 /* Module:	clusters.c, clusters.h					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	September 29, 2025					*/
-/* Description	Clustering library used to cluster and search data with	*/
+/* Description:	Clustering library used to cluster and search data with	*/
 /*		cosine or Levenshtein (aka. edit distance) similarity 	*/
 /*		measures. Used by the "clustering driver".		*/
 /*		For more information on how to use this library, see	*/

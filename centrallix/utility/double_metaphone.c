@@ -20,7 +20,7 @@
 /* has been included below for the convenience of the reader. This	*/
 /* information was collected and saved on September 5th, 2025 and may	*/
 /* differ from current information. For the most up to date copy of	*/
-/* this information, please use  the link provided above.		*/
+/* this information, please use the link provided above.		*/
 /* 									*/
 /*    Perl5 is Copyright © 1993 and later, by Larry Wall and others.	*/
 /* 									*/
@@ -68,7 +68,7 @@
 /* 		Lawrence Philips which he published in the June, 2000	*/
 /* 		issue of C/C++ Users Journal. Double Metaphone is an	*/
 /* 		improved version of the original Metaphone algorithm	*/
-/* 		written by Philips'. This implementation was written by	*/
+/* 		written by Philips. This implementation was written by	*/
 /* 		Maurice Aubrey for C/C++ with bug fixes provided by	*/
 /* 		Kevin Atkinson. It was heavily revised by Israel Fuller	*/
 /* 		to align with the Centrallix coding style and make use	*/
@@ -179,15 +179,15 @@ meta_i_isSlavoGermanic(pXString s)
 	|| (xsFind(s, "CZ", 2, 0) >= 0);
     }
 
-/*** Checks for to see if any of a list of strings appear in a the given
- *** XString after the given start position.
+/*** Checks to see if any of a list of strings appear in the given
+ *** XString at the given start position.
  *** 
  *** @attention - Note that the START value is 0 based.
  *** 
  *** @param s The XString being checked.
- *** @param start The zero-based start of at which to begin searching
+ *** @param start The zero-based position at which to begin searching
  *** 	within the XString.
- *** @returns 1 if any of the character sequences appear after the start
+ *** @returns 1 if any of the character sequences appear at the start
  *** 	in the XString and 0 otherwise.
  ***/
 static bool
@@ -409,7 +409,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			    break;
 			    }
 			
-			/** Germanic, greek, or otherwise 'ch' for 'kh' sound. */
+			/** Germanic, greek, or otherwise 'ch' for 'kh' sound. **/
 			if (
 			    meta_i_isStrAt(&original, 0, "SCH", "VAN ", "VON ", "")
 			    /** 'architect but not 'arch', 'orchestra', 'orchid' **/
@@ -598,7 +598,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    {
 		    if (next_char == 'H')
 			{
-			/** 'Vghee' */
+			/** 'Vghee' **/
 			if (current > 0 && !meta_i_isVowel(&original, (current - 1)))
 			    {
 			    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;

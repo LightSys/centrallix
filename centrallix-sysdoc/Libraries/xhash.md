@@ -70,7 +70,7 @@ Initialize the random number table for hash computation, returning 0 on success 
 ```c
 int xhInit(pXHashTable this, int rows, int keylen);
 ```
-This function initializes a hash table, setting the number of rows and the key length.  Specify a `keylen` of 0 for for variable length keys (aka. null-terminated strings).  The `rows` should be an odd number, preferably prime (although that isn't required).  `rows` **SHOULD NOT** be a power of 2.  Providing this value allows the caller to optimize it based on how much data they expect to be stored in the hash table.  If this value is set to 1, the hash search degenerates to a linear array search with extra overhead.  Thus, the value should be large enough to comfortably accommodate the elements with minimal collisions.  Typical values include 31, 251, or 255 (though 255 is not prime).
+This function initializes a hash table, setting the number of rows and the key length.  Specify a `keylen` of 0 for variable length keys (aka. null-terminated strings).  The `rows` should be an odd number, preferably prime (although that isn't required).  `rows` **SHOULD NOT** be a power of 2.  Providing this value allows the caller to optimize it based on how much data they expect to be stored in the hash table.  If this value is set to 1, the hash search degenerates to a linear array search with extra overhead.  Thus, the value should be large enough to comfortably accommodate the elements with minimal collisions.  Typical values include 31, 251, or 255 (though 255 is not prime).
 
 
 ## xhDeInit()
@@ -84,7 +84,7 @@ This function deinitializes a hash table struct, freeing all rows.  Note that th
 ```c
 int xhAdd(pXHashTable this, char* key, char* data);
 ```
-Adds an item to the hash table, with a given key value and data pointer.  Both data and key pointers must have a lifetime that exceeds the time that they item is hashed, as they are assumed to be the responsibility of the caller.  This function returns 0 on success, or -1 if an error occurs.
+Adds an item to the hash table, with a given key value and data pointer.  Both data and key pointers must have a lifetime that exceeds the time that the item is hashed, as they are assumed to be the responsibility of the caller.  This function returns 0 on success, or -1 if an error occurs.
 
 
 ## xhRemove()

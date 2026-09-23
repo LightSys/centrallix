@@ -161,7 +161,7 @@ The structure of the subtree beneath the node object is entirely up to the drive
 - Content, which can be read similar to reading a file.
 - Query data, allowing the object to be queried for information.
 
-Thus, parent objects with child objects behave similarly to a directory, although they can still have separate readable data _and_ queryable data. This may seem foreign in the standard file system paradigm, however, it is common for web servers, where opening a directory often returns `index.html` file in that directory, or some other form of information to allow further navigation.  Querying an object was originally intended as a way to quickly traversal of its child objects, although queries are not required to be implemented this way.
+Thus, parent objects with child objects behave similarly to a directory, although they can still have separate readable data _and_ queryable data. This may seem foreign in the standard file system paradigm, however, it is common for web servers, where opening a directory often returns `index.html` file in that directory, or some other form of information to allow further navigation.  Querying an object was originally intended as a way to quickly traverse its child objects, although queries are not required to be implemented this way.
 
 Below is an example of the Sybase driver's node object and its subtrees of child objects (defined in `objdrv_sybase.c`):
 
@@ -511,7 +511,7 @@ The `Write()` function is very similar to the `Read()` function above, allowing 
 ```c
 void* xxxOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt);
 ```
-The `OpenQuery()` function opens a new query instance struct for fetching query results from a specific driver instance.  Queries are often used to enumerate an object's child objects, although this is not a requirement.  Queries may include specific criteria, and the driver may decide to intelligently handle them (either manually or, more often, by passing them on to a lower level driver or database) or simply to enumerating all results with its query functions.  In the latter case, the OSML layer will filter results and only return objects that match the criteria to the user.
+The `OpenQuery()` function opens a new query instance struct for fetching query results from a specific driver instance.  Queries are often used to enumerate an object's child objects, although this is not a requirement.  Queries may include specific criteria, and the driver may decide to intelligently handle them (either manually or, more often, by passing them on to a lower level driver or database) or simply enumerate all results with its query functions.  In the latter case, the OSML layer will filter results and only return objects that match the criteria to the user.
 
 `OpenQuery()` is passed three parameters:
 
@@ -529,7 +529,7 @@ The `query : pObjQuery` parameter contains several useful fields:
 | query->SortBy[] | void*[] (pExpression[]) | An array of expressions giving the various components of the sorting criteria.
 | query->Flags    | int                     | The driver should set and/or clear the `OBJ_QY_F_FULLQUERY` and `OBJ_QY_F_FULLSORT` flags, if needed.
 
-The `OBJ_QY_F_FULLQUERY` flag indicates that the driver will handle the full `where` clause specified in `query->Tree`.  Even if this flag is not specified, the driver is still free to use the provided `where` clause to pre-filter data, which improves performance when the Object System does its final filtering.  However, setting this flag disables the Object System filtering because it promises that the driver will _always_ handle _all_ filtering for _every_ valid queries.
+The `OBJ_QY_F_FULLQUERY` flag indicates that the driver will handle the full `where` clause specified in `query->Tree`.  Even if this flag is not specified, the driver is still free to use the provided `where` clause to pre-filter data, which improves performance when the Object System does its final filtering.  However, setting this flag disables the Object System filtering because it promises that the driver will _always_ handle _all_ filtering for _every_ valid query.
 
 The `OBJ_QY_F_FULLSORT` flag indicates that the driver will handle all sorting for the data specified in `query->SortBy[]`.
 
@@ -547,7 +547,7 @@ Deletes results in the query result set, optionally matching a certain criteria.
 
 | Parameter | Type          | Description
 | --------- | ------------- | ------------
-| qy_v      | void*         | A query instance pointer (returned from `QueryOpen()`).
+| qy_v      | void*         | A query instance pointer (returned from `OpenQuery()`).
 | oxt       | pObjTrxTree*  | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.
 
 `QueryDelete()` returns 0 to indicate a successful deletion, or -1 to indicate failure, in which case `mssError()` should be called before returning.
@@ -647,7 +647,7 @@ This function should return `DATA_T_UNAVAILABLE` if the requested attribute does
 
 For example, calling the following on any driver should return `DATA_T_STRING`.
 ```c
-int datatype = driver->GetAttrType(inf_v, 'name', oxt);
+int datatype = driver->GetAttrType(inf_v, "name", oxt);
 ```
 
 
@@ -655,7 +655,7 @@ int datatype = driver->GetAttrType(inf_v, 'name', oxt);
 ```c
 int xxxGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pObjTrxTree* oxt);
 ```
-The `GetAttrValue()` function takes four parameters:
+The `GetAttrValue()` function takes five parameters:
 
 | Parameter | Type          | Description
 | --------- | ------------- | ------------
@@ -691,7 +691,7 @@ This function should return 0 on success, 1 if the value is `NULL` or undefined 
     printf("Object name: \"%s\"\n", name);
     ```
 
-- 📖 **Note**: In legacy code, a type cast `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more information).
+- 📖 **Note**: In legacy code, a type cast `void*` was used instead of a `pObjData` pointer used today.  This method was binary compatible with the current solution because of the union struct implementation (See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more information).
 
 
 ### Function: SetAttrValue()
@@ -774,7 +774,7 @@ The `PresentationHints()` function takes three parameters:
 | attr_name | char*         | The name of the requested attribute.
 | oxt       | pObjTrxTree*  | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.
 
-The returns a new pObjPresentationHints struct on success, or NULL to indicate an error, in which case `mssError()` should be called before returning.  This struct should be allocated using `nmMalloc()`, and memset to zero, like this:
+This function returns a new pObjPresentationHints struct on success, or NULL to indicate an error, in which case `mssError()` should be called before returning.  This struct should be allocated using `nmMalloc()`, and memset to zero, like this:
 ```c
 pObjPresentationHints hints = nmMalloc(sizeof(ObjPresentationHints));
 if (hints == NULL) goto error_handling;
@@ -792,7 +792,7 @@ The return value, `hints : ObjPresentationHints`, contains the following useful 
 - `hints->AllowChars : char*`: An array of all valid characters for a string attribute, NULL to allow all characters.
 - `hints->BadChars : char*`: An array of all invalid characters for a string attribute.  If a character appears in both `hints->BadChars` and `hints->AllowChars`, the character should be rejected.
 - `hints->Length : int`: The maximum length of data that can be included in a string attribute.
-- `hints->VisualLength : int`: The length that the attribute should be displayed if it is show to the user.
+- `hints->VisualLength : int`: The length that the attribute should be displayed if it is shown to the user.
 - `hints->VisualLength2 : int`: The number of lines to use in a multi-line edit box for the attribute.
 - `hints->BitmaskRO : unsigned int`: If the value is an integer that represents a bit mask, _this_ bit mask shows which bits of that bitmask are read-only.
 - `hints->Style : int`: Style flags, documented below.
@@ -805,10 +805,10 @@ The return value, `hints : ObjPresentationHints`, contains the following useful 
 - ⚠️ **Warning**: Behavior is undefined if:
   - The data is longer than length.
 
-The `hints->Style` field can be set with several useful flags. To specify that a flag is not set (e.g. to specify explicitly that a field does allow `NULL`s), set the corresponding bit in the `hints->StyleMask` field while leaving the the bit in the `hints->Style` field set to 0.
+The `hints->Style` field can be set with several useful flags. To specify that a flag is not set (e.g. to specify explicitly that a field does allow `NULL`s), set the corresponding bit in the `hints->StyleMask` field while leaving the bit in the `hints->Style` field set to 0.
 
 The following macros are provided for setting style flags:
-- `OBJ_PH_STYLE_BITMASK`: The items in `hints->EnumList` or `hints->EnumQuery` are bit masked.
+- `OBJ_PH_STYLE_BITMASK`: The items in `hints->EnumList` or `hints->EnumQuery` are bit-masked.
 - `OBJ_PH_STYLE_LIST`: List-style presentation should be used for the values of an enum attribute.
 - `OBJ_PH_STYLE_BUTTONS`: Radio buttons or check boxes should be used for the presentation of enum attribute values.
 - `OBJ_PH_STYLE_NOTNULL`: The attribute does not allow `NULL` values.
@@ -940,7 +940,7 @@ In this case, the new structure file will have the type: `"system/structure"`.
 
 ### st_node: snWriteNode()
 ```c
-int snWriteNode(pSnNode node);
+int snWriteNode(pObject obj, pSnNode node);
 ```
 The `snWriteNode()` function writes a node's internal data back out to the node file, if the node's status (`node->Status`) is set to `SN_NS_DIRTY`.  Otherwise, `snWriteNode()` does nothing.
 
@@ -960,7 +960,7 @@ int snGetSerial(pSnNode node);
 ```
 The `snGetSerial()` function returns the serial number of the node.
 
-Each time the node is re-read because of modifications to the node file or is written with because `snWriteNode()` was called after modifications to the internal structure, the serial number is increased.  This is a good way for a driver to determine if the node file has changed so it can refresh internal cached data.
+Each time the node is re-read because of modifications to the node file or is written because `snWriteNode()` was called after modifications to the internal structure, the serial number is increased.  This is a good way for a driver to determine if the node file has changed so it can refresh internal cached data.
 
 
 ### st_node: snGetLastModification()
@@ -983,9 +983,9 @@ To use this module, include the file `stparse.h`, which includes the following f
 ```c
 int stStructType(pStructInf this);
 ```
-The `stStructType()` function returns the struct type of the past `pStructInf` parameter, which is either `ST_T_ATTRIB` or `ST_T_SUBGROUP` (see above).
+The `stStructType()` function returns the struct type of the passed `pStructInf` parameter, which is either `ST_T_ATTRIB` or `ST_T_SUBGROUP` (see above).
 
-- ⚠️ **Warning**: The node object root of type `ST_T_STRUCT` will return `ST_T_SUBGROUP` from this function.  In most cases, treating this node as ust another subgroup simplifies logic for the caller.  However, if you wish to avoid this behavior, read `inf->Type` (see [stparse: Using Fields Directly](#stparse-using-fields-directly) for more info).
+- ⚠️ **Warning**: The node object root of type `ST_T_STRUCT` will return `ST_T_SUBGROUP` from this function.  In most cases, treating this node as just another subgroup simplifies logic for the caller.  However, if you wish to avoid this behavior, read `inf->Type` (see [stparse: Using Fields Directly](#stparse-using-fields-directly) for more info).
 
 
 ### stparse: stLookup()
@@ -1003,7 +1003,7 @@ This function gets the value of the given attribute in an `ST_T_ATTRIB` node.  I
 
 This function returns -1 if the attribute value did not exist, if the wrong type was requested, or if 'inf' was `NULL`.
 
-It is common practice to use `stLookup()` and `stAttrValue()` or `stGetExpression()` (see below) together to retrieve values, for example (where `inf` is a `pStructInfo` variable from somewhere):
+It is common practice to use `stLookup()` and `stAttrValue()` or `stGetExpression()` (see below) together to retrieve values, for example (where `inf` is a `pStructInf` variable from somewhere):
 
 ```c
 char* ptr;
@@ -1057,7 +1057,7 @@ This function is used to free a `StructInf` tree node.  This also recursively fr
 ### stparse: Using Fields Directly
 It is also common practice to bypass the stparse functions entirely and access the elements of the `StructInf` struct directly, which is allowed.  (See `stparse.h` for more information about this structure.)
 
-For example (assuming `inf` is a `pStructInfo` variable in scope):
+For example (assuming `inf` is a `pStructInf` variable in scope):
 ```c
 for (unsigned int i = 0u; i < inf->nSubInf; i++)
     {
@@ -1131,14 +1131,14 @@ This function is similar to [`expCompileExpression()`](#expcompileexpression), e
 
 ### expPodToExpression()
 ```c
-pExpression expPodToExpression(pObjData pod, int type, pExpression provided_exp)
+pExpression expPodToExpression(pObjData pod, int type, pExpression provided_exp);
 ```
 This function builds an expression node from a single piece of data, passed using the `pObjData` of the given datatype.  This function can be used to initialize a provided expression (`provided_exp`), or it will allocate a new one if none is provided (aka. `provided_exp` is `NULL`).
 
 For example, the following code creates an expression representing the integer 1.
 ```c
 int value = 1;
-pExpression exp = expPodToExpression(POD(value), DATA_T_INTEGER, NULL);
+pExpression exp = expPodToExpression(POD(&value), DATA_T_INTEGER, NULL);
 ```
 
 This function returns a pointer to the expression if successful, or `NULL` if an error occurs.
@@ -1226,7 +1226,7 @@ The functions use the following parameters:
 - `v : void*` is the object provided in `expAddParamToList()` (or a similar function).
 - `attr_name : char*` is the string name for the requested attribute.
 - `datatype : int` is the data type for the requested attribute.
-- `val : pObjectData` is either a buffer in which to store the requested data (`cluster_i_getParamValue()`) or a buffer containing data that will be copied to the parameter `cluster_i_setParamValue()`.
+- `val : pObjData` is either a buffer in which to store the requested data (`cluster_i_getParamValue()`) or a buffer containing data that will be copied to the parameter `cluster_i_setParamValue()`.
 
 The functions return the following values:
 - The `cluster_i_getParamType()` function returns the datatype on success (e.g. `DATA_T_INTEGER`), or -1 if an error occurs.
@@ -1237,7 +1237,7 @@ The `expSetParamFunctions()` function returns 0 if the functions were set succes
 
 ### expReverseEvalTree()
 ```c
-int expReverseEvalTree(pExpression tree, pParamObjects objlist)l
+int expReverseEvalTree(pExpression tree, pParamObjects objlist);
 ```
 This function reverse-evaluates a tree.
 
@@ -1329,7 +1329,7 @@ This function opens a lexer session, using a file descriptor as its source.  Som
 | `MLX_F_NODISCARD` | Attempt to unread unused buffered data rather than discarding it, allowing the calling function to continue reading with `fdRead()` or another lexer session after the last token is read and the session is closed.  The lexer `fdRead()`s in 2k or so chunks for performance, and normally discards this data when done, causing future file descriptors to start at an undefined file location.
 | `MLX_F_DBLBRACE`  | Treat `{{` and `}}` as double brace tokens, not two single brace tokens.
 | `MLX_F_NOUNESC`   | Do not remove escapes in strings.
-| `MLX_F_SSTRING`   | Differentiate between strings values using `""` and `''`.
+| `MLX_F_SSTRING`   | Differentiate between string values using `""` and `''`.
 
 This function returns a pointer to the new lexer session if successful, or `NULL` if an error occurs.
 
@@ -1391,7 +1391,7 @@ Returns the type of the next token in the token stream.  Valid token types are:
 ```c
 char* mlxStringVal(pLxSession this, int* alloc);
 ```
-This function gets the string value of the current token.  If `alloc` is `NULL`, an internal buffer is returned, which the caller _should not free_.  Fails and returns null if the A token longer than 255 characters (`MLX_STRVAL`) does not fit that buffer, so the call fails and returns `NULL`.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always_ allocate memory for the string, whether long or short.
+This function gets the string value of the current token.  If `alloc` is `NULL`, an internal buffer is returned, which the caller _should not free_.  A token longer than 255 characters (`MLX_STRVAL`) does not fit that buffer, so the call fails and returns `NULL`.  If `alloc` is non-null and set to 0, the routine will set `alloc` to 1 if it needed to allocate memory for a very long string, otherwise leave it as 0.  If `alloc` is non-null and set to 1, this routine will _always_ allocate memory for the string, whether long or short.
 
 This routine works no matter what the token type, and returns a string representation of the token if not `MLX_TOK_STRING`.
 
@@ -1470,13 +1470,13 @@ MLX:  Error at line ##
 
 
 ## VII Driver Testing
-This section contains a list of things that can be done to test an objectsystem driver and ensure that it preforms all basic operations correctly, using the [test_obj command line interface](https://www.centrallix.net/docs/docs.php?t=1.3.1%20test_obj%20Command-Line).
+This section contains a list of things that can be done to test an objectsystem driver and ensure that it performs all basic operations correctly, using the [test_obj command line interface](https://www.centrallix.net/docs/docs.php?t=1.3.1%20test_obj%20Command-Line).
 
 It is strongly recommended to test for invalid reads, writes, frees, and memory leaks during each of these by watching memory utilization using nmDeltas() during repetitive operations (e.g., nmDeltas(), open, close, nmDeltas(), open, close, and then nmDeltas() again).
 
 Testing for more general memory bugs using the "valgrind" tool is also strongly encouraged, via running these various tests in test_obj while test_obj is running under valgrind.  To properly test under Valgrind, centrallix-lib must be compiled with the configure flag `--enable-valgrind-integration` turned on.  This disables `nmMalloc()` block caching (so that valgrind can properly detect memory leaks and free memory reuse), and it provides better information to valgrind's analyzer regarding MTASK threads.
 
-Magic number checking on data structures is encouraged.  To use magic number checking, determine a magic number value for each of your structures, and add a #define for that constant in your code.  The magic number should be a 32-bit integer, possibly with 0x00 in either the 2nd or 3rd byte of the integer.  Many existing magic number values can be found in [magic.h](../centrallix-lib/include/magic.h).  The 32-bit integer is placed as the first element of the structure, and set using the `SETMAGIC()` macro, then tested using the macros `ASSERTMAGIC()` macro or, less commonly, `ASSERTNOTMAGIC()`. Common times to `ASSERTMAGIC()` include:
+Magic number checking on data structures is encouraged.  To use magic number checking, determine a magic number value for each of your structures, and add a #define for that constant in your code.  The magic number should be a 32-bit integer, possibly with 0x00 in either the 2nd or 3rd byte of the integer.  Many existing magic number values can be found in [magic.h](../centrallix-lib/include/magic.h).  The 32-bit integer is placed as the first element of the structure, and set using the `SETMAGIC()` macro, then tested using the `ASSERTMAGIC()` macro or, less commonly, `ASSERTNOTMAGIC()`. Common times to `ASSERTMAGIC()` include:
 - Any time a pointer to the structure crosses an interface boundary.
 - At the entry to internal methods/functions.
 - When traversing linked lists of data structures.
@@ -1507,7 +1507,7 @@ The term "**MAY**" refers to optional, but permissible, behavior.
 
 ### B. Attributes
 
-1.  The driver MUST NOT return system attributes (name, inner_type, etc) when enumerating with `xxxGetFirst()`/`xxxNextAttr()`.
+1.  The driver MUST NOT return system attributes (name, inner_type, etc) when enumerating with `xxxGetFirstAttr()`/`xxxGetNextAttr()`.
 
 2.  The driver MAY choose not to handle `xxxGetAttrType` on the system attributes.  The OSML handles this.
 
@@ -1556,7 +1556,7 @@ The term "**MAY**" refers to optional, but permissible, behavior.
 
 6.  Drivers which connect to resources which are able to perform sorting and/or selection (filtering) of records or objects SHOULD use the [`OBJ_QY_F_FULLSORT`](#function-openquery) and [`OBJ_QY_F_FULLQUERY`](#function-openquery) flags.  Further, they SHOULD pass on the sorting and filtering expressions to the remote resource so that resource can optimize sorting and/or filtering as needed.
 
-7.  If the driver's remote resource can filter and/or sort, but can only do so imperfectly (e.g., the resource cannot handle the potential complexity of all sorting/selection expressions, but can handle parts of them), then `OBJ_QY_F_FULLSORT` and/or `OBJ_QY_F_FULL`- QUERY MUST NOT be used.  However, the remote resource MAY still provide partial sorting and/or selection of data.
+7.  If the driver's remote resource can filter and/or sort, but can only do so imperfectly (e.g., the resource cannot handle the potential complexity of all sorting/selection expressions, but can handle parts of them), then `OBJ_QY_F_FULLSORT` and/or `OBJ_QY_F_FULLQUERY` MUST NOT be used.  However, the remote resource MAY still provide partial sorting and/or selection of data.
 
 8.  Drivers SHOULD NOT use `OBJ_QY_F_FULLSORT` and `OBJ_QY_F_FULLQUERY` if there is no advantage to letting the resource perform these operations (usually, however, if the resource provides such functionality, there is advantage to letting the resource perform those operations.  However, the coding burden to provide the filtering and sorting expressions to the resource, and in the correct format for the resource, may be not worth the work).
 

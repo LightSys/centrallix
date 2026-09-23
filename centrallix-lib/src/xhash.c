@@ -339,7 +339,7 @@ xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, va_list), ...)
  *** 	behavior).
  *** @param free_fn A pointer to a free function, which is passed each hash
  *** 	entry struct and is responsible for freeing the key, the value, and
- *** 	any data the they own (but not the passed entry itself).  The function
+ *** 	any data they own (but not the passed entry itself).  The function
  *** 	is also passed a `void*` argument, which is `free_arg`.
  *** @param free_arg The void pointer value passed to the free function.
  *** @returns 0 if successful, or

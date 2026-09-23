@@ -127,12 +127,12 @@ This function returns 0 on success, or -1 if an error occurs.
 ```c
 int xaAddItemSorted(pXArray this, void* item, int keyoffset, int keylen);
 ```
-This function adds an item to a sorted XArray while maintaining the sorted property.  The value for sorting is expected to begin at the offset given by `keyoffset` and continue for `keylen` bytes.  This function _will_ follow pointers are stored in the array so casting other types to store them is not allowed (as it is with [`xaAddItem()`](#xaadditem)).
+This function adds an item to a sorted XArray while maintaining the sorted property.  The value for sorting is expected to begin at the offset given by `keyoffset` and continue for `keylen` bytes.  This function _will_ follow pointers stored in the array so casting other types to store them is not allowed (as it is with [`xaAddItem()`](#xaadditem)).
 
 
 ## xaAddItemSortedInt32()
 ```c
-int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset)
+int xaAddItemSortedInt32(pXArray this, void* item, int keyoffset);
 ```
 This function works the same as [`xaAddItemSorted()`](#xaadditemsorted), except that the sort key is a signed 32-bit integer (an `int` on supported platforms) located `keyoffset` bytes into the structure, rather than a byte string of a given length.  This function _will_ follow the pointers stored in the array, so casting other types to store them is not allowed (as it is with [`xaAddItem()`](#xaadditem)).  Because the comparison is numeric rather than bytewise, the ordering is correct for negative values and is unaffected by the host byte order.
 
@@ -141,7 +141,7 @@ This function returns the index of the last item in the array (not the index the
 
 ## xaGetItem()
 ```c
-void* xaGetItem(pXArray this, int index)
+void* xaGetItem(pXArray this, int index);
 ```
 This function returns an item given a specific index into the XArray, or `NULL` if the index is out of bounds.  If the bounds check needs to be omitted for performance and the caller can otherwise verify that no out of bounds read is possible (e.g. because they are iterating from 0 to `XArray->nItems`), the caller should access `XArray->Items` directly.  Either way, the result may need to be typecasted or stored in a variable of a specific type for it to be useable, and error checking for `NULL` values should be used.
 
@@ -179,7 +179,7 @@ This function works the same as [`xaFindItem()`](#xafinditem), however it iterat
 
 ## xaRemoveItem()
 ```c
-int xaRemoveItem(pXArray this, int index)
+int xaRemoveItem(pXArray this, int index);
 ```
 This function removes an item from the XArray at the given the index, then shifts all following items back to fill the gap created by the removal.  XArray is not optimized for removing multiple items efficiently.  This function returns 0 on success, or -1 if an error occurs.
 
@@ -207,13 +207,13 @@ This function returns the number of items in the XArray, or -1 on error.  It is 
 
 ## xaInsertBefore()
 ```c
-int xaInsertBefore(pXArray this, int index, void* item)
+int xaInsertBefore(pXArray this, int index, void* item);
 ```
 This function inserts an item before the specified index, moving all following items forward to make space.  The new item cannot be inserted past the end of the array.  This function returns the index on success, or -1 if an error occurs.
 
 
 ## xaInsertAfter()
 ```c
-int xaInsertAfter(pXArray this, int index, void* item)
+int xaInsertAfter(pXArray this, int index, void* item);
 ```
 This function inserts an item after the specified index, moving all following items forward to make space.  The new item cannot be inserted past the end of the array.  This function returns the index of the inserted value on success, or -1 if an error occurs.

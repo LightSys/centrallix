@@ -60,7 +60,7 @@ static bool doTest(void)
 	success &= ASSERT_EQL(caEditDist(str1, str2, 0, 0), 0, "%d"); /* Identical, very long strings (different pointers). */
 	success &= ASSERT_EQL(caEditDist(str2, str3, 0, 0), 133, "%d"); /* 133 edits. */
 	
-	/** Empty string comparsions. **/
+	/** Empty string comparisons. **/
 	success &= ASSERT_EQL(caEditDist(str1, "", 0, 0), (int)strlen(str1), "%d");
 	success &= ASSERT_EQL(caEditDist(str2, "", 0, 0), (int)strlen(str2), "%d");
 	success &= ASSERT_EQL(caEditDist(str3, "", 0, 0), (int)strlen(str3), "%d");
