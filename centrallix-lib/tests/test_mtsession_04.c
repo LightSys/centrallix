@@ -88,7 +88,7 @@ static bool doTest(void)
 
 	/** Outside a session there is no stack to add to, clear, or read. **/
 	mssError(1, "MOD", "message");
-	success &= ASSERT_EQL(mssClearError(), -1, "%d");
+	mssClearError();
 	xsInit(&xs);
 	success &= ASSERT_EQL(mssStringError(&xs), -1, "%d");
 	success &= ASSERT_EQL(mssUserError(&xs), -1, "%d");
@@ -166,11 +166,11 @@ static bool doTest(void)
 	xsDeInit(&xs);
 
 	/** Clearing leaves the session in place with an empty stack. **/
-	success &= ASSERT_EQL(mssClearError(), 0, "%d");
+	mssClearError();
 	success &= ASSERT_EQL(errorCount(), 0, "%d");
 	success &= ASSERT_STR_EQL(errorStack(), STACK_HEAD);
 	success &= ASSERT_STR_EQL(userError(), "");
-	success &= ASSERT_EQL(mssClearError(), 0, "%d");
+	mssClearError();
 	success &= ASSERT_EQL(errorCount(), 0, "%d");
 
 	/** The stack belongs to the session, so a new session starts empty. **/

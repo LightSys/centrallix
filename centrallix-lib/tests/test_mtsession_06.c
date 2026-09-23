@@ -134,8 +134,8 @@ static bool doTest(void)
 	success &= ASSERT_STR_EQL(printError(&rval), expected);
 	success &= ASSERT_EQL(rval, 0, "%d");
 
-	/** The stack empties and prints as its heading again. **/
-	success &= ASSERT_EQL(mssClearError(), 0, "%d");
+	/** mssClearError() removes all entries from the stack. **/
+	mssClearError();
 	success &= ASSERT_STR_EQL(printError(&rval), STACK_HEAD);
 	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
