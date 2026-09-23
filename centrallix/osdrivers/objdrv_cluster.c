@@ -4572,7 +4572,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 		{
 		case TARGET_NODE:
 		    /** Attribute is not defined for this target type. **/
-		    goto err;
+		    return 1;
 		
 		case TARGET_CLUSTER:
 		case TARGET_CLUSTER_ENTRY:
