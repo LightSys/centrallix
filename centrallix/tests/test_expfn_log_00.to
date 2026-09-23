@@ -48,8 +48,8 @@ query select 'log(1e10)-' = (log(10000000000.0) == ln(10000000000.0))
 
 -- Additional double/int mixed cases
 query select 'ln(2.718281828)' = round(ln(2.718281828), 8) -- Expect ~1 (close to e).
-query select 'log10(3.14159)'  = round(log10(3.14159), 8)  -- Expect ~0.49715.
-query select 'log(10, 1.1)'    = round(log(1.1, 10), 8)    -- Expect 0.04139289.
-query select 'log(1.1, 10)'    = round(log(10, 1.1), 8)    -- Expect 24.15885793.
-query select 'log(10, 0.001)'  = round(log(0.001, 10), 8)  -- Expect ~-0.33333333...
-query select 'log(0.1, 1000)'  = round(log(1000, 0.1), 8)  -- Expect ~-0.33333333...
+query select 'log10(3.14159)'  = round(log10(3.14159),  8) -- Expect ~0.49715.
+query select 'log(1.1,   10)'  = round(log(1.1,   10),  8) -- Expect 0.04139269.
+query select 'log(10,    1.1)' = round(log(10,    1.1), 8) -- Expect 24.15885793.
+query select 'log(0.001, 10)'  = round(log(0.001, 10),  8) -- Expect -3.0.
+query select 'log(1000,  0.1)' = round(log(1000,  0.1), 8) -- Expect -3.0.
