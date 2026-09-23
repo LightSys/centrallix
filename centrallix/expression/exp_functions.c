@@ -292,16 +292,16 @@ exp_fn_i_verifyArg(const char* fn_name, pExpression arg, const ArgExpect* arg_ex
 		if (arg_expect->Flags & EXP_ARG_POSITIVE && value->WholePart < 0)
 		    {
 		    mssError(1, "EXP",
-			"%s(...): Expects positive money value but got $%d.%g.",
-			fn_name, value->WholePart, (double)value->FractionPart / 100.0
+			"%s(...): Expects positive money value but got %s.",
+			fn_name, objFormatMoneyTmp(value, NULL)
 		    );
 		    return -1;
 		    }
 		if (arg_expect->Flags & EXP_ARG_NEGATIVE && value->WholePart > 0)
 		    {
 		    mssError(1, "EXP",
-			"%s(...): Expects negative money value but got $%d.%g.",
-			fn_name, value->WholePart, (double)value->FractionPart / 100.0
+			"%s(...): Expects negative money value but got %s.",
+			fn_name, objFormatMoneyTmp(value, NULL)
 		    );
 		    return -1;
 		    }
