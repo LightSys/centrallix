@@ -4104,7 +4104,7 @@ clusterQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    {
 	    case TARGET_NODE:
 		{
-		unsigned int index = query_data->RowIndex + 1;
+		unsigned int index = query_data->RowIndex;
 		
 		/** Fetch a cluster at the current index. **/
 		const unsigned int n_cluster_datas = node_data->nClusterDatas;
