@@ -3523,6 +3523,11 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 		    if (UNLIKELY(xaAddItem(pairs, pair) < 0))
 			{
 			mssError(1, "Cluster", "Failed to add new pair to pairs XArray.");
+			
+			/** Free renamining items. **/
+			for (unsigned int j = i; j < cluster_pairs->nItems; j++)
+			    nmFree(cluster_pairs->Items[j], sizeof(Pair));
+			warnFail(xaFree(cluster_pairs));
 			goto err_free;
 			}
 		    }
