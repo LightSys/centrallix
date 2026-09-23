@@ -26,6 +26,7 @@
 #include "mtask.h"
 #include "strtcpy.h"
 #include "xstring.h"
+#include "warn.h"
 
 /** Tested module. **/
 #include "mtsession.h"
@@ -192,6 +193,9 @@ long long test(char** tname)
     long long result;
 
 	*tname = "mtsession-04 Error Stack";
+	
+	/** Hide warning noise when this test deliberately causes failures. **/
+	WarnPrintEnabled = 0;
 
 	if (!tmpFileInit(auth_path, sizeof(auth_path))) return -1;
 	if (!authFileWriteUser(auth_path, USERNAME, PASSWORD))
