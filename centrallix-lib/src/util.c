@@ -96,8 +96,8 @@ static const char* const UNITS_CS[] = {"bytes", "KiB", "MiB", "GiB", "TiB", "PiB
 static const char* const UNITS_METRIC[] = {"bytes", "KB", "MB", "GB", "TB", "PB", "EB"};
 #define N_UNITS ((unsigned int)(sizeof(UNITS_CS) / sizeof(UNITS_CS[0])))
 
-/*** Displays a size in bytes using the largest unit where the result would be
- *** at least 1.0.  Units up to the exbibyte (EiB) and exabyte (EB) are
+/*** Displays a size in bytes using the largest unit where the printed result
+ *** would be at least 1.0.  Units up to the exbibyte (EiB) and exabyte (EB) are
  *** supported, which is enough for any unsigned long: the largest possible
  *** value is 18,446,744,073,709,551,615, which is just under 16 EiB (or
  *** approximately 18.45 EB).
@@ -124,7 +124,16 @@ snprintBytes(char* buf, const size_t buf_size, unsigned long bytes)
 	    const double denominator = pow(unit_size, i);
 	    if (size >= denominator)
 		{
-		const double converted_size = size / denominator;
+		double converted_size = size / denominator;
+
+		/** Move up a unit if rounding would print a size equal to one of the next unit. **/
+		const int decimals = (converted_size >= 1000.0) ? 1 : 2;
+		if (roundTo(converted_size, decimals) >= unit_size && i + 1u < N_UNITS)
+		    {
+		    converted_size /= unit_size;
+		    i++;
+		    }
+
 		if (converted_size >= 100.0)
 		    return snprintf(buf, buf_size, "%.5g %s", converted_size, units[i]);
 		else if (converted_size >= 10.0)
