@@ -5104,18 +5104,6 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 		    hints->FriendlyName = warnNull(nmSysStrdup("Cluster Data"));
 		    goto end;
 		    }
-		if (strcmp(attr_name, "sim") == 0)
-		    {
-		    /** Min and max values. **/
-		    hints->MinValue = warnNull(expCompileExpression("0.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
-		    hints->MaxValue = warnNull(expCompileExpression("1.0", tmp_list, MLX_F_ICASE | MLX_F_FILENAMES, 0));
-		    
-		    /** Other hints. **/
-		    hints->Length = 16;
-		    hints->VisualLength = 8;
-		    hints->FriendlyName = warnNull(nmSysStrdup("Similarity"));
-		    goto end;
-		    }
 		break;
 		}
 	    
