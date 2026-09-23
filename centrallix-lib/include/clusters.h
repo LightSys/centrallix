@@ -97,6 +97,7 @@ int caEditDist(const char* str1, const char* str2, const size_t str1_length, con
 
 /** Vector functions. **/
 pVector caBuildVector(const char* str);
+bool caEql(pVector v1, pVector v2);
 unsigned int caSparseLen(const pVector vector);
 void caPrintVector(const pVector vector);
 void caFreeVector(pVector sparse_vector);
@@ -137,7 +138,6 @@ typedef double (*pSimilarityFn)(void*, void*);
 /** Comparison functions (matching the pSimilarityFn signature). **/
 double caCosCompare(void* v1, void* v2);
 double caLevCompare(void* str1, void* str2);
-bool caEql(pVector v1, pVector v2);
 
 /** Similarity search functions. **/
 void* caMostSimilar(

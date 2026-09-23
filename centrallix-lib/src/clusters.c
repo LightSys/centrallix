@@ -297,6 +297,30 @@ caFreeVector(pVector sparse_vector)
     return;
     }
 
+/*** Check if two sparse vectors are identical, typically used for debugging
+ *** or testing.  True if both vectors are `NULL`, but false if one is and the
+ *** other is not.
+ *** 
+ *** @param v1 The first vector.
+ *** @param v2 The second vector.
+ *** @returns true if they are equal,
+ ***          false if any element is different.
+ ***/
+bool
+caEql(pVector v1, pVector v2)
+    {
+	/** Edge cases. **/
+	if (v1 == v2) return true;
+	if (v1 == NULL || v2 == NULL) return false;
+	
+	const unsigned int len = caSparseLen(v1);
+	if (len != caSparseLen(v2)) return false;
+	for (unsigned int i = 0u; i < len; i++)
+	    if (v1[i] != v2[i]) return false;
+    
+    return true;
+    }
+
 /*** Parse a token from a sparsely allocated vector and write its value to
  *** `token_value`.  The number of dimensions consumed in the process is
  *** written to `dims_consumed`.
@@ -754,30 +778,6 @@ caLevCompare(void* s1, void* s2)
     err:
 	mssError(0, "CA", "caLevCompare(\"%s\", \"%s\") failed.", str1, str2);
 	return NAN;
-    }
-
-/*** Check if two sparse vectors are identical, typically used for debugging
- *** or testing.  True if both vectors are `NULL`, but false if one is and the
- *** other is not.
- *** 
- *** @param v1 The first vector.
- *** @param v2 The second vector.
- *** @returns true if they are equal,
- ***          false if any element is different.
- ***/
-bool
-caEql(pVector v1, pVector v2)
-    {
-	/** Edge cases. **/
-	if (v1 == v2) return true;
-	if (v1 == NULL || v2 == NULL) return false;
-	
-	const unsigned int len = caSparseLen(v1);
-	if (len != caSparseLen(v2)) return false;
-	for (unsigned int i = 0u; i < len; i++)
-	    if (v1[i] != v2[i]) return false;
-    
-    return true;
     }
 
 /*** Calculate the average size of all clusters in a set of vectors.
