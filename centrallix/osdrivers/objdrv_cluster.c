@@ -2075,8 +2075,8 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    if (UNLIKELY(param == NULL))
 		{
 		mssError(0, "Cluster",
-		    "Failed to create param from inf for param #%u: %s",
-		    i, ((pStructInf)param_infs.Items[i])->Name
+		    "Failed to create param from inf for param #%u/%u: %s",
+		    i + 1, node_data->nParams, ((pStructInf)param_infs.Items[i])->Name
 		);
 		goto err_free;
 		}
