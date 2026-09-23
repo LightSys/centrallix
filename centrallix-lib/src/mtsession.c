@@ -604,7 +604,7 @@ void
 mssClearError()
     {
 	/** Get session pointer. **/
-	pMtSession s = warnNull(thGetParam(NULL, "mss"));
+	pMtSession s = thGetParam(NULL, "mss");
 	if (s == NULL) return; /* No errors to clear. */
 
 	/** Free all error strings in the error list/error stack. **/
