@@ -8,7 +8,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	test_00baseline.c					*/
+/* Module: 	t_driver.c						*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	March 11th, 2005					*/
 /* Description: Test suite driver for centrallix-lib tests.		*/

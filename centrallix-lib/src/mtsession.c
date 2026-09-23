@@ -473,7 +473,7 @@ mssEndSession(pMtSession s)
  ***	of the error.
  *** @param file The name of the file where the error was detected.
  *** @param line The line number where the error was detected.
- *** @param format The format text for the error, which accepts any format
+ *** @param message The format text for the error, which accepts any format
  ***	specifier that would be accepted by printf().
  *** @param ... Variables matching format specifiers in the format.
  ***/
@@ -604,7 +604,7 @@ void
 mssClearError()
     {
 	/** Get session pointer. **/
-	pMtSession s = warnNull(thGetParam(NULL, "mss"));
+	pMtSession s = thGetParam(NULL, "mss");
 	if (s == NULL) return; /* No errors to clear. */
 
 	/** Free all error strings in the error list/error stack. **/
@@ -638,7 +638,7 @@ mssPrintError(pFile fd)
 	rval = 0;
 
     end:
-	if (UNLIKELY(rval != 0)) /* Make sure we print something if a failure happenned. */
+	if (UNLIKELY(rval != 0)) /* Make sure we print something if a failure happened. */
 	    fprintf(stderr, "Warning: Failed to print session errors.\n");
 
 	/** Clean up. **/

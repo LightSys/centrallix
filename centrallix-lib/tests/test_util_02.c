@@ -30,7 +30,7 @@
 /*** Call an snprint-style function and check both what it wrote and what it
  *** returned.
  *** `expect` is the untruncated result so that we can expect the return to be
- *** the correct length while requring the function to write exactly as much as
+ *** the correct length while requiring the function to write exactly as much as
  *** `buf_size` allows.  Nothing is written when `buf_size` is zero.
  ***/
 #define TEST_SNPRINT(fn, buf, buf_size, value, expect) \
@@ -84,6 +84,15 @@ static bool doTest(void)
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1024, 3),                (cs) ? "1 GiB"      : "1.07 GB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, INT_MAX,                     (cs) ? "2 GiB"      : "2.15 GB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, UINT_MAX,                    (cs) ? "4 GiB"      : "4.29 GB");
+
+	/** Rounding boundaries: a value that rounds up to the next unit prints in that unit. **/
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, 1048524,    (cs) ? "1023.9 KiB" : "1.05 MB");
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, 1048525,    (cs) ? "1 MiB"      : "1.05 MB");
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, 1048575,    (cs) ? "1 MiB"      : "1.05 MB");
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, 1073741823, (cs) ? "1 GiB"      : "1.07 GB");
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, 10239,      (cs) ? "10 KiB"     : "10.24 KB");
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, 102399,     (cs) ? "100 KiB"    : "102.4 KB");
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, ULONG_MAX,  (cs) ? "16 EiB"     : "18.45 EB");
 
 	/** Truncation: the full length is returned, but only part is written. **/
 	success &= TEST_SNPRINT_BYTES(buf, 0, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");
@@ -150,5 +159,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "util-02 Printing";
-    return loopTest(doTest) * (22 + 48);
+    return loopTest(doTest) * (29 + 48);
     }

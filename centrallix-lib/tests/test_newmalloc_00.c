@@ -11,8 +11,8 @@
 /* Module:	test_newmalloc_00.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 25th, 2025					*/
-/* Description:	Test the nmSysMalloc(), nmSysFree(), nmSysRealloc(),	*/
-/* 		and nmSysStrDup functions from the NewMalloc library.	*/
+/* Description:	Test nmSysMalloc(), nmSysFree(), nmSysRealloc(),	*/
+/* 		and nmSysStrdup() from the NewMalloc library.		*/
 /************************************************************************/
 
 #include <math.h>

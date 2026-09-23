@@ -129,7 +129,7 @@ static bool doTest(void)
 	    if (*((unsigned char*)large_buf + i) != (unsigned char)(i % 255lu)) mismatches++;
 	success &= ASSERT_EQL(mismatches, 0lu, "%zu");
 
-	/** Dup string data is unharmed. **/
+	/** Basic string data is unharmed. **/
 	success &= ASSERT_STR_EQL(str1, "ThisIsSomeData!");
 	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 

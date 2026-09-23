@@ -11,7 +11,7 @@
 /* Module:	test_timer_00.c						*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 24th, 2025					*/
-/* Description:	Test the util.h timer1 functionality.			*/
+/* Description:	Test the timer.h functionality.				*/
 /************************************************************************/
 
 #include <math.h>
