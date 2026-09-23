@@ -5851,7 +5851,7 @@ clusterCommit(void* inf_v, pObjTrxTree* oxt)
     {
 	mssError(1, "Cluster", "clusterCommit() not implemented because clusters are immutable.");
     
-    return 0;
+    return -1;
     }
 
 
