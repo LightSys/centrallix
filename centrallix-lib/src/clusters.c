@@ -703,10 +703,10 @@ caCosCompare(void* v1, void* v2)
  *** 	contain ANY valid ASCII characters other than the NULL-terminator,
  *** 	which is used to terminate the string.
  *** 
- *** @attention - This function takes `void*` instead of `char*` so that it
- *** 	can be used as the similarity function in the ca_search() function
- *** 	family without needing a messy typecast to avoid the compiler warning.
- *** 	However, behavior is undefined if `s1` and `s2` are not `char*`s.
+ *** @attention - This function takes `void*` instead of `char*` to match
+ *** 	the `pSimilarityFn` signature expected by search functions like
+ *** 	`caCompleteSearch()`.  However, behavior is undefined if `v1` or `v2`
+ *** 	are not `char*`s.
  *** 
  *** @param s1 A `char*` to the first string to compare.
  *** @param s2 A `char*` to the second string to compare.

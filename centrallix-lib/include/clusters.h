@@ -134,7 +134,7 @@ int caKmeans(
  ***/
 typedef double (*pSimilarityFn)(void*, void*);
 
-/** Comparison functions (see ca_search()). **/
+/** Comparison functions (matching the pSimilarityFn signature). **/
 double caCosCompare(void* v1, void* v2);
 double caLevCompare(void* str1, void* str2);
 bool caEql(pVector v1, pVector v2);
