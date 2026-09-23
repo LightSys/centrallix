@@ -654,10 +654,10 @@ caEditDist(const char* str1, const char* str2, const size_t str1_length, const s
  *** @attention - Note: Punctuation, whitespace, etc. are ignored due to how
  *** 	cosine vector hashing is implemented.
  *** 
- *** @attention - This function takes `void*` instead of `pVector` so that it
- *** 	can be used as the similarity function in the ca_search() function
- *** 	family without needing a messy typecast to avoid the compiler warning.
- *** 	However, behavior is undefined if `v1` and `v2` are not `pVector`s.
+ *** @attention - This function takes `void*` instead of `pVector` to match
+ *** 	the `pSimilarityFn` signature expected by search functions like
+ *** 	`caCompleteSearch()`.  However, behavior is undefined if `v1` or `v2`
+ *** 	are not `pVector`s.
  *** 
  *** @param v1 A `pVector` to the first string to compare.
  *** @param v2 A `pVector` to the second string to compare.
