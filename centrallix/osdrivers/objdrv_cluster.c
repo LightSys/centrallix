@@ -5411,7 +5411,8 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
  *** 	  cluster data, or search data.
  *** 	- A pointer to an unsigned int storing the total number of bytes
  *** 	  used by the entry printed.
- *** 	- A pointer to ?.
+ *** 	- A pointer to an unsigned long long that counts how many uncomputed
+ *** 	  caches have been skipped. Specify NULL to include uncomputed caches.
  *** @returns 0 if successful,
  ***         -1 if an error occurs.
  ***/
@@ -5423,9 +5424,9 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	void* data = entry->Data;
 	
 	/** Extract args. **/
-	CIDataType    data_type       = (CIDataType)va_arg(args, int);
+	CIDataType data_type = (CIDataType)va_arg(args, int);
 	unsigned int* total_bytes_ptr = va_arg(args, unsigned int*);
-	unsigned long long* less_ptr  = va_arg(args, unsigned long long*);
+	unsigned long long* num_uncomputed_skipped_ptr = va_arg(args, unsigned long long*);
 	char* path = va_arg(args, char*);
 	
 	/** If a path is provided, check that it matches the start of the key. **/
@@ -5444,8 +5445,10 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 		/** Compute size. **/
 		bytes = cluster_i_sizeOfSourceData(source_data);
 		
-		/** If less is specified, skip uncomputed source. **/
-		if (*less_ptr > 0llu && source_data->Vectors == NULL) goto no_print;
+		/** If num_uncomputed_skipped_ptr is specified, skip uncomputed source. **/
+		if (num_uncomputed_skipped_ptr != NULL
+		    && source_data->Vectors == NULL
+		) goto no_print;
 		
 		/** Compute printing information. **/
 		type = "Source";
@@ -5459,8 +5462,10 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 		/** Compute size. **/
 		bytes = cluster_i_sizeOfClusterData(cluster_data, false);
 		
-		/** If less is specified, skip uncomputed source. **/
-		if (*less_ptr > 0llu && cluster_data->Clusters == NULL) goto no_print;
+		/** If num_uncomputed_skipped_ptr is specified, skip uncomputed source. **/
+		if (num_uncomputed_skipped_ptr != NULL
+		    && cluster_data->Clusters == NULL
+		) goto no_print;
 		
 		/** Compute printing information. **/
 		type = "Cluster";
@@ -5474,8 +5479,10 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 		/** Compute size. **/
 		bytes = cluster_i_sizeOfSearchData(search_data);
 		
-		/** If less is specified, skip uncomputed source. **/
-		if (*less_ptr > 0llu && search_data->Pairs == NULL) goto no_print;
+		/** If num_uncomputed_skipped_ptr is specified, skip uncomputed source. **/
+		if (num_uncomputed_skipped_ptr != NULL
+		    && search_data->Pairs == NULL
+		) goto no_print;
 		
 		/** Compute printing information. **/
 		type = "Search";
@@ -5494,8 +5501,8 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 	goto increment_total;
 	
     no_print:
-	if (less_ptr != NULL)
-	    (*less_ptr)++;
+	if (num_uncomputed_skipped_ptr != NULL)
+	    (*num_uncomputed_skipped_ptr)++;
 	
     increment_total:
 	if (total_bytes_ptr != NULL)
@@ -5600,20 +5607,25 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		}
 	    
 	    /** 'show' and 'show_all'. **/
-	    bool show = false;
-	    unsigned long long skip_uncomputed = 0llu;
+	    bool show = false, skip_uncomputed = false;
 	    if (strcmp(param->String, "show_less") == 0)
 		{
-		/** Specify show_less to skip uncomputed caches. **/
-		skip_uncomputed = 1ull;
+		/** Specifying show_less skips uncomputed caches. **/
+		skip_uncomputed = true;
 		}
-	    if (skip_uncomputed == 1ull || strcmp(param->String, "show") == 0)
+	    if (skip_uncomputed || strcmp(param->String, "show") == 0)
 		{
 		show = true;
 		path = objFilePath(driver_data->NodeData->Parent);
 		}
 	    if (strcmp(param->String, "show_all") == 0)
 		show = true;
+	    
+	    /** Declare local variables to store skip counts. **/
+	    unsigned long long num_uncomputed_skipped = 0;
+	    unsigned long long* num_uncomputed_skipped_ptr = (skip_uncomputed)
+		? &num_uncomputed_skipped
+		: NULL;
 	    
 	    if (show)
 		{
@@ -5629,7 +5641,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		if (UNLIKELY(xhForEach(
 		    &ClusterDriverCaches.SourceDataCache,
 		    cluster_i_printEntry,
-		    (int)CI_SOURCE_DATA, &source_bytes, &skip_uncomputed, path
+		    (int)CI_SOURCE_DATA, &source_bytes, num_uncomputed_skipped_ptr, path
 		)) != 0)
 		    {
 		    mssError(0, "Cluster", "Failed to print source data cache.");
@@ -5640,7 +5652,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		if (UNLIKELY(xhForEach(
 		    &ClusterDriverCaches.ClusterDataCache,
 		    cluster_i_printEntry,
-		    (int)CI_CLUSTER_DATA, &cluster_bytes, &skip_uncomputed, path
+		    (int)CI_CLUSTER_DATA, &cluster_bytes, num_uncomputed_skipped_ptr, path
 		)) != 0)
 		    {
 		    mssError(0, "Cluster", "Failed to print cluster data cache.");
@@ -5651,7 +5663,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		if (UNLIKELY(xhForEach(
 		    &ClusterDriverCaches.SearchDataCache,
 		    cluster_i_printEntry,
-		    (int)CI_SEARCH_DATA, &search_bytes, &skip_uncomputed, path
+		    (int)CI_SEARCH_DATA, &search_bytes, num_uncomputed_skipped_ptr, path
 		)) != 0)
 		    {
 		    mssError(0, "Cluster", "Failed to print search data cache.");
@@ -5663,7 +5675,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		    + (unsigned int)ClusterDriverCaches.SourceDataCache.nItems
 		    + (unsigned int)ClusterDriverCaches.ClusterDataCache.nItems
 		    + (unsigned int)ClusterDriverCaches.SearchDataCache.nItems;
-		if (total_caches < skip_uncomputed)
+		if (skip_uncomputed && total_caches <= num_uncomputed_skipped)
 		    printf("All caches skipped, nothing to show...\n");
 		
 		/** Print stats. **/
@@ -5680,8 +5692,8 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		printf("%-8s %-4d %-12s\n\n", "Total", total_caches, buf);
 		
 		/** Print skip stats (if anything was skipped.) **/
-		if (skip_uncomputed > 1llu)
-		    printf("Skipped %llu uncomputed caches.\n\n", skip_uncomputed - 1llu);
+		if (num_uncomputed_skipped > 0)
+		    printf("Skipped %llu uncomputed caches.\n\n", num_uncomputed_skipped);
 		
 		return ret;
 		}
