@@ -31,9 +31,10 @@
 
 static int cmp_Pairs(const void* v1, const void* v2)
     {
-    const Pair* Pair1 = v1;
-    const Pair* Pair2 = v2;
-    return Pair1->i - Pair2->i;
+    const Pair* Pair1 = *(const pPair*)v1;
+    const Pair* Pair2 = *(const pPair*)v2;
+    if (Pair1->i != Pair2->i) return (int)Pair1->i - (int)Pair2->i;
+    return (int)Pair1->j - (int)Pair2->j;
     }
 
 static bool freePairs(pXArray xPairs)
