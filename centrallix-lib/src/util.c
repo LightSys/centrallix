@@ -193,7 +193,7 @@ fprintMem(FILE* out)
 	if (out == NULL)
 	    out = stdout;
 
-	/** Open the OS stats file to read memory. ***/
+	/** Open the OS stats file to read memory. **/
 	fp = fopen("/proc/self/statm", "r");
 	if (UNLIKELY(fp == NULL))
 	    {

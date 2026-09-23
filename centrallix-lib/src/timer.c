@@ -133,7 +133,7 @@ timerReset(pTimer timer)
     return timerInit(timer);
     }
 
-/*** De-initialize a timer allocated by timerInit().
+/*** De-initialize a timer initialized by timerInit().
  *** 
  *** @param timer The timer to de-initialize.
  ***/
