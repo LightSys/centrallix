@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -32,6 +32,8 @@
 #include "cxlib/xhash.h"
 #endif
 
+#include <errno.h>
+#include <string.h>
 
 /** optimum salt size for mssGenCred() **/
 #define	MSS_SALT_SIZE	4
@@ -40,6 +42,9 @@
 /** Password and Username size **/
 #define	MSS_PASSWORD_SIZE	64
 #define MSS_USERNAME_SIZE	32
+
+/** Session parameter name size; a longer name is refused **/
+#define MSS_PARAMNAME_SIZE	32
 
 
 /** Structure for a session. **/
@@ -59,9 +64,10 @@ typedef struct
 /** Parameter data **/
 typedef struct
     {
-    char	Name[32];
+    char	Name[MSS_PARAMNAME_SIZE];
     char*	Value;
     char	ValueBuf[64];
+    int		IsAlloc;
     }
     MtParam, *pMtParam;
 
@@ -81,12 +87,21 @@ void* mssGetParam(char* paramname);
 
 /** Error handling functions **/
 int mssLog(int level, char* msg);
-int mssError(int clr, char* module, char* message, ...);
-int mssErrorErrno(int clr, char* module, char* message, ...);
-int mssClearError();
+
+/** The message is a printf() format, so let the compiler check it. **/
+void mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
+    #ifdef __GNUC__
+    __attribute__ ((format(printf, 5, 6)))
+    #endif
+;
+
+#define mssError(clear, module, message, ...) \
+    mss_i_error(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
+#define mssErrorErrno(clear, module, message, ...) \
+    mss_i_error(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
+void mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
 int mssUserError(pXString str);
-
 
 #endif
