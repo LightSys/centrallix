@@ -4511,17 +4511,6 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    return 0;
 	    }
 	
-	/** Last modification is not implemented. **/
-	if (strcmp(attr_name, "last_modification") == 0) 
-	    {
-	    if (target_type == TARGET_CLUSTER
-		|| target_type == TARGET_CLUSTER_ENTRY
-		|| target_type == TARGET_SEARCH
-		|| target_type == TARGET_SEARCH_ENTRY)
-		goto date_computed;
-	    else return 1; /* null */
-	    }
-	
 	/** Handle date_created. **/
 	if (strcmp(attr_name, "date_created") == 0)
 	    {
@@ -4565,9 +4554,9 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    }
 	
 	/** Handle date_computed. **/
-	if (strcmp(attr_name, "date_computed") == 0)
+	if (strcmp(attr_name, "last_modification") == 0
+	    || strcmp(attr_name, "date_computed") == 0)
 	    {
-    date_computed:
 	    switch (target_type)
 		{
 		case TARGET_NODE:
