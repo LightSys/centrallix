@@ -154,7 +154,7 @@ Once a file is opened, the driver should organize provided data into a tree-stru
 
 A driver can be opened multiple times, leading one driver to have multiple "node" objects, also called instances.  Typically, each "node" object relates to a particular instance of a resource.  For example, say you are designing a driver to access MySQL databases.  You could design the driver file to describe a MySQL instance.  Thus, the node object for this driver could have children for each database in that instance (e.g. `Kardia_DB`, `mysql`, and even the system databases used by MySQL to manage the database internals).  Another design would be for each driver file to describe one MySQL database.  Thus, you could make a `Kardia_DB` file to access that database, and the children of that node object would be each table in the database.  A third design option would be for each driver file to describe a MySQL table.  Thus, you make a `p_partner` file to access members of the partner table, a `p_contact_info` file to access contact info for partners, etc. with each node object having children for the rows in the table.  This last option would require the developer to create a _lot_ of files (and would probably also make joins hard to implement), so in this case, it's probably not the best.  Ultimately, though, these design choices are up to the driver author.
 
-an instance of a POP3 driver might represent a POP3 server on the network.  If the network had multiple POP3 servers, this driver could be used to access each of them through different node objects (e.g. `dev.pop3`, `prod.pop3`, etc.).  However, if somehow the OS driver were able to easily enumerate the various POP3 servers on the network (i.e., they responded to some kind of hypothetical broadcast query), then the OS driver author could also design the driver to list the POP3 servers under a single node for the whole network.
+An instance of a POP3 driver might represent a POP3 server on the network.  If the network had multiple POP3 servers, this driver could be used to access each of them through different node objects (e.g. `dev.pop3`, `prod.pop3`, etc.).  However, if somehow the OS driver were able to easily enumerate the various POP3 servers on the network (i.e., they responded to some kind of hypothetical broadcast query), then the OS driver author could also design the driver to list the POP3 servers under a single node for the whole network.
 
 The structure of the subtree beneath the node object is entirely up to the drivers' author to determine; the OSML does not impose any structural restrictions on such subtrees.  Each object within this structure (e.g. `/example.qy`) can have three types of readable data:
 - Child objects (e.g. `/rows`) which can have their own data.
@@ -163,7 +163,7 @@ The structure of the subtree beneath the node object is entirely up to the drive
 
 Thus, parent objects with child objects behave similarly to a directory, although they can still have separate readable data _and_ queryable data. This may seem foreign in the standard file system paradigm, however, it is common for web servers, where opening a directory often returns `index.html` file in that directory, or some other form of information to allow further navigation.  Querying an object was originally intended as a way to quickly traverse its child objects, although queries are not required to be implemented this way.
 
-Below is an example of the Sybase driver's node object and its subtrees of child objects (defined in `objdrv_sybase.c`):
+Below is an example of the MySQL driver's node object and its subtrees of child objects (defined in `objdrv_mysql.c`):
 
 ```sh
 Kardia_DB (type = "application/mysql")
@@ -298,7 +298,7 @@ The `name` field is a 64 character buffer (allowing names up to 63 characters, w
 
 For example:
 ```c
-if (strcpy(drv->Name, "SYBD - Sybase Database Driver") == NULL) goto error_handling;
+strcpy(drv->Name, "SYBD - Sybase Database Driver");
 ```
 
 #### RootContentTypes
@@ -635,7 +635,7 @@ The `last_modification : DATA_T_DATETIME` attribute is a sixth, optional attribu
 ```c
 int xxxGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt);
 ```
-The `GetAttrType()` function returns DATA_T_xxx value for the datatype of the requested. It takes three parameters:
+The `GetAttrType()` function returns DATA_T_xxx value for the datatype of the requested attribute. It takes three parameters:
 
 | Parameter | Type          | Description
 | --------- | ------------- | ------------
@@ -686,7 +686,7 @@ This function should return 0 on success, 1 if the value is `NULL` or undefined 
 - 📖 **Note**: The caller can use the `POD(x)` macro to typecast appropriate pointers to the `pObjData` pointer.  For example:
     ```c
     char* name;
-    if (xxxGetAttrValue(obj, "name", DATA_T_STRING, POD(&name)) != 0)
+    if (objGetAttrValue(obj, "name", DATA_T_STRING, POD(&name)) != 0)
         goto error_handling;
     printf("Object name: \"%s\"\n", name);
     ```

@@ -1,6 +1,6 @@
 ##NAME  trim() function
 
-query select  'trim("White space on the left or right side.")' =  trim("No white space on the left or right side.")
+query select  'trim("No white space on the left or right side.")' =  trim("No white space on the left or right side.")
 
 query select  'trim("     White space on the left side.")' =  trim("     White space on the left side.")
 

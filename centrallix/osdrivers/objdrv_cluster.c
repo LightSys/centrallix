@@ -3052,7 +3052,7 @@ cluster_i_computeSourceData(pSourceData source_data, pObjSession session)
  *** @param cluster_data The pClusterData whose attributes should be computed.
  *** @param node_data The current pNodeData, used to get vectors to cluster.
  *** @returns 0 if successful, or
- ***         -1 other value on failure.
+ ***         -1 on failure.
  ***/
 static int
 cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
@@ -3362,7 +3362,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
  *** @param search_data The pSearchData whose attributes should be computed.
  *** @param node_data The current pNodeData, used to get vectors to cluster.
  *** @returns 0 if successful, or
- ***         -1 other value on failure.
+ ***         -1 on failure.
  ***/
 static int
 cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
@@ -3524,7 +3524,7 @@ cluster_i_computeSearchData(pSearchData search_data, pNodeData node_data)
 			{
 			mssError(1, "Cluster", "Failed to add new pair to pairs XArray.");
 			
-			/** Free renamining items. **/
+			/** Free remaining items. **/
 			for (unsigned int j = i; j < cluster_pairs->nItems; j++)
 			    nmFree(cluster_pairs->Items[j], sizeof(Pair));
 			warnFail(xaFree(cluster_pairs));

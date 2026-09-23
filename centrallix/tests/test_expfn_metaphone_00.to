@@ -13,7 +13,7 @@
 #
 # *Source: https://github.com/gitpan/Text-DoubleMetaphone/blob/master/t/words.txt
 # **GPT-5 mini (Preview) was run in GitHub Copilot to suggest the words
-# for some tests after analizing a generated coverage report. I (Israel)
+# for some tests after analyzing a generated coverage report. I (Israel)
 # used the suggestions to write some "AI generated" test cases.
 # 
 # For more information, see the manual test suite implementation at the

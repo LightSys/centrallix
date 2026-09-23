@@ -290,7 +290,7 @@ This function returns the stored string after checking for various errors, or re
 ```c
 int xsLength(pXString this);
 ```
-This function returns the length of the string in constant time (since this value is stored in `this->Length`) checking for various errors, or returns `NULL` if an error occurs.
+This function returns the length of the string in constant time (since this value is stored in `this->Length`) checking for various errors, or returns `-1` if an error occurs.
 
 
 ## xsCharAt()
