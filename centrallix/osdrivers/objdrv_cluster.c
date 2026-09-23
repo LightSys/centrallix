@@ -4026,6 +4026,7 @@ clusterOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    mssError(1, "Cluster", "nmMalloc(%zu) failed.", sizeof(ClusterQuery));
 	    goto err_free;
 	    }
+	memset(query_data, 0, sizeof(ClusterQuery));
 	
 	/** Initialize the query. **/
 	SETMAGIC(query_data, MGK_CL_QUERY_DATA);
