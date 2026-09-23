@@ -4943,7 +4943,7 @@ clusterPresentationHints(void* inf_v, char* attr_name, pObjTrxTree* oxt)
 	    case TARGET_NODE:
 		if (strcmp(attr_name, "source") == 0)
 		    {
-		    hints->Length = _PC_PATH_MAX;
+		    hints->Length = OBJSYS_MAX_PATH;
 		    hints->VisualLength = 64;
 		    hints->FriendlyName = warnNull(nmSysStrdup("Source Path"));
 		    goto end;
