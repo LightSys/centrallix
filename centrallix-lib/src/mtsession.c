@@ -509,7 +509,8 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    va_end(args);
 
 	    /** Get the error message from the xstring. **/
-	    if (format_ok) err_msg = warnNull(xsString(&err_msg_xstring));
+	    if (LIKELY(format_ok))
+		err_msg = warnNull(xsString(&err_msg_xstring));
 	    }
 
 	/*** Fallback: If formatting fails, format into a fixed-size buffer on
