@@ -473,7 +473,7 @@ mssEndSession(pMtSession s)
  ***	of the error.
  *** @param file The name of the file where the error was detected.
  *** @param line The line number where the error was detected.
- *** @param format The format text for the error, which accepts any format
+ *** @param message The format text for the error, which accepts any format
  ***	specifier that would be accepted by printf().
  *** @param ... Variables matching format specifiers in the format.
  ***/
@@ -509,7 +509,8 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    va_end(args);
 
 	    /** Get the error message from the xstring. **/
-	    if (format_ok) err_msg = warnNull(xsString(&err_msg_xstring));
+	    if (LIKELY(format_ok))
+		err_msg = warnNull(xsString(&err_msg_xstring));
 	    }
 
 	/*** Fallback: If formatting fails, format into a fixed-size buffer on
@@ -603,7 +604,7 @@ void
 mssClearError()
     {
 	/** Get session pointer. **/
-	pMtSession s = warnNull(thGetParam(NULL, "mss"));
+	pMtSession s = thGetParam(NULL, "mss");
 	if (s == NULL) return; /* No errors to clear. */
 
 	/** Free all error strings in the error list/error stack. **/
@@ -621,12 +622,12 @@ mssPrintError(pFile fd)
     XString str; str.String = NULL;
     int rval = -1, tmp;
 
-	if (fd == NULL) goto end;
+	if (UNLIKELY(fd == NULL)) goto end;
 	if (warnFail(xsInit(&str))) goto end;
 
 	/** Format the stack once, so both error printers agree on the layout. **/
 	tmp = warnFail(mssStringError(&str));
-	if (tmp != 0)
+	if (UNLIKELY(tmp != 0))
 	    {
 	    rval = tmp;
 	    goto end;
@@ -637,7 +638,7 @@ mssPrintError(pFile fd)
 	rval = 0;
 
     end:
-	if (rval != 0) /* Make sure we print something if a failure happenned. */
+	if (UNLIKELY(rval != 0)) /* Make sure we print something if a failure happened. */
 	    fprintf(stderr, "Warning: Failed to print session errors.\n");
 
 	/** Clean up. **/

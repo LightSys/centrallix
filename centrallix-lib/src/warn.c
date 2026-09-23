@@ -31,7 +31,7 @@
  ***/
 int WarnPrintEnabled = 1;
 
-/*** Function for printing an error when code fails.
+/*** Function for printing a warning when code fails.
  *** 
  *** @param error_code The error code number returned by a failing C function (or -1 if not applicable).
  *** @param c_str The C statement/value that failed, usually a function call.
