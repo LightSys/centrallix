@@ -3613,8 +3613,6 @@ myTabControl "widget/tab"
 
 			<property name="allow_selection" type="yes/no">Whether to permit the user to select rows in the table.  Default "yes".</property>
 
-			<property name="allow_sorting" type="yes/no">Whether clicking a column header sorts the table by that column.  Acts as the default for all columns; individual columns may override via their own "allow_sorting" property.  Default "yes".</property>
-
 			<property name="background" type="string">A background image for the table. This "shows through" between table cells.</property>
 
 			<property name="bgcolor" type="string">A color, RGB or named, to be used between table cells and rows.If neither bgcolor nor background are specified, the table is transparent.</property>
@@ -3723,8 +3721,6 @@ myTabControl "widget/tab"
 
 				<childproperty name="align" type="string">The alignment of the column:  "left" or "right".</childproperty>
 
-				<childproperty name="allow_sorting" type="yes/no">Whether clicking this column's header sorts the table by this column.  Defaults to the table's "allow_sorting" value (which defaults to "yes").</childproperty>
-
 				<childproperty name="caption_fieldname" type="string">It is a pseudonym for the fieldname.</childproperty>
 				
 				<childproperty name="caption_textcolor" type="string">The color of the caption_fieldname.</childproperty>
@@ -3735,7 +3731,7 @@ myTabControl "widget/tab"
 				
 				<childproperty name="title" type="string">The title of the column to be displayed in the header row.</childproperty>
 
-				<childproperty name="type" type="string">The type of the column: "text", "check", "image", or "progress".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value. "progress" displays a progress bar, with additional fields such as bar_color, bar_textcollor, and bar_padding.</childproperty>
+				<childproperty name="type" type="string">The type of the column: "text", "check", or "image".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value.</childproperty>
 
 				<childproperty name="width" type="integer">width of the column.</childproperty>
 
