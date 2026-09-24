@@ -14,27 +14,21 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
+			<p>The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the object system (or of a single query result set object).  Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.</p>
 
 			<p>Forms have five different "modes"of operation, each of which can be specifically allowed or disallowed for the form.</p>
 
-		<ol>
-
-		<li> No Data - form inactive/disabled, no data viewed/edited.</li>
-
-		<li> View - data being viewed readonly.</li>
-
-		<li> Modify - existing data being modified.</li>
-
-		<li> Query - query criteria being entered (used for query-by-form applications)</li>
-
-		<li> New - new object being entered/created.</li>
-
-		</ol>
+			<ol>
+				<li> No Data - form inactive/disabled, no data viewed/edited.</li>
+				<li> View - data being viewed readonly.</li>
+				<li> Modify - existing data being modified.</li>
+				<li> Query - query criteria being entered (used for query-by-form applications)</li>
+				<li> New - new object being entered/created.</li>
+			</ol>
 
 			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a "three-way confirm" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a "three-way confirm" window.  This should be a hidden (visible=no) "widget/htmlwindow" object which may contain any content, but should at least contain three buttons named "_3bConfirmSave", "_3bConfirmDiscard", and "_3bConfirmCancel" directly in the htmlwindow.  During a confirm operation, this window will become "application-modal"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
 
-			<p>Several settings on the form widget control what state, or "mode", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can beused to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.</p>
+			<p>Several settings on the form widget control what state, or "mode", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can be used to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
@@ -96,7 +90,7 @@
 <tr>
 <td class="name">comfirm_discard</td>
 <td class="type">yes/no</td>
-<td class="description">Set to true when the discard button of the 3 buttom confirm window (3bconfirmwindow) is pressed.</td>
+<td class="description">Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">enter_mode</td>
@@ -125,7 +119,7 @@
 </tr>
 <tr>
 <td class="name">objectsource</td>
-<td class="type"></td>
+<td class="type">string</td>
 <td class="description">Represents the widget object source (transfers data to and from server).</td>
 </tr>
 <tr class="notimplimented">
@@ -160,7 +154,7 @@
 <tr class="notimplimented">
 <td class="name">fieldname</td>
 <td class="type">string</td>
-<td class="description">Fieldname (from the dataset) to bind this element to.</td>
+<td class="description">Field name (from the dataset) to bind this element to.</td>
 </tr>
 </table>
 <p class="childname">(of formstatus child widgets)</p>
@@ -173,7 +167,7 @@
 </tr>
 <tr class="notimplimented">
 <td class="name">Clear</td>
-<td class="description">Clears the form to a 'no data'state.</td>
+<td class="description">Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">Delete</td>
@@ -181,11 +175,11 @@
 </tr>
 <tr>
 <td class="name">Discard</td>
-<td class="description">Cancels an edit of form contents.</td>
+<td class="description">Cancels an edit of form contents.  Specify 1 for the 'FromKeyboard' or 'FromOSRC' parameters to indicate that the action is caused by a keyboard input or an osrc, respectively (both default to 0).</td>
 </tr>
 <tr>
 <td class="name">Disable</td>
-<td class="description">Prevents interaction with the entire form.</td>
+<td class="description">Prevents interaction with the entire form.  Specify any value other than no for the 'Enabled' parameter to enable it instead.</td>
 </tr>
 <tr>
 <td class="name">Edit</td>
@@ -193,7 +187,7 @@
 </tr>
 <tr>
 <td class="name">Enable</td>
-<td class="description">Allows interaction with the form.</td>
+<td class="description">Allows interaction with the form.   Specify 0 or no for the 'Enabled' parameter to disable it instead.</td>
 </tr>
 <tr>
 <td class="name">First</td>
@@ -205,7 +199,7 @@
 </tr>
 <tr class="notimplimented">
 <td class="name">New</td>
-<td class="description">Allows creation of new form contents.</td>
+<td class="description">Allows creation of new form contents.  Specify the 'Multi' parameter to set the MultiEnter field.</td>
 </tr>
 <tr>
 <td class="name">Next</td>
@@ -221,7 +215,7 @@
 </tr>
 <tr>
 <td class="name">QueryExec</td>
-<td class="description">the query and returns data.</td>
+<td class="description">Executes the query and returns data.</td>
 </tr>
 <tr>
 <td class="name">QueryToggle</td>
@@ -233,11 +227,11 @@
 </tr>
 <tr>
 <td class="name">SetValue</td>
-<td class="description">Modifies a field and puts the form into a new modify or search mode if appropriate.</td>
+<td class="description">Modifies the specified 'Field' to the specified 'Value', then puts the form into a new modify or search mode, if appropriate.</td>
 </tr>
 <tr>
 <td class="name">Submit</td>
-<td class="description">Attemps to save data, if there is an error it returns false.</td>
+<td class="description">Attempts to save data, if there is an error it returns false.  Specify the 'Target' parameter to set a target page other than the one containing the form widget.  Specify any truthy value for the 'NewPage' parameter to allow launching a new page.</td>
 </tr>
 <tr>
 <td class="name">test3bconfirm</td>
@@ -292,11 +286,11 @@
 </tr>
 <tr>
 <td class="name">NoData</td>
-<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'NoData' state (always occurs with both a statusChange event and a ModeChange Event.</td>
+<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'NoData' state (always occurs with both a statusChange event and a ModeChange Event.)</td>
 </tr>
 <tr>
 <td class="name">Query</td>
-<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.</td>
+<td class="description">This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.)</td>
 </tr>
 <tr>
 <td class="name">StatusChange</td>
@@ -359,7 +353,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 form1 "widget/form"
 
@@ -369,7 +363,7 @@ form1 "widget/form"
 
 	}
 
-		
+			
 
 		</pre>
 </body>
