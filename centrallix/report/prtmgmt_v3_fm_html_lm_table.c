@@ -8,6 +8,7 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
+#include "cxlib/expect.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -59,19 +60,26 @@
  *** @param side The side to print (one of top, right, bottom, left).
  *** @param width_units The unrounded border width.
  *** @param color The color of the border, -1 to not use color.
+ *** @returns 0 on success, or -1 on failure.
  ***/
-static void
+static int
 prt_htmlfm_OutputBorder(pPrtHTMLfmInf context, const char* side, double width_units, int color)
     {
     int border_width;
 
-	if (width_units == 0.0) return;
+	if (width_units == 0.0) return 0;
 	border_width = (int)(width_units * PRT_HTMLFM_XPIXEL + 0.5);
 	if (border_width < 1) border_width = 1;
-	if (color == -1)
-	    prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid;", side, border_width);
-	else
-	    prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid #%6.6X;", side, border_width, color);
+	const int rval = (color == -1)
+	    ? prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid;", side, border_width)
+	    : prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid #%6.6X;", side, border_width, color);
+	if (UNLIKELY(rval < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write %dpx %s border.", border_width, side);
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -87,19 +95,27 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
     pPrtTabLMData lm_data = (pPrtTabLMData)(table->LMData);
 
 	/** Write the table prologue **/
-	prt_htmlfm_SaveStyle(context, &oldstyle);
+	if (UNLIKELY(prt_htmlfm_SaveStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to save style.");
+	    goto err;
+	    }
 
 
 	/** Write the container HTML with borders. **/
-	prt_htmlfm_OutputPrintf(context,
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 	    "<table width=\"100%%\" cellpadding=\"0\" style=\"height: %dpx;",
 	    (int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5)
-	);
-	prt_htmlfm_OutputBorder(context, "top", lm_data->TopBorder.Width[0], lm_data->TopBorder.Color[0]);
-	prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]);
-	prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]);
-	prt_htmlfm_OutputBorder(context, "left", lm_data->LeftBorder.Width[0], lm_data->LeftBorder.Color[0]);
-	prt_htmlfm_OutputStrLiteral(context, "\">");
+	) < 0
+	    || prt_htmlfm_OutputBorder(context, "top", lm_data->TopBorder.Width[0], lm_data->TopBorder.Color[0]) < 0
+	    || prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]) < 0
+	    || prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]) < 0
+	    || prt_htmlfm_OutputBorder(context, "left", lm_data->LeftBorder.Width[0], lm_data->LeftBorder.Color[0]) < 0
+	    || prt_htmlfm_OutputStrLiteral(context, "\">") < 0
+	))  {
+	    mssError(0, "PRT", "Failed to write table opening tag.");
+	    goto err;
+	    }
 
 	/* Count rows for style purposes */
 	for(row = table->ContentHead; row; row=row->Next) {
@@ -128,92 +144,125 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		{
 		/** Got a cell.  Emit list of cells in the row **/
 		/* Arbitrarily specify a restricted height for table header if it has one */
-		if(cur_row == 1 && lm_data->HeaderRow) {
-		    prt_htmlfm_OutputStrLiteral(context, "<tr height=10>");
-		} else {
-		    prt_htmlfm_OutputStrLiteral(context, "<tr>");
-		}
+		const int tr_rval = (cur_row == 1 && lm_data->HeaderRow)
+		    ? prt_htmlfm_OutputStrLiteral(context, "<tr height=10>")
+		    : prt_htmlfm_OutputStrLiteral(context, "<tr>");
+		if (UNLIKELY(tr_rval < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write row #%d/%d opening tag.", cur_row, n_rows);
+		    goto err;
+		    }
 		while(cell)
 		    {
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
 			cur_col++;
-			prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"",
-				(int)(cell->Width*PRT_HTMLFM_XPIXEL));
+			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"",
+				(int)(cell->Width*PRT_HTMLFM_XPIXEL)) < 0))
+			    goto err_cell;
 			int saved_bg = prt_htmlfm_OutputBGColor(context, cell->BGColor);
-			prt_htmlfm_OutputPrintf(context, " style=\"padding:%dpx;",
-				(int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2));
+			if (UNLIKELY(saved_bg < 0)) goto err_cell;
+			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, " style=\"padding:%dpx;",
+				(int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2)) < 0))
+			    goto err_cell;
 
 			/* top border */
 			if (cell->BorderTop != 0 || row->BorderTop != 0) {
 			    if (cell->BorderTop != 0) {
-				prt_htmlfm_OutputBorder(context, "top", cell->BorderTop, -1);
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", cell->BorderTop, -1) < 0)) goto err_cell;
 			    } else {
-				prt_htmlfm_OutputBorder(context, "top", row->BorderTop, -1);
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", row->BorderTop, -1) < 0)) goto err_cell;
 			    }
 			} else if(cur_row != 1) {
-			    prt_htmlfm_OutputBorder(context, "top", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]);
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]) < 0)) goto err_cell;
 			}
 			/* bottom border */
 			if (cell->BorderBottom != 0 || row->BorderBottom != 0) {
 			    if (cell->BorderBottom != 0) {
-				prt_htmlfm_OutputBorder(context, "bottom", cell->BorderBottom, -1);
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", cell->BorderBottom, -1) < 0)) goto err_cell;
 			    } else {
-				prt_htmlfm_OutputBorder(context, "bottom", row->BorderBottom, -1);
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", row->BorderBottom, -1) < 0)) goto err_cell;
 			    }
 			} 
 			/* left border */
 			if (cell->BorderLeft != 0) {
-			    prt_htmlfm_OutputBorder(context, "left", cell->BorderLeft, -1);
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", cell->BorderLeft, -1) < 0)) goto err_cell;
 			} else if(cur_col != 1) {
-			    prt_htmlfm_OutputBorder(context, "left", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]);
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]) < 0)) goto err_cell;
 			}
 			/* right border */
 			if (cell->BorderRight != 0) {
-			    prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1);
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1) < 0)) goto err_cell;
 			}
 			
-			prt_htmlfm_OutputStrLiteral(context, "\">");
-			prt_htmlfm_InitStyle(context, &(cell->TextStyle));
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "\">") < 0)) goto err_cell;
+			if (UNLIKELY(prt_htmlfm_InitStyle(context, &(cell->TextStyle)) < 0)) goto err_cell;
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
 			    {
-			    if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
+			    if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err_cell;
 			    }
-			prt_htmlfm_EndStyle(context);
-			prt_htmlfm_OutputStrLiteral(context, "</td>");
+			if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err_cell;
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0)) goto err_cell;
 			context->BGColor = saved_bg;
 			}
 		    cell=cell->Next;
 		    }
-		prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr>\n") < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write row #%d/%d closing tag.", cur_row, n_rows);
+		    goto err;
+		    }
 		}
 	    else
 		{
 		/** Write row container opening tags. **/
-		prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\"",
-		    (int)(row->Width*PRT_HTMLFM_XPIXEL));
+		if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\"",
+		    (int)(row->Width*PRT_HTMLFM_XPIXEL)) < 0))
+		    goto err_row;
 		int saved_bg = prt_htmlfm_OutputBGColor(context, row->BGColor);
-		if (lm_data->nColumns > 1)
-		    prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", lm_data->nColumns);
-		prt_htmlfm_OutputStrLiteral(context, ">");
-		prt_htmlfm_InitStyle(context, cell?(&(cell->TextStyle)):(&(row->TextStyle)));
+		if (UNLIKELY(saved_bg < 0)) goto err_row;
+		if (UNLIKELY(lm_data->nColumns > 1
+		    && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", lm_data->nColumns) < 0))
+		    goto err_row;
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, ">") < 0)) goto err_row;
+		if (UNLIKELY(prt_htmlfm_InitStyle(context, cell?(&(cell->TextStyle)):(&(row->TextStyle))) < 0)) goto err_row;
 		
 		/** Write child content. **/
 		for(subobj=row->ContentHead;subobj;subobj=subobj->Next)
 		    {
-		    if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
+		    if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err_row;
 		    }
 		
 		/** Write row container closing tags. */
-		prt_htmlfm_EndStyle(context);
-		prt_htmlfm_OutputStrLiteral(context, "</td></tr>\n");
+		if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err_row;
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td></tr>\n") < 0)) goto err_row;
 		context->BGColor = saved_bg; /* Restore background color. */
 		}
 	    }
 
 	/** Output the section epilogue **/
-	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
-	prt_htmlfm_ResetStyle(context, &oldstyle);
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</table>\n") < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write table closing tag.");
+	    goto err;
+	    }
+	if (UNLIKELY(prt_htmlfm_ResetStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to reset style.");
+	    goto err;
+	    }
 
-    return 0;
+	return 0;
+
+    err_cell:
+	mssError(0, "PRT", "Failed to write cell #%d/%d in row #%d/%d.", cur_col, n_cols, cur_row, n_rows);
+	goto err;
+
+    err_row:
+	mssError(0, "PRT", "Failed to write row #%d/%d.", cur_row, n_rows);
+	goto err;
+
+    err:
+	mssError(0, "PRT", "Failed to generate table.");
+	return -1;
     }

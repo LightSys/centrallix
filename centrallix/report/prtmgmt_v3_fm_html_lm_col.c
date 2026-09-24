@@ -8,6 +8,7 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
+#include "cxlib/expect.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -61,8 +62,18 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
     double end_y = 0.0;
 
 	/** Write the section prologue **/
-	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\"><tr>\n");
+	if (UNLIKELY(prt_htmlfm_SaveStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to save style.");
+	    goto err;
+	    }
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context,
+	    "<table role=\"presentation\" cellpadding=\"0\"><tr>\n"
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write section opening tags.");
+	    goto err;
+	    }
 
 	/** Loop through the column objects **/
 	for(column = section->ContentHead; column; column = column->Next)
@@ -70,24 +81,54 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 	    if (column->ObjType->TypeID != PRT_OBJ_T_SECTCOL) continue;
 	    if (end_y > 0.0 && end_y != column->Y)
 		{
-		prt_htmlfm_OutputPrintf(context, "<td width=\"%d\">&nbsp;</td>", (int)(column->Y - end_y + 0.001));
+		if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+			"<td width=\"%d\">&nbsp;</td>",
+			(int)(column->Y - end_y + 0.001)
+		) < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write column gap.");
+		    goto err;
+		    }
 		}
-	    prt_htmlfm_OutputPrintf(context, "<td width=\"%d\">", (int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001));
-	    prt_htmlfm_InitStyle(context, &(column->TextStyle));
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+		"<td width=\"%d\">",
+		(int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001)
+	    ) < 0))
+		{
+		mssError(0, "PRT", "Failed to write column opening tag.");
+		goto err;
+		}
+	    if (UNLIKELY(prt_htmlfm_InitStyle(context, &(column->TextStyle)) < 0)) goto err;
 	    subobj = column->ContentHead;
 	    while(subobj)
 		{
-		if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
+		if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err;
 		subobj = subobj->Next;
 		}
-	    prt_htmlfm_EndStyle(context);
-	    prt_htmlfm_OutputStrLiteral(context, "</td>");
+	    if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
+		{
+		mssError(0, "PRT", "Failed to write column closing tag.");
+		goto err;
+		}
 	    end_y = column->Y + column->Width;
 	    }
 
 	/** Output the section epilogue **/
-	prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n");
-	prt_htmlfm_ResetStyle(context, &oldstyle);
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n") < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write section closing tags.");
+	    goto err;
+	    }
+	if (UNLIKELY(prt_htmlfm_ResetStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to reset style.");
+	    goto err;
+	    }
 
-    return 0;
+	return 0;
+
+    err:
+	mssError(0, "PRT", "Failed to generate multicolumn section.");
+	return -1;
     }

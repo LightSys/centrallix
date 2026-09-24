@@ -8,6 +8,7 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
+#include "cxlib/expect.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -92,22 +93,37 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 
 	/** Output the area prologue. **/
-	prt_htmlfm_SaveStyle(context, &oldstyle);
+	if (UNLIKELY(prt_htmlfm_SaveStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to save style.");
+	    goto err;
+	    }
 	int saved_bg = context->BGColor;
 	if (lm_inf->AreaBorder.nLines > 0)
 	    {
 	    /** Draw the border. **/
-	    prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area);
+	    if (UNLIKELY(prt_htmlfm_Border(context, &(lm_inf->AreaBorder), area) < 0))
+		goto err;
 	    context->BGColor = area->BGColor;
-	    prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\">\n");
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context,
+		"<table role=\"presentation\" width=\"100%\" cellpadding=\"0\">\n"
+	    ) < 0))
+		{
+		mssError(0, "PRT", "Failed to write area table opening tag.");
+		goto err;
+		}
 	    }
 	else
 	    {
 	    /** No border: Draw the padding and background directly. **/
 	    const int pad = (area->MarginTop + area->MarginBottom + area->MarginLeft + area->MarginRight) * PRT_HTMLFM_XPIXEL/4;
-	    prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" width=\"100%%\" cellpadding=\"%d\"", pad);
-	    prt_htmlfm_OutputBGColor(context, area->BGColor);
-	    prt_htmlfm_OutputStrLiteral(context, ">\n");
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" width=\"100%%\" cellpadding=\"%d\"", pad) < 0
+		|| prt_htmlfm_OutputBGColor(context, area->BGColor) < 0
+		|| prt_htmlfm_OutputStrLiteral(context, ">\n") < 0
+	    ))  {
+		mssError(0, "PRT", "Failed to write area table opening tag.");
+		goto err;
+		}
 	    }
 	in_tr = 0;
 	in_td = 0;
@@ -136,7 +152,11 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		 ** width, newer ones as relative width, but doesn't seem to work right
 		 ** with newer browsers.
 		 **/
-		prt_htmlfm_OutputPrintf(context,"<col width=\"%d*\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001));
+		if (UNLIKELY(prt_htmlfm_OutputPrintf(context,"<col width=\"%d*\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001)) < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write column #%d/%d width.", i + 1, n_xset);
+		    goto err;
+		    }
 		}
 	    }
 
@@ -162,19 +182,31 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		{
 		if (in_td)
 		    {
-		    prt_htmlfm_EndStyle(context);
-		    prt_htmlfm_OutputStrLiteral(context, "</td>");
+		    if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
+			{
+			mssError(0, "PRT", "Failed to write cell closing tag.");
+			goto err;
+			}
 		    in_td = 0;
 		    }
 		if (in_tr)
 		    {
-		    prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr>\n") < 0))
+			{
+			mssError(0, "PRT", "Failed to write row closing tag.");
+			goto err;
+			}
 		    in_tr = 0;
 		    }
 		}
 	    if (!in_tr)
 		{
-		prt_htmlfm_OutputStrLiteral(context, "<tr>");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<tr>") < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write row opening tag.");
+		    goto err;
+		    }
 		in_tr = 1;
 		}
 
@@ -186,13 +218,16 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    {
 		    if (in_tr && !in_td)
 			{
-			prt_htmlfm_OutputStrLiteral(context, "<td");
-			if (cur_xset > 1)
-			    prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cur_xset);
-			prt_htmlfm_OutputPrintf(context,
-			    " width=\"%d\">&nbsp;</td>",
-			    (int)(widths[cur_xset]*PRT_HTMLFM_XPIXEL+0.001)
-			);
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<td") < 0
+			    || (cur_xset > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cur_xset) < 0)
+			    || prt_htmlfm_OutputPrintf(context,
+				" width=\"%d\">&nbsp;</td>",
+				(int)(widths[cur_xset]*PRT_HTMLFM_XPIXEL+0.001)
+			    ) < 0
+			))  {
+			    mssError(0, "PRT", "Failed to write %d skipped tabstop(s).", cur_xset);
+			    goto err;
+			    }
 			}
 		    }
 		}
@@ -242,17 +277,20 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    /*** Write HTML, skipping defaults (align="left", colspan="1")
 		     *** to reduce HTML size.  These cells are written very often.
 		     **/
-		    prt_htmlfm_OutputStrLiteral(context, "<td");
-		    if (justif_subscan->Justification != PRT_JUST_T_LEFT)
-			prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justif_subscan->Justification]);
 		    const int n_cols = next_xset - cur_xset;
-		    if (n_cols > 1)
-			prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_cols);
-		    prt_htmlfm_OutputPrintf(context,
-			" width=\"%d\">",
-			(int)(w*PRT_HTMLFM_XPIXEL+0.001)
-		    );
-		    prt_htmlfm_InitStyle(context, &(scan->TextStyle));
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<td") < 0
+			|| (justif_subscan->Justification != PRT_JUST_T_LEFT
+			    && prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justif_subscan->Justification]) < 0)
+			|| (n_cols > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_cols) < 0)
+			|| prt_htmlfm_OutputPrintf(context,
+			    " width=\"%d\">",
+			    (int)(w*PRT_HTMLFM_XPIXEL+0.001)
+			) < 0
+		    ))  {
+			mssError(0, "PRT", "Failed to write cell opening tag.");
+			goto err;
+			}
+		    if (UNLIKELY(prt_htmlfm_InitStyle(context, &(scan->TextStyle)) < 0)) goto err;
 		    in_td = 1;
 		    }
 
@@ -262,7 +300,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		prt_htmlfm_SetKeepSpaces(context);
 		while((!next_xset_obj || scan != next_xset_obj) && scan != linetail->Next)
 		    {
-		    if (prt_htmlfm_Generate_r(context, scan) < 0) return -1;
+		    if (UNLIKELY(prt_htmlfm_Generate_r(context, scan) < 0)) goto err;
 		    w += scan->Width;
 		    scan = scan->Next;
 		    }
@@ -270,19 +308,31 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		/** Nothing printed? **/
 		if (w == 0.0)
 		    {
-		    prt_htmlfm_OutputStrLiteral(context, "&nbsp;");
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "&nbsp;") < 0))
+			{
+			mssError(0, "PRT", "Failed to write empty cell content.");
+			goto err;
+			}
 		    }
 
 		/** Emit the closing td? **/
 		if (cur_needs_cols && in_td)
 		    {
-		    prt_htmlfm_EndStyle(context);
-		    prt_htmlfm_OutputStrLiteral(context, "</td>");
+		    if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
+			{
+			mssError(0, "PRT", "Failed to write cell closing tag.");
+			goto err;
+			}
 		    in_td = 0;
 		    }
 		else if (in_td && scan)
 		    {
-		    prt_htmlfm_OutputStrLiteral(context, "<br>\n");
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<br>\n") < 0))
+			{
+			mssError(0, "PRT", "Failed to write line break.");
+			goto err;
+			}
 		    }
 		cur_xset = next_xset;
 		}
@@ -292,13 +342,21 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	/** Close the td and tr? **/
 	if (in_td)
 	    {
-	    prt_htmlfm_EndStyle(context);
-	    prt_htmlfm_OutputStrLiteral(context, "</td>");
+	    if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
+		{
+		mssError(0, "PRT", "Failed to write final cell closing tag.");
+		goto err;
+		}
 	    in_td = 0;
 	    }
 	if (in_tr)
 	    {
-	    prt_htmlfm_OutputStrLiteral(context, "</tr>\n");
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr>\n") < 0))
+		{
+		mssError(0, "PRT", "Failed to write final row closing tag.");
+		goto err;
+		}
 	    in_tr = 0;
 	    }
 
@@ -313,16 +371,34 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	/** Pad the area out to the content bottom with a trailing spacer row. **/
 	if (area->ContentTail && (content_bottom + 0.01 < area->Height))
 	    {
-	    prt_htmlfm_OutputPrintf(context, "<tr><td style=\"height: %dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td></tr>",
-		(int) ((area->Height - content_bottom + 0.001) * PRT_HTMLFM_YPIXEL));
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+		"<tr><td style=\"height: %dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td></tr>",
+		(int)((area->Height - content_bottom + 0.001) * PRT_HTMLFM_YPIXEL)
+	    ) < 0))
+		{
+		mssError(0, "PRT", "Failed to write trailing spacer row.");
+		goto err;
+		}
 	    }
 
 	/** Output the area epilogue **/
-	prt_htmlfm_OutputStrLiteral(context, "</table>\n");
-	if (lm_inf->AreaBorder.nLines > 0)
-	    prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area);
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</table>\n") < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write area table closing tag.");
+	    goto err;
+	    }
+	if (UNLIKELY(lm_inf->AreaBorder.nLines > 0 && prt_htmlfm_EndBorder(context, &(lm_inf->AreaBorder), area) < 0))
+	    goto err;
 	context->BGColor = saved_bg; /* Restore background color. */
-	prt_htmlfm_ResetStyle(context, &oldstyle);
+	if (UNLIKELY(prt_htmlfm_ResetStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to reset style.");
+	    goto err;
+	    }
 
-    return 0;
+	return 0;
+
+    err:
+	mssError(0, "PRT", "Failed to generate text area.");
+	return -1;
     }
