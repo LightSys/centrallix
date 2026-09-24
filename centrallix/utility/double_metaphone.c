@@ -80,7 +80,7 @@
  *** This file was copied from a GitHub Repo with licensing (see above).
  *** 
  *** As for this code, I've modified it to use styling, memory management, and
- *** libraries used to be consistent Centrallix.  I also wrote comments and
+ *** libraries used to be consistent with Centrallix.  I also wrote comments and
  *** tests based on my own understanding, so they might not accurately reflect
  *** the original author's intent.
  *** 
@@ -166,7 +166,7 @@ meta_i_isVowel(pXString s, unsigned int pos)
  *** string is Slavo Germanic.
  *** 
  *** @param s The XString to be searched.
- *** @returns 1 if the XString is Slavo Germanic, or 0 otherwise. 
+ *** @returns 1 if the XString is Slavo Germanic, or 0 otherwise.
  ***/
 static bool
 meta_i_isSlavoGermanic(pXString s)
@@ -334,12 +334,12 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			if (xsConcatenateLiteral(&secondary, "A") < 0) goto end_free;
 			}
 		    current += 1;
-		    break;	
+		    break;
 		    }
 		
 		case 'B':
 		    {
-		    /** "-mb", e.g", "dumb", already skipped over... **/
+		    /** "-mb", e.g. "dumb", already skipped over... **/
 		    if (xsConcatenateLiteral(&primary, "P") < 0) goto end_free;
 		    if (xsConcatenateLiteral(&secondary, "P") < 0) goto end_free;
 		    
@@ -412,7 +412,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			/** Germanic, greek, or otherwise 'ch' for 'kh' sound. **/
 			if (
 			    meta_i_isStrAt(&original, 0, "SCH", "VAN ", "VON ", "")
-			    /** 'architect but not 'arch', 'orchestra', 'orchid' **/
+			    /** 'architect' but not 'arch', 'orchestra', 'orchid' **/
 			    || meta_i_isStrAt(&original, (current - 2), "ORCHES", "ARCHIT", "ORCHID", "")
 			    || meta_i_isStrAt(&original, (current + 2), "T", "S", "")
 			    || (
@@ -451,7 +451,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			    break;
 			}
 		    
-		    /** e.g, 'czerny' **/
+		    /** e.g., 'czerny' **/
 		    if (meta_i_isStrAt(&original, current, "CZ", "")
 			&& !meta_i_isStrAt(&original, (current - 2), "WICZ", ""))
 			{
@@ -538,7 +538,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
 		    if (xsConcatenateLiteral(&secondary, "K") < 0) goto end_free;
 		    
-		    /** Name sent in 'mac caffrey', 'mac gregor **/
+		    /** Name sent in 'mac caffrey', 'mac gregor' **/
 		    if (meta_i_isStrAt(&original, (current + 1), " C", " Q", " G", ""))
 			current += 3;
 		    else if (meta_i_isStrAt(&original, (current + 1), "C", "K", "Q", "")
@@ -720,7 +720,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			break;
 			}
 		    
-		    /** -ger-,  -gy- **/
+		    /** -ger-, -gy- **/
 		    if (
 			(next_char == 'Y' || meta_i_isStrAt(&original, (current + 1), "ER", ""))
 			/** Exceptions. **/
@@ -734,7 +734,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			break;
 			}
 		    
-		    /** Italian e.g, 'biaggi' **/
+		    /** Italian e.g., 'biaggi' **/
 		    if (
 			meta_i_isStrAt(&original, (current + 1), "E", "I", "Y", "")
 			|| meta_i_isStrAt(&original, (current - 1), "AGGI", "OGGI", "")
@@ -1077,7 +1077,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			    || meta_i_isStrAt(&original, 0, "SCH", "VAN ", "VON ", "")
 			) ? "T" : "0"; /* Zero, not O. */
 			
-			if (xsConcatenate(&primary, primary_char, -1) < 0) goto end_free; 
+			if (xsConcatenate(&primary, primary_char, -1) < 0) goto end_free;
 			if (xsConcatenateLiteral(&secondary, "T") < 0) goto end_free;
 			current += 2;
 			break;

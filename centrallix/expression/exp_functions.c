@@ -4762,7 +4762,7 @@ exp_fn_compare(pExpression tree)
 	    return 0;
 	    }
 	
-	err:
+    err:
 	mssError(0, "EXP", "%s(): Failed to compute the similarity.", tree->Name);
 	return -1;
     }

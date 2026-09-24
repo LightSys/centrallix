@@ -4,7 +4,7 @@
 query select case1 = condition((cos_compare('hello', 'hello') >= 0.999) and (cos_compare('hello', 'hello') <= 1.0), "pass", "fail")
 query select case2 = condition((cos_compare('hello', 'zephora') <= 0.001) and (cos_compare('hello', 'zephora') >= 0.0), "pass", "fail")
 query select case3 = condition((cos_compare('hello', 'hello world') <= 0.7) and (cos_compare('hello', 'hello world') >= 0.6), "pass", "fail")
-query select case4 = condition((cos_compare('hello there', 'hellow there') >= 0.9) and (cos_compare('hello', 'hellow') <= 1.0), "pass", "fail")
+query select case4 = condition((cos_compare('hello there', 'hellow there') >= 0.9) and (cos_compare('hello there', 'hellow there') <= 1.0), "pass", "fail")
 
 
 # Tests on fabricated contact information.

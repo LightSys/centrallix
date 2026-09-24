@@ -51,7 +51,7 @@ static bool doTest(void)
 	success &= ASSERT_RANGE(cos_cmp("hello", "hello world"), 0.6, 0.7, "%g");
 	success &= ASSERT_RANGE(cos_cmp("hello there", "hellow there"), 0.9, 1.0, "%g");
 	
-	/** Tests on fabricated contact information. */
+	/** Tests on fabricated contact information. **/
 	/*** All email addresses and phone numbers are imaginary and were
 	 *** fabricated for the purposes of this test.
 	 ***/

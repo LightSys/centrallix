@@ -120,4 +120,4 @@ The `mssError()` function is not required to be called at every function nesting
 ```c
 void mssErrorErrno(int clr, char* module, char* message, ...);
 ```
-This function works the same way as [`mssError`](#msserror), except checks the current value of `errno` and postpends that error message to the end of the provided error.  This is useful if a system call or other library function is responsible for this error.
+This function works the same way as [`mssError`](#msserror), except that it checks the current value of `errno` and post-pends that error message to the end of the provided error.  This is useful if a system call or other library function is responsible for this error.

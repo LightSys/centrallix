@@ -81,7 +81,7 @@ static bool doTest(void)
 	success &= ASSERT_STR_EQL(caMostSimilar("kitten", (void*[]){"str_abc", "str1"}, 2, caLevCompare, 0.0), "str1");
 	success &= ASSERT_STR_EQL(caMostSimilar("str1", (void*[]){"str2", "str", "eight"}, 3, caLevCompare, 0.0), "str2");
 	
-	/** Many, identically similar options. */
+	/** Many, identically similar options. **/
 	success &= ASSERT_STR_EQL(caMostSimilar("kitten",
 	    (void*[]){"skitten", "itten", "mitten", "iktten", "kittens", "kitte", "kittem", "kittne"}, 8,
 	caLevCompare, 0.0), "skitten");
@@ -168,7 +168,7 @@ static bool doTest(void)
 	success &= ASSERT_STR_EQL(caMostSimilar("str1", (void*[]){"str2", "str", "eight"}, 3, getSimMock, 0.9), NULL);
 	success &= ASSERT_EQL(xhClear(&sim_table, do_nothing, NULL), 0, "%d");
 	
-	/** Nans are skipped. **/
+	/** NaNs are skipped. **/
 	double val_nan = 0.8, val_vals = NAN, val_val = 0.2;
 	success &= ASSERT_EQL(xhAdd(&sim_table, "val|nan",  (void*)&val_nan),  0, "%d");
 	success &= ASSERT_EQL(xhAdd(&sim_table, "val|vals", (void*)&val_vals), 0, "%d");

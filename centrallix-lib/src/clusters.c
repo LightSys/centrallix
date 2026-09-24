@@ -76,7 +76,7 @@ ca_i_hashCharPair(const unsigned char c1, const unsigned char c2)
  *** @param c2 The second character in the character pair.
  *** @param hash The hash for the two characters, calculated by calling the 
  *** 	ca_i_hashCharPair() function (above).
- **/
+ ***/
 typedef struct
     {
     unsigned char c1, c2;
@@ -177,7 +177,7 @@ caBuildVector(const char* str)
 	    unsigned char c = (unsigned char)maybe_char;
 	    
 	    /** Ignore insignificant characters. **/
-	    /** isspace(): space, \n, \v, \f, \r **/
+	    /** isspace(): space, \t, \n, \v, \f, \r **/
 	    /** ispunct(): !"#$%&'()*+,-./:;<=>?@[\]^_{|}~ **/
 	    if (c != CA_BOUNDARY_CHAR && (isspace(c) || ispunct(c))) continue;
 	    
@@ -543,9 +543,9 @@ ca_i_sparseSimilarityToCentroid(const pVector v1, const pCentroid c1)
  *** @param str1 The first string.
  *** @param str2 The second string.
  *** @param str1_length The length of the first string, or 0 to detect from
- *** 	the length from the null-terminator.
+ *** 	the null-terminator.
  *** @param str2_length The length of the second string, or 0 to detect from
- *** 	the length from the null-terminator.
+ *** 	the null-terminator.
  *** @returns The edit distance between the two strings, or a negative value on error.
  ***/
 int
@@ -555,8 +555,9 @@ caEditDist(const char* str1, const char* str2, const size_t str1_length, const s
     unsigned int** lev_matrix = NULL;
 
 	/*** lev_matrix:
-	 *** For all i and j, d[i][j] will hold the Levenshtein distance between
-	 *** the first i characters of s and the first j characters of t.
+	 *** For all i and j, lev_matrix[i][j] will hold the Levenshtein distance
+	 *** between the first i characters of str1 and the first j characters of
+	 *** str2.
 	 *** 
 	 *** As they say, no dynamic programming algorithm is complete without a
 	 *** matrix that you fill out and it has the answer in the final location.
@@ -597,7 +598,7 @@ caEditDist(const char* str1, const char* str2, const size_t str1_length, const s
 	    lev_matrix[i][0] = i;
 	
 	/*** Base case #2:
-	 *** Any target prefixes can be transformed into an empty string by
+	 *** Any target prefix can be built from an empty string by
 	 *** inserting each character.
 	 ***/
 	for (unsigned int j = 1u; j <= str2_len; j++)
@@ -729,7 +730,7 @@ caCosCompare(void* v1, void* v2)
  *** 
  *** @attention - This function takes `void*` instead of `char*` to match
  *** 	the `pSimilarityFn` signature expected by search functions like
- *** 	`caCompleteSearch()`.  However, behavior is undefined if `v1` or `v2`
+ *** 	`caCompleteSearch()`.  However, behavior is undefined if `s1` or `s2`
  *** 	are not `char*`s.
  *** 
  *** @param s1 A `char*` to the first string to compare.
@@ -756,12 +757,12 @@ caLevCompare(void* s1, void* s2)
 	if (len1 == 0lu && len2 != 0lu) return 0.0;
 	
 	/*** It's difficult to know if we are the first to detect an error
-	 *** later in this function, so clear the error stack before hand
+	 *** later in this function, so clear the error stack beforehand
 	 *** to avoid stale error data.
 	 ***/
 	mssClearError();
 	
-	/** Compute levenshtein edit distance. **/
+	/** Compute Levenshtein edit distance. **/
 	const int edit_dist = caEditDist((const char*)str1, (const char*)str2, len1, len2);
 	if (UNLIKELY(edit_dist < 0)) goto err;
 	
@@ -916,7 +917,7 @@ caKmeans(
 	    || isnan(min_improvement)
 	))
 	    goto end;
-        
+	
 	/** Initialize labels. **/
 	memset(labels, 0u, num_vectors * sizeof(unsigned int));
 	
@@ -1027,7 +1028,7 @@ caKmeans(
 		}
 	    
 	    /** Is there enough improvement? **/
-	    if (min_improvement <= -1.0) continue; /** Skip check if it will never end the loop. **/
+	    if (min_improvement <= -1.0) continue; /* Skip check if it will never end the loop. */
 	    const double average_cluster_size = ca_i_getClusterSize(vectors, num_vectors, labels, centroids, num_clusters);
 	    if (UNLIKELY(isnan(average_cluster_size))) goto end;
 	    const double improvement = old_average_cluster_size - average_cluster_size;

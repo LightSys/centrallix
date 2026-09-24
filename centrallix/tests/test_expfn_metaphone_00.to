@@ -15,7 +15,7 @@
 # **GPT-5 mini (Preview) was run in GitHub Copilot to suggest the words
 # for some tests after analyzing a generated coverage report. I (Israel)
 # used the suggestions to write some "AI generated" test cases.
-# 
+#
 # For more information, see the manual test suite implementation at the
 # end of the exp_double_metaphone.c file.
 

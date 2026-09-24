@@ -528,10 +528,10 @@ typedef struct _SEARCH
  *** @param Params A pParam array storing the params in the .cluster file.
  *** @param nParams The number of specified params.
  *** @param ParamList A "scope" for resolving parameter values during parsing.
- *** @param ClusterDatas A pCluster array for the clusters in the .cluster file,
+ *** @param ClusterDatas A pClusterData array for the clusters in the .cluster file,
  *** 	NULL if `nClusterDatas == 0`.
  *** @param nClusterDatas The number of specified clusters.
- *** @param SearchDatas A SearchData array for the searches in the .cluster file.
+ *** @param SearchDatas A pSearchData array for the searches in the .cluster file.
  *** @param nSearchDatas The number of specified searches.
  *** @param Parent The parent object used to open this NodeData instance.
  *** @param OpenCount The number of open driver instances that are using the
@@ -717,7 +717,7 @@ static void cluster_i_cacheFreeCluster(pXHashEntry entry, void* path);
 static void cluster_i_cacheFreeSearch(pXHashEntry entry, void* path);
 int clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree* oxt);
 
-/** Unimplemented DriverFunctions. **/
+/** Unimplemented Driver Functions. **/
 // LINK #unimplemented
 int clusterCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt);
 int clusterDelete(pObject obj, pObjTrxTree* oxt);
@@ -811,7 +811,7 @@ cluster_i_unknownAttribute(char* attr_name, const TargetType target_type)
 
 
 // LINK #functions
-/*** Parses a ClusteringAlgorithm from the algorithm attribute in the pStructInf.
+/*** Parses a ClusterAlgorithm from the algorithm attribute in the pStructInf.
  *** 
  *** @attention - Promises that a failure invokes mssError() at least once.
  *** 
@@ -1936,7 +1936,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    || xaInit(&cluster_infs, CI_INITIAL_INFS) != 0
 	    || xaInit(&search_infs, CI_INITIAL_INFS) != 0
 	)   {
-	    mssError(1, "Cluster", "Failed to initialize an XArray of size %u.", CI_INITIAL_INFS);
+	    mssError(1, "Cluster", "Failed to initialize an XArray of size %d.", CI_INITIAL_INFS);
 	    goto err_free;
 	    }
 	for (unsigned int i = 0u; i < inf->nSubInf; i++)
@@ -2527,7 +2527,7 @@ cluster_i_freeNodeData(pNodeData node_data)
 	    nmSysFree(node_data->SearchDatas);
 	    node_data->SearchDatas = NULL;
 	    }
-	    
+	
 	/** Free data source, if one exists. **/
 	/*** Note: SourceData is freed last since other free functions may need to
 	***       access information from this structure when freeing data.
@@ -3317,7 +3317,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 	return 0;
 	
     err_free:
-	if (cluster_data->Sims != NULL) 
+	if (cluster_data->Sims != NULL)
 	    {
 	    nmSysFree(cluster_data->Sims);
 	    cluster_data->Sims = NULL;
@@ -3646,11 +3646,11 @@ cluster_i_getParamType(void* inf_v, const char* attr_name)
  *** @param inf_v Node data containing the list of parameters.
  *** @param attr_name The name of the requested parameter.
  *** @param datatype The expected datatype of the parameter value.
- *** 	See datatypes.h	for a list of valid datatypes.
+ *** 	See datatypes.h for a list of valid datatypes.
  *** @param val A pointer to a location where a pointer to the requested
  *** 	data should be stored. Typically, the caller creates a local variable
  *** 	to store this pointer, then passes a pointer to that local variable
- ***    so that they will have a pointer to the data.
+ *** 	so that they will have a pointer to the data.
  *** 	This buffer will not be modified unless the data is successfully
  *** 	found. If a value other than 0 is returned, the buffer is not updated.
  *** @returns 0 if successful,
@@ -4368,7 +4368,7 @@ clusterGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt)
  *** @param val A pointer to a location where a pointer to the requested
  *** 	data should be stored.  Typically, the caller creates a local variable
  *** 	to store this pointer, then passes a pointer to that local variable
- ***    so that they will have a pointer to the data.
+ *** 	so that they will have a pointer to the data.
  *** 	This buffer will not be modified unless the data is successfully
  *** 	found.  If a value other than 0 is returned, the buffer is not updated.
  *** @param oxt The transaction tree (for the incomplete transaction system).
@@ -5402,9 +5402,9 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
 
 // LINK #functions
 /*** Prints a hash table entry that is assumed to be from one of the caches.
- ***
+ *** 
  *** @attention - Intended for use in `xhForEach()`.
- ***  
+ *** 
  *** @param entry The hash table entry to print.
  *** @param args Several arguments that control the printing:
  *** 	- The type of driver struct data being printed: either source data,
@@ -5689,7 +5689,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		snprintBytes(buf, sizeof(buf), search_bytes);
 		printf("%-8s %-4d %-12s\n", "Search", ClusterDriverCaches.SearchDataCache.nItems, buf);
 		snprintBytes(buf, sizeof(buf), source_bytes + cluster_bytes + search_bytes);
-		printf("%-8s %-4d %-12s\n\n", "Total", total_caches, buf);
+		printf("%-8s %-4u %-12s\n\n", "Total", total_caches, buf);
 		
 		/** Print skip stats (if anything was skipped.) **/
 		if (num_uncomputed_skipped > 0)
@@ -5795,7 +5795,7 @@ int
 clusterRead(void* inf_v, char* buffer, int max_cnt, int offset, int flags, pObjTrxTree* oxt)
     {
 	mssError(1, "Cluster", "clusterRead() not implemented.");
-	fprintf(stderr, "HINT: Use queries instead, (e.g. clusterOpenQuery()).\n");
+	fprintf(stderr, "HINT: Use queries instead (e.g. clusterOpenQuery()).\n");
     
     return -1;
     }

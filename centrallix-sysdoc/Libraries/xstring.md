@@ -172,7 +172,7 @@ This function copies the string `text` into the XString, overwriting any previou
 ```c
 char* xsStringEnd(pXString this);
 ```
-This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some string may contain nulls, using `strlen()` may produce an incorrect result.  It is equivalent to `this->String + xsLength()`, but it is shorter to type and keeps the internal workings of the xstring abstracted away from the caller.
+This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some strings may contain nulls, using `strlen()` may produce an incorrect result.  It is equivalent to `this->String + xsLength()`, but it is shorter to type and keeps the internal workings of the xstring abstracted away from the caller.
 
 
 ## xsConcatPrintf()

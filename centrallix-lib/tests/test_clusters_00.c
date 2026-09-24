@@ -43,7 +43,7 @@ static bool doTest(void)
 	success &= ASSERT_EQL(caEditDist("kitten", "kittne",  0, 0), 1, "%d"); /* 1 transpose (end). */
 	
 	/** Alternate words. **/
-	success &= ASSERT_EQL(caEditDist("lawn",   "flown",   0, 0), 2, "%d"); /* 1 insert and one replace. */
+	success &= ASSERT_EQL(caEditDist("lawn",   "flown",   0, 0), 2, "%d"); /* 1 insert and 1 replace. */
 	success &= ASSERT_EQL(caEditDist("hello",  "hello!",  0, 0), 1, "%d"); /* 1 insert (end). */
 	success &= ASSERT_EQL(caEditDist("zert",   "zerf",    0, 0), 1, "%d"); /* 1 replace (end). */
 	success &= ASSERT_EQL(caEditDist("llearr", "lear",    0, 0), 2, "%d"); /* 2 deletes (start & end). */

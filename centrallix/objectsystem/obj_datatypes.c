@@ -183,7 +183,7 @@ objTypeFromStr(const char* str)
 	    
 	    case 'U': case 'u':
 		if (strcmp(str+1, "Unknown"+1) == 0) return DATA_T_UNAVAILABLE;
-		if (strcmp(str+1, "Unavailable"+1) == 0)  return DATA_T_UNAVAILABLE;
+		if (strcmp(str+1, "Unavailable"+1) == 0) return DATA_T_UNAVAILABLE;
 		break;
 	    }
     

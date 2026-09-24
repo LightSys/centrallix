@@ -20,7 +20,7 @@ query select case14 = condition(lev_compare('kitten', 'kitten')  >= 0.99 and lev
 query select case15 = condition(lev_compare('kitten', 'skitten') >= 0.8  and lev_compare('kitten', 'skitten') <= 0.9, 'pass', 'fail') -- 1 insert
 query select case16 = condition(lev_compare('kitten', 'itten')   >= 0.8  and lev_compare('kitten', 'itten')   <= 0.9, 'pass', 'fail') -- 1 delete
 query select case17 = condition(lev_compare('kitten', 'mitten')  >= 0.8  and lev_compare('kitten', 'mitten')  <= 0.9, 'pass', 'fail') -- 1 replace
-query select case18 = condition(lev_compare('kitten', 'smitten') >= 0.7  and lev_compare('kitten', 'smitten') <= 0.8, 'pass', 'fail') -- 1 insert and one replace
+query select case18 = condition(lev_compare('kitten', 'smitten') >= 0.7  and lev_compare('kitten', 'smitten') <= 0.8, 'pass', 'fail') -- 1 insert and 1 replace
 query select case19 = condition(lev_compare('kitten', 'iktten')  >= 0.8  and lev_compare('kitten', 'iktten')  <= 0.9, 'pass', 'fail') -- 1 transpose
 query select case20 = condition(lev_compare('kitten', 'kittens') >= 0.8  and lev_compare('kitten', 'kittens') <= 0.9, 'pass', 'fail') -- 1 insert (end)
 query select case21 = condition(lev_compare('kitten', 'kitte')   >= 0.8  and lev_compare('kitten', 'kitte')   <= 0.9, 'pass', 'fail') -- 1 delete (end)

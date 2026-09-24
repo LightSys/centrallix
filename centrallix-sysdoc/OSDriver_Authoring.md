@@ -156,12 +156,12 @@ A driver can be opened multiple times, leading one driver to have multiple "node
 
 An instance of a POP3 driver might represent a POP3 server on the network.  If the network had multiple POP3 servers, this driver could be used to access each of them through different node objects (e.g. `dev.pop3`, `prod.pop3`, etc.).  However, if somehow the OS driver were able to easily enumerate the various POP3 servers on the network (i.e., they responded to some kind of hypothetical broadcast query), then the OS driver author could also design the driver to list the POP3 servers under a single node for the whole network.
 
-The structure of the subtree beneath the node object is entirely up to the drivers' author to determine; the OSML does not impose any structural restrictions on such subtrees.  Each object within this structure (e.g. `/example.qy`) can have three types of readable data:
+The structure of the subtree beneath the node object is entirely up to the driver's author to determine; the OSML does not impose any structural restrictions on such subtrees.  Each object within this structure (e.g. `/example.qy`) can have three types of readable data:
 - Child objects (e.g. `/rows`) which can have their own data.
 - Content, which can be read similar to reading a file.
 - Query data, allowing the object to be queried for information.
 
-Thus, parent objects with child objects behave similarly to a directory, although they can still have separate readable data _and_ queryable data. This may seem foreign in the standard file system paradigm, however, it is common for web servers, where opening a directory often returns `index.html` file in that directory, or some other form of information to allow further navigation.  Querying an object was originally intended as a way to quickly traverse its child objects, although queries are not required to be implemented this way.
+Thus, parent objects with child objects behave similarly to a directory, although they can still have separate readable data _and_ queryable data. This may seem foreign in the standard file system paradigm, however, it is common for web servers, where opening a directory often returns the `index.html` file in that directory, or some other form of information to allow further navigation.  Querying an object was originally intended as a way to quickly traverse its child objects, although queries are not required to be implemented this way.
 
 Below is an example of the MySQL driver's node object and its subtrees of child objects (defined in `objdrv_mysql.c`):
 
@@ -679,7 +679,7 @@ The value pointer points to a union struct which can hold one of several types o
 
 \*_See [`datatypes.h`](../centrallix-lib/include/datatypes.h) for more info about this datatype._
 
-In this way, `int`s and `double`s can be returned by value while other types are returned by reference.  Items returned by reference must be guaranteed to be valid until either the object is closed, or another `GetAttrValue()` or `SetAttrValue()` call is made to any driver (which ever happens first).
+In this way, `int`s and `double`s can be returned by value while other types are returned by reference.  Items returned by reference must be guaranteed to be valid until either the object is closed, or another `GetAttrValue()` or `SetAttrValue()` call is made to any driver (whichever happens first).
 
 This function should return 0 on success, 1 if the value is `NULL` or undefined / unset, or -1 on a non-existent attribute or other error.
 
@@ -787,8 +787,8 @@ The return value, `hints : ObjPresentationHints`, contains the following useful 
 - `hints->MinValue : void*`: An expression defining the minimum valid value.
 - `hints->MaxValue : void*`: An expression defining the maximum valid value.
 - `hints->EnumList : XArray`: If the attribute is a string enum, this XArray lists the valid string values.
-- `hints->EnumQuery : char*`: A query string which enumerates the valid values a string enum attribute.
-- `hints->Format : char*`: A presentation format for datetime or money types, such as `"dd MMM yyyy HH:mm"` or `"$0.00"`.  See `obj_datatypes.c` (near line 100) for more information creating a presentation format.
+- `hints->EnumQuery : char*`: A query string which enumerates the valid values of a string enum attribute.
+- `hints->Format : char*`: A presentation format for datetime or money types, such as `"dd MMM yyyy HH:mm"` or `"$0.00"`.  See `obj_datatypes.c` (near line 100) for more information on creating a presentation format.
 - `hints->AllowChars : char*`: An array of all valid characters for a string attribute, NULL to allow all characters.
 - `hints->BadChars : char*`: An array of all invalid characters for a string attribute.  If a character appears in both `hints->BadChars` and `hints->AllowChars`, the character should be rejected.
 - `hints->Length : int`: The maximum length of data that can be included in a string attribute.
@@ -813,7 +813,7 @@ The following macros are provided for setting style flags:
 - `OBJ_PH_STYLE_BUTTONS`: Radio buttons or check boxes should be used for the presentation of enum attribute values.
 - `OBJ_PH_STYLE_NOTNULL`: The attribute does not allow `NULL` values.
 - `OBJ_PH_STYLE_STRNULL`: An empty string (`""`) should be treated as a `NULL` value.
-- `OBJ_PH_STYLE_GROUPED`: The GroupID should be checked and so that fields can be grouped together.
+- `OBJ_PH_STYLE_GROUPED`: The GroupID should be checked so that fields can be grouped together.
 - `OBJ_PH_STYLE_READONLY`: The user is not allowed to modify this attribute.
 - `OBJ_PH_STYLE_HIDDEN`: This attribute should be hidden and not presented to the user.
 - `OBJ_PH_STYLE_PASSWORD`: Values in this attribute should be hidden, such as for passwords.
@@ -890,7 +890,7 @@ This function is only intended to be used by the MultiQuery module.  Any other d
 
 
 ## III Reading the Node Object
-A driver will commonly configure itself by reading text content from its node object file, at the root of its object subtree.  This content may define what resource(s) a driver should provide, how it should access or compute them, and other similar information.  Most drivers use the structure file format for their node objects because SN module makes parsing, reading, and writing these files easier.  It also performs caching automatically to improve performance.
+A driver will commonly configure itself by reading text content from its node object file, at the root of its object subtree.  This content may define what resource(s) a driver should provide, how it should access or compute them, and other similar information.  Most drivers use the structure file format for their node objects because the SN module makes parsing, reading, and writing these files easier.  It also performs caching automatically to improve performance.
 
 - 📖 **Note**: The node object will **already be open** as an object in the ObjectSystem: The OSML does this for each driver.  If a driver does not use the SN/ST modules, then it should read and write the node object directly with `objRead()` and `objWrite()`.  A driver should **NEVER** `objClose()` the node object!  The OSML handles that.
 
@@ -1544,7 +1544,7 @@ The term "**MAY**" refers to optional, but permissible, behavior.
 
 ### C. Querying Subobjects
 
-1.  If an object cannot support queries for subobjects, `xxxOpenQuery()` call SHOULD fail.
+1.  If an object cannot support queries for subobjects, the `xxxOpenQuery()` call SHOULD fail.
 
 2.  If an object can support the existence of subobjects, but has no subobjects, the `xxxOpenQuery()` should succeed, but calls to `xxxQueryFetch()` MUST return `NULL`.
 

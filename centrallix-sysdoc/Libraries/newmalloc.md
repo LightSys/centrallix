@@ -61,7 +61,7 @@ Centrallix has its own memory management wrapper that caches deallocated blocks 
 
 In addition, the memory manager provides statistics on the hit ratio of allocated blocks coming from the lists vs. `malloc()`, and on how many blocks of each size/type are `malloc()`ed and cached.  This information can be helpful for tracking down memory leaks.  Empirical testing has shown an increase of performance of around 50% or more in programs that use newmalloc.
 
-One caveat is that this memory manager does not provide `nmRealloc()` function, only `nmMalloc()` and `nmFree()`.  Thus, either `malloc()`, `free()`, and `realloc()` or [`nmSysMalloc()`](#nmsysmalloc), [`nmSysFree()`](#nmsysfree), and [`nmSysRealloc()`](#nmsysrealloc) should be used for blocks of memory that might vary in size.
+One caveat is that this memory manager does not provide an `nmRealloc()` function, only `nmMalloc()` and `nmFree()`.  Thus, either `malloc()`, `free()`, and `realloc()` or [`nmSysMalloc()`](#nmsysmalloc), [`nmSysFree()`](#nmsysfree), and [`nmSysRealloc()`](#nmsysrealloc) should be used for blocks of memory that might vary in size.
 
 The newmalloc module can be accessed by adding `#include "cxlib/newmalloc.h"` to the include section of a .c file in centrallix, or `#include "newmalloc.h"` in centrallix-lib.
 

@@ -150,7 +150,7 @@ This function returns an item given a specific index into the XArray, or `NULL` 
 ```c
 int xaFindItem(pXArray this, void* item);
 ```
-This function returns array index for the provided item in the array, or -1 if the item could not be found.  Requires an exact match, so two `void*` pointing to different memory with identical contents are not considered equal by this function.  If the data is actually another datatype typecasted as a `void*`, all 8 bytes must be identical for a match.
+This function returns the array index for the provided item in the array, or -1 if the item could not be found.  Requires an exact match, so two `void*` pointing to different memory with identical contents are not considered equal by this function.  If the data is actually another datatype typecasted as a `void*`, all 8 bytes must be identical for a match.
 
 For example:
 ```c
@@ -181,7 +181,7 @@ This function works the same as [`xaFindItem()`](#xafinditem), however it iterat
 ```c
 int xaRemoveItem(pXArray this, int index);
 ```
-This function removes an item from the XArray at the given the index, then shifts all following items back to fill the gap created by the removal.  XArray is not optimized for removing multiple items efficiently.  This function returns 0 on success, or -1 if an error occurs.
+This function removes an item from the XArray at the given index, then shifts all following items back to fill the gap created by the removal.  XArray is not optimized for removing multiple items efficiently.  This function returns 0 on success, or -1 if an error occurs.
 
 
 ## xaClear()
