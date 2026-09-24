@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -1070,7 +1071,14 @@ obj_internal_PathPart(pPathname path, int start_element, int length)
     int i;
 
     	/** Off end of path? **/
-	if (start_element >= path->nElements) return NULL;
+	if (UNLIKELY(start_element >= path->nElements))
+	    {
+	    mssError(1, "OBJ",
+		"Cannot request path element #%d from path of length %d.",
+		start_element, path->nElements
+	    );
+	    return NULL;
+	    }
 
 	/** Restricted length? **/
 	if (length != 0)
@@ -1094,7 +1102,18 @@ obj_internal_PathPart(pPathname path, int start_element, int length)
 		}
 	    }
 
-    return path->Elements[start_element];
+	/** Get the path element. **/
+	char* element = path->Elements[start_element];
+	if (UNLIKELY(element == NULL))
+	    {
+	    mssError(1, "OBJ",
+		"Fail! Path element #%d/%d is NULL.",
+		start_element, path->nElements
+	    );
+	    return NULL;
+	    }
+
+    return element;
     }
 
 
