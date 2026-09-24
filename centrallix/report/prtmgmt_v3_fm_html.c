@@ -32,9 +32,9 @@
 /*		a html formatting language.				*/
 /************************************************************************/
 
-#include <stdbool.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +42,6 @@
 
 #include "barcode.h"
 #include "centrallix.h"
-#include "cxlib/check.h"
 #include "cxlib/expect.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
@@ -245,11 +244,29 @@ typedef struct
 int
 prt_htmlfm_Output(pPrtHTMLfmInf context, char* str, int len)
     {
+    int rval;
 
 	/** Check length **/
 	if (len < 0) len = strlen(str);
+	
+	/*** We don't know if WriteFn() will call mssError() on failure, so
+	 *** clear the error stack while we know there is no error yet.
+	 ***/
+	mssClearError();
 
-    return checkPos(context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET));
+	/** Write output. **/
+	rval = context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET);
+
+	/** Print error message, if needed. **/
+	if (UNLIKELY(rval < 0))
+	    {
+	    mssError(0, "PRT",
+		"WriteFn() failed to output: \"%s\" (%d characters).",
+		str, len
+	    );
+	    }
+
+    return rval;
     }
 
 
@@ -262,9 +279,19 @@ prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...)
     va_list va;
     int rval;
 
+	/** Write formatted output. **/
 	va_start(va, fmt);
-	rval = checkPos(xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va));
+	rval = xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va);
 	va_end(va);
+
+	/** Print error message, if needed. **/
+	if (UNLIKELY(rval < 0))
+	    {
+	    mssError(1, "PRT",
+		"xsGenPrintf_va() failed to output format: \"%s\".",
+		fmt
+	    );
+	    }
 
     return rval;
     }
@@ -293,7 +320,8 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 	    else
 		endoffset = len;
 	    if (endoffset - offset > 0)
-		prt_htmlfm_Output(context, str+offset, endoffset - offset);
+		if (UNLIKELY(prt_htmlfm_Output(context, str+offset, endoffset - offset) < 0))
+		    goto error;
 
 	    if (str[offset] != ' ')
 		{
@@ -310,13 +338,21 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 		    case ' ': repl = ( context->StyleFlags & PRT_HTMLFM_SF_KEEPSPACES ) ? "&nbsp;" : " "; break;
 		    default: repl = ""; break;
 		    }
-		prt_htmlfm_Output(context, repl, -1);
+		if (UNLIKELY(prt_htmlfm_Output(context, repl, -1) < 0))
+		    goto error;
 		endoffset++;
 		}
 	    offset = endoffset;
 	    }
 
-    return len;
+	return len;
+
+    error:
+	mssError(0, "PRT",
+	    "Failed to write encoded output: \"%s\" (%d characters).",
+	    str, len
+	);
+	return -1;
     }
 
 
@@ -328,8 +364,12 @@ void*
 prt_htmlfm_Probe(pPrtSession s, char* output_type)
     {
 	/** Allocate our context inf structure **/
-	pPrtHTMLfmInf context = checkPtr(nmMalloc(sizeof(PrtHTMLfmInf)));
-	if (context == NULL) goto reject;
+	pPrtHTMLfmInf context = nmMalloc(sizeof(PrtHTMLfmInf));
+	if (UNLIKELY(context == NULL))
+	    {
+	    mssError(1, "PRT", "nmMalloc(%zu) failed.", sizeof(PrtHTMLfmInf));
+	    goto reject;
+	    }
 	memset(context, 0, sizeof(PrtHTMLfmInf));
 	context->Session = s;
 
@@ -347,8 +387,12 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	    goto reject;
 
 	/** Allocate attachments. */
-	context->Attachments = checkPtr(xaNew(10));
-	if (context->Attachments == NULL) goto reject;
+	context->Attachments = xaNew(10);
+	if (UNLIKELY(context->Attachments == NULL))
+	    {
+	    mssError(1, "PRT", "xaNew(10) failed.");
+	    goto reject;
+	    }
 
 	/** Generate the MIME boundary and write the email headers. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
@@ -362,8 +406,16 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 		}
 
 	    /** Write headers. **/
-	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_HEADER_FORMAT, context->Boundary);
-	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER_FORMAT, context->Boundary);
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_HEADER_FORMAT, context->Boundary) < 0))
+		{
+		mssError(0, "PRT", "Failed to write email header.");
+		goto reject;
+		}
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER_FORMAT, context->Boundary) < 0))
+		{
+		mssError(0, "PRT", "Failed to write content email header.");
+		goto reject;
+		}
 	    }
 
 	/*** Write HTML header.  Report content always sits on a white page area
@@ -374,7 +426,11 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	context->BGColor = 0xFFFFFF;
 	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
 	const char* font_family = prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE];
-	prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, background_color, font_family);
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, background_color, font_family) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write html header.");
+	    goto reject;
+	    }
 
 	/** Success, we can print this content type. **/
 	return (void*)context;
@@ -479,41 +535,79 @@ prt_htmlfm_Close(void* context_v)
     int rval = -1;
 
 	/** Write HTML footer. **/
-	prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_FOOTER);
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_FOOTER) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write HTML footer.");
+	    goto end;
+	    }
 
 	/** Write the email content footer (for email reports). **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
-	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_CONTENT_FOOTER);
+	    {
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_EMAIL_CONTENT_FOOTER) < 0))
+		{
+		mssError(0, "PRT", "Failed to write email content footer.");
+		goto end;
+		}
+	    }
 
 	/** Write attachments for emails. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
 	    if (UNLIKELY(context->Attachments == NULL))
 		{
-		printFail("Warning: Attachments array missing for email.");
+		mssError(1, "RPT", "Attachments array missing for email.");
 		goto end;
 		}
 
-	    for (int i = 0; i < xaCount(context->Attachments); i++)
+	    const int n_attachments = xaCount(context->Attachments);
+	    for (int i = 0; i < n_attachments; i++)
 		{
-		char* attachment_str = checkPtr(xsString(xaGetItem(context->Attachments, i)));
-		if (attachment_str == NULL) goto end;
-		if (prt_htmlfm_Output(context, attachment_str, -1) < 0) goto end;
+		pXString attachment_xstring = xaGetItem(context->Attachments, i);
+		if (UNLIKELY(attachment_xstring == NULL))
+		    {
+		    mssError(1, "PRT",
+			"Failed to get attachment string for attachment #%d/%d.",
+			i + 1, n_attachments
+		    );
+		    goto end;
+		    }
+		char* attachment_string = xsString(attachment_xstring);
+		if (UNLIKELY(attachment_string == NULL))
+		    {
+		    mssError(1, "PRT", "xsString() failed.");
+		    goto end;
+		    }
+		if (UNLIKELY(prt_htmlfm_Output(context, attachment_string, -1) < 0))
+		    {
+		    mssError(1, "PRT",
+			"Failed to write attachment string: \"%s\".",
+			attachment_string
+		    );
+		    goto end;
+		    }
 		}
 	    }
 
 	/** Write email footer. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
-	    prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_FOOTER_FORMAT, context->Boundary);
+	    {
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_FOOTER_FORMAT, context->Boundary) < 0))
+		{
+		mssError(0, "PRT", "Failed to write email footer.");
+		goto end;
+		}
+	    }
+	    
 
 	/** Success. **/
 	rval = 0;
 
     end:
 	if (UNLIKELY(rval != 0))
-	    mssError(1, "PRT", "Failed to close HTML report formatter.");
+	    mssError(0, "PRT", "Failed to close HTML report formatter.");
 
-	/** Free memory used **/
+	/** Clean up. **/
 	if (LIKELY(context != NULL))
 	    {
 	    if (LIKELY(context->Attachments != NULL))
@@ -972,8 +1066,12 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
 
 		// Allocate image buffer.
-		imgBuf.buffer = (char*)checkPtr(nmMalloc(MAX_IMAGE_SIZE));
-		if (imgBuf.buffer == NULL) goto error_image;
+		imgBuf.buffer = nmMalloc(MAX_IMAGE_SIZE);
+		if (UNLIKELY(imgBuf.buffer == NULL))
+		    {
+		    mssError(1, "PRT", "nmMalloc(%zu) failed.", MAX_IMAGE_SIZE);
+		    goto error_image;
+		    }
 
 		/** Capture the image into the image buffer. **/
 		//TODO we weren't supposed to replace context->Session->ImageWriteFn with ImageWriteFn,
@@ -981,10 +1079,17 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const int write_rval = (is_png)
 		    ? prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h)
 		    : prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
-		if (write_rval < 0) goto error_image;
+		if (UNLIKELY(write_rval < 0))
+		    {
+		    mssError(0, "PRT",
+			"Failed ot write image of size %dx%d to image buffer.",
+			w, h
+		    );
+		    goto error_image;
+		    }
 
 		/** Encode the image to base64. **/
-		base64Image = checkPtr(base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
+		base64Image = (base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
 		if (UNLIKELY(base64Image == NULL)) goto error_image;
 		base64Size = strlen(base64Image) + 1;
 
@@ -1010,16 +1115,25 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    char* extension = (is_png) ? "png"       : "svg";
 
 		    /** Write the src value. **/
-		    prt_htmlfm_OutputPrintf(context, "cid:image_%d", id);
+		    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "cid:image_%d", id) < 0))
+			{
+			mssError(0, "PRT", "Failed to write image source.");
+			goto error_image;
+			}
 
 		    /** Allocate a new attachment and write the headers. **/
-		    pXString attachment = checkPtr(xsNew());
-		    if (UNLIKELY(attachment == NULL)) goto error_image;
-		    if (checkPos(xsConcatPrintf(attachment,
+		    pXString attachment = xsNew();
+		    if (UNLIKELY(attachment == NULL))
+			{
+			mssError(1, "PRT", "xsNew() failed.");
+			goto error_image;
+			}
+		    if (UNLIKELY(xsConcatPrintf(attachment,
 			PRT_HTMLFM_IMG_HEADER_FORMAT,
 			PRT_HTMLFM_IMG_HEADER_VALUES(context->Boundary, id, mime_type, extension)
-		    )) < 0)
+		    ) < 0))
 			{
+			mssError(1, "PRT", "Failed to write image header format.");
 			xsFree(attachment);
 			goto error_image;
 			}
@@ -1029,18 +1143,30 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
 			{
 			const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
-			if (checkPos(xsConcatenate(attachment, base64Image + off, line_len)) < 0 ||
-			    checkPos(xsConcatenate(attachment, "\n", 1)) < 0)
-			    {
+			if (UNLIKELY(xsConcatenate(attachment, base64Image + off, line_len) < 0
+			    || xsConcatenate(attachment, "\n", 1) < 0
+			))  {
+			    mssError(1, "PRT",
+				"Failed to write base64 image line at offset #%zu/%zu.",
+				off, b64_len
+			    );
 			    xsFree(attachment);
 			    goto error_image;
 			    }
 			}
 
-		    /** Write the attachment footer and add it to the context. **/
-		    if (checkPos(xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1)) < 0 ||
-			checkPos(xaAddItem(context->Attachments, attachment)) < 0)
+		    /** Write the attachment footer. **/
+		    if (xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1) < 0)
 			{
+			mssError(1, "PRT", "Failed to write image footer.");
+			xsFree(attachment);
+			goto error_image;
+			}
+
+		    /** Add the attachment string to the context. **/
+		    if (xaAddItem(context->Attachments, attachment) < 0)
+			{
+			mssError(1, "PRT", "Failed to add the attachment string to the context.");
 			xsFree(attachment);
 			goto error_image;
 			}
@@ -1053,15 +1179,20 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Write the rest of the image tag. **/
-		prt_htmlfm_OutputPrintf(context,
+		if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 		    "\" align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">",
 		    justify_type, w, h
-		);
-
-		/** Write opening URL closing tag. **/
-		if (has_url)
+		) < 0))
 		    {
-		    prt_htmlfm_OutputStrLiteral(context, "</a>");
+		    mssError(0, "PRT", "Failed to write image layout properties.");
+		    goto error_image;
+		    }
+
+		/** Write URL closing tag. **/
+		if (UNLIKELY(has_url && prt_htmlfm_OutputStrLiteral(context, "</a>")) < 0)
+		    {
+		    mssError(0, "PRT", "Failed to write URL closing tag.");
+		    goto error_image;
 		    }
 
 		// Clean up.
@@ -1079,7 +1210,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		}
 
 	    case PRT_OBJ_T_TABLE:
-		if (prt_htmlfm_GenerateTable(context, obj) < 0) return -1;
+		if (UNLIKELY(prt_htmlfm_GenerateTable(context, obj) < 0)) return -1;
 		break;
 	    }
 
@@ -1110,10 +1241,14 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	/** Write the page HTML (for paginated reports). **/
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
 	    {
-	    prt_htmlfm_OutputPrintf(context,
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 		PRT_HTMLFM_PAGEHEADER_FORMAT,
 		(int)(page_obj->Width * PRT_HTMLFM_XPIXEL + 0.001) + 34
-	    );
+	    ) < 0))
+		{
+		mssError(0, "PRT", "Failed to write paginated page header.");
+		goto err;
+		}
 	    }
 
 	/** Compute page margins. **/
@@ -1127,7 +1262,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">");
 
 	/** Write the table column sizes. **/
-	prt_htmlfm_OutputPrintf(context,
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 	    "<colgroup>"
 		"<col width=\"%d*\">"
 		"<col width=\"%d*\">"
@@ -1136,10 +1271,14 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    left_margin,
 	    center_width,
 	    right_margin
-	);
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write table column sizes.");
+	    goto err;
+	    }
 
-	/** Write an empty first row with correct margins. **/
-	prt_htmlfm_OutputPrintf(context,
+	/** Write an empty first row to set the correct table margins. **/
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 	    "<tr>"
 		"<td style=\"height:%dpx;width:%dpx;\"></td>"
 		"<td style=\"height:%dpx;width:%dpx;\"></td>"
@@ -1148,10 +1287,18 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    top_margin, left_margin,
 	    top_margin, center_width,
 	    top_margin, right_margin
-	);
-	
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write table margin row.");
+	    goto err;
+	    }
+
 	/** Write the start of the second row with correct margins. **/
-	prt_htmlfm_OutputPrintf(context, "<tr><td style=\"width:%dpx;\"></td><td>\n", left_margin);
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<tr><td style=\"width:%dpx;\"></td><td>\n", left_margin) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write the start of the second row.");
+	    goto err;
+	    }
 
 
 	/** We need to scan the absolute-positioned content to figure out how many
@@ -1218,14 +1365,22 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		w = (page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight - colpos[i])*PRT_HTMLFM_XPIXEL;
 	    else
 		w = (colpos[i+1] - colpos[i])*PRT_HTMLFM_XPIXEL;
-	    prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w);
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<col width=\"%d*\">\n", w) < 0))
+		{
+		mssError(0, "PRT", "Failed to write table layout column.");
+		goto err;
+		}
 	    }
 
 	/** Generate the body of the page, by selectively walking the YPrev/YNext chain **/
 	cur_row = 0;
 	cur_col = 0;
 	last_height = 0.0;
-	prt_htmlfm_OutputStrLiteral(context, "<tr>");
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<tr>") < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write table row opening tag.");
+	    goto err;
+	    }
 	for (subobj=page_obj; subobj; subobj=subobj->YNext)
 	    {
 	    if (subobj->Parent == page_obj)
@@ -1314,7 +1469,11 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
 	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_PAGEFOOTER);
 
-    return 0;
+	return 0;
+	
+    err:
+	mssError(0, "PRT", "Failed to generate report.");
+	return -1;
     }
 
 
@@ -1342,8 +1501,8 @@ prt_htmlfm_Initialize()
 	PRT_HTMLFM.ImageID = rand();
 
 	/** Allocate the formatter structure, and init it **/
-	pPrtFormatter fmtdrv = checkPtr(prtAllocFormatter());
-	if (fmtdrv == NULL)
+	pPrtFormatter fmtdrv = prtAllocFormatter();
+	if (UNLIKELY(fmtdrv == NULL))
 	    {
 	    mssError(0, "RPT", "Failed to allocate formatter struct.");
 	    goto err;
@@ -1368,14 +1527,25 @@ prt_htmlfm_Initialize()
 	/** Register with the cx.sysinfo /prtmgmt/output_types dir **/
 	for (int i = 0; i < PRT_HTMLFM_N_SUBTYPES; i++)
 	    {
-	    char* subtype = checkPtr(strchr(prt_htmlfm_subtypes[i].MimeType, '/'));
-	    if (subtype == NULL) goto err_type;
+	    char* subtype = strchr(prt_htmlfm_subtypes[i].MimeType, '/');
+	    if (UNLIKELY(subtype == NULL))
+		{
+		mssError(1, "PRT",
+		    "strchr(\"%s\", '\\') failed.",
+		    prt_htmlfm_subtypes[i].MimeType
+		);
+		goto err_type;
+		}
 
 	    /** Allocate subtype data. **/
 	    char path_buf[256];
 	    snprintf(path_buf, sizeof(path_buf), "/prtmgmt/output_types/%s", subtype + 1);
-	    pSysInfoData si = checkPtr(sysAllocData(path_buf, NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0));
-	    if (si == NULL) goto err_type;
+	    pSysInfoData si = sysAllocData(path_buf, NULL, NULL, NULL, NULL, prt_htmlfm_GetType, NULL, 0);
+	    if (UNLIKELY(si == NULL))
+		{
+		mssError(1, "PRT", "sysAllocData() failed.");
+		goto err_type;
+		}
 
 	    /** Register subtype. */
 	    if (sysAddAttrib(si, "type", DATA_T_STRING) != 0)
