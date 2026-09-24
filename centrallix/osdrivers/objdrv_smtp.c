@@ -986,9 +986,10 @@ smtp_internal_OpenEml(pSmtpData inf)
 	    xsCopy(&inf->EmailStructPath, inf->EmailPath.String, -1);
 	    if (xsSubst(&inf->EmailStructPath, inf->EmailStructPath.Length - 4, 4, ".struct", 7) < 0)
 		goto error;
+
+	    fdClose(fd, 0);
+	    fd = NULL;
 	    }
-	fdClose(fd, 0);
-	fd = NULL;
 
 	/** Open the email file. **/
 	if (!inf->ContentFile)
