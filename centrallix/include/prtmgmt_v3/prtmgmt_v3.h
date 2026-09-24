@@ -424,7 +424,7 @@ extern PrtGlobals PRTMGMT;
 #define PRT_JUST_T_CENTER	    2
 #define PRT_JUST_T_FULL		    3
 
-/** CSS justification values, indexed by PRT_JUSTIFY_MODE_xxx. **/
+/** CSS justification values, indexed by PRT_JUST_T_xxx. **/
 #define PRT_JUST_STR ((const char*[]){ "left", "right", "center", "justify" })
 
 #define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */

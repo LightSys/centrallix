@@ -233,7 +233,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err_row;
 		    }
 		
-		/** Write row container closing tags. */
+		/** Write row container closing tags. **/
 		if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err_row;
 		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td></tr>\n") < 0)) goto err_row;
 		context->BGColor = saved_bg; /* Restore background color. */

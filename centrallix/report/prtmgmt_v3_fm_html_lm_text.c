@@ -267,7 +267,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    /* find first non-empty or non-string justification */
 		    justif_subscan = scan;
 		    while(justif_subscan != linetail && 
-			justif_subscan->ObjType->TypeID == PRT_OBJ_T_STRING && ! (strlen((char*) scan->Content)))
+			justif_subscan->ObjType->TypeID == PRT_OBJ_T_STRING && ! (strlen((char*) justif_subscan->Content)))
 		    {
 			justif_subscan = justif_subscan->Next;
 		    }

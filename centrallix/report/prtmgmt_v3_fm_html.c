@@ -187,7 +187,7 @@
 	    "<td><small>&nbsp;</small></td>" \
 	"</tr>" \
     "</table></center>" \
-    "<br>\b"
+    "<br>\n"
 
 
 /*** Font size range, in CSS pixels.
@@ -388,7 +388,7 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	if (context->Subtype == NULL)
 	    goto reject;
 
-	/** Allocate attachments. */
+	/** Allocate attachments. **/
 	context->Attachments = xaNew(10);
 	if (UNLIKELY(context->Attachments == NULL))
 	    {
@@ -804,7 +804,7 @@ prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved)
 /*** prt_htmlfm_SaveStyle() - save the current rendering state to the save
  *** struct so that it can be restored later by prt_htmlfm_ResetStyle().
  *** Commonly used when entering a container so the state can be restored
- *** when exitting the container.
+ *** when exiting the container.
  ***/
 int
 prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved)
@@ -957,7 +957,7 @@ ImageWriteFn(void* arg, char* data, int len, int offset, int flags)
     }
 
 //TODO CSMITH put in .h
-/** Encodes a char* input to base64 */
+/** Encodes a char* input to base64 **/
 char*
 base64_encode(const unsigned char *input, size_t len)
     {
@@ -1662,7 +1662,7 @@ prt_htmlfm_Initialize()
 	    if (UNLIKELY(subtype == NULL))
 		{
 		mssError(1, "PRT",
-		    "strchr(\"%s\", '\\') failed.",
+		    "strchr(\"%s\", '/') failed.",
 		    prt_htmlfm_subtypes[i].MimeType
 		);
 		goto err_type;
@@ -1678,7 +1678,7 @@ prt_htmlfm_Initialize()
 		goto err_type;
 		}
 
-	    /** Register subtype. */
+	    /** Register subtype. **/
 	    if (UNLIKELY(sysAddAttrib(si, "type", DATA_T_STRING) != 0))
 		{
 		mssError(0, "PRT", "Failed to add 'type' attribute.");
@@ -1695,7 +1695,7 @@ prt_htmlfm_Initialize()
 
     err_type:
 	    mssError(0, "PRT",
-		"Failed to add subtype #%d/%lu: \"%s\"",
+		"Failed to add subtype #%d/%zu: \"%s\"",
 		i + 1, PRT_HTMLFM_N_SUBTYPES, prt_htmlfm_subtypes[i].MimeType
 	    );
 	    goto err;
