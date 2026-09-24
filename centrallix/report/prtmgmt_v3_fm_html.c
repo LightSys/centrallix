@@ -1,6 +1,6 @@
 /************************************************************************/
 /* Centrallix Application Server System 				*/
-/* Centrallix Core       						*/
+/* Centrallix Core							*/
 /* 									*/
 /* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
@@ -22,14 +22,13 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	prtmgmt_v3_fm_html.c                                    */
-/* Author:	Greg Beeley                                             */
-/* Date:	April 4th, 2003                                         */
-/*									*/
+/* Module:	prtmgmt_v3_fm_html.c					*/
+/* Author:	Greg Beeley						*/
+/* Date:	April 4th, 2003						*/
 /* Description:	This module is the HTML formatter, which takes a page	*/
-/*		structure and outputs structured HTML.  This is made	*/
-/*		separate from the html formatter because HTML is not	*/
-/*		a html formatting language.				*/
+/* 		structure and outputs structured HTML.  This is made	*/
+/* 		separate from the html formatter because HTML is not	*/
+/* 		a html formatting language.				*/
 /************************************************************************/
 
 #include <fcntl.h>
@@ -673,13 +672,13 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	if (!init_style) /* During init, there's no style to remove. */
 	    {
 	    if (rewrite_bold && (cur_attr & PRT_OBJ_A_BOLD) && !(context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY))
-		prt_htmlfm_OutputStrLiteral(context, "</b>");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</b>") < 0)) goto error;
 	    if (rewrite_italic && (cur_attr & PRT_OBJ_A_ITALIC) && !(context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY))
-		prt_htmlfm_OutputStrLiteral(context, "</i>");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</i>") < 0)) goto error;
 	    if (rewrite_underline && (cur_attr & PRT_OBJ_A_UNDERLINE) && !(context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY))
-		prt_htmlfm_OutputStrLiteral(context, "</u>");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</u>") < 0)) goto error;
 	    if (rewrite_font && !(context->StyleFlags & PRT_HTMLFM_SF_FONTDIRTY))
-		prt_htmlfm_OutputStrLiteral(context, "</span>");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</span>") < 0)) goto error;
 	    }
 	if (exit_style) return 0; /* Done exiting. */
 
@@ -693,7 +692,11 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	if (rewrite_font) context->StyleFlags |= PRT_HTMLFM_SF_FONTDIRTY;
 	memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
 
-    return 0;
+	return 0;
+
+    error:
+	mssError(0, "PRT", "Failed to write closing style tags.");
+	return -1;
     }
 
 int
@@ -726,19 +729,19 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
 	    }
 
 	/** Write the completed font tag. **/
-	prt_htmlfm_Output(context, stylebuf, len);
+	if (UNLIKELY(prt_htmlfm_Output(context, stylebuf, len) < 0)) goto error;
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_UNDERLINEDIRTY)
 	{
-	prt_htmlfm_OutputStrLiteral(context, "<u>");
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<u>") < 0)) goto error;
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_ITALICDIRTY)
 	{
-	prt_htmlfm_OutputStrLiteral(context, "<i>");
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<i>") < 0)) goto error;
 	}
     if (context->StyleFlags & PRT_HTMLFM_SF_BOLDDIRTY)
 	{
-	prt_htmlfm_OutputStrLiteral(context, "<b>");
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<b>") < 0)) goto error;
 	}
 
     /** Clear the dirty flags. **/
@@ -750,6 +753,10 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
     );
 
     return 0;
+
+    error:
+	mssError(0, "PRT", "Failed to write opening style tags.");
+	return -1;
     }
 
 /*** prt_htmlfm_InitStyle() - initialize style settings, as if we are 
@@ -764,8 +771,13 @@ prt_htmlfm_InitStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	memcpy(&(context->CurStyle), style, sizeof(PrtTextStyle));
 
 	/** Call for a style change **/
-	prt_htmlfm_SetStyle(context, style);
+	const int rval = prt_htmlfm_SetStyle(context, style);
 	context->InitStyle = 0;
+	if (UNLIKELY(rval < 0))
+	    {
+	    mssError(0, "PRT", "Failed to initialize style.");
+	    return -1;
+	    }
 
     return 0;
     }
@@ -814,8 +826,13 @@ prt_htmlfm_EndStyle(pPrtHTMLfmInf context)
 	 *** ignores the style passed to it, so we just hand it the current one.
 	 ***/
 	context->ExitStyle = 1;
-	prt_htmlfm_SetStyle(context, &(context->CurStyle));
+	const int rval = prt_htmlfm_SetStyle(context, &(context->CurStyle));
 	context->ExitStyle = 0;
+	if (UNLIKELY(rval < 0))
+	    {
+	    mssError(0, "PRT", "Failed to end style.");
+	    return -1;
+	    }
 
     return 0;
     }
@@ -833,7 +850,8 @@ prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context)
 /*** prt_htmlfm_OutputBGColor() - Write a bgcolor attribute, but only when the
  *** color differs from the background.  The new background is remembered.
  *** This method reduces HTML size.
- *** Returns the previous background color (useful if you return to it later).
+ *** Returns the previous background color (useful if you return to it later),
+ *** or -1 on failure.
  ***/
 int
 prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor)
@@ -841,7 +859,11 @@ prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor)
     int prev = context->BGColor;
     if (bgcolor != prev)
 	{
-	prt_htmlfm_OutputPrintf(context, " bgcolor=\"#%6.6X\"", bgcolor);
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context, " bgcolor=\"#%6.6X\"", bgcolor) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write background color #%6.6X.", bgcolor);
+	    return -1;
+	    }
 	context->BGColor = bgcolor;
 	}
     return prev;
@@ -870,12 +892,16 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 	    if (bw == 0) bw = 1;
 	    iw = ((i==border->nLines-1)?m:(border->Sep*PRT_HTMLFM_XPIXEL)) + 0.5;
 	    if (iw == 0 && i!=border->nLines-1) iw = 1;
-	    prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
 		    (int)(bw),
-		    (int)(border->Color[i]));
-	    prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
+		    (int)(border->Color[i])) < 0
+		|| prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
 		    (int)(iw),
-		    (int)(obj->BGColor));
+		    (int)(obj->BGColor)) < 0
+	    ))  {
+		mssError(0, "PRT", "Failed to write border line #%d/%d.", i + 1, border->nLines);
+		return -1;
+		}
 	    }
 
     return 0;
@@ -894,7 +920,11 @@ prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj
 	for (i=0;i<border->nLines;i++)
 	    {
 	    /** Output border line itself **/
-	    prt_htmlfm_OutputStrLiteral(context, "</td></tr></table></td></tr></table>\n");
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td></tr></table></td></tr></table>\n") < 0))
+		{
+		mssError(0, "PRT", "Failed to write border end #%d/%d.", i + 1, border->nLines);
+		return -1;
+		}
 	    }
 
     return 0;
@@ -911,7 +941,11 @@ ImageWriteFn(void* arg, char* data, int len, int offset, int flags)
 	ImageBuffer *imgBuf = (ImageBuffer *)arg;
 	if (len < 0 || (size_t)len > imgBuf->capacity - imgBuf->size)
 	    {
-	    return -1;  // Buffer overflow
+	    mssError(1, "PRT",
+		"Cannot write %d bytes to image buffer (%zu/%zu bytes used).",
+		len, imgBuf->size, imgBuf->capacity
+	    );
+	    return -1;
 	    }
 
 	memcpy(imgBuf->buffer + imgBuf->size, data, len);
@@ -927,7 +961,11 @@ base64_encode(const unsigned char *input, size_t len)
 	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	size_t out_len = 4 * ((len + 2) / 3);
 	char *output = (char *)nmMalloc(out_len + 1);
-	if (!output) return NULL;
+	if (UNLIKELY(output == NULL))
+	    {
+	    mssError(1, "PRT", "nmMalloc(%zu) failed.", out_len + 1);
+	    return NULL;
+	    }
 
 	char *p = output;
 	for (size_t i = 0; i < len; i += 3)
