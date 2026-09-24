@@ -498,10 +498,9 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	     ***/
 	    format_ok &= (warnNeg(xsConcatPrintf(&err_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
 
-	    /*** Append the caller's message.  This goes through xsGenPrintf_va()
-	     *** rather than xsConcatPrintf() because the latter does not use
-	     *** vsnprintf() so it only supports some printf() functionality.
-	     *** xsWrite() appends when given no XS_U_SEEK.
+	    /*** Append the caller's message.  We use xsGenPrintf_va() because
+	     *** it uses vsnprintf() so it supports all printf() functionality.
+	     *** xsWrite() is given no XS_U_SEEK here so it appends.
 	     ***/
 	    va_list args;
 	    va_start(args, message);
