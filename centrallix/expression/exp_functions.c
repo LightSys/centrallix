@@ -1740,6 +1740,7 @@ exp_fn_rtrim(pExpression tree)
 	/** Shortcut for trimming nothing. **/
 	if (n == len)
 	    {
+	    exp_fn_i_freeResultString(tree);
 	    tree->String = str;
 	    goto end;
 	    }

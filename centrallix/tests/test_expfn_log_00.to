@@ -3,7 +3,7 @@
 # Natural Log: ln(x)
 query select 'ln(1)'     = ln(1)                           -- Expect 0.
 query select 'ln(e)'     = ln(2.718281828459045)           -- Expect 1.
-query select 'ln(0)'     = ln(0)                           -- Expect -inf (log approaches infinity).
+query select 'ln(0)'     = ln(0)                           -- Expect -inf (log approaches negative infinity).
 query select 'ln(-1)'    = ln(-1)                          -- Expect NaN (log undefined for negative).
 query select 'ln(10)'    = round(ln(10), 8)                -- Expect ~2.30258509.
 query select 'ln(1.5)'   = round(ln(1.5), 8)               -- Expect ~0.40546511.

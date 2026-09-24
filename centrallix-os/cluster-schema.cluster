@@ -62,5 +62,5 @@ file_name "system/cluster"
 - /{query}
   - /key1 : string // The key of the first data point.
   - /key2 : string // The key of the second data point.
-  - /sim  : double && 0.0 < x <= threshold // The similarity of the two data points.
+  - /sim  : double && threshold <= x <= 1.0 // The similarity of the two data points.
 ...

@@ -137,7 +137,7 @@
     success; \
     })
 
-/*** Assert two cosine vectors from `cluster.c` to be equal.
+/*** Assert two cosine vectors from `clusters.c` to be equal.
  *** 
  *** @param v1 The first vector.
  *** @param v2 The second vector.

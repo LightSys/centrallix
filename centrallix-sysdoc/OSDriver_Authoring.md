@@ -1295,7 +1295,7 @@ This function copies a pathname structure from the `src` to the `dest`, returnin
 
 ### obj_internal_FreePathStruct()
 ```c
-void obj_internal_FreePathStruct(pPathname path);
+int obj_internal_FreePathStruct(pPathname path);
 ```
 This function frees a pathname structure.
 

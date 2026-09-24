@@ -476,7 +476,7 @@ typedef struct _CD
  *** @skip --> Attribute Data.
  *** @param Name The search name, specified in the .cluster file.
  *** @param CacheKey The key associated with this object in the SearchDataCache.
- *** @param Source The cluster from which this search is to be derived.
+ *** @param SourceCluster The cluster from which this search is to be derived.
  *** @param SimilarityMeasure The similarity measure used to compare items.
  *** @param Threshold The minimum similarity threshold for elements to be
  *** 	included in the results of the search.
@@ -1802,6 +1802,7 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    search_data->Threshold,
 	    search_data->SimilarityMeasure
 	);
+	search_data->CacheKey = cache_key;
 	pXHashTable search_cache = &ClusterDriverCaches.SearchDataCache;
 	
 	/** Check for a cached version. **/
@@ -2107,8 +2108,8 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 			"  > Param #%u: %s\n"
 			"  > Provided Param #%u: %s\n"
 			"  > Error code: %d",
-			i, param->Name,
-			j, provided_param->Name,
+			i + 1, param->Name,
+			j + 1, provided_param->Name,
 			ret
 		    );
 		    goto err_free;
@@ -3345,7 +3346,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
 		    cluster->Indexes = NULL;
 		    }
 		}
-	    nmFree(cluster_data->Clusters, clusters_size);
+	    nmSysFree(cluster_data->Clusters);
 	    cluster_data->Clusters = NULL;
 	    }
 	
@@ -5642,7 +5643,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		    &ClusterDriverCaches.SourceDataCache,
 		    cluster_i_printEntry,
 		    (int)CI_SOURCE_DATA, &source_bytes, num_uncomputed_skipped_ptr, path
-		)) != 0)
+		) != 0))
 		    {
 		    mssError(0, "Cluster", "Failed to print source data cache.");
 		    ret = -1;
@@ -5653,7 +5654,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		    &ClusterDriverCaches.ClusterDataCache,
 		    cluster_i_printEntry,
 		    (int)CI_CLUSTER_DATA, &cluster_bytes, num_uncomputed_skipped_ptr, path
-		)) != 0)
+		) != 0))
 		    {
 		    mssError(0, "Cluster", "Failed to print cluster data cache.");
 		    ret = -1;
@@ -5664,7 +5665,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		    &ClusterDriverCaches.SearchDataCache,
 		    cluster_i_printEntry,
 		    (int)CI_SEARCH_DATA, &search_bytes, num_uncomputed_skipped_ptr, path
-		)) != 0)
+		) != 0))
 		    {
 		    mssError(0, "Cluster", "Failed to print search data cache.");
 		    ret = -1;

@@ -641,6 +641,8 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
 	    if (expEvalTree(find_exp, my_objlist) < 0)
 		{
 		mssError(0, "ST", "Failed to evaluate expression tree.");
+		if (objlist == NULL)
+		    warnFail(expFreeParamList(my_objlist));
 		goto end;
 		}
 	    if (objlist == NULL)
