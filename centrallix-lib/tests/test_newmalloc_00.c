@@ -86,7 +86,8 @@ static bool doTest(void)
 	srand(seed_counter++);
 
 	/** Initialize the mock error function. **/
-	err_buf = malloc(err_buf_size = 256);
+	err_buf_size = 256;
+	err_buf = malloc(err_buf_size);
 	if (!ASSERT_NOT_NULL(err_buf)) return false;
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
 	nmSetErrFunction(mockErrorFn);
