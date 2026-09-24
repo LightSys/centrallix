@@ -96,7 +96,7 @@ timerStop(pTimer timer)
 	if (UNLIKELY(timer == NULL)) return NULL;
 	if (isnan(timer->start)) return timer;
 
-	/** Keep the timer running rather than poisoning the total with NAN. **/
+	/** Keep the timer running if the clock can't be read. **/
 	const double stop_time = timer_i_getTime();
 	if (isnan(stop_time)) return timer;
 
