@@ -46,6 +46,7 @@
 #include <sys/types.h>
 
 #include "centrallix.h"
+#include "cxlib/expect.h"
 #include "cxlib/xarray.h"
 #include "obj.h"
 #include "st_node.h"
@@ -902,7 +903,7 @@ int
 smtp_internal_OpenRoot(pSmtpData inf, char* usrtype)
     {
 	/** Perform a general open. **/
-	if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
+	if (UNLIKELY(smtp_internal_OpenGeneral(inf, usrtype) < 0))
 	    goto error;
 
 	/** Set the node type. **/
@@ -922,56 +923,60 @@ smtp_internal_OpenRoot(pSmtpData inf, char* usrtype)
 int
 smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     {
-    pSmtpAttribute spoolDir = NULL;
+    pFile fd = NULL;
     pFile emailStructureFile = NULL;
     pStructInf emailStructure = NULL;
-    pFile fd = NULL;
+    int rval = -1;
 
 	/** Perform a general open. **/
-	if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
-	    goto error;
+	if (UNLIKELY(smtp_internal_OpenGeneral(inf, usrtype) < 0))
+	    goto end;
 
 	/** Set the node type. **/
 	inf->Type = SMTP_T_EML;
 
 	/** Calculate the real path of the email file. **/
-	spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
-	if (!spoolDir)
+	pSmtpAttribute spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	if (UNLIKELY(spoolDir == NULL))
 	    {
 	    mssError(1, "SMTP", "Unable to get the spool directory path.");
-	    goto error;
+	    goto end;
 	    }
 
-	if (xsCopy(&inf->EmailPath, spoolDir->Value.String, strlen(spoolDir->Value.String)))
+	if (UNLIKELY(xsCopy(
+	    &inf->EmailPath,
+	    spoolDir->Value.String,
+	    strlen(spoolDir->Value.String)
+	) != 0))
 	    {
 	    mssError(1, "SMTP", "Unable to copy spool directory path into the email path.");
-	    goto error;
+	    goto end;
 	    }
 
-	if (xsConcatPrintf(&inf->EmailPath, "/%s", inf->Name) < 0)
+	if (UNLIKELY(xsConcatPrintf(&inf->EmailPath, "/%s", inf->Name) < 0))
 	    {
 	    mssError(1, "SMTP", "Unable to append email name to email path.");
-	    goto error;
+	    goto end;
 	    }
 
 	/** Check that the email file exists. **/
 	fd = fdOpen(inf->EmailPath.String, 0, 0);
-	if (!fd)
+	if (UNLIKELY(fd == NULL))
 	    {
 	    /** Create the file if it doesn't exist and the create flag is set. **/
 	    if (inf->Obj->Mode & OBJ_O_CREAT)
 		{
-		if (smtp_internal_CreateEmail(inf) < 0)
+		if (UNLIKELY(smtp_internal_CreateEmail(inf) < 0))
 		    {
 		    mssError(0, "SMTP", "Failed to create a new email.");
-		    goto error;
+		    goto end;
 		    }
 		}
 	    else
 		{
 		/** File does not exist, and creation not requested **/
 		mssErrorErrno(1, "SMTP", "Could not open email file.");
-		goto error;
+		goto end;
 		}
 	    }
 	else
@@ -980,70 +985,70 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    if ((inf->Obj->Mode & OBJ_O_CREAT) && (inf->Obj->Mode & OBJ_O_EXCL))
 		{
 		mssError(1, "SMTP", "Email creation request failed because the email already exists.");
-		goto error;
+		goto end;
 		}
 
 	    /** Construct the email struct file path. **/
-	    xsCopy(&inf->EmailStructPath, inf->EmailPath.String, -1);
+	    if (UNLIKELY(xsCopy(&inf->EmailStructPath, inf->EmailPath.String, -1) != 0))
+		{
+		mssError(1, "SMTP", "Failed to copy email struct path.");
+		goto end;
+		}
 	    if (xsSubst(&inf->EmailStructPath, inf->EmailStructPath.Length - 4, 4, ".struct", 7) < 0)
-		goto error;
+		{
+		mssError(1, "SMTP", "Failed to substitute .struct into email struct path.");
+		goto end;
+		}
 
 	    fdClose(fd, 0);
 	    fd = NULL;
 	    }
 
 	/** Open the email file. **/
-	if (!inf->ContentFile)
+	const int open_mode = inf->Obj->Mode & ~(O_TRUNC | O_CREAT | O_EXCL);
+	if (UNLIKELY(inf->ContentFile == NULL))
+	    inf->ContentFile = fdOpen(inf->EmailPath.String, open_mode, inf->Mask);
+	if (UNLIKELY(inf->ContentFile == NULL))
 	    {
-	    inf->ContentFile = fdOpen(inf->EmailPath.String, inf->Obj->Mode & ~(O_TRUNC | O_CREAT | O_EXCL), inf->Mask);
-	    if (!inf->ContentFile)
-		{
-		mssErrorErrno(1, "SMTP", "Could not open email file (%s).", inf->EmailPath.String);
-		goto error;
-		}
+	    mssErrorErrno(1, "SMTP", "Could not open email file (%s).", inf->EmailPath.String);
+	    goto end;
 	    }
 
 	/** Open the email structure file. **/
-	emailStructureFile = fdOpen(inf->EmailStructPath.String,
-					inf->Obj->Mode & ~(O_TRUNC | O_CREAT | O_EXCL),
-					inf->Mask);
-	if (!emailStructureFile)
+	emailStructureFile = fdOpen(inf->EmailStructPath.String, open_mode, inf->Mask);
+	if (UNLIKELY(emailStructureFile == NULL))
 	    {
 	    mssError(1, "SMTP", "Could not open email structure file (%s).", inf->EmailStructPath.String);
-	    goto error;
+	    goto end;
 	    }
 
 	/** Parse the structure file. **/
 	emailStructure = stParseMsg(emailStructureFile, 0);
-	if (!emailStructure)
+	if (UNLIKELY(emailStructure == NULL))
 	    {
 	    mssError(0, "SMTP", "Could not parse the email structure file.");
-	    goto error;
+	    goto end;
 	    }
 
 	/** Get the structure's attribues **/
-	if (smtp_internal_GetStructAttributes(emailStructure, inf))
+	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf) != 0))
 	    {
 	    mssError(0, "SMTP", "Could not load email attributes.");
-	    goto error;
+	    goto end;
 	    }
 
-	/** Close the open files. **/
-	fdClose(emailStructureFile, 0);
-	stFreeInf(emailStructure);
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (UNLIKELY(rval != 0))
+	    mssError(0, "SMTP", "Failed to open email.");
 
-    error:
+	if (UNLIKELY(fd != NULL)) fdClose(fd, 0);
+	if (LIKELY(emailStructureFile != NULL)) fdClose(emailStructureFile, 0);
+	if (LIKELY(emailStructure != NULL)) stFreeInf(emailStructure);
 
-	if (fd)
-	    fdClose(fd, 0);
-	if (emailStructureFile)
-	    fdClose(emailStructureFile, 0);
-	if (emailStructure)
-	    stFreeInf(emailStructure);
-
-	return -1;
+	return rval;
     }
 
 /*** smtpOpen - open an object.
@@ -1052,10 +1057,19 @@ void*
 smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
     pSmtpData inf = NULL;
-    char *internalPath = NULL;
+    char* internalPath = NULL;
 
-	inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
-	if (!inf)
+	/** Edge cases. **/
+	if (UNLIKELY(obj == NULL))
+	    {
+	    mssError(0, "SMTP", "Call to smtpOpen(NULL, ...);");
+	    goto error;
+	    }
+	ASSERTMAGIC(obj, MGK_OBJECT);
+
+	/** Allocate driver struct. */
+	inf = nmMalloc(sizeof(SmtpData));
+	if (UNLIKELY(inf == NULL))
 	    {
 	    mssError(1, "SMTP", "Could not allocate SmtpData object.");
 	    goto error;
@@ -1063,18 +1077,22 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	memset(inf, 0, sizeof(SmtpData));
 	inf->Mask = mask;
 	inf->Obj = obj;
-	xsInit(&inf->EmailPath);
-	xsInit(&inf->EmailStructPath);
+	if (UNLIKELY(xsInit(&inf->EmailPath) != 0
+	    || xsInit(&inf->EmailStructPath) != 0
+	))   {
+	    mssError(1, "SMTP", "Failed to init xstring.");
+	    goto error;
+	    }
 
 	/** Calculate the path of the object relative to the root node. **/
 	internalPath = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->SubPtr - 1, 2);
+	if (UNLIKELY(internalPath == NULL)) goto error;
 
 	/** Determine the type of the object. **/
 	if (inf->Obj->SubPtr == inf->Obj->Pathname->nElements)
 	    {
-	    /** Opening the SMTP node object itself **/
+	    /** Open the SMTP node object itself. **/
 	    inf->Obj->SubCnt = 1;
-
 	    if (smtp_internal_OpenRoot(inf, usrtype) < 0)
 		goto error;
 	    }
@@ -1082,9 +1100,8 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		(inf->Obj->Mode & OBJ_O_AUTONAME &&
 		!strcmp(internalPath + strlen(internalPath) - 2, "/*")))
 	    {
-	    /** Opening an email message to be managed by the SMTP object **/
+	    /** Open an email message, managed by the SMTP object. **/
 	    inf->Obj->SubCnt = 2;
-
 	    if (smtp_internal_OpenEml(inf, usrtype) < 0)
 		goto error;
 	    }
@@ -1100,10 +1117,9 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	return inf;
 
     error:
-	if (inf)
-	    {
-	    smtp_internal_Close(inf);
-	    }
+	mssError(0, "SMTP", "Failed to open smtp file.");
+
+	if (inf != NULL) smtp_internal_Close(inf);
 
 	return NULL;
     }
@@ -1114,6 +1130,8 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 int
 smtp_internal_Close(pSmtpData inf)
     {
+	if (UNLIKELY(inf == NULL))
+	    return -1;
 
 	/** Check if the object is the root node. **/
 	if (inf->AttributeNames)
