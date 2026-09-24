@@ -28,7 +28,8 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	net_http.h, net_http.c, net_http_conn.c, net_http_sess.c, net_http_osml.c, net_http_app.c			*/
+/* Module: 	net_http.h, net_http.c, net_http_conn.c,		*/
+/* 		net_http_sess.c, net_http_osml.c, net_http_app.c	*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	December 8, 1998  					*/
 /* Description:	Network handler providing an HTTP interface to the 	*/
@@ -307,9 +308,10 @@ nht_i_SendRefreshDocument(pNhtConn conn, char* url)
 	/** This is a simple HTML document that loads the url we give it. **/
 	nht_i_QPrintfConn(conn, 0,
 		"<!doctype html>\r\n"
-		"<html>\r\n"
+		"<html lang='en'>\r\n"
 		"    <head>\r\n"
-		"         <script language=\"JavaScript\">\r\n"
+		"         <title>Loading...</title>\r\n"
+		"         <script>\r\n"
 		"             var url = '%STR&JSSTR';\r\n"
 		"         </script>\r\n"
 		"    </head>\r\n"

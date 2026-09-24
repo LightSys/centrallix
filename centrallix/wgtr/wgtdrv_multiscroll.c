@@ -1,16 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2007 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +28,9 @@
 /* Description:								*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "wgtr.h"
 
 
 /*** wgtmsVerify - allows the driver to check elsewhere in the tree
@@ -62,7 +57,7 @@ wgtmsNew(pWgtrNode node)
     {
     pWgtrNode parent;
 
-	node->Flags |= WGTR_F_CONTAINER;
+	node->Flags |= WGTR_F_CONTAINER | WGTR_F_VISUAL_CONTAINER;
 	if (node->fl_width < 0) node->fl_width = 100;
 
 	if (!strcmp(node->Type, "widget/multiscrollpart"))

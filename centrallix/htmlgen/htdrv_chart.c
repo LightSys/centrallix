@@ -1,22 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/xstring.h"
-#include "stparse.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
 /*                                                                      */
-/* Copyright (C) 1999-2007 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -41,6 +27,16 @@
 /* Creation:    March 19, 2019                                          */
 /* Description:                                                         */
 /************************************************************************/
+
+#include <stdio.h>
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xarray.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 
 #define HTTBL_MAX_COLS (32)
@@ -205,13 +201,22 @@ htchtAddSeriesProperties(pHtSession session, pWgtrNode tree)
             htchtGetStrValue(sub_tree, "y_column", "", y_column, sizeof(y_column));
             htchtGetStrValue(sub_tree, "chart_type", "", chart_type, sizeof(chart_type));
 
-            htrAddScriptInit_va(session, "    chartobj.series.push({ label: \"%STR&JSSTR\", color: \"%STR&JSSTR\", fill: %INT, x_column: \"%STR&JSSTR\", y_column: \"%STR&JSSTR\", chart_type: \"%STR&JSSTR\" });\n",
-                                   label,
-                                   color,
-                                   htrGetBoolean(tree, "fill", 1),
-                                   x_column,
-                                   y_column,
-                                   chart_type);
+	    htrAddScriptInit_va(session,
+		"\t\tchart_obj.series.push({ "
+		    "label:'%STR&JSSTR', "
+		    "color:'%STR&JSSTR', "
+		    "fill:%INT, "
+		    "x_column:'%STR&JSSTR', "
+		    "y_column:'%STR&JSSTR', "
+		    "chart_type:'%STR&JSSTR' "
+		"});\n",
+		label,
+		color,
+		htrGetBoolean(sub_tree, "fill", 1),
+		x_column,
+		y_column,
+		chart_type
+	    );
 
             htrCheckNSTransitionReturn(session, tree, sub_tree);
             }
@@ -241,7 +246,13 @@ htchtAddAxesProperties(pHtSession session, pWgtrNode tree)
 	    htchtGetStrValue(sub_tree, "label", "", label, sizeof(label));
 	    htchtGetStrValue(sub_tree, "axis", "x", axis, sizeof(axis));
 
-	    htrAddScriptInit_va(session, "    chartobj.axes.push({ label: \"%STR&JSSTR\", axis: \"%STR&JSSTR\", });\n", label, axis);
+	    htrAddScriptInit_va(session,
+		"\t\tchart_obj.axes.push({ "
+		    "label:'%STR&JSSTR', "
+		    "axis:'%STR&JSSTR', "
+		"});\n",
+		label, axis
+	    );
 
 	    htrCheckNSTransitionReturn(session, tree, sub_tree);
             }
@@ -261,6 +272,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
     char title_color[32];
     char legend_position[32];
 
+	/** Get data used for the initialization call. **/
         htchtGetObjectSource(tree, object_source, sizeof(object_source));
         htchtGetName(tree, name, sizeof(name));
         htchtGetTitle(tree, title, sizeof(title));
@@ -269,43 +281,48 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
         htchtGetTitleColor(tree, title_color, sizeof(title_color));
         htchtGetLegendPosition(tree, legend_position, sizeof(legend_position));
 
-        htrAddScriptInit_va(session, "    var chartobj = {"
-                    "x_pos: %INT, "
-                    "y_pos: %INT, "
-                    "width: %INT, "
-                    "height: %INT, "
-                    "title_size: %INT, "
-                    "start_at_zero: %INT,"
-                    "stacked: %INT,"
-                    "chart: wgtrGetNodeRef(ns,\"%STR&SYM\"), "
-                    "chart_type: '%STR&JSSTR', "
-                    "canvas_id: '%STR&SYM', "
-                    "osrc: '%STR&JSSTR', "
-                    "title: '%STR&JSSTR', "
-                    "title_color: '%STR&JSSTR', "
-                    "legend_position: '%STR&JSSTR', "
-		    "axes: [], "
-		    "series: [], "
-		    "};\n",
-                    htchtGetX(tree),
-                    htchtGetY(tree),
-                    htchtGetWidth(tree),
-                    htchtGetHeight(tree),
-                    htchtGetIntValue(tree, "title_size", 12),
-                    htrGetBoolean(tree, "start_at_zero", 1),
-                    htrGetBoolean(tree, "stacked", 0),
-                    name,
-                    chart_type,
-                    canvas_id,
-                    object_source,
-                    title,
-                    title_color,
-                    legend_position
-        );
+	/** Write a JS object for the script initialization in a new scope. **/
+	htrAddScriptInit_va(session, "\t\t{\n"
+	    "\t\tconst chart_obj = { "
+		"x_pos: %INT, "
+		"y_pos: %INT, "
+		"width: %INT, "
+		"height: %INT, "
+		"title_size: %INT, "
+		"start_at_zero: %INT,"
+		"stacked: %INT,"
+		"chart: wgtrGetNodeRef(ns,\"%STR&SYM\"), "
+		"chart_type: '%STR&JSSTR', "
+		"canvas_id: '%STR&SYM', "
+		"osrc: '%STR&JSSTR', "
+		"title: '%STR&JSSTR', "
+		"title_color: '%STR&JSSTR', "
+		"legend_position: '%STR&JSSTR', "
+		"axes: [], "
+		"series: [], "
+	    "};\n",
+	    htchtGetX(tree),
+	    htchtGetY(tree),
+	    htchtGetWidth(tree),
+	    htchtGetHeight(tree),
+	    htchtGetIntValue(tree, "title_size", 12),
+	    htrGetBoolean(tree, "start_at_zero", 1),
+	    htrGetBoolean(tree, "stacked", 0),
+	    name,
+	    chart_type,
+	    canvas_id,
+	    object_source,
+	    title,
+	    title_color,
+	    legend_position
+	);
 
+	/** Write code to add values to the initialization object. **/
         htchtAddAxesProperties(session, tree);
         htchtAddSeriesProperties(session, tree);
-	htrAddScriptInit_va(session, "    cht_init(chartobj);\n");
+	
+	/** Write the initialization call, using the object, and close the scope. **/
+	htrAddScriptInit(session, "\t\tcht_init(chart_obj);\n\t\t}\n");
 
     return 0;
     }
@@ -323,27 +340,51 @@ htchtScriptInclude(pHtSession session)
 void
 htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
     {
-    char buf[32];
-
-        htchtGetCanvasId(tree, buf, sizeof(buf));
-
-        htrAddBodyItem_va(session,"<DIV ID=\"%STR&SYMdiv\"><CANVAS ID=\"%STR&SYM\" width=\"%POS\" height=\"%POS\">\n",
-		buf,
-		buf,
-		htchtGetWidth(tree),
-		htchtGetHeight(tree)
+	/** Get id. **/
+	char id[32];
+	htchtGetCanvasId(tree, id, sizeof(id));
+	
+	/** Get layout data. **/
+	const int x = htchtGetX(tree);
+	const int y = htchtGetY(tree);
+	const int w = htchtGetWidth(tree);
+	const int h = htchtGetHeight(tree);
+	
+	/** Write style rules for the container div. **/
+	htrAddStylesheetItem_va(session,
+	    "\t\t#%STR&SYMdiv { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"height:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    ht_flex_h(h, tree),
+	    z
 	);
-
-        htrAddBodyItem(session,"<P>CHART HERE</P>\n");
-        htrAddBodyItem(session,"</CANVAS></DIV>\n");
-
-	htrAddStylesheetItem_va(session, "\t#%STR&SYMdiv { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; } \n",
-		buf,
-		htchtGetX(tree),
-		htchtGetY(tree),
-		htchtGetWidth(tree),
-		htchtGetHeight(tree),
-		z
+	
+	/** Write the canvas HTML. **/
+	htrAddBodyItem_va(session,
+	    "<div id='%STR&SYMdiv'>"
+	        "<canvas "
+		    "id='%STR&SYM' "
+		    "width='%POS' "
+		    "height='%POS'"
+		">"
+		    /** Fallback used when <canvas> is not supported. **/
+		    "<p>CHART HERE</p>"
+		"</canvas>"
+	    "</div>",
+	    id,
+	    id,
+	    w,
+	    h
 	);
     }
 
@@ -393,9 +434,6 @@ htchtInitialize()
         xaAddItem(&(drv->PseudoTypes), "chart-axis");
         xaAddItem(&(drv->PseudoTypes), "chart-series");
 
-        htrAddEvent(drv, "Click");
-        htrAddEvent(drv, "DblClick");
-
         /** Register. **/
         htrRegisterDriver(drv);
 
@@ -405,4 +443,3 @@ htchtInitialize()
 
     return 0;
     }
-

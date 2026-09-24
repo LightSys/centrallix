@@ -287,8 +287,6 @@ function cxjs_convert(dt,v)
 	    return parseFloat(String(v).substr(1));
 	else if (String(v).substr(0,2) == ' $' || String(v).substr(0,2) == '+$')
 	    return parseFloat(String(v).substr(2));
-	else if (String(v).substr(0,2) == '$ ')
-	    return parseFloat(String(v).substr(2));
 	else if (String(v).substr(0,2) == '-$')
 	    return -parseFloat(String(v).substr(2));
 	else
@@ -939,6 +937,85 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	);
     }
 
+
+/** An array storing all points so they can be updated on resize. **/
+const htr_point_targets = [];
+window.addEventListener('resize', (e) => htr_point_targets.forEach(htr_update_point));
+
+/** Hides the point belonging to a target, if it has one. **/
+function htr_hide_point(point_target)
+    {
+    const { point1, point2 } = point_target;
+    if (point1) htr_setvisibility(point1, 'hidden');
+    if (point2) htr_setvisibility(point2, 'hidden');
+    }
+
+/*** Updates a point when the page has been resized. Fails if the target does
+ *** not have a point element. (Call htr_action_point() to create a point,
+ *** this function is only intended to update existing points.)
+ *** 
+ *** @param point_target The target of the point being updated (necessary
+ *** 	because it stores the resize data for the point).
+ ***/
+function htr_update_point(point_target)
+    {
+    const resize_param = point_target?.resize?.param;
+    if (!resize_param)
+	{
+	// Skip: No available resize data. Maybe this DOM node doesn't have an associated point?
+	console.warn('Failed to get resize data to update point on', point_target);
+	return;
+	}
+    
+    /** Hide the point if the target is hidden. **/
+    if (!point_target.getClientRects().length)
+	{
+	htr_hide_point(point_target);
+	return;
+	}
+
+    /** Update the point with data from the resize object. **/
+    const { X, Y, AtWidget, BorderColor, FillColor } = resize_param;
+    const { p1, p2 } = htutil_point(point_target,
+	X, Y, AtWidget, BorderColor, FillColor,
+	point_target.point1, point_target.point2
+    );
+    point_target.point1 = p1;
+    point_target.point2 = p2;
+    }
+
+/*** This function updates the pointing UI element that points from the point_target,
+ *** or creates one if it does not exist, and handles resize updates for it.
+ *** Often invoked when the point action is used.
+ *** 
+ *** @param point_target The point_target DOM node to be pointed at.
+ *** @param param Pointing parameters.
+ *** @param param.X The x value for where to point.
+ *** @param param.Y The y value for where to point.
+ *** @param param.AtWidget True to point at a widget, false to point at the
+ *** 	coordinates specified above.
+ *** @param param.BorderColor The border color of the point element.
+ *** @param param.FillColor The fill color of the point element.
+ ***/
+function htr_action_point(point_target, param)
+    {
+    // Get the resize data from the point_target (or create it, if needed).
+    if (!point_target.resize) point_target.resize = {};
+    const { resize } = point_target;
+    
+    // Update the saved param.
+    resize.param = param;
+    
+    // Update the entry in htr_point_targets (or create it, if needed).
+    if (typeof(resize.index) === 'undefined')
+	resize.index = htr_point_targets.push(point_target) - 1;
+    else
+	htr_point_targets[resize.index] = point_target;
+
+    // (Re)render the new point.
+    htr_update_point(point_target);
+    }
+
 function htr_alert(obj,maxlevels)
     {
     alert(htr_obj_to_text(obj,0,maxlevels));
@@ -1237,12 +1314,20 @@ function htr_subel(l, id)
 
 function htr_extract_bgcolor(s)
     {
-    if (s.substr(0,17) == "background-color:")
+    // Handle edge cases.
+    if (typeof(s) !== 'string') return null;
+    s = s.toLocaleLowerCase();
+    
+    // Check for CSS rule.
+    if (s.startsWith("background-color:"))
 	{
-	var cp = s.indexOf(":");
-	return s.substr(cp+2,s.length-cp-3);
+	const color_start = s.indexOf(":") + 1;
+	const color_end = (s.endsWith(';')) ? -1 : undefined; 
+	return s.slice(color_start, color_end).trim();
 	}
-    else if (s.substr(0,8) == "bgcolor=" || s.substr(0,8) == "bgColor=")
+    
+    // Check for HTML attribute (deprecated).
+    if (s.startsWith("bgcolor="))
 	{
 	var qp = s.indexOf("'");
 	if (qp < 1)
@@ -1250,6 +1335,8 @@ function htr_extract_bgcolor(s)
 	else
 	    return s.substr(qp+1,s.length-qp-2);
 	}
+    
+    // Fail: Color not found.
     return null;
     }
 
@@ -1270,6 +1357,8 @@ function htr_extract_bgimage(s)
 
 function htr_getvisibility(l)
     {
+    if (!l) return '';
+    
     var v = null;
     if (cx__capabilities.Dom0NS)
         {
@@ -1609,7 +1698,7 @@ function htr_addeventlistener(eventType,obj,handler)
 	if (typeof pg_capturedevents[eventType] == 'undefined')
 	    {
 	    pg_capturedevents[eventType] = handler;
-	    obj.addEventListener(eventType, handler, true);
+	    obj.addEventListener(eventType, handler, { capture: true, passive: false });
 	    }
 	}
     else

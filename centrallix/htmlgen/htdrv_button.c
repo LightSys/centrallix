@@ -1,20 +1,71 @@
-#include <stdio.h>
+/************************************************************************/
+/* Centrallix Application Server System 				*/
+/* Centrallix Core							*/
+/* 									*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
+/* 									*/
+/* This program is free software; you can redistribute it and/or modify	*/
+/* it under the terms of the GNU General Public License as published by	*/
+/* the Free Software Foundation; either version 2 of the License, or	*/
+/* (at your option) any later version.					*/
+/* 									*/
+/* This program is distributed in the hope that it will be useful,	*/
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of	*/
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the	*/
+/* GNU General Public License for more details.				*/
+/* 									*/
+/* You should have received a copy of the GNU General Public License	*/
+/* along with this program; if not, write to the Free Software		*/
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  		*/
+/* 02111-1307  USA							*/
+/*									*/
+/* A copy of the GNU General Public License has been included in this	*/
+/* distribution in the file "COPYING".					*/
+/* 									*/
+/* Module: 	htdrv_button.c						*/
+/* Author:	D. Kasper			 			*/
+/* Creation:	June 21, 2007						*/
+/* Description:	HTML widget driver for a 'generic' button widget to	*/
+/* 		replace the imagebutton/textbutton widgets.		*/
+/************************************************************************/
+
+#include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
+
+#include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "expression.h"
+#include "ht_render.h"
+#include "obj.h"
+#include "wgtr.h"
+
+
+/*** Where an image sits relative to the button's text.  'image_position' and
+ *** the image-bearing 'type' values are two spellings of the same thing, so
+ *** both are parsed into this and the table below maps between them.
+ ***/
+enum htbtn_image_positions { Top=0, Bottom=1, Left=2, Right=3 };
+
+static const struct
+    {
+    char*	Position;	/* the deprecated 'image_position' spelling */
+    char*	Type;		/* the 'type' spelling */
+    }
+    HTBTN_ImagePositions[] =
+	{
+	{ "top",    "topimage"    },
+	{ "bottom", "bottomimage" },
+	{ "left",   "leftimage"   },
+	{ "right",  "rightimage"  },
+	};
+#define HTBTN_N_IMAGE_POSITIONS ((int)(sizeof(HTBTN_ImagePositions) / sizeof(HTBTN_ImagePositions[0])))
 
 
 /** globals **/
-static struct 
+static struct
     {
-    int		idcnt;
+    int idcnt;
     }
     HTBTN;
 
@@ -24,378 +75,469 @@ static struct
 int
 htbtnRender(pHtSession s, pWgtrNode tree, int z)
     {
+    /*** Scratch for every wgtrGetPropertyValue() string fetch below.  The value
+     *** it points at is only valid until the next fetch, so each one is copied.
+     ***/
     char* ptr;
-    char name[64];
-    char type[64];
-    char text[64];
-    char fgcolor1[64];
-    char fgcolor2[64];
-    char bgcolor[128];
-    char bgstyle[128];
-    char disable_color[64];
-    char n_img[128];
-    char p_img[128];
-    char c_img[128];
-    char d_img[128];
-    int x,y,w,h,spacing;
-    int id, i;
-    int is_ts = 1;
-    char* dptr;
-    int is_enabled = 1;
-    pExpression code;
-    int box_offset;
-    int clip_offset;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !(s->Capabilities.Dom1HTML && s->Capabilities.Dom2CSS))
+	/** Get an id for this. **/
+	const int id = (HTBTN.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTBTN","Netscape DOM or (W3C DOM1 HTML and W3C DOM2 CSS) support required");
-	    return -1;
+	    mssError(1, "HTBTN", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
 
-    	/** Get an id for this. **/
-	id = (HTBTN.idcnt++);
-
-    	/** Get x,y,w,h of this object **/
-	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) 
+	/** Get x, y, w, h of this object **/
+	int x, y, w, h;
+	if (wgtrGetPropertyValue(tree, "x", DATA_T_INTEGER, POD(&x)) != 0)
 	    {
-	    mssError(1,"HTBTN","Button widget must have an 'x' property");
-	    return -1;
+	    mssError(1, "HTBTN", "Button widget must have an 'x' property.");
+	    goto err;
 	    }
-	if (wgtrGetPropertyValue(tree,"y",DATA_T_INTEGER,POD(&y)) != 0)
+	if (wgtrGetPropertyValue(tree, "y", DATA_T_INTEGER, POD(&y)) != 0)
 	    {
-	    mssError(1,"HTBTN","Button widget must have a 'y' property");
-	    return -1;
+	    mssError(1, "HTBTN", "Button widget must have a 'y' property.");
+	    goto err;
 	    }
-	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
+	if (wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&w)) != 0)
 	    {
-	    mssError(1,"HTBTN","Button widget must have a 'width' property");
-	    return -1;
+	    mssError(1, "HTBTN", "Button widget must have a 'width' property.");
+	    goto err;
 	    }
-	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = -1;
+	if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0) h = -1;
+	if (tree->Flags & WGTR_F_AUTOHEIGHT) h = -1; /* let htdrv_button.js fit the text */
 
-	if (wgtrGetPropertyType(tree,"enabled") == DATA_T_STRING && wgtrGetPropertyValue(tree,"enabled",DATA_T_STRING,POD(&ptr)) == 0 && ptr)
+	/** Get name. **/
+	char name[64];
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) goto err;
+	strtcpy(name, ptr, sizeof(name));
+
+	/** Images.  Point, click and disabled fall back to the normal image. **/
+	char image[OBJSYS_MAX_PATH];
+	char point_image[OBJSYS_MAX_PATH];
+	char click_image[OBJSYS_MAX_PATH];
+	char disabled_image[OBJSYS_MAX_PATH];
+	bool has_image;
+	if (wgtrGetPropertyValue(tree, "image", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    if (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")) is_enabled = 0;
+	    strtcpy(image, ptr, sizeof(image));
+	    has_image = true;
 	    }
-
-	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	strtcpy(name,ptr,sizeof(name));
-	
-	if (wgtrGetPropertyValue(tree,"type",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	strtcpy(type,ptr,sizeof(type));
-
-	/* if not a text only button */
-	if(strcmp(type,"text"))
-	    {
-	    if (wgtrGetPropertyValue(tree,"image",DATA_T_STRING,POD(&ptr)) != 0) return -1;
-	    strtcpy(n_img,ptr,sizeof(n_img));
-	    }
-
-        if (wgtrGetPropertyValue(tree,"pointimage",DATA_T_STRING,POD(&ptr)) == 0)
-            strtcpy(p_img,ptr,sizeof(p_img));
-        else
-            strcpy(p_img, n_img);
-
-        if (wgtrGetPropertyValue(tree,"clickimage",DATA_T_STRING,POD(&ptr)) == 0)
-            strtcpy(c_img,ptr,sizeof(c_img));
-        else
-            strcpy(c_img, n_img);
-
-        if (wgtrGetPropertyValue(tree,"disabledimage",DATA_T_STRING,POD(&ptr)) == 0)
-            strtcpy(d_img,ptr,sizeof(d_img));
-        else
-            strcpy(d_img, n_img);
-	
-		/** Threestate button or twostate? **/
-		if (wgtrGetPropertyValue(tree,"tristate",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
-
-		if(strcmp(type,"image"))
-		    if (wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) != 0)
-			{
-			mssError(1,"HTBTN","Button widget must have a 'text' property");
-			return -1;
-			}
-		strtcpy(text,ptr,sizeof(text));
-
-		/** Get fgnd colors 1,2, and background color **/
-		htrGetBackground(tree, NULL, 0, bgcolor, sizeof(bgcolor));
-		htrGetBackground(tree, NULL, 1, bgstyle, sizeof(bgstyle));
-
-		if (wgtrGetPropertyValue(tree,"fgcolor1",DATA_T_STRING,POD(&ptr)) == 0)
-		    strtcpy(fgcolor1,ptr,sizeof(fgcolor1));
-		else
-		    strcpy(fgcolor1,"white");
-		if (wgtrGetPropertyValue(tree,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
-		    strtcpy(fgcolor2,ptr,sizeof(fgcolor2));
-		else
-		    strcpy(fgcolor2,"black");
-		if (wgtrGetPropertyValue(tree,"disable_color",DATA_T_STRING,POD(&ptr)) == 0)
-		    strtcpy(disable_color,ptr,sizeof(disable_color));
-		else
-		    strcpy(disable_color,"#808080");
-
-	/* spacing between image and text if both are supplied */
-	if (wgtrGetPropertyValue(tree,"spacing",DATA_T_INTEGER,POD(&spacing)) != 0)  spacing=5;
-	
-	/** User requesting expression for enabled? **/
-		if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
-		    {
-		    wgtrGetPropertyValue(tree,"enabled",DATA_T_CODE,POD(&code));
-		    is_enabled = 0;
-		    htrAddExpression(s, name, "enabled", code);
-		    }
-	    
-	/* image only button - based on imagebutton */
-	
-	if (!strcmp(type,"image") || !strcmp(type,"textoverimage"))
-		{
-		htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
-
-		htrAddScriptGlobal(s, "gb_cur_img", "null", 0);
-		htrAddScriptGlobal(s, "gb_current", "null", 0);
-		htrAddWgtrObjLinkage_va(s, tree, "gb%POSpane", id);
-
-		/** User requesting expression for enabled? **/
-		if (wgtrGetPropertyType(tree,"enabled") == DATA_T_CODE)
-		    {
-		    wgtrGetPropertyValue(tree,"enabled",DATA_T_CODE,POD(&code));
-		    is_enabled = 0;
-		    htrAddExpression(s, name, "enabled", code);
-		    }
-		/** Widget Tree Stuff **/
-		dptr = wgtrGetDName(tree);
-		htrAddScriptInit_va(s, "    %STR&SYM = wgtrGetNodeRef(ns,'%STR&SYM');\n", dptr, name);
-
-		if(!strcmp(type,"image")) htrAddScriptInit_va(s,"    gb_init({layer:%STR&SYM, n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", dptr, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
-		/* text over image needs second layer */
-		else htrAddScriptInit_va(s,"    gb_init({layer:\"%STR&SYM\", layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', width:%INT, height:%INT, name:'%STR&SYM', enable:%INT, type:'%STR&JSSTR', text:'%STR&JSSTR'});\n", dptr, dptr, id, n_img, p_img, c_img, d_img, w, h, name,is_enabled,type,text);
-
-		/** Include the javascript code for the button **/
-		htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
-		htrAddScriptInclude(s, "/sys/js/htdrv_button.js", 0);
-
-		/** HTML body <DIV> elements for the layers. **/
-		if(!strcmp(type,"image")||!strcmp(type,"textoverimage"))
-		    {
-		    if (h < 0)
-			if(is_enabled)
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\">\n",id,n_img);
-			else
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\">\n",id,d_img);
-		    else
-			if(is_enabled)
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\">\n",id,n_img,w,h);
-			else
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><IMG SRC=\"%STR&HTE\" border=\"0\" width=\"%POS\" height=\"%POS\">\n",id,d_img,w,h);
-		    }
-		/* text over image */
-		if(!strcmp(type,"textoverimage"))
-		    	{
-		    	htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+1);
-		    	htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellpadding=0 height=%INT><tr><td valign=\"center\" align=\"center\"><font color='%STR&HTE'><b>%STR&HTE</b></font></td></tr></table></center></DIV></DIV>\n",id,h,fgcolor1,text);
-		    	}
-		else
-			htrAddBodyItem_va(s,"</DIV>");
-		}
-
-	/* other types of buttons - based on textbutton */
-
 	else
-	
+	    {
+	    image[0] = '\0';
+	    has_image = false;
+	    }
+	if (wgtrGetPropertyValue(tree, "pointimage", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(point_image, ptr, sizeof(point_image));
+	else
+	    strtcpy(point_image, image, sizeof(point_image));
+	if (wgtrGetPropertyValue(tree, "clickimage", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(click_image, ptr, sizeof(click_image));
+	else
+	    strtcpy(click_image, point_image, sizeof(click_image));
+	if (wgtrGetPropertyValue(tree, "disabledimage", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(disabled_image, ptr, sizeof(disabled_image));
+	else
+	    strtcpy(disabled_image, image, sizeof(disabled_image));
+
+	/** Where the image sits, from the deprecated 'image_position' spelling. **/
+	enum htbtn_image_positions position = Top;
+	if (wgtrGetPropertyValue(tree, "image_position", DATA_T_STRING, POD(&ptr)) == 0)
+	    for (int i = 0; i < HTBTN_N_IMAGE_POSITIONS; i++)
+		if (strcmp(ptr, HTBTN_ImagePositions[i].Position) == 0) position = i;
+
+	/*** Button type.  Defaults based on the widget name and whether an image
+	 *** was given.  "widget/imagebutton" is a deprecated path to a borderless,
+	 *** text-free button.
+	 ***/
+	char type[64];
+	if (wgtrGetPropertyValue(tree, "type", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(type, ptr, sizeof(type));
+	else if (strcmp(tree->Type, "widget/imagebutton") == 0)
+	    strcpy(type, "image");
+	else if (has_image)
+	    strtcpy(type, HTBTN_ImagePositions[position].Type, sizeof(type));
+	else
+	    strcpy(type, "text");
+
+	/** An explicit 'type' wins over 'image_position'.  Fail if unknown. **/
+	bool is_known_type = (
+	       strcmp(type, "text") == 0
+	    || strcmp(type, "image") == 0
+	    || strcmp(type, "textoverimage") == 0
+	);
+	for (int i = 0; i < HTBTN_N_IMAGE_POSITIONS; i++)
+	    {
+	    if (strcmp(type, HTBTN_ImagePositions[i].Type) == 0)
 		{
-		/** box adjustment... arrgh **/
-		if (s->Capabilities.CSSBox)
-		    box_offset = 1;
-		else
-		    box_offset = 0;
-		clip_offset = s->Capabilities.CSSClip?1:0;
-
-		htrAddScriptGlobal(s, "gb_current", "null", 0);
-
-		/** DOM Linkages **/
-		htrAddWgtrObjLinkage_va(s, tree, "gb%POSpane",id);
-		
-		/** Include the javascript code for the button **/
-		htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0);
-		htrAddScriptInclude(s, "/sys/js/htdrv_button.js", 0);
-
-		dptr = wgtrGetDName(tree);
-		htrAddScriptInit_va(s, "    %STR&SYM = wgtrGetNodeRef(ns,'%STR&SYM');\n", dptr, name);
-
-		if(s->Capabilities.Dom0NS)
-		    {
-		    /** Ok, write the style header items. **/
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INT; TOP:%INT; WIDTH:%POS; Z-INDEX:%POS; }\n",id,x,y,w,z);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { POSITION:absolute; VISIBILITY:%STR; LEFT:-1; TOP:-1; WIDTH:%POS; Z-INDEX:%POS; }\n",id,is_enabled?"inherit":"hidden",w-1,z+1);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane3 { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; WIDTH:%POS; Z-INDEX:%POS; }\n",id,is_enabled?"hidden":"inherit",w-1,z+1);
-		    htrAddStylesheetItem_va(s,"\t#gb%POStop { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%POS; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",w,z+2);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSbtm { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:%POS; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",w,z+2);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSrgt { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",z+2);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSlft { POSITION:absolute; VISIBILITY:%STR; LEFT:0; TOP:0; HEIGHT:1; WIDTH:1; Z-INDEX:%POS; }\n",id,is_ts?"hidden":"inherit",z+2);
-
-		    /** Script initialization call. **/
-		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:htr_subel(%STR&SYM, \"gb%POStop\"), bottom:htr_subel(%STR&SYM, \"gb%POSbtm\"), right:htr_subel(%STR&SYM, \"gb%POSrgt\"), left:htr_subel(%STR&SYM, \"gb%POSlft\"), width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR', n:\"%STR&JSSTR\", p:\"%STR&JSSTR\", c:\"%STR&JSSTR\", d:\"%STR&JSSTR\", type:\"%STR&JSSTR\"});\n",
-			    dptr, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, dptr, id, w, h, is_ts, name, text,n_img,p_img,c_img,d_img,type);
-
-		    /** HTML body <DIV> elements for the layers. **/
-		    if (h >= 0)
-			{
-			if(!strcmp(type,"text"))
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %STR width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text,h);
-			    }
-			else if(!strcmp(type,"image"))
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %STR width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,bgcolor,w,n_img,w,h,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,n_img,w,h,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,n_img,w,h,h);
-			    }
-			else if(!strcmp(type,"topimage"))
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %STR width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\"><br><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,bgcolor,w,n_img,fgcolor2,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\"><br><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,n_img,fgcolor1,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\"><br><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,n_img,disable_color,text,h);
-			    }
-			else if(!strcmp(type,"bottomimage"))
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %STR width=%POS><TR><TD align=center valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font><br><IMG SRC=\"%STR&HTE\"></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,n_img,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font><br><IMG SRC=\"%STR&HTE\"></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,n_img,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font><br><IMG SRC=\"%STR&HTE\"></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text,n_img,h);
-			    }
-			else if(!strcmp(type,"leftimage"))
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=%POS cellpadding=0 %STR width=%POS><TR><TD align=right valign=middle><IMG SRC=\"%STR&HTE\"></td><TD align=left valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,spacing,bgcolor,w,n_img,fgcolor2,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=%POS cellpadding=0 width=%POS><TR><TD align=right valign=middle><IMG SRC=\"%STR&HTE\"></td><TD align=left valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,spacing,w,n_img,fgcolor1,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=%POS cellpadding=0 width=%POS><TR><TD align=right valign=middle><IMG SRC=\"%STR&HTE\"></td><TD align=left valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,spacing,w,n_img,disable_color,text,h);
-			    }
-			else if(!strcmp(type,"rightimage"))
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=%POS cellpadding=0 %STR width=%POS><TR><TD align=right valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD align=left valign=middle><IMG SRC=\"%STR&HTE\"></td><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,spacing,bgcolor,w,fgcolor2,text,n_img,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=%POS cellpadding=0 width=%POS><TR><TD align=right valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD align=left valign=middle><IMG SRC=\"%STR&HTE\"></td><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,spacing,w,fgcolor1,text,n_img,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=%POS cellpadding=0 width=%POS><TR><TD align=right valign=middle><font color='%STR&HTE'><b>%STR&HTE</b></font></TD><TD align=left valign=middle><IMG SRC=\"%STR&HTE\"></td><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,spacing,w,disable_color,text,n_img,h);
-			    }
-			else if(!strcmp(type,"textoverimage"))
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %STR width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,bgcolor,w,n_img,w,h,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,n_img,w,h,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,n_img,w,h,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane4\"><p><font color='%STR&HTE'>%STR&HTE</font></p></DIV>",id,fgcolor1,text);
-			    }
-			else
-			    {
-			    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=0 cellpadding=0 %STR width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text,h);
-			    htrAddBodyItem_va(s, "<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=0 cellpadding=0 width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD><TD><IMG SRC=/sys/images/trans_1.gif width=1 height=%POS></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text,h);
-			    }
-			}
-		    else
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><TABLE border=0 cellspacing=0 cellpadding=3 %STR width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD></TR></TABLE>\n",id,bgcolor,w,fgcolor2,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,fgcolor1,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><TABLE border=0 cellspacing=0 cellpadding=3 width=%POS><TR><TD align=center valign=middle><FONT COLOR='%STR&HTE'><B>%STR&HTE</B></FONT></TD></TR></TABLE>\n</DIV>",id,w,disable_color,text);
-			}
-		    htrAddBodyItem_va(s,"<DIV ID=\"gb%POStop\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%POS></DIV>\n",id,w);
-		    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSbtm\"><IMG SRC=/sys/images/trans_1.gif height=1 width=%POS></DIV>\n",id,w);
-		    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSrgt\"><IMG SRC=/sys/images/trans_1.gif height=%POS width=1></DIV>\n",id,(h<0)?1:h);
-		    htrAddBodyItem_va(s,"<DIV ID=\"gb%POSlft\"><IMG SRC=/sys/images/trans_1.gif height=%POS width=1></DIV>\n",id,(h<0)?1:h);
-		    htrAddBodyItem(s,   "</DIV>\n");
-		    }
-		else if(s->Capabilities.CSS2)
-		    {
-		    if(h >=0 )
-			{
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx %INTpx %INTpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,h-1-2*box_offset+2*clip_offset,0);
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane2, #gb%POSpane3 { height: %POSpx;}\n",id,id,h-3);
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane { height: %POSpx;}\n",id,h-1-2*box_offset);
-			}
-		    else
-			{
-			htrAddStylesheetItem_va(s,"\t#gb%POSpane { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; OVERFLOW:hidden; clip:rect(%INTpx %INTpx auto %INTpx)}\n",id,x,y,w-1-2*box_offset,z,0,w-1-2*box_offset+2*clip_offset,0);
-			}
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane, #gb%POSpane2, #gb%POSpane3 { cursor:default; text-align: center; }\n",id,id,id);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane { %STR border-width: 1px; border-style: solid; border-color: white gray gray white; }\n",id,bgstyle);
-		    /*htrAddStylesheetItem_va(s,"\t#gb%dpane { color: %s; }\n",id,fgcolor2);*/
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane2 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:-1px; top: -1px; width:%POSpx; }\n",id,is_enabled?"inherit":"hidden",z+1,w-3);
-		    htrAddStylesheetItem_va(s,"\t#gb%POSpane3 { VISIBILITY: %STR; Z-INDEX: %INT; position: absolute; left:0px; top: 0px; width:%POSpx; }\n",id,is_enabled?"hidden":"inherit",z+1,w-3);
-
-		    if(!strcmp(type,"text"))
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center>\n",id,h-3,fgcolor2,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,fgcolor1,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,disable_color,text);
-			}
-		    else if(!strcmp(type,"image"))
-			{
-	/* working image		htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></td></tr></table></center>\n",id,h-3,n_img,w,h-3);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></td></tr></table></center></DIV>\n",id,h-3,n_img,w,h-3);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></td></tr></table></center></DIV>\n",id,h-3,n_img,w,h-3); */
-			}
-		    else if(!strcmp(type,"topimage"))
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\"><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center>\n",id,h-3,n_img,fgcolor2,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\"><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,n_img,fgcolor1,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\"><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,h-3,n_img,disable_color,text);
-			}
-		    else if(!strcmp(type,"bottomimage"))
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font><IMG SRC=\"%STR&HTE\"></td></tr></table></center>\n",id,h-3,fgcolor2,text,n_img);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font><IMG SRC=\"%STR&HTE\"></td></tr></table></center></DIV>\n",id,h-3,fgcolor1,text,n_img);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font><IMG SRC=\"%STR&HTE\"></td></tr></table></center></DIV>\n",id,h-3,disable_color,text,n_img);
-			}
-		    else if(!strcmp(type,"leftimage"))
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><table cellspacing=%POS cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><img src=\"%STR&HTE\"></td><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center>\n",id,spacing,h-3,n_img,h-3,fgcolor2,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellspacing=%POS cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><img src=\"%STR&HTE\"></td><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,spacing,h-3,n_img,h-3,fgcolor1,text);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><table cellspacing=%POS cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><img src=\"%STR&HTE\"></td><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td></tr></table></center></DIV>\n",id,spacing,h-3,n_img,h-3,disable_color,text);
-			}
-		    else if(!strcmp(type,"rightimage"))
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><table cellspacing=%POS cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\"></td></tr></table></center>\n",id,spacing,h-3,fgcolor2,text,h-3,n_img);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellspacing=%POS cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\"></td></tr></table></center></DIV>\n",id,spacing,h-3,fgcolor1,text,h-3,n_img);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><table cellspacing=%POS cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></td><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\"></td></tr></table></center></DIV>\n",id,spacing,h-3,disable_color,text,h-3,n_img);
-			}
-		    else if(!strcmp(type,"textoverimage"))
-			{
-			//htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><DIV style=\"zindex:50; position:absolute; x=30;y=30;\"><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></DIV><DIV style=\"zindex:49; position:asbolute; x=0; y=0;\"><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></td></tr></table></DIV></center>\n",id,fgcolor2,text,h-3,n_img,w,h-3);
-			//htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><DIV style=\"zindex:50; position:absolute; x=30;y=30;\"><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></DIV><DIV style=\"zindex:49; position:asbolute; x=0; y=0;\"><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></td></tr></table></DIV></center>\n",id,fgcolor2,text,h-3,n_img,w,h-3);
-			//htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><DIV style=\"zindex:50; position:absolute; x=30;y=30;\"><font color=\"%STR&HTE\"><b>%STR&HTE</b></font></DIV><DIV style=\"zindex:49; position:asbolute; x=0; y=0;\"><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><IMG SRC=\"%STR&HTE\" width=%POS height=%POS></td></tr></table></DIV></center>\n",id,fgcolor2,text,h-3,n_img,w,h-3);
-			}
-		    else
-			{
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>default text</b></font></td></tr></table></center>\n",id,h-3,fgcolor2);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane2\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>default text</b></font></td></tr></table></center></DIV>\n",id,h-3,fgcolor1);
-			htrAddBodyItem_va(s,"<DIV ID=\"gb%POSpane3\"><center><table cellspacing=0 cellpadding=1 border=0><tr><td height=%POS valign=middle align=center><font color=\"%STR&HTE\"><b>default text</b></font></td></tr></table></center></DIV>\n",id,h-3,disable_color);
-			}
-		    htrAddBodyItem(s,   "</DIV>");
-
-		    /** Script initialization call. **/
-		    htrAddScriptInit_va(s, "    gb_init({layer:%STR&SYM, layer2:htr_subel(%STR&SYM, \"gb%POSpane2\"), layer3:htr_subel(%STR&SYM, \"gb%POSpane3\"), top:null, bottom:null, right:null, left:null, width:%INT, height:%INT, tristate:%INT, name:\"%STR&SYM\", text:'%STR&JSSTR', n:'%STR&JSSTR', p:'%STR&JSSTR', c:'%STR&JSSTR', d:'%STR&JSSTR', type:'%STR&JSSTR'});\n",
-			    dptr, dptr, id, dptr, id, w, h, is_ts, name, text, n_img, p_img, c_img, d_img,type);
-		    }
-		else
-		    {
-		    mssError(0,"HTBTN","Unable to render for this browser");
-		    return -1;
-		    }
+		position = i;
+		is_known_type = true;
 		}
+	    }
+	if (!is_known_type)
+	    {
+	    mssError(1, "HTBTN", "Unknown button type \"%s\".", type);
+	    goto err;
+	    }
+	const bool is_text_over_image = (strcmp(type, "textoverimage") == 0);
+	const bool has_text = (strcmp(type, "image") != 0);
+	/** With no text there is nothing to position the image against. **/
+	if (!has_text) position = Top;
+	has_image = has_image && (strcmp(type, "text") != 0);
 
-	/** Add the event handling scripts **/
-	htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "gb", "gb_mousedown");
-	htrAddEventHandlerFunction(s, "document", "MOUSEUP", "gb", "gb_mouseup");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "gb", "gb_mouseover");
-	htrAddEventHandlerFunction(s, "document", "MOUSEOUT", "gb", "gb_mouseout");
-	htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "gb", "gb_mousemove");
+	/*** textoverimage paints its image as the cell's background, so it is the
+	 *** only image-bearing type that emits no <img> element.
+	 ***/
+	const bool has_img_element = (has_image && !is_text_over_image);
 
-	/** IE handles dblclick strangely **/
-	if (s->Capabilities.Dom0IE)
-	    htrAddEventHandlerFunction(s, "document", "DBLCLICK", "gb", "gb_dblclick");
+	/** Text.  Can be a client-side expression. **/
+	char text[64];
+	text[0] = '\0';
+	if (has_text)
+	    {
+	    ptr = "-";
+	    if (!htrCheckAddExpression(s, tree, name, "text") &&
+		    wgtrGetPropertyValue(tree, "text", DATA_T_STRING, POD(&ptr)) != 0)
+		{
+		mssError(1, "HTBTN", "Button widget must have a 'text' property.");
+		goto err;
+		}
+	    strtcpy(text, ptr, sizeof(text));
+	    }
 
-	/** Check for more sub-widgets within the button. **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+3);
+	/** Enabled.  Can be a client-side expression. **/
+	bool is_enabled;
+	if (wgtrGetPropertyType(tree, "enabled") == DATA_T_CODE)
+	    {
+	    pExpression enabled_code;
+	    wgtrGetPropertyValue(tree, "enabled", DATA_T_CODE, POD(&enabled_code));
+	    htrAddExpression(s, name, "enabled", enabled_code);
+	    is_enabled = false; /* Default to disabled while loading. */
+	    }
+	else
+	    {
+	    is_enabled = (htrGetBoolean(tree, "enabled", true));
+	    }
+
+	/** Threestate button or twostate? **/
+	const bool is_tristate = (htrGetBoolean(tree, "tristate", true));
+
+	/** Auto-repeat the Click event while the button is held down. **/
+	const bool do_repeat = (htrGetBoolean(tree, "repeat", false));
+
+	/*** Border radius, color, and style.  For style, we only support outset,
+	 *** solid, and none.  Image-only buttons have never drawn a border.
+	 ***/
+	int border_radius;
+	char border_color[64];
+	char border_style[32];
+	if (wgtrGetPropertyValue(tree, "border_radius", DATA_T_INTEGER, POD(&border_radius)) != 0)
+	    border_radius = 0;
+	if (wgtrGetPropertyValue(tree, "border_color", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(border_color, ptr, sizeof(border_color));
+	else
+	    strcpy(border_color, "#c0c0c0");
+	if (wgtrGetPropertyValue(tree, "border_style", DATA_T_STRING, POD(&ptr)) == 0
+	    && (strcmp(ptr, "outset") == 0 || strcmp(ptr, "solid") == 0 || strcmp(ptr, "none") == 0))
+	    strtcpy(border_style, ptr, sizeof(border_style));
+	else if (!has_text)
+	    strcpy(border_style, "none");
+	else
+	    strcpy(border_style, "outset");
+
+	/** Text alignment. **/
+	char text_align[16];
+	if (wgtrGetPropertyValue(tree, "align", DATA_T_STRING, POD(&ptr)) == 0
+	    && (strcmp(ptr, "left") == 0 || strcmp(ptr, "right") == 0 || strcmp(ptr, "center") == 0))
+	    strtcpy(text_align, ptr, sizeof(text_align));
+	else
+	    strcpy(text_align, "center");
+
+	/** Background color/image.  Returns 1 when none is set, which is fine. **/
+	char background_style[128];
+	if (htrGetBackground(tree, NULL, 1, background_style, sizeof(background_style)) < 0) goto err;
+
+	/*** 'fgcolor1' is the text color and 'fgcolor2' its drop shadow, which is
+	 *** only drawn while the button is enabled.
+	 ***/
+	char text_color[64];
+	char shadow_color[64];
+	char disabled_text_color[64];
+	if (wgtrGetPropertyValue(tree, "fgcolor1", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(text_color, ptr, sizeof(text_color));
+	else
+	    strcpy(text_color, "white");
+	if (wgtrGetPropertyValue(tree, "fgcolor2", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(shadow_color, ptr, sizeof(shadow_color));
+	else
+	    strcpy(shadow_color, "black");
+	if (wgtrGetPropertyValue(tree, "disable_color", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(disabled_text_color, ptr, sizeof(disabled_text_color));
+	else
+	    strcpy(disabled_text_color, "#808080");
+
+	/** Tooltip **/
+	char tooltip[256];
+	if (wgtrGetPropertyValue(tree, "tooltip", DATA_T_STRING, POD(&ptr)) == 0)
+	    strtcpy(tooltip, ptr, sizeof(tooltip));
+	else
+	    tooltip[0] = '\0';
+
+	/** Image sizing.  'spacing' carries the deprecated 'image_margin'. **/
+	int image_width, image_height, spacing;
+	if (wgtrGetPropertyValue(tree, "image_width", DATA_T_INTEGER, POD(&image_width)) != 0)
+	    image_width = 0;
+	if (wgtrGetPropertyValue(tree, "image_height", DATA_T_INTEGER, POD(&image_height)) != 0)
+	    image_height = 0;
+	if (wgtrGetPropertyValue(tree, "spacing", DATA_T_INTEGER, POD(&spacing)) != 0)
+	    spacing = 0;
+
+	/*** A button carrying text is drawn as a framed cell, and reserves room for
+	 *** that frame whether or not the border is currently visible.  An image-only
+	 *** button has no frame unless it asked for a border, so by default it hugs
+	 *** its image the way imagebutton always has.
+	 ***/
+	const bool has_frame = (has_text || strcmp(border_style, "none") != 0);
+	const int cell_padding = (has_frame) ? 1 : 0;
+	const int frame_adjust = (has_frame) ? 3 : 0;	/* the cell's 1px border and 1px padding, less 1px of legacy slop */
+
+	/*** An image-only button *is* its image, so the image defaults to filling the
+	 *** cell.  imagebutton only ever sized its image when a height was given, so
+	 *** neither do we.  Alongside text the image keeps its natural size.
+	 ***/
+	if (!has_text && h >= 0)
+	    {
+	    if (image_width == 0) image_width = w - frame_adjust;
+	    if (image_height == 0) image_height = h - frame_adjust;
+	    }
+
+	/** Supress invalid positive values. **/
+	if (image_width < 0) image_width = 0;
+	if (image_height < 0) image_height = 0;
+	if (spacing < 0) spacing = 0;
+
+	/** DOM Linkages **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "gb%POSpane", id) != 0)
+	    {
+	    mssError(0, "HTBTN", "Failed to add object linkage.");
+	    goto err;
+	    }
+
+	/*** Write the JS includes for the button.  Its globals are declared in
+	 *** htdrv_button.js rather than emitted here.
+	 ***/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_button.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
+
+	/** Write CSS for the container that will hold the button. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#gb%POSpane { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"display:table; "
+		"%[overflow:hidden; %]"
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"%[height:"ht_flex_format"; %]"
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    (!has_text),
+		      ht_flex_x(x, tree),
+		      ht_flex_y(y, tree),
+		      ht_flex_w(w - frame_adjust, tree),
+	    (h >= 0), ht_flex_h(h - frame_adjust, tree),
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTBTN", "Failed to write CSS for main button pane.");
+	    goto err;
+	    }
+
+	/*** Cursor and click animation.  Both key off a class the JS maintains,
+	 *** so they follow the button when it is enabled or disabled at runtime.
+	 ***/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#gb%POSpane:not(.gb_disabled) { cursor:pointer; }\n"
+	    "\t\t#gb%POSpane:not(.gb_disabled):active { transform: translate(1px, 1px); }\n",
+	    id,
+	    id
+	) != 0)
+	    {
+	    mssError(0, "HTBTN", "Failed to write CSS for cursor and click animation.");
+	    goto err;
+	    }
+
+	/** Write CSS for the button content, inside the border. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#gb%POSpane .cell { "
+		"height:100%%; "
+		"width:100%%; "
+		"vertical-align:middle; "
+		"display:table-cell; "
+		"padding:%POSpx; "
+		"font-weight:bold; "
+		"text-align:%STR; "
+		"border-width:1px; "
+		"border-style:%STR&CSSVAL; "
+		"border-color:%STR&CSSVAL; "
+		"border-radius:%INTpx; "
+		"color:%STR&CSSVAL; "
+		"%[text-shadow:1px 1px %STR&CSSVAL; %]"
+		"%[background-image:URL(%STR&CSSURL); background-size:100%% 100%%; %]"
+		"%STR "
+	    "}\n",
+	    id,
+	    cell_padding,
+	    text_align,
+	    border_style,
+	    border_color,
+	    border_radius,
+	    (is_enabled) ? text_color : disabled_text_color,
+	    (is_enabled), shadow_color,
+	    (is_text_over_image && has_image), (is_enabled) ? image : disabled_image,
+	    background_style
+	) != 0)
+	    {
+	    mssError(0, "HTBTN", "Failed to write CSS for button content.");
+	    goto err;
+	    }
+
+	/** Write CSS for image on the button. **/
+	if (has_img_element && (image_width != 0 || image_height != 0 || spacing != 0))
+	    {
+	    if (htrAddStylesheetItem_va(s,
+		"\t\t#gb%POSpane img { "
+		    "%[height:%POSpx; %]"
+		    "%[width:%POSpx; %]"
+		    "%[margin:%POSpx; %]"
+		"}\n",
+		id,
+		(image_height != 0), image_height,
+		(image_width  != 0), image_width,
+		(spacing      != 0), spacing
+	    ) != 0)
+		{
+		mssError(0, "HTBTN", "Failed to write CSS for button image.");
+		goto err;
+		}
+	    }
+
+	/** We need two DIVs here because of a long-outstanding Firefox bug :( **/
+	if (htrAddBodyItem_va(s,
+	    "<div id='gb%POSpane'%[ class='gb_disabled'%]>"
+		"<div class='cell'>"
+		    "%[<img border='0' alt='%STR&HTE' src='%STR&HTE'/>%]"
+		    "%[<br>%]"
+		    "%[<img border='0' alt='%STR&HTE' src='%STR&HTE' style='vertical-align:middle;'/>%]"
+		    "%[<span>%STR&HTE</span>%]"
+		    "%[<img border='0' alt='%STR&HTE' src='%STR&HTE' style='vertical-align:middle;'/>%]"
+		    "%[<br>%]"
+		    "%[<img border='0' alt='%STR&HTE' src='%STR&HTE'/>%]"
+		"</div>"
+	    "</div>",
+	    id,
+	    (!is_enabled),
+	    (has_img_element && position == Top), (has_text) ? "" : tooltip, (is_enabled) ? image : disabled_image,
+	    (has_img_element && position == Top && has_text),
+	    (has_img_element && position == Left), (has_text) ? "" : tooltip, (is_enabled) ? image : disabled_image,
+	    has_text, text,
+	    (has_img_element && position == Right), (has_text) ? "" : tooltip, (is_enabled) ? image : disabled_image,
+	    (has_img_element && position == Bottom && has_text),
+	    (has_img_element && position == Bottom), (has_text) ? "" : tooltip, (is_enabled) ? image : disabled_image
+	) != 0)
+	    {
+	    mssError(0, "HTBTN", "Failed to write HTML for button.");
+	    goto err;
+	    }
+
+	/** Script initialization call. **/
+	if (htrAddScriptInit_va(s,
+	    "\tgb_init({ "
+		"layer:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"name:'%STR&SYM', "
+		"text:'%STR&JSSTR', "
+		"enabled:%[true%]%[false%], "
+		"tristate:%[true%]%[false%], "
+		"repeat:%[true%]%[false%], "
+		"type:'%STR&JSSTR', "
+		"border_style:'%STR&JSSTR', "
+		"border_color:'%STR&JSSTR', "
+		"tooltip:'%STR&JSSTR', "
+		"text_color:'%STR&JSSTR', "
+		"shadow_color:'%STR&JSSTR', "
+		"disabled_text_color:'%STR&JSSTR', "
+		"image:'%STR&JSSTR', "
+		"point_image:'%STR&JSSTR', "
+		"click_image:'%STR&JSSTR', "
+		"disabled_image:'%STR&JSSTR', "
+		"width:%INT, "
+		"height:%INT, "
+	    "});\n",
+	    name, name, text,
+	    is_enabled, !is_enabled,
+	    is_tristate, !is_tristate,
+	    do_repeat, !do_repeat,
+	    type,
+	    border_style, border_color, tooltip,
+	    text_color, shadow_color, disabled_text_color,
+	    image, point_image, click_image, disabled_image,
+	    w, h
+	) != 0)
+	    {
+	    mssError(0, "HTBTN", "Failed to write JS init call.");
+	    goto err;
+	    }
+
+	/** Add event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "gb", "gb_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "gb", "gb_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "gb", "gb_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "gb", "gb_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "gb", "gb_mouseup")   != 0) goto err;
+
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
+
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTBTN",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
+    }
+
+
+/*** htbtnRegisterName - register the button renderer under one widget name.
+ *** The deprecated textbutton and imagebutton names share this renderer and
+ *** differ only in the defaults htbtnRender() picks for them.
+ ***
+ *** Note: This function should be inlined for simplicity once imagebutton and
+ *** textbutton are removed.  The inlining will also fix the doc reports
+ *** script failing to detect this file as an origin for the button widget.
+ ***/
+int
+htbtnRegisterName(char* drv_name, char* widget_name)
+    {
+    pHtDriver drv;
+
+	drv = htrAllocDriver();
+	if (!drv) return -1;
+
+	strtcpy(drv->Name, drv_name, sizeof(drv->Name));
+	strtcpy(drv->WidgetName, widget_name, sizeof(drv->WidgetName));
+	drv->Render = htbtnRender;
+
+	htrRegisterDriver(drv);
+	htrAddSupport(drv, "dhtml");
 
     return 0;
     }
@@ -406,29 +548,12 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 int
 htbtnInitialize()
     {
-    pHtDriver drv;
-
-    	/** Allocate the driver **/
-	drv = htrAllocDriver();
-	if (!drv) return -1;
-
-	/** Fill in the structure. **/
-	strcpy(drv->Name,"HTML Button Widget Driver");
-	strcpy(drv->WidgetName,"button");
-	drv->Render = htbtnRender;
-
-	/** Add the 'click' event **/
-	htrAddEvent(drv, "Click");
-	htrAddEvent(drv, "MouseUp");
-	htrAddEvent(drv, "MouseDown");
-	htrAddEvent(drv, "MouseOver");
-	htrAddEvent(drv, "MouseOut");
-	htrAddEvent(drv, "MouseMove");
-
-	/** Register. **/
-	htrRegisterDriver(drv);
-
-	htrAddSupport(drv, "dhtml");
+	/*** The deprecated textbutton and imagebutton names remain part of the
+	 *** language and render through here.  Their own drivers are gone.
+	 ***/
+	if (htbtnRegisterName("HTML Button Widget Driver", "button") != 0) return -1;
+	if (htbtnRegisterName("HTML Text Button Widget Driver", "textbutton") != 0) return -1;
+	if (htbtnRegisterName("HTML Image Button Widget Driver", "imagebutton") != 0) return -1;
 
 	HTBTN.idcnt = 0;
 

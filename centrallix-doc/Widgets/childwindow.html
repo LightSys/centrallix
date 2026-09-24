@@ -58,11 +58,6 @@
 <td class="description">Determines the look of the outline.</td>
 </tr>
 <tr>
-<td class="name">closetype</td>
-<td class="type">string</td>
-<td class="description">Decides wither the screen closes widthwise (1) or heightwise (2).</td>
-</tr>
-<tr>
 <td class="name">gshade</td>
 <td class="type">string</td>
 <td class="description">Acts as a boolean to declare if the window is shaded or not (all but title bar minimized).</td>
@@ -130,7 +125,7 @@
 <tr>
 <td class="name">titlebar</td>
 <td class="type">yes/no</td>
-<td class="description">Whether the window will have a titlebar (and the close "X" in the upper right corner of the window). Default "yes".</td>
+<td class="description">Whether the window will have a titlebar (and the close "X" in the upper right corner of the window).  Default "yes".</td>
 </tr>
 <tr>
 <td class="name">toplevel</td>
@@ -140,7 +135,7 @@
 <tr>
 <td class="name">visible</td>
 <td class="type">boolean</td>
-<td class="description">The window is initially visible on screen. The window has an action which can "true".</td>
+<td class="description">The window is initially visible on screen.  The window has an action which can "true".</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -170,19 +165,19 @@
 </tr>
 <tr>
 <td class="name">Open</td>
-<td class="description">Opens the window.  If the parameter IsModal is set to 1, then the window becomes modal (only the window's contents are accessible to the user until the window is closed).  If the parameter NoClose is set to 1, then the close button in the upper right corner of the window becomes inactive and the window will only close via the Close, SetVisibility, and ToggleVisibility actions.</td>
+<td class="description">Opens the window.  Set the "X" and "Y" parameters to the coordinates of the upper-left corner of the window to open it at that location.  If the parameter "Center" is set to any value other than no (the default), the window is centered on the specified coordinates instead.  Set the "PointAt" parameter with a widget name to make the new window point at that widget.  Set the "PointSide" parameter with a value of top, bottom, left, or right to force the window to point from that side.  Set the "PointOffset" parameter to the distance in pixels that the window should be from the widget it points at.  This action also takes the "IsModal","NoClose", and "Cascade" parameters, described in the SetVisibility action.</td>
 </tr>
 <tr>
 <td class="name">Point</td>
-<td class="description">Makes the window relocate to a side using a triangle (pop over).</td>
+<td class="description">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</td>
 </tr>
 <tr>
 <td class="name">Popup</td>
-<td class="description">Opens a window like a pop-up.</td>
+<td class="description">Opens a window like a pop-up at the specified "X" and "Y" with the specified "Width" and "Height" (in pixels).  Or, set the "PopTo" parameter with a widget name to copy those properties from it.  In either case, the "OffsetX" and "OffsetY" parameters move the popup right and down respectively.  Finally, specify the "ExtendTo" parameter with a widget name to ensure that the popup extends to that parameter.</td>
 </tr>
 <tr>
 <td class="name">SetVisibility</td>
-<td class="description">One parameter, "is_visible", which is set to 0 or 1 to hide or show the window, respectively.</td>
+<td class="description">Sets data about how the window displays.  Set the "IsVisible" parameter to 0 (hide) or 1 (show).  Set the "IsModal" parameter to 1 to make the window a modal (only the window's contents are accessible to the user until it is closed). Set the "NoClose" parameter to 1 to make the close button in the upper right corner of the window inactive (the window can only be closed via the Close, SetVisibility, and ToggleVisibility actions).  Set the "Cascade" parameter to 1 to cause multiple appearing windows to autopossition themselves in a cascading pattern.</td>
 </tr>
 <tr>
 <td class="name">Shade</td>
@@ -239,7 +234,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -263,7 +258,7 @@ MyWindow "widget/childwindow"
 
 	}
 
-		
+			
 
 		</pre>
 </body>

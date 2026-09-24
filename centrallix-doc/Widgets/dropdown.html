@@ -14,12 +14,12 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-		  <p>A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.</p>
+			<p>A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-		  <p>This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.</p>
+			<p>This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -49,7 +49,7 @@
 <td class="description">Height, in pixels, of the dropdown.</td>
 </tr>
 <tr>
-<td class="name">hilight</td>
+<td class="name">highlight</td>
 <td class="type">integer</td>
 <td class="description">The color of the highlighted option when the mouse goes over the item.</td>
 </tr>
@@ -64,7 +64,7 @@
 <td class="description">If this is set to objectsource then the dropdown acts an objectsource client.</td>
 </tr>
 <tr>
-<td class="name">num_disp</td>
+<td class="name">numdisplay</td>
 <td class="type">integer</td>
 <td class="description">Number of widgets displayed at once in the dropdown box.</td>
 </tr>
@@ -86,7 +86,7 @@
 <tr>
 <td class="name">sql</td>
 <td class="type">string</td>
-<td class="description">The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+<td class="description">The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -135,15 +135,15 @@
 </tr>
 <tr>
 <td class="name">SetGroup</td>
-<td class="description">This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).</td>
+<td class="description">This causes the dropdown to display a different Group of items (use the "Group" parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use "Min" and "Max" parameters).</td>
 </tr>
 <tr>
 <td class="name">SetItems</td>
-<td class="description">This specifies a SQL (use "SQL" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).</td>
+<td class="description">This specifies a SQL (see "SQL" parameter) query to use when reloading the contents of the dropdown.  Use the "RowLimit" parameter to specify a maximum number of options that the query should fetch (defaults to 100).</td>
 </tr>
 <tr>
 <td class="name">SetValue</td>
-<td class="description">Changes the child property "value".</td>
+<td class="description">Changes the child property "Value".</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -176,7 +176,7 @@
 <td class="name">MouseMove</td>
 <td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
 </tr>
-<tr>
+<tr class="notimplimented">
 <td class="name">MouseOut</td>
 <td class="description">This event occurs when the user moves the mouse pointer off of the widget.</td>
 </tr>
@@ -196,7 +196,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -264,7 +264,7 @@ myDropDown2 "widget/dropdown"
 
 	}
 
-		
+			
 
 		</pre>
 </body>
