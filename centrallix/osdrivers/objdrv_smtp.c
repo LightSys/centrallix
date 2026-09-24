@@ -2046,7 +2046,10 @@ smtpInitialize()
 	drv->PresentationHints = NULL;
 	drv->Info = smtpInfo;
 
-	/** nmRegister(sizeof(JsonData),"JsonData"); **/
+	/** Register structs for debugging. **/
+	nmRegister(sizeof(SmtpAttribute), "SmtpAttribute");
+	nmRegister(sizeof(SmtpData), "SmtpData");
+	nmRegister(sizeof(SmtpQueryData), "SmtpQueryData");
 
 	/** Register the driver **/
 	if (objRegisterDriver(drv) < 0) return -1;
