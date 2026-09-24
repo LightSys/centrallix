@@ -555,7 +555,7 @@ prt_htmlfm_Close(void* context_v)
 	    {
 	    if (UNLIKELY(context->Attachments == NULL))
 		{
-		mssError(1, "RPT", "Attachments array missing for email.");
+		mssError(1, "PRT", "Attachments array missing for email.");
 		goto end;
 		}
 
@@ -1005,41 +1005,53 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const bool has_url = (obj->URL != NULL && strchr(obj->URL, '"') == NULL);
 
 		/** Write style, if needed. **/
-		prt_htmlfm_SetStyle(context, &(obj->TextStyle));
-		if (has_content && prt_htmlfm_WriteStyle(context) < 0) return -1;
+		if (UNLIKELY(prt_htmlfm_SetStyle(context, &(obj->TextStyle)) < 0)) goto error_string;
+		if (UNLIKELY(has_content && prt_htmlfm_WriteStyle(context) < 0)) goto error_string;
 
 		/** Write opening URL tag. **/
 		if (has_url)
 		    {
-		    prt_htmlfm_OutputStrLiteral(context, "<a href=\"");
-		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-		    prt_htmlfm_OutputStrLiteral(context, "\">");
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<a href=\"") < 0
+			|| prt_htmlfm_OutputEncoded(context, obj->URL, -1) < 0
+			|| prt_htmlfm_OutputStrLiteral(context, "\">") < 0
+		    ))  {
+			mssError(0, "PRT", "Failed to write URL opening tag.");
+			goto error_string;
+			}
 		    }
 
 		/** Write string content. **/
-		prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1);
+		if (UNLIKELY(prt_htmlfm_OutputEncoded(context, (char*)obj->Content, -1) < 0))
+		    goto error_string;
 
 		/** Write spacing. **/
 		if ((obj->Flags & PRT_OBJ_F_SOFTNEWLINE) && (obj->Flags & PRT_TEXTLM_F_RMSPACE))
 		    {
-		    prt_htmlfm_OutputEncoded(context, " ", 1);
+		    if (UNLIKELY(prt_htmlfm_OutputEncoded(context, " ", 1) < 0))
+			goto error_string;
 		    }
 
-		/** Write opening URL closing tag. **/
-		if (has_url)
+		/** Write URL closing tag. **/
+		if (UNLIKELY(has_url && prt_htmlfm_OutputStrLiteral(context, "</a>") < 0))
 		    {
-		    prt_htmlfm_OutputStrLiteral(context, "</a>");
+		    mssError(0, "PRT", "Failed to write URL closing tag.");
+		    goto error_string;
 		    }
 
+		/** Success. **/
 		break;
+
+    error_string:
+		mssError(0, "PRT", "Failed to write string: \"%s\".", (char*)obj->Content);
+		return -1;
 		}
 
 	    case PRT_OBJ_T_AREA:
-		if (prt_htmlfm_GenerateArea(context, obj) < 0) return -1;
+		if (UNLIKELY(prt_htmlfm_GenerateArea(context, obj) < 0)) return -1;
 		break;
 
 	    case PRT_OBJ_T_SECTION:
-		if (prt_htmlfm_GenerateMultiCol(context, obj) < 0) return -1;
+		if (UNLIKELY(prt_htmlfm_GenerateMultiCol(context, obj) < 0)) return -1;
 		break;
 
 	    case PRT_OBJ_T_RECT:
@@ -1052,7 +1064,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    {
 		    const int w = max(obj->Width * PRT_HTMLFM_XPIXEL, 1);
 		    const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
-		    prt_htmlfm_OutputPrintf(context,
+		    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 			"<table role=\"presentation\" cellpadding=\"0\">"
 			    "<tr><td bgcolor=\"#%6.6X\" width=\"%d\" height=\"%d\">"
 				"<table role=\"presentation\" cellpadding=\"0\">"
@@ -1061,7 +1073,11 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			    "</td></tr>"
 			"</table>\n",
 			obj->TextStyle.Color, w, h
-		    );
+		    ) < 0))
+			{
+			mssError(0, "PRT", "Failed to write rectangle of size %dx%d.", w, h);
+			return -1;
+			}
 		    }
 		break;
 		}
@@ -1120,7 +1136,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		if (UNLIKELY(write_rval < 0))
 		    {
 		    mssError(0, "PRT",
-			"Failed ot write image of size %dx%d to image buffer.",
+			"Failed to write image of size %dx%d to image buffer.",
 			w, h
 		    );
 		    goto error_image;
@@ -1138,13 +1154,21 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		/** Write opening URL tag. **/
 		if (has_url)
 		    {
-		    prt_htmlfm_OutputStrLiteral(context, "<a href=\"");
-		    prt_htmlfm_OutputEncoded(context, obj->URL, -1);
-		    prt_htmlfm_OutputStrLiteral(context, "\">");
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<a href=\"") < 0
+			|| prt_htmlfm_OutputEncoded(context, obj->URL, -1) < 0
+			|| prt_htmlfm_OutputStrLiteral(context, "\">") < 0
+		    ))  {
+			mssError(0, "PRT", "Failed to write URL opening tag.");
+			goto error_image;
+			}
 		    }
 
 		/** Write the start of the image tag. **/
-		prt_htmlfm_OutputStrLiteral(context, "<img src=\"");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<img src=\"") < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write image opening tag.");
+		    goto error_image;
+		    }
 
 		/** Write image src (based on how we have to embed it). **/
 		if (context->Flags & PRT_HTMLFM_F_EMAIL)
@@ -1211,9 +1235,14 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 		else
 		    { /* Non-email: Use inline source. */
-		    if (is_png) prt_htmlfm_OutputStrLiteral(context, "data:image/png;base64,");
-		    else        prt_htmlfm_OutputStrLiteral(context, "data:image/svg+xml;base64,");
-		    prt_htmlfm_Output(context, base64Image, -1);
+		    const int prefix_rval = (is_png)
+			? prt_htmlfm_OutputStrLiteral(context, "data:image/png;base64,")
+			: prt_htmlfm_OutputStrLiteral(context, "data:image/svg+xml;base64,");
+		    if (UNLIKELY(prefix_rval < 0 || prt_htmlfm_Output(context, base64Image, -1) < 0))
+			{
+			mssError(0, "PRT", "Failed to write inline image source.");
+			goto error_image;
+			}
 		    }
 
 		/** Write the rest of the image tag. **/
@@ -1227,7 +1256,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Write URL closing tag. **/
-		if (UNLIKELY(has_url && prt_htmlfm_OutputStrLiteral(context, "</a>")) < 0)
+		if (UNLIKELY(has_url && prt_htmlfm_OutputStrLiteral(context, "</a>") < 0))
 		    {
 		    mssError(0, "PRT", "Failed to write URL closing tag.");
 		    goto error_image;
@@ -1241,9 +1270,12 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
     error_image:
-		mssError(1, "PRT", "Failed to write %s.", (is_png) ? "image" : "svg");
+		mssError(0, "PRT", "Failed to write %s.", (is_png) ? "image" : "svg");
+
+		/** Clean up. **/
 		if (imgBuf.buffer != NULL) nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
 		if (base64Image != NULL) nmFree(base64Image, base64Size);
+
 		return -1;
 		}
 
@@ -1297,7 +1329,13 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	const int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight + 0.001) * PRT_HTMLFM_XPIXEL);
 
 	/** Write the opening tag for a table to set margins. **/
-	prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">");
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context,
+	    "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">"
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write margin table opening tag.");
+	    goto err;
+	    }
 
 	/** Write the table column sizes. **/
 	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
@@ -1332,7 +1370,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    }
 
 	/** Write the start of the second row with correct margins. **/
-	if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<tr><td style=\"width:%dpx;\"></td><td>\n", left_margin) < 0))
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+	    "<tr><td style=\"width:%dpx;\"></td><td>\n",
+	    left_margin
+	) < 0))
 	    {
 	    mssError(0, "PRT", "Failed to write the start of the second row.");
 	    goto err;
@@ -1396,7 +1437,12 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    }
 
 	/** Write the layout table **/
-	prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">");
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context,
+	    "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">") < 0
+	))  {
+	    mssError(0, "PRT", "Failed to write layout table opening tag.");
+	    goto err;
+	    }
 	for (i=0;i<n_cols;i++)
 	    {
 	    if (i == n_cols-1)
@@ -1430,13 +1476,21 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    
 		    if (last_height + 0.001 < subobj->Y)
 			{
-			prt_htmlfm_OutputPrintf(context,
+			if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 			    "</tr><tr>"
 			    "<td style=\"height:%dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td>",
 			   (int)((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL)
-			);
+			) < 0))
+			    {
+			    mssError(0, "PRT", "Failed to write spacer row.");
+			    goto err;
+			    }
 			}
-		    prt_htmlfm_OutputStrLiteral(context, "</tr>\n<tr>");
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr>\n<tr>") < 0))
+			{
+			mssError(0, "PRT", "Failed to write next row tags.");
+			goto err;
+			}
 		    cur_col = 0;
 		    }
 
@@ -1449,8 +1503,14 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			i++;
 			cur_col++;
 			}
-		    if (i > 1) prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i);
-		    else       prt_htmlfm_OutputStrLiteral(context, "<td>&nbsp;</td>");
+		    const int skip_rval = (i > 1)
+			? prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i)
+			: prt_htmlfm_OutputStrLiteral(context, "<td>&nbsp;</td>");
+		    if (UNLIKELY(skip_rval < 0))
+			{
+			mssError(0, "PRT", "Failed to write %d skipped column(s).", i);
+			goto err;
+			}
 		    }
 
 		/** Compute rowspan and colspan. **/
@@ -1471,28 +1531,40 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		/*** Write container HTML, skipping default values
 		 *** (colspan/rowspan="1", align="left") to reduce HTML size.
 		 ***/
-		prt_htmlfm_OutputStrLiteral(context, "<td");
-		if (cs > 1) prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cs);
-		if (rs > 1) prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs);
-		if (subobj->Justification != PRT_JUST_T_LEFT)
-		    prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[subobj->Justification]);
-		prt_htmlfm_OutputStrLiteral(context, ">");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<td") < 0
+		    || (cs > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", cs) < 0)
+		    || (rs > 1 && prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs) < 0)
+		    || (subobj->Justification != PRT_JUST_T_LEFT
+			&& prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[subobj->Justification]) < 0)
+		    || prt_htmlfm_OutputStrLiteral(context, ">") < 0
+		))  {
+		    mssError(0, "PRT", "Failed to write container opening tag.");
+		    goto err;
+		    }
 		
 		/** Write child content. **/
-		if (prt_htmlfm_Generate_r(context, subobj) < 0) return -1;
+		if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err;
 		
 		/** Close container. **/
-		prt_htmlfm_OutputStrLiteral(context, "</td>");
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write container closing tag.");
+		    goto err;
+		    }
 		
 		cur_col += cs;
 		if (cur_col >= n_cols) cur_col = n_cols-1;
 		}
 	    }
-	prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n");
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n") < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write layout table closing tags.");
+	    goto err;
+	    }
 
 
 	/** Write page footer(s). **/
-	prt_htmlfm_OutputPrintf(context,
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 		    "</td>"
 		    "<td></td>"
 		"</tr>"
@@ -1503,9 +1575,19 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		"</tr>"
 	    "</table>\n",
 	    (int)((page_obj->MarginBottom + 0.001) * PRT_HTMLFM_YPIXEL)
-	);
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write margin table footer.");
+	    goto err;
+	    }
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
-	    prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_PAGEFOOTER);
+	    {
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_PAGEFOOTER) < 0))
+		{
+		mssError(0, "PRT", "Failed to write paginated page footer.");
+		goto err;
+		}
+	    }
 
 	return 0;
 	
@@ -1520,7 +1602,14 @@ prt_htmlfm_GetType(void* ctx, char* objname, char* attrname, void* val_v)
     {
     pPrtHTMLfmSubtype type = (pPrtHTMLfmSubtype)ctx;
 
-	if (!type) return -1;
+	if (UNLIKELY(type == NULL))
+	    {
+	    mssError(1, "PRT",
+		"Missing subtype for \"%s\" attribute \"%s\".",
+		objname, attrname
+	    );
+	    return -1;
+	    }
 
 	POD(val_v)->String = type->MimeType;
 
@@ -1542,10 +1631,11 @@ prt_htmlfm_Initialize()
 	pPrtFormatter fmtdrv = prtAllocFormatter();
 	if (UNLIKELY(fmtdrv == NULL))
 	    {
-	    mssError(0, "RPT", "Failed to allocate formatter struct.");
+	    mssError(0, "PRT", "Failed to allocate formatter struct.");
 	    goto err;
 	    }
 
+	/** Initialize driver fields. **/
 	strcpy(fmtdrv->Name, "html");
 	fmtdrv->Probe = prt_htmlfm_Probe;
 	fmtdrv->GetOutputType = prt_htmlfm_GetOutputType;
@@ -1556,9 +1646,9 @@ prt_htmlfm_Initialize()
 	fmtdrv->Close = prt_htmlfm_Close;
 
 	/** Register with the main prtmgmt system **/
-	if (prtRegisterFormatter(fmtdrv) != 0)
+	if (UNLIKELY(prtRegisterFormatter(fmtdrv) != 0))
 	    {
-	    mssError(0, "RPT", "Failed to register formatter.");
+	    mssError(0, "PRT", "Failed to register formatter.");
 	    goto err;
 	    }
 
@@ -1586,14 +1676,14 @@ prt_htmlfm_Initialize()
 		}
 
 	    /** Register subtype. */
-	    if (sysAddAttrib(si, "type", DATA_T_STRING) != 0)
+	    if (UNLIKELY(sysAddAttrib(si, "type", DATA_T_STRING) != 0))
 		{
-		mssError(0, "RPT", "Failed to add 'type' attribute.");
+		mssError(0, "PRT", "Failed to add 'type' attribute.");
 		goto err_type;
 		}
-	    if (sysRegister(si, &prt_htmlfm_subtypes[i]) != 0)
+	    if (UNLIKELY(sysRegister(si, &prt_htmlfm_subtypes[i]) != 0))
 		{
-		mssError(0, "RPT", "Failed to register subtype.");
+		mssError(0, "PRT", "Failed to register subtype.");
 		goto err_type;
 		}
 
@@ -1601,7 +1691,7 @@ prt_htmlfm_Initialize()
 	    continue;
 
     err_type:
-	    mssError(0, "RPT",
+	    mssError(0, "PRT",
 		"Failed to add subtype #%d/%lu: \"%s\"",
 		i + 1, PRT_HTMLFM_N_SUBTYPES, prt_htmlfm_subtypes[i].MimeType
 	    );
@@ -1611,6 +1701,6 @@ prt_htmlfm_Initialize()
 	return 0;
 
     err:
-	mssError(0, "RPT", "Failed to initialize HTML formatter.");
+	mssError(0, "PRT", "Failed to initialize HTML formatter.");
 	return -1;
     }
