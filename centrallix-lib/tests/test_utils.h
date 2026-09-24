@@ -181,7 +181,7 @@
  *** replaced with the '_' character.
  *** 
  *** @param dest The destination string buffer (must be at least `n+1` bytes).
- *** @param src The source string (must be at least `n+1` bytes), which can
+ *** @param src The source string (must be at least `n` bytes), which can
  *** 	include null-terminator characters ('\0').
  *** @param n The number of characters to copy.
  ***/
