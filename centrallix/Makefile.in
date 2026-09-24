@@ -647,9 +647,9 @@ etc/centrallix.init: etc/centrallix.init.in
 	$(SED) -e "s|##SBINDIR##|$$RUNSBINDIR|g" -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LOCALSTATEDIR##|$$RUNLOCALSTATEDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##CXLIBDIR##|$$RUNCXLIBDIR|g" etc/centrallix.init.in > etc/centrallix.init
 
 clean:
-	@rm -f */*.o
-	@rm -f */*.so
-	@rm -f centrallix test_obj lsclient sfedit test_prt
+	@rm -f */*.o */*/*.o
+	@rm -f */*.so */*/*.so
+	@rm -f centrallix test_obj lsclient sfedit test_prt cxpasswd linksign
 	@rm -f *.o
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
@@ -657,15 +657,16 @@ clean:
 	@rm -f tests/*.to.tmp tests/*.out
 	@rm -f tests/*.o tests/*.bin
 	@rm -rf thirdparty/*-inst
-	@rm -f *.gcov */*.gcov
-	@rm -f *.gcda */*.gcda
-	@rm -f *.gcno */*.gcno
+	@rm -f *.gcov */*.gcov */*/*.gcov
+	@rm -f *.gcda */*.gcda */*/*.gcda
+	@rm -f *.gcno */*.gcno */*/*.gcno
 
 distclean: clean
 	@rm -f config.status config.cache config.log
-	@rm -rf autom4te-*.cache/
+	@rm -rf autom4te-*.cache/ autom4te.cache/
 	@rm -f config.h
 	@rm -f Makefile stamp-h
+	@rm -f etc/centrallix.conf.mk
 	@rm -f .depend
 	@rm -f thirdparty/*/Makefile
 
