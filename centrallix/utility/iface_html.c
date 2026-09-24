@@ -3,7 +3,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -39,6 +39,7 @@
 #include "iface_private.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/strtcpy.h"
 #include "stparse.h"
 #include "obj.h"
 #include "centrallix.h"
@@ -165,7 +166,7 @@ ifcToHtml(pFile file, pObjSession s, char* def_str)
     XString js_obj;
 
 	/** make sure we get an absolute path **/
-	if (def_str[0] == '/') strncpy(path, def_str, 512);
+	if (def_str[0] == '/') strtcpy(path, def_str, 512);
 	else snprintf(path, 512, "%s/%s", IFC.IfaceDir, def_str);
 	    
 	/** see if we can look up the definition **/

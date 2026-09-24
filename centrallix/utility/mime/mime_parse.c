@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -422,7 +422,7 @@ int
 libmime_ParseHeaderElement(char *buf, char* hdr, int hdrsize, long* attrSeekStart, long* nameOffset)
     {
     int count=0, state=0;
-    char *ptr;
+    // char* ptr;
     char ch;
     while (count < strlen(buf))
 	{
@@ -511,7 +511,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     pMimeHeader l_msg;
     int flag=1, alloc, toktype, p_count=0, count=0, s=0, num=0;
     int l_pos=0;
-    char bound[80], bound_end[82], ext[5], buf[80];
+    char bound[sizeof(msg->Boundary) + 2];	/* "--" + boundary */
+    char bound_end[sizeof(msg->Boundary) + 4];	/* "--" + boundary + "--" */
+    char ext[5], buf[80];
     char* sub_type = NULL;
     int main_type;
 
@@ -735,4 +737,3 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 
     return size;
     }
-

@@ -22,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -394,7 +394,7 @@ int
 prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
     {
     char* fonts[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
-    int htmlfontsize, fontid;
+    int htmlfontsize = 0, fontid;
     char stylebuf[128];
     int boldchanged, italicchanged, underlinechanged, fontchanged;
     int i;
@@ -959,5 +959,3 @@ prt_htmlfm_Initialize()
 
     return 0;
     }
-
-

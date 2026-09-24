@@ -96,6 +96,9 @@
 /* enable mTask debugging */
 #undef MTASK_DEBUG
 
+/* defined to 1 if using pthreads for MTASK */
+#undef MTASK_USEPTHREADS
+
 /* enable newmalloc subsystem debugging */
 #undef NMMALLOC_DEBUG
 
