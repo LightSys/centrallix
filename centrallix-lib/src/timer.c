@@ -21,7 +21,6 @@
 
 #include "expect.h"
 #include "newmalloc.h"
-#include "warn.h"
 
 #include "timer.h"
 
