@@ -207,7 +207,9 @@ caBuildVector(const char* str)
 	    char_pairs[i].c2 = chars[i + 1];
 	    
 	    /** Hash the character pair into an index (dimension).  **/
-	    /** Note that the passed value should always be between 97 ('a') and 132 ('9'). **/
+	    /*** Note: The passed value should always be between
+	     *** 96 (boundary) and 132 ('9').
+	     ***/
 	    char_pairs[i].hash = ca_i_hashCharPair(chars[i], chars[i + 1]);
 	    }
 	
@@ -1209,7 +1211,12 @@ caSlidingSearch(
 		    pair->i = i;
 		    pair->j = j;
 		    pair->similarity = sim;
-		    warnNeg(xaAddItem(pairs, (void*)pair));
+		    if (UNLIKELY(xaAddItem(pairs, (void*)pair) < 0))
+			{
+			mssError(1, "CA", "xaAddItem() failed.");
+			nmFree(pair, pair_size);
+			goto err_free;
+			}
 		    }
 		}
 	    }

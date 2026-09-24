@@ -1,6 +1,6 @@
 /************************************************************************/
 /* Text-DoubleMetaphone							*/
-/* Centrallix Base Library						*/
+/* Centrallix Core							*/
 /* 									*/
 /* Copyright 2000, Maurice Aubrey <maurice@hevanet.com>.		*/
 /* All rights reserved.							*/
@@ -447,8 +447,8 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 				if (xsConcatenateLiteral(&secondary, "X") < 0) goto end_free;
 				}
 			    }
-			    current += 2;
-			    break;
+			current += 2;
+			break;
 			}
 		    
 		    /** e.g., 'czerny' **/
@@ -763,7 +763,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 			    }
 			current += 2;
 			break;
-		    }
+			}
 		    
 		    current += (next_char == 'G') ? 2 : 1;
 		    if (xsConcatenateLiteral(&primary, "K") < 0) goto end_free;
@@ -958,7 +958,7 @@ metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code)
 		    if (xsConcatenateLiteral(&secondary, "R") < 0) goto end_free;
 		    current += (next_char == 'R') ? 2 : 1;
 		    break;
-		}
+		    }
 		
 		case 'S':
 		    {

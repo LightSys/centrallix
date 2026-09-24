@@ -111,7 +111,7 @@ NewMalloc subsystem statistics:
 ```c
 void nmRegister(int size, char* name);
 ```
-Registers an intelligent name for block of the specified size.  This allows the memory manager to give more information when reporting block allocation counts.  A given size can have more than one name.  This function is optional and not required for any production use cases, but using it can make tracking down memory leaks easier.
+Registers an intelligent name for a block of the specified size.  This allows the memory manager to give more information when reporting block allocation counts.  A given size can have more than one name.  This function is optional and not required for any production use cases, but using it can make tracking down memory leaks easier.
 
 This function is usually called in a module's `Initialize()` function on each of the structures the module uses internally.
 

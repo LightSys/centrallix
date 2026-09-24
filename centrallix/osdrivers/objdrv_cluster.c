@@ -485,7 +485,7 @@ typedef struct _CD
  *** @param Pairs An array holding the pairs found by the search, or NULL if
  *** 	the search has not been computed yet.  The indexes stored in these
  *** 	pairs are indexes into the SourceData data arrays (access with
- *** 	`Source->SourceData->[DATA_ARRAY]`).
+ *** 	`SourceCluster->SourceData->[DATA_ARRAY]`).
  *** @param nPairs The number of pairs found, or 0 if the search has not been
  *** 	computed yet.
  *** 
@@ -2090,7 +2090,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 		if (UNLIKELY(provided_param == NULL))
 		    {
 		    mssError(1, "Cluster",
-			"Failed to get param #%u/%u.",
+			"Failed to get param #%u/%d.",
 			j + 1, num_provided_params
 		    );
 		    goto err_free;
@@ -2142,7 +2142,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    if (UNLIKELY(provided_param == NULL))
 		{
 		mssError(1, "Cluster",
-		    "Failed to get provided param #%u/%u.",
+		    "Failed to get provided param #%u/%d.",
 		    i + 1, num_provided_params
 		);
 		goto err_free;
@@ -2151,7 +2151,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    if (UNLIKELY(provided_name == NULL))
 		{
 		mssError(1, "Cluster",
-		    "Failed to get provided param name from param #%u/%u.",
+		    "Failed to get provided param name from param #%u/%d.",
 		    i + 1, num_provided_params
 		);
 		goto err_free;
@@ -2537,9 +2537,8 @@ cluster_i_freeNodeData(pNodeData node_data)
 	***/
 	if (node_data->SourceData != NULL)
 	    {
-	    /*** This data is cached, so we should NOT free it! The caching system
-	     *** is responsible for the memory. We only need to free the array
-	     *** holding our pointers to said cached memory.
+	    /*** This data is cached, so we should NOT free it! The cache owns
+	     *** this memory so we only need to drop our pointer.
 	     ***/
 	    node_data->SourceData = NULL;
 	    }
@@ -4821,7 +4820,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
     err:;
 	char* name;
 	clusterGetAttrValue(inf_v, "name", DATA_T_STRING, POD(&name), NULL);
-	mssError(1, "Cluster",
+	mssError(0, "Cluster",
 	    "Failed to get attribute for cluster object %s (target type: %u, \"%s\").",
 	    driver_data->NodeData->SourceData->Name, target_type, name
 	);
@@ -5692,7 +5691,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		snprintBytes(buf, sizeof(buf), source_bytes + cluster_bytes + search_bytes);
 		printf("%-8s %-4u %-12s\n\n", "Total", total_caches, buf);
 		
-		/** Print skip stats (if anything was skipped.) **/
+		/** Print skip stats (if anything was skipped). **/
 		if (num_uncomputed_skipped > 0)
 		    printf("Skipped %llu uncomputed caches.\n\n", num_uncomputed_skipped);
 		
@@ -5747,7 +5746,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 	    return 0;
 	    }
 	
-	/** Unknown parameter. **/
+	/** Unknown method. **/
 	mssError(1, "Cluster", "Unknown command: \"%s\"", method_name);
 	
 	/** Attempt to give hint. **/
@@ -5886,7 +5885,7 @@ clusterInitialize(void)
 	    goto err_free;
 	    }
 	
-	/** Setup the structure. **/
+	/** Set up the structure. **/
 	if (strtcpy(drv->Name, "cluster - Clustering Driver", sizeof(drv->Name)) < 0)
 	    {
 	    mssError(1, "Cluster", "Failed to write driver name.");
@@ -5905,7 +5904,7 @@ clusterInitialize(void)
 	
 	drv->Capabilities = 0; /* TODO: Greg - Should I indicate any capabilities? */
 	
-	/** Setup the function references. **/
+	/** Set up the function references. **/
 	drv->Open = clusterOpen;
 	drv->OpenChild = NULL;
 	drv->Close = clusterClose;
@@ -5965,7 +5964,7 @@ clusterInitialize(void)
 	    nmFree(drv, sizeof(ObjDriver));
 	    }
 	
-	mssError(1, "Cluster", "Failed to initialize cluster driver.");
+	mssError(0, "Cluster", "Failed to initialize cluster driver.");
 	
 	return -1;
     }

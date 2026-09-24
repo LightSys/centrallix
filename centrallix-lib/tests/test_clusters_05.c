@@ -142,7 +142,7 @@ static bool doTest(void)
 	if (index >= max_index)
 	    {
 	    printf("  > MEMORY ERROR!!\n");
-	    printf("  > Allocated %u vectors, overflowing the free list of size %u.\n", index + 1, max_index);
+	    printf("  > Allocated %u vectors, overflowing the free list of size %u.\n", index, max_index);
 	    printf("  > Increase the size of the free list (aka. max_index) to %u or more.\n", index + 1);
 	    return false;
 	    }

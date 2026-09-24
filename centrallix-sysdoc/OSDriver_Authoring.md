@@ -462,7 +462,7 @@ The `Delete()` function is used to delete an object, which often means removing 
 
 | Param | Type         | Description                                                               |
 |-------|--------------|---------------------------------------------------------------------------|
-| obj   | pObject      | The Object structure pointer, used in the same way as in Open and Delete. |
+| obj   | pObject      | The Object structure pointer, used in the same way as in Open and Create. |
 | oxt   | pObjTrxTree* | The transaction tree pointer for the `OBJDRV_C_TRANS` capability.         |
 
 `Delete()` should return 0 on success and -1 on failure.
@@ -1226,7 +1226,7 @@ The functions use the following parameters:
 - `v : void*` is the object provided in `expAddParamToList()` (or a similar function).
 - `attr_name : char*` is the string name for the requested attribute.
 - `datatype : int` is the data type for the requested attribute.
-- `val : pObjData` is either a buffer in which to store the requested data (`cluster_i_getParamValue()`) or a buffer containing data that will be copied to the parameter `cluster_i_setParamValue()`.
+- `val : pObjData` is either a buffer in which to store the requested data (`cluster_i_getParamValue()`) or a buffer containing data that will be copied to the parameter (`cluster_i_setParamValue()`).
 
 The functions return the following values:
 - The `cluster_i_getParamType()` function returns the datatype on success (e.g. `DATA_T_INTEGER`), or -1 if an error occurs.
@@ -1246,12 +1246,12 @@ top-level tree node.  The following properties are useful:
 
 | Property           | Description
 | ------------------ | ------------
-| tree->DataType     | The type of the final value, see 'Managing Object Attributes' above for types.
+| tree->DataType     | The type of the final value, see [Object Attributes](#object-attributes) above for types.
 | tree->Flags        | Contains the bit EXPR_F_NULL if the expression evaluated to NULL.
 | tree->Integer      | If DATA_T_INTEGER, this is the integer value.
 | tree->String       | If DATA_T_STRING, this is the string value.
 | tree->Types.Double | If DATA_T_DOUBLE, this is the double value.
-| tree->Types.Date   | If DATA_T_DATETIME, this is the date/time value
+| tree->Types.Date   | If DATA_T_DATETIME, this is the date/time value.
 | tree->Types.Money  | If DATA_T_MONEY, this is the money value.
 
 There are several other EXP functions used to deal with aggregates and a few other obscure features as well.  Aggregates are mostly handled internally by Centrallix so further explanation should not be necessary here.

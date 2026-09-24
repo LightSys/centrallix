@@ -160,5 +160,5 @@ When a new record is entered, a quick scan is run to check if it might be a dupl
 
 ### Fix Known Issues
 - The cluster driver often fails to open the structure file if it was modified since the last time the path was opened.  Opening a different path (including the root path, even though it does not support queries) fixes this issue.  This is either a bug in the st_node caching or in the cluster driver's usage of stparse.
-- The cluster does not invalidate caches if the underlying data source changes.  This bug exists because I wasn't sure how to do this, but I'm pretty sure it's possible.  Workaround: Developers should use `exec <filename.cluster> "cache" "drop_all"` to manually invalidate caches when data is changed, or use a fresh object system instance.
+- The cluster driver does not invalidate caches if the underlying data source changes.  This bug exists because I wasn't sure how to do this, but I'm pretty sure it's possible.  Workaround: Developers should use `exec <filename.cluster> "cache" "drop_all"` to manually invalidate caches when data is changed, or use a fresh object system instance.
 - It is not possible to open cluster or search entries, they can only be retrieved by querying.

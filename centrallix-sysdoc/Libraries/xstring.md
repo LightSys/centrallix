@@ -172,7 +172,7 @@ This function copies the string `text` into the XString, overwriting any previou
 ```c
 char* xsStringEnd(pXString this);
 ```
-This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some strings may contain nulls, using `strlen()` may produce an incorrect result.  It is equivalent to `this->String + xsLength()`, but it is shorter to type and keeps the internal workings of the xstring abstracted away from the caller.
+This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some strings may contain nulls, using `strlen()` may produce an incorrect result.  It is equivalent to `this->String + xsLength(this)`, but it is shorter to type and keeps the internal workings of the xstring abstracted away from the caller.
 
 
 ## xsConcatPrintf()
@@ -208,21 +208,21 @@ This function writes data into the xstring, similar to using the standard fdWrit
 ```c
 int xsRTrim(pXString this);
 ```
-This function trims whitespace characters (spaces, tabs, newlines, and line feeds) from the right side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
+This function trims whitespace characters (spaces, tabs, newlines, and carriage returns) from the right side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsLTrim()
 ```c
 int xsLTrim(pXString this);
 ```
-This function trims whitespace characters (spaces, tabs, newlines, and line feeds) from the left side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
+This function trims whitespace characters (spaces, tabs, newlines, and carriage returns) from the left side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsTrim()
 ```c
 int xsTrim(pXString this);
 ```
-This function trims whitespace characters (spaces, tabs, newlines, and line feeds) from both sides of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
+This function trims whitespace characters (spaces, tabs, newlines, and carriage returns) from both sides of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsFind()

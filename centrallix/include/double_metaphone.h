@@ -3,7 +3,7 @@
 
 /************************************************************************/
 /* Text-DoubleMetaphone							*/
-/* Centrallix Base Library						*/
+/* Centrallix Core							*/
 /* 									*/
 /* Copyright 2000, Maurice Aubrey <maurice@hevanet.com>.		*/
 /* All rights reserved.							*/
