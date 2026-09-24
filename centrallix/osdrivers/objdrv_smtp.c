@@ -1,32 +1,3 @@
-/**
-#include <unistd.h>
-#include <fcntl.h>
-#include "cxlib/mtask.h"
-#include "cxlib/xhash.h"
-#include "stparse.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/util.h" **/
-/** module definintions **/
-/**#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-**/
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <dirent.h>
-#include "obj.h"
-#include "st_node.h"
-#include "cxlib/xarray.h"
-#include "centrallix.h"
-#include <sys/types.h>
-
-#include <errno.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -62,6 +33,23 @@
 /*		  functionality.*/
 /*									*/
 /************************************************************************/
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <dirent.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+
+#include "centrallix.h"
+#include "cxlib/xarray.h"
+#include "obj.h"
+#include "st_node.h"
+
 
 /** Debugging mode **/
 #define	SMTP_DEBUG	1
