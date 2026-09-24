@@ -24,7 +24,7 @@
 #include "xstring.h"
 #include "xhash.h"
 #include "strtcpy.h"
-#include "check.h"
+#include "warn.h"
 #include "cxsec.h"
 
 /************************************************************************/
@@ -473,51 +473,78 @@ mssEndSession(pMtSession s)
  ***	of the error.
  *** @param file The name of the file where the error was detected.
  *** @param line The line number where the error was detected.
- *** @param format The format text for the error, which accepts any format
+ *** @param message The format text for the error, which accepts any format
  ***	specifier that would be accepted by printf().
  *** @param ... Variables matching format specifiers in the format.
  ***/
 void
 mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
     {
-    char err_msg_buf[MSS_ERROR_BUF_STACK_SIZE];
-    size_t err_msg_size = 0;
     char* err_msg = NULL;
-    size_t i = 0;
-
-	/** Heap allocate a larger error message buffer, if possible. **/
-	err_msg_size = MSS_ERROR_BUF_SIZE;
-	err_msg = checkPtr(nmSysMalloc(MSS_ERROR_BUF_SIZE));
-	if (err_msg == NULL)
-	    {
-	    /** Heap alloc failed, fall back to stack buffer. **/
-	    err_msg = &err_msg_buf[0];
-	    err_msg_size = MSS_ERROR_BUF_STACK_SIZE;
-	    }
-	const bool is_heap_error_msg = (err_msg != &err_msg_buf[0]);
-	err_msg[0] = '\0';
+    char fallback_msg[256];
+    XString err_msg_xstring; err_msg_xstring.String = NULL;
 
 	/** Prevent issues from interlacing this function with prints to stdout. **/
-	check(fflush(stdout)); /* Failure ignored. */
+	warnFail(fflush(stdout));
 
-	/** Add line number to error message. **/
-	strtcatf(err_msg, err_msg_size, &i, "%s:%d: ", file, line);
+	/** Attempt to format the error into an XString. **/
+	if (warnFail(xsInit(&err_msg_xstring)) == 0)
+	    {
+	    bool format_ok = true;
 
-	/** Write the module to the start of the error message. */
-	strtcatf(err_msg, err_msg_size, &i, "%s: ", module);
+	    /*** Write the source location and the module in front of the message.
+	     *** xsConcatPrintf() only implements a subset of printf(), but %s and %d
+	     *** are both implemented.
+	     ***/
+	    format_ok &= (warnNeg(xsConcatPrintf(&err_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
 
-	/** Process the message format with all the same rules as printf(). **/
-	va_list args;
-	va_start(args, message);
-	strtcatf_va(err_msg, err_msg_size, &i, message, args);
-	va_end(args);
+	    /*** Append the caller's message.  We use xsGenPrintf_va() because
+	     *** it uses vsnprintf() so it supports all printf() functionality.
+	     *** xsWrite() is given no XS_U_SEEK here so it appends.
+	     ***/
+	    va_list args;
+	    va_start(args, message);
+	    format_ok &= (warnNeg(xsGenPrintf_va(xsWrite, &err_msg_xstring, NULL, NULL, message, args)) >= 0);
+	    va_end(args);
 
-	/** Get current session. **/
+	    /** Get the error message from the xstring. **/
+	    if (LIKELY(format_ok))
+		err_msg = warnNull(xsString(&err_msg_xstring));
+	    }
+
+	/*** Fallback: If formatting fails, format into a fixed-size buffer on
+	 *** the stack instead.  A truncated message is better than a generic
+	 *** fail or a silent error that logs nothing.
+	 ***/
+	if (UNLIKELY(err_msg == NULL))
+	    {
+	    fprintf(stderr, "%s:%d: %s: Failed to format the error message with an XString.\n", file, line, module);
+
+	    /** Write the source location and the module in front of the message. **/
+	    int prefix_len = snprintf(fallback_msg, sizeof(fallback_msg), "%s:%d: %s: ", file, line, module);
+	    if (prefix_len < 0 || (size_t)prefix_len >= sizeof(fallback_msg)) prefix_len = 0;
+
+	    /** Append the caller's message. **/
+	    va_list args;
+	    va_start(args, message);
+	    if (warnNeg(vsnprintf(fallback_msg + prefix_len, sizeof(fallback_msg) - prefix_len, message, args)) >= 0)
+		err_msg = fallback_msg;
+	    va_end(args);
+	    }
+
+	/** Fallback: If all formatting fails, just use the unformatted message. **/
+	if (UNLIKELY(err_msg == NULL))
+	    {
+	    fprintf(stderr, "Failed to format the error message at all.\n");
+	    err_msg = message;
+	    }
+
+	/** Get current session (returns NULL if running outside session context). **/
 	pMtSession s = thGetParam(NULL, "mss");
 	const bool log_error = (s == NULL || MSS.LogAllErrors);
 
 	/** Use standard logging without a session context, if needed. **/
-	if (log_error) 
+	if (log_error)
 	    {
 	    /** Use the requested logging method. **/
 	    if (strcmp(MSS.LogMethod, "syslog") == 0)
@@ -530,6 +557,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    else if (strcmp(MSS.LogMethod, "stdout") == 0)
 		{
 		printf("%s: %s\n", (MSS.AppName[0]) ? MSS.AppName : "error", err_msg);
+		warnFail(fflush(stdout));
 		}
 	    }
 
@@ -537,18 +565,18 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	if (s != NULL)
 	    {
 	    /** Clear the error context, if requested. **/
-	    if (clr) check(mssClearError()); /* Failure ignored. */
+	    if (clr) mssClearError();
 
 	    /** Allocate space and construct the error text. **/
-	    char* allocated_err_msg = checkPtr(nmSysStrdup(err_msg));
-	    if (allocated_err_msg == NULL)
+	    char* allocated_err_msg = warnNull(nmSysStrdup(err_msg));
+	    if (UNLIKELY(allocated_err_msg == NULL))
 		{
 		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
 		goto end; /* Give up. */
 		}
 
 	    /** Store the error. **/
-	    if (checkPos(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
+	    if (warnNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
 		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
 		nmSysFree(allocated_err_msg);
@@ -558,8 +586,11 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 
     end:
 	/** Clean up. **/
-	if (err_msg != NULL && is_heap_error_msg)
-	    nmSysFree(err_msg);
+	if (LIKELY(err_msg_xstring.String != NULL))
+	    warnFail(xsDeInit(&err_msg_xstring));
+
+	/** Force all warnings/errors to be printed. **/
+	warnFail(fflush(stderr));
 
 	return;
     }
@@ -568,42 +599,52 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 /*** mssClearError - removes all error messages from the current error
  *** stack.
  ***/
-int
+void
 mssClearError()
     {
 	/** Get session pointer. **/
 	pMtSession s = thGetParam(NULL, "mss");
-	if (s == NULL) return -1;
+	if (s == NULL) return; /* No errors to clear. */
 
 	/** Free all error strings in the error list/error stack. **/
-	return xaClear(&s->ErrList, (void*)nmSysFree, NULL);
+	warnFail(xaClear(&s->ErrList, (void*)nmSysFree, NULL));
     }
 
 
 /*** mssPrintError - prints the current error stack out to the given file
- *** descriptor.
+ *** descriptor.  Error handling in this function is a bit strange because
+ *** it's on the error handling path, so we can't call mssError().
  ***/
-int 
+int
 mssPrintError(pFile fd)
     {
-    int i;
-    pMtSession s;
-    char sbuf[200];
+    XString str; str.String = NULL;
+    int rval = -1, tmp;
 
-	/** Get session. **/
-	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (UNLIKELY(fd == NULL)) goto end;
+	if (warnFail(xsInit(&str))) goto end;
 
-	/** Print the error stack. **/
-	snprintf(sbuf,200,"ERROR - Session By Username [%s]\r\n",s->UserName);
-	fdWrite(fd,sbuf,strlen(sbuf),0,0);
-	for(i=s->ErrList.nItems-1;i>=0;i--)
+	/** Format the stack once, so both error printers agree on the layout. **/
+	tmp = warnFail(mssStringError(&str));
+	if (UNLIKELY(tmp != 0))
 	    {
-	    snprintf(sbuf,200,"--- %s\r\n",(char*)(s->ErrList.Items[i]));
-	    fdWrite(fd,sbuf,strlen(sbuf),0,0);
+	    rval = tmp;
+	    goto end;
 	    }
+	if (warnNeg(fdWrite(fd, xsString(&str), xsLength(&str), 0, 0)) < 0) goto end;
 
-    return 0;
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(rval != 0)) /* Make sure we print something if a failure happened. */
+	    fprintf(stderr, "Warning: Failed to print session errors.\n");
+
+	/** Clean up. **/
+	if (LIKELY(str.String != NULL))
+	    warnFail(xsDeInit(&str));
+
+	return rval;
     }
 
 

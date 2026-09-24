@@ -16,11 +16,12 @@
 /************************************************************************/
 
 #include <math.h>
+#include <stdio.h>
 #include <time.h>
 
-#include "check.h"
 #include "expect.h"
 #include "newmalloc.h"
+#include "warn.h"
 
 #include "timer.h"
 
@@ -33,8 +34,11 @@ timer_i_getTime(void)
     {
     struct timespec ts;
     
-	if (check(clock_gettime(CLOCK_MONOTONIC, &ts)) != 0)
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+	    {
+	    fprintf(stderr, "Failed to get clock time.\n");
 	    return NAN;
+	    }
     
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9;
     }
@@ -63,7 +67,7 @@ timerInit(pTimer timer)
 pTimer
 timerNew(void)
     {
-    return timerInit(checkPtr(nmMalloc(sizeof(Timer))));
+    return timerInit(nmMalloc(sizeof(Timer)));
     }
 
 /*** Start timing.  If the timer was already timing, does nothing.
@@ -92,7 +96,7 @@ timerStop(pTimer timer)
 	if (UNLIKELY(timer == NULL)) return NULL;
 	if (isnan(timer->start)) return timer;
 
-	/** Keep the timer running rather than poisoning the total with NAN. **/
+	/** Keep the timer running if the clock can't be read. **/
 	const double stop_time = timer_i_getTime();
 	if (isnan(stop_time)) return timer;
 
@@ -129,7 +133,7 @@ timerReset(pTimer timer)
     return timerInit(timer);
     }
 
-/*** De-initialize a timer allocated by timerInit().
+/*** De-initialize a timer initialized by timerInit().
  *** 
  *** @param timer The timer to de-initialize.
  ***/
