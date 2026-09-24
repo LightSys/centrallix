@@ -92,7 +92,9 @@
     ({ \
     char* _str1 = (str1); \
     char* _str2 = (str2); \
-    const bool success = (_str1 == _str2) || (_str1 != NULL && _str2 != NULL && strcmp(_str1, _str2) == 0); \
+    const bool both_null = (_str1 == NULL && _str2 == NULL); \
+    const bool both_eql = (_str1 != NULL && _str2 != NULL && strcmp(_str1, _str2) == 0); \
+    const bool success = (both_null || both_eql); \
     if (UNLIKELY(!success)) fprintf(stderr, \
 	"  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n", \
 	#str1, _str1, #str2, _str2, __FILE__, __LINE__ \
@@ -113,7 +115,9 @@
     const char* _str1 = (str1); \
     const char* _str2 = (str2); \
     const size_t _len = (size_t)(len); \
-    const bool success = (_str1 == _str2) || (_str1 != NULL && _str2 != NULL && memcmp(_str1, _str2, _len) == 0); \
+    const bool both_null = (_str1 == NULL && _str2 == NULL); \
+    const bool both_eql = (_str1 != NULL && _str2 != NULL && memcmp(_str1, _str2, _len) == 0); \
+    const bool success = (both_null || both_eql); \
     if (UNLIKELY(!success))\
 	{ \
 	const size_t buf_len = max(7, _len + 1); \
