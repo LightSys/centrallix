@@ -40,7 +40,7 @@ static const char* prefixes[] =
     };
 
 /*** Positions at or past the end of dst, as a caller with corrupt state
- *** would supply.  SIZE_MAX also catches a start+1 overflow in the guard.
+ *** would supply, up to SIZE_MAX.
  ***/
 static size_t bad_positions[] =
     {
@@ -72,9 +72,8 @@ test(char** tname)
 	 *** conversion fails, the append must be abandoned and the string
 	 *** already in dst left intact, even though vsnprintf() may have
 	 *** written part of its output first; that reports -1, as does a NULL
-	 *** dst, pos or fmt.  A *pos at or past the end of dst, including one
-	 *** large enough to overflow the guard's own arithmetic, is a full
-	 *** buffer rather than an error and so reports 0.  All of them leave
+	 *** dst, pos or fmt.  A *pos at or past the end of dst, up to SIZE_MAX,
+	 *** is a full buffer rather than an error and so reports 0.  All of them leave
 	 *** *pos alone and write nothing outside the caller's dstlen.  The
 	 *** -1 cannot be mistaken for a truncated append, which appends its
 	 *** null terminator over at least one character and so returns -2 or
