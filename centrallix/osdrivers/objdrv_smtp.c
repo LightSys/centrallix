@@ -899,12 +899,20 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
  *** Returns 0 on success and -1 on failure.
  ***/
 int
-smtp_internal_OpenRoot(pSmtpData inf)
+smtp_internal_OpenRoot(pSmtpData inf, char* usrtype)
     {
+	/** Perform a general open. **/
+	if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
+	    goto error;
 
+	/** Set the node type. **/
 	inf->Type = SMTP_T_ROOT;
 
-    return 0;
+	return 0;
+
+    error:
+	mssError(0, "SMTP", "Failed to open root node.");
+	return -1;
     }
 
 
@@ -912,13 +920,18 @@ smtp_internal_OpenRoot(pSmtpData inf)
  *** Returns 0 on success and -1 on failure.
  ***/
 int
-smtp_internal_OpenEml(pSmtpData inf)
+smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     {
     pSmtpAttribute spoolDir = NULL;
     pFile emailStructureFile = NULL;
     pStructInf emailStructure = NULL;
     pFile fd = NULL;
 
+	/** Perform a general open. **/
+	if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
+	    goto error;
+
+	/** Set the node type. **/
 	inf->Type = SMTP_T_EML;
 
 	/** Calculate the real path of the email file. **/
@@ -1062,15 +1075,8 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    /** Opening the SMTP node object itself **/
 	    inf->Obj->SubCnt = 1;
 
-	    if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
-		{
+	    if (smtp_internal_OpenRoot(inf, usrtype) < 0)
 		goto error;
-		}
-
-	    if (smtp_internal_OpenRoot(inf) < 0)
-		{
-		goto error;
-		}
 	    }
 	else if (smtp_internal_IsEmail(internalPath) ||
 		(inf->Obj->Mode & OBJ_O_AUTONAME &&
@@ -1079,15 +1085,8 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    /** Opening an email message to be managed by the SMTP object **/
 	    inf->Obj->SubCnt = 2;
 
-	    if (smtp_internal_OpenGeneral(inf, usrtype) < 0)
-		{
+	    if (smtp_internal_OpenEml(inf, usrtype) < 0)
 		goto error;
-		}
-
-	    if (smtp_internal_OpenEml(inf) < 0)
-		{
-		goto error;
-		}
 	    }
 	else
 	    {
@@ -1406,10 +1405,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    memset(inf, 0, sizeof(SmtpData));
 	    inf->Obj = obj;
 
-	    if (smtp_internal_OpenGeneral(inf, "system/smtp-message") < 0)
-		goto error;
-
-	    if (smtp_internal_OpenEml(inf) < 0)
+	    if (smtp_internal_OpenEml(inf, "system/smtp-message") < 0)
 		goto error;
 	    }
 	else if (qy->Data->Type == SMTP_T_EML)
