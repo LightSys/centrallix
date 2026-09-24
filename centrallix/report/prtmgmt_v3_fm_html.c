@@ -224,6 +224,9 @@ struct _PSF
     }
     PRT_HTMLFM;
 
+/** Max characters of report content quoted in an error message. **/
+#define PRT_HTMLFM_ERR_MAXLEN (64)
+
 /** Specify 10MB image buffer. **/
 #define MAX_IMAGE_SIZE ((size_t)(10 * 1024 * 1024))
 
@@ -260,8 +263,8 @@ prt_htmlfm_Output(pPrtHTMLfmInf context, char* str, int len)
 	if (UNLIKELY(rval < 0))
 	    {
 	    mssError(0, "PRT",
-		"WriteFn() failed to output: \"%s\" (%d characters).",
-		str, len
+		"WriteFn() failed to output: \"%.*s\" (%d characters).",
+		min(len, PRT_HTMLFM_ERR_MAXLEN), str, len
 	    );
 	    }
 
@@ -348,8 +351,8 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 
     error:
 	mssError(0, "PRT",
-	    "Failed to write encoded output: \"%s\" (%d characters).",
-	    str, len
+	    "Failed to write encoded output: \"%.*s\" (%d characters).",
+	    min(len, PRT_HTMLFM_ERR_MAXLEN), str, len
 	);
 	return -1;
     }
@@ -579,9 +582,9 @@ prt_htmlfm_Close(void* context_v)
 		    }
 		if (UNLIKELY(prt_htmlfm_Output(context, attachment_string, -1) < 0))
 		    {
-		    mssError(1, "PRT",
-			"Failed to write attachment string: \"%s\".",
-			attachment_string
+		    mssError(0, "PRT",
+			"Failed to write attachment #%d/%d: \"%.*s\".",
+			i + 1, n_attachments, PRT_HTMLFM_ERR_MAXLEN, attachment_string
 		    );
 		    goto end;
 		    }
@@ -1042,7 +1045,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
     error_string:
-		mssError(0, "PRT", "Failed to write string: \"%s\".", (char*)obj->Content);
+		mssError(0, "PRT", "Failed to write string: \"%.*s\".", PRT_HTMLFM_ERR_MAXLEN, (char*)obj->Content);
 		return -1;
 		}
 
