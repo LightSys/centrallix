@@ -53,7 +53,7 @@ The following sections discuss the approaches to calculating similarity between 
     - [K-means Clustering](#k-means-clustering)
     - [K-means++ Clustering](#k-means-clustering-1)
     - [K-medoids Clustering](#k-medoids-clustering)
-    - [DBScan Clustering](#db-scan)
+    - [DBScan Clustering](#db-scan-clustering)
     - [Sliding Clusters](#sliding-clusters)
   - [Future Implementation](#future-implementation)
     - [K-means Fuzzy Clustering](#k-means-fuzzy-clustering)
@@ -130,7 +130,7 @@ This method is largely identical to k-means, except that [k-means++](https://en.
 **Not yet implemented**
 This method is also very similar to k-means, except that [k-medoids](https://en.wikipedia.org/wiki/K-medoids) places an additional requirement that all centroids be points in the data.  This would theoretically allow for other similarity measures (such as Levenshtein edit distance) to be used for clustering instead of only cosine compare.
 
-### DB-Scan <!-- ANCHOR[id=clustering_dbscan] -->
+### DB-Scan Clustering <!-- ANCHOR[id=clustering_dbscan] -->
 **Proposed, not yet implemented or documented**
 
 ### Sliding Clusters <!-- ANCHOR[id=clustering_sliding] -->

@@ -202,7 +202,7 @@ This function works the same as [`xaClear()`](#xaclear), except that it is sligh
 ```c
 int xaCount(pXArray this);
 ```
-This function returns the number of items in the XArray, or -1 on error.  It is equivalent to accessing `XArray->nItems` (although the latter expression will not return an error).
+This function returns the number of items in the XArray, or -1 on error.  It is equivalent to accessing `XArray->nItems`.
 
 
 ## xaInsertBefore()

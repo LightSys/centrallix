@@ -58,7 +58,7 @@
  *** cause an int underflow with the current encoding scheme.
  *** 
  *** Unfortunately, we can't use a number this large yet because
- *** kmeans algorithm creates densely allocated centroids with
+ *** the kmeans algorithm creates densely allocated centroids with
  *** `CA_NUM_DIMS` dimensions, so a large number causes it to fail.
  *** Thus, we use 251 as the largest prime number less than 256,
  *** giving us a decent balance between collision reduction and

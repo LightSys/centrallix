@@ -54,7 +54,7 @@
 
 
 /*** Gets the hash for a pair of ASCII characters, represented by unsigned ints.
- *** Thank you professor John Delano for this hashing algorithm.
+ *** Thank you Professor John Delano for this hashing algorithm.
  *** 
  *** @param c1 The first character in the pair.
  *** @param c2 The second character in the pair.
@@ -1138,7 +1138,7 @@ caMostSimilar(
 
 
 /*** Runs a sliding search over the provided data, comparing each element to
- *** the next `window_size` elements.  If any comparison yields a similarity
+ *** the next `window_size - 1` elements.  If any comparison yields a similarity
  *** greater than the threshold, it is stored in the returned xArray.
  *** 
  *** @param data The data to be searched.

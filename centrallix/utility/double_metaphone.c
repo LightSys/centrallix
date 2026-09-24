@@ -80,7 +80,7 @@
  *** This file was copied from a GitHub Repo with licensing (see above).
  *** 
  *** As for this code, I've modified it to use styling, memory management, and
- *** libraries used to be consistent with Centrallix.  I also wrote comments and
+ *** libraries to be consistent with Centrallix.  I also wrote comments and
  *** tests based on my own understanding, so they might not accurately reflect
  *** the original author's intent.
  *** 

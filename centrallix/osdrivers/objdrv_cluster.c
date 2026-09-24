@@ -332,7 +332,7 @@ char* METHOD_NAMES[] =
  *** 
  *** Memory Stats:
  ***   - Padding: 0 bytes
- ***   - Total size: 80 bytes
+ ***   - Total size: 88 bytes
  *** 
  *** @skip --> Attribute Data.
  *** @param Name The source name, specified in the .cluster file.
@@ -1367,7 +1367,7 @@ cluster_i_parseClusterData(pStructInf inf, pParamObjects param_list, pSourceData
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
 	    if (UNLIKELY(name == NULL))
-		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->name. */
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->Name. */
 	    
 	    /** Handle various struct types. **/
 	    const int struct_type = stStructType(sub_inf);
@@ -1722,7 +1722,7 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
 	    if (UNLIKELY(name == NULL))
-		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->name. */
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->Name. */
 	    
 	    /** Handle various struct types. **/
 	    const int struct_type = stStructType(sub_inf);
@@ -1951,7 +1951,7 @@ cluster_i_parseNodeData(pStructInf inf, pObject parent)
 	    ASSERTMAGIC(sub_inf, MGK_STRUCTINF);
 	    char* name = sub_inf->Name;
 	    if (UNLIKELY(name == NULL))
-		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->name. */
+		goto err_free; /* Skip in-loop error handler, which expects a valid sub_inf->Name. */
 	    
 	    /** Handle various struct types. **/
 	    const int struct_type = stStructType(sub_inf);
@@ -4565,7 +4565,7 @@ clusterGetAttrValue(void* inf_v, char* attr_name, int datatype, pObjData val, pO
 	    goto err;
 	    }
 	
-	/** Handle date_computed. **/
+	/** Handle last_modification and date_computed. **/
 	if (strcmp(attr_name, "last_modification") == 0
 	    || strcmp(attr_name, "date_computed") == 0)
 	    {
@@ -5413,6 +5413,7 @@ clusterGetNextMethod(void* inf_v, pObjTrxTree* oxt)
  *** 	  used by the entry printed.
  *** 	- A pointer to an unsigned long long that counts how many uncomputed
  *** 	  caches have been skipped. Specify NULL to include uncomputed caches.
+ *** 	- A key prefix to filter entries by, or NULL to print all entries.
  *** @returns 0 if successful,
  ***         -1 if an error occurs.
  ***/
@@ -5524,7 +5525,7 @@ cluster_i_printEntry(pXHashEntry entry, va_list args)
 static void
 cluster_i_cacheFreeSourceData(pXHashEntry entry, void* unused)
     {
-	/** Free the data, the key, and the entry itself. **/
+	/** Free the data and the key. **/
 	cluster_i_freeSourceData((pSourceData)entry->Data);
 	nmSysFree(entry->Key);
     
@@ -5544,7 +5545,7 @@ cluster_i_cacheFreeSourceData(pXHashEntry entry, void* unused)
 static void
 cluster_i_cacheFreeCluster(pXHashEntry entry, void* unused)
     {
-	/** Free the data, the key, and the entry itself. **/
+	/** Free the data and the key. **/
 	cluster_i_freeClusterData((pClusterData)entry->Data, false);
 	nmSysFree(entry->Key);
     
@@ -5564,7 +5565,7 @@ cluster_i_cacheFreeCluster(pXHashEntry entry, void* unused)
 static void
 cluster_i_cacheFreeSearch(pXHashEntry entry, void* unused)
     {
-	/** Free the data, the key, and the entry itself. **/
+	/** Free the data and the key. **/
 	cluster_i_freeSearchData((pSearchData)entry->Data);
 	nmSysFree(entry->Key);
     
@@ -5606,7 +5607,7 @@ clusterExecuteMethod(void* inf_v, char* method_name, pObjData param, pObjTrxTree
 		goto err;
 		}
 	    
-	    /** 'show' and 'show_all'. **/
+	    /** 'show', 'show_less', and 'show_all'. **/
 	    bool show = false, skip_uncomputed = false;
 	    if (strcmp(param->String, "show_less") == 0)
 		{
