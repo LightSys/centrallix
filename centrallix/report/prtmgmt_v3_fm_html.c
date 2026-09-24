@@ -943,7 +943,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 
 		/** Compute image properties. **/
 		const bool has_url = (obj->URL != NULL && strchr(obj->URL, '"') == NULL);
-		const bool is_img = (type_id == PRT_OBJ_T_IMAGE);
+		const bool is_png = (type_id == PRT_OBJ_T_IMAGE);
 
 		/** Compute justification type. **/
 		const char* justify_type = "left";
@@ -978,7 +978,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		/** Capture the image into the image buffer. **/
 		//TODO we weren't supposed to replace context->Session->ImageWriteFn with ImageWriteFn,
 		// except the former references the image store I think which we don't want anymore...
-		const int write_rval = (is_img)
+		const int write_rval = (is_png)
 		    ? prt_internal_WriteImageToPNG(ImageWriteFn, &imgBuf, (pPrtImage)(obj->Content), w, h)
 		    : prt_internal_WriteSvgToFile(ImageWriteFn, &imgBuf, (pPrtSvg)(obj->Content), w, h);
 		if (write_rval < 0) goto error_image;
@@ -1006,8 +1006,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		/** Write image src (based on how we have to embed it). **/
 		if (context->Flags & PRT_HTMLFM_F_EMAIL)
 		    { /* Email: Use embedded attachment. */
-		    char* mime_type = (is_img) ? "image/png" : "image/svg+xml";
-		    char* extension = (is_img) ? "png"       : "svg";
+		    char* mime_type = (is_png) ? "image/png" : "image/svg+xml";
+		    char* extension = (is_png) ? "png"       : "svg";
 
 		    /** Write the src value. **/
 		    prt_htmlfm_OutputPrintf(context, "cid:image_%d", id);
@@ -1047,7 +1047,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 		else
 		    { /* Non-email: Use inline source. */
-		    if (is_img) prt_htmlfm_OutputStrLiteral(context, "data:image/png;base64,");
+		    if (is_png) prt_htmlfm_OutputStrLiteral(context, "data:image/png;base64,");
 		    else        prt_htmlfm_OutputStrLiteral(context, "data:image/svg+xml;base64,");
 		    prt_htmlfm_Output(context, base64Image, -1);
 		    }
@@ -1072,7 +1072,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		break;
 
     error_image:
-		mssError(1, "PRT", "Failed to write %s.", (is_img) ? "image" : "svg");
+		mssError(1, "PRT", "Failed to write %s.", (is_png) ? "image" : "svg");
 		if (imgBuf.buffer != NULL) nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
 		if (base64Image != NULL) nmFree(base64Image, base64Size);
 		return -1;
