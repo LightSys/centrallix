@@ -111,7 +111,6 @@ struct
     {
     XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
-    XArray		DefaultEmailHeaders;		/* XArray of pSmtpAttribute */
     }
     SMTP_INF;
 
@@ -416,7 +415,6 @@ smtp_internal_InitGlobals()
 	/** Initialize the global attributes. **/
 	if (UNLIKELY(xaInit(&SMTP_INF.DefaultRootAttributes, 16) != 0
 	    || xaInit(&SMTP_INF.DefaultEmailAttributes, 16) != 0
-	    || xaInit(&SMTP_INF.DefaultEmailHeaders, 16) != 0
 	))   {
 	    mssError(1, "SMTP", "Failed to initialize default attribute lists.");
 	    goto error;
@@ -446,17 +444,14 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_from",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_to",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_subject",	DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_user_agent",	DATA_T_STRING,	0,	"Centrallix/" PACKAGE_VERSION) < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_mime_version",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "status",		DATA_T_STRING,	0,	"Draft") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "is_ready",		DATA_T_INTEGER,	0,	0) < 0)) goto error;
 	/** Not strictly necessary. **/
 	/** xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("try_count",	DATA_T_INTEGER,	5,	0)); **/
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_status",	DATA_T_STRING,	0,	"None") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_msg",		DATA_T_STRING,	0,	"") < 0)) goto error;
-
-
-	/** Add all the default headers for an email file. **/
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailHeaders, "User-Agent",		DATA_T_STRING,	0,	"Centrallix/" PACKAGE_VERSION) < 0)) goto error;
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailHeaders, "MIME-Version",		DATA_T_STRING,	0,	"1.0") < 0)) goto error;
 
 	return 0;
 
@@ -602,9 +597,11 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     {
     struct { char* Attr; char* Name; char* Value; } headers[] =
 	{
-	{ "header_from",	"From",		NULL },
-	{ "header_to",		"To",		NULL },
-	{ "header_subject",	"Subject",	NULL },
+	{ "header_from",		"From",		NULL },
+	{ "header_to",			"To",		NULL },
+	{ "header_subject",		"Subject",	NULL },
+	{ "header_user_agent",		"User-Agent",	NULL },
+	{ "header_mime_version",	"MIME-Version",	NULL },
 	};
     const int n_headers = sizeof(headers) / sizeof(headers[0]);
     pSmtpAttribute attr = NULL;
@@ -821,7 +818,6 @@ smtp_internal_CreateEmail(pSmtpData inf)
     {
     pXString autoName = NULL;
 
-    pSmtpAttribute currentHeader = NULL;
     pSmtpAttribute hostName = NULL;
 
     pStructInf emailStruct = NULL;
@@ -1078,20 +1074,6 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to write message id to new message");
 	    goto end;
-	    }
-
-	/** Iterate through all the default email headers. **/
-	for (i = 0; i < SMTP_INF.DefaultEmailHeaders.nItems; i ++)
-	    {
-	    currentHeader = SMTP_ATTR(SMTP_INF.DefaultEmailHeaders.Items[i]);
-
-	    /** Add the attribute to the file. **/
-	    if (UNLIKELY(fdPrintf(inf->ContentFile, "%s: %s\n", currentHeader->Name, currentHeader->Value.String) < 0))
-		{
-		mssErrorErrno(1, "SMTP", "Failed to write default header to new message (%s: %s).",
-			currentHeader->Name, currentHeader->Value.String);
-		goto end;
-		}
 	    }
 
 	/** Add an empty line for header separation to the file. **/
