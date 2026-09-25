@@ -1881,6 +1881,13 @@ smtpClose(void* inf_v, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
 
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to close NULL smtp object.");
+	    return -1;
+	    }
+
     return smtp_internal_Close(inf);
     }
 
@@ -1895,6 +1902,14 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
     {
     pSnNode node = NULL;
     pSmtpData inf;
+
+	/** Edge cases. **/
+	if (UNLIKELY(obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Call to smtpCreate(NULL, ...);");
+	    return -1; /* Skip error handler, which expects a valid path. */
+	    }
+	ASSERTMAGIC(obj, MGK_OBJECT);
 
 	/** Determine the type of the object. **/
 	if (obj->SubPtr == obj->Pathname->nElements)
@@ -1951,6 +1966,14 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
     {
     pSmtpData inf = NULL;
     int rval = -1;
+
+	/** Edge cases. **/
+	if (UNLIKELY(obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Call to smtpDelete(NULL, ...);");
+	    return -1; /* Skip error handler, which expects a valid path. */
+	    }
+	ASSERTMAGIC(obj, MGK_OBJECT);
 
 	/** Try to open it first. **/
 	obj->Mode = O_RDWR;
@@ -2011,6 +2034,13 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     pSmtpData inf = SMTP(inf_v);
     int rval = -1;
 
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to read from NULL smtp object.");
+	    return -1;
+	    }
+
 	/** Read the contents of emails directly. **/
 	if (UNLIKELY(inf->Type != SMTP_T_EML))
 	    {
@@ -2033,6 +2063,13 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
     {
     pSmtpData inf = SMTP(inf_v);
     int rval = -1;
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to write to NULL smtp object.");
+	    return -1;
+	    }
 
 	/** Write the contents of emails directly. **/
 	if (UNLIKELY(inf->Type != SMTP_T_EML))
@@ -2060,6 +2097,13 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     pSmtpQueryData qy = NULL;
     pSmtpAttribute attr = NULL;
     char* spoolPath = NULL;
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to open a query on NULL smtp object.");
+	    return NULL; /* Skip error handler, which expects a valid object. */
+	    }
 
 	/** Allocate the query object. **/
 	qy = (pSmtpQueryData)nmMalloc(sizeof(SmtpQueryData));
@@ -2124,6 +2168,19 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pSmtpQueryData qy = SMTP_QY(qy_v);
     pSmtpData inf = NULL;
     struct dirent *mailEntry = NULL;
+
+	/** Edge cases. **/
+	if (UNLIKELY(qy == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to fetch from NULL query object.");
+	    return NULL; /* Skip error handler, which expects a valid query. */
+	    }
+	if (UNLIKELY(obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to fetch query result into NULL object.");
+	    return NULL; /* Skip error handler, which expects a valid object. */
+	    }
+	ASSERTMAGIC(obj, MGK_OBJECT);
 
 	if (qy->Data->Type == SMTP_T_ROOT)
 	    {
@@ -2203,6 +2260,13 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
     pSmtpQueryData qy = SMTP_QY(qy_v);
     int rval = 0;
+
+	/** Edge cases. **/
+	if (UNLIKELY(qy == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to close NULL query object.");
+	    return -1;
+	    }
 
 	if (qy->Directory)
 	    {
@@ -2374,6 +2438,13 @@ smtpGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
 
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to get next attribute from NULL smtp object.");
+	    return NULL;
+	    }
+
 	if (inf->CurAttr < inf->AttributeNames->nItems)
 	    {
 	    return (char*)inf->AttributeNames->Items[inf->CurAttr++];
@@ -2389,6 +2460,13 @@ char*
 smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to get first attribute from NULL smtp object.");
+	    return NULL;
+	    }
 
 	inf->CurAttr = 0;
 
@@ -2414,6 +2492,13 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
     int old_int_val = -1;
     int rval = -1;
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to set attribute '%s' on NULL smtp object.", attrname);
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 
 	/** Get the requested attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -2622,6 +2707,13 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     pFile emlStructFile = NULL;
     pStructInf emlStruct = NULL;
     int rval = -1;
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to add attribute '%s' to NULL smtp object.", attrname);
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 
 	/** Initialize the new attribute. **/
 	attr = nmMalloc(sizeof(SmtpAttribute));
