@@ -330,7 +330,12 @@ smtp_internal_ClearAttribute(char* inf_c, void* customParams)
     {
     pSmtpAttribute attr = SMTP_ATTR(inf_c);
 
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(attr == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to clear NULL attribute.");
+	    return -1;
+	    }
 	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 
 	if (attr->Name)
@@ -747,14 +752,35 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
     int i;
     pDateTime dt;
 
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(structInf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to load attributes from NULL struct.");
+	    return -1; /* Skip error handler, which expects a valid structInf. */
+	    }
 	ASSERTMAGIC(structInf, MGK_STRUCTINF);
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to load attributes into NULL smtp object.");
+	    return -1; /* Skip error handler, which expects a valid inf. */
+	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	for (i = 0; i < structInf->nSubInf; i++)
 	    {
+	    /** Get the struct attribute. **/
 	    currentAttr = structInf->SubInf[i];
+	    if (UNLIKELY(currentAttr == NULL))
+		{
+		mssError(1, "SMTP", "Struct attribute is NULL.");
+		goto error;
+		}
 	    ASSERTMAGIC(currentAttr, MGK_STRUCTINF);
+	    if (UNLIKELY(currentAttr->Value == NULL))
+		{
+		mssError(1, "SMTP", "Struct attribute '%s' has a NULL value.", currentAttr->Name);
+		goto error;
+		}
 	    ASSERTMAGIC(currentAttr->Value, MGK_EXPRESSION);
 
 	    attr = nmMalloc(sizeof(SmtpAttribute));
@@ -853,7 +879,10 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 	return 0;
 
     error:
-	mssError(0, "SMTP", "Failed to load attribute #%d/%d (%s).", i, structInf->nSubInf, currentAttr->Name);
+	mssError(0, "SMTP",
+	    "Failed to load attribute #%d/%d (%s).",
+	    i, structInf->nSubInf, (currentAttr != NULL) ? currentAttr->Name : "NULL"
+	);
 
 	if (attr != NULL) smtp_internal_ClearAttribute((char*)attr, NULL);
 
@@ -900,7 +929,12 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     int has_headers;
     int rval = -1;
 
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to apply headers to NULL smtp object.");
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Build the headers set by header attributes. **/
@@ -1108,7 +1142,12 @@ smtp_internal_SendEmail(pSmtpData inf)
     bool recordFailed = false;
     int rval = -1;
 
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to send NULL smtp object.");
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Get the expire time. **/
@@ -1199,7 +1238,13 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	/** Iterate through all the default root attributes. **/
 	for (i = 0; i < SMTP_INF.DefaultRootAttributes.nItems; i ++)
 	    {
+	    /** Get the default attribute. **/
 	    currentAttr = SMTP_ATTR(SMTP_INF.DefaultRootAttributes.Items[i]);
+	    if (UNLIKELY(currentAttr == NULL))
+		{
+		mssError(1, "SMTP", "Default root attribute %d is NULL.", i);
+		goto error;
+		}
 	    ASSERTMAGIC(currentAttr, MGK_SMTP_ATTRIBUTE);
 
 	    /** Add the attribute to the node. **/
@@ -1258,8 +1303,18 @@ smtp_internal_CreateEmail(pSmtpData inf)
     int prefix_len;
     int rval = -1;
 
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to create email for NULL smtp object.");
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to create email for smtp object with NULL object.");
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	autoName = xsNew();
@@ -1521,9 +1576,24 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
     {
     pSnNode node = NULL;
 
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to open NULL smtp object.");
+	    goto error;
+	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to open smtp object with NULL object.");
+	    goto error;
+	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
+	if (UNLIKELY(inf->Obj->Prev == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to open smtp object with NULL parent object.");
+	    goto error;
+	    }
 
 	/** Try to open the root node first. **/
 	if (!node)
@@ -1622,7 +1692,12 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 int
 smtp_internal_OpenRoot(pSmtpData inf, char* usrtype)
     {
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to open root node for NULL smtp object.");
+	    goto error;
+	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Perform a general open. **/
@@ -1651,8 +1726,18 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     pStructInf emailStructure = NULL;
     int rval = -1;
 
-	/** Magic. **/
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to open email for NULL smtp object.");
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to open email for smtp object with NULL object.");
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	/** Perform a general open. **/
@@ -2241,6 +2326,11 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    return NULL; /* Skip error handler, which expects a valid query. */
 	    }
 	ASSERTMAGIC(qy, MGK_SMTP_QUERY_DATA);
+	if (UNLIKELY(qy->Data == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to fetch from query object with NULL smtp object.");
+	    return NULL; /* Skip error handler, which expects a valid query. */
+	    }
 	ASSERTMAGIC(qy->Data, MGK_SMTP_DATA);
 	if (UNLIKELY(obj == NULL))
 	    {
@@ -2575,6 +2665,11 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to set attribute '%s' on smtp object with NULL object.", attrname);
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	/** Get the requested attribute. **/
@@ -2794,6 +2889,11 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to add attribute '%s' to smtp object with NULL object.", attrname);
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	/** Initialize the new attribute. **/
