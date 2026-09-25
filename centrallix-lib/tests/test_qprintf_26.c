@@ -15,6 +15,10 @@ test(char** tname)
 
 	*tname = "qprintf-26 %STR&SYM in middle with illegal symbol";
 	iter = 200000;
+
+	/** The illegal symbol makes qpfPrintf() warn on stderr each time. **/
+	freopen("/dev/null", "w", stderr);
+
 	for(i=0;i<iter;i++)
 	    {
 	    buf[43] = '\n';
