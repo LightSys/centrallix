@@ -129,8 +129,7 @@ char* obj_default_null_fmt = "NULL";
 
 
 /** Should maybe replace current type parsing in the presentation hints. **/
-/*** Parse the given string into a datatype. The case of the first character
- *** is ignored, but all other characters must be capitalized correctly.
+/*** Parse the given string into a datatype, ignoring case.
  *** Names returned by objTypeToStr() are also accepted.
  *** 
  *** @attention - This function is optimized to prevent performance hits in
@@ -945,8 +944,8 @@ objDataToDouble(int data_type, void* data_ptr)
 
 
 /*** objDataToBoolean - convert data to a boolean.  Any nonzero integer is
- *** true, and the strings "yes", "true", "y", "on", "no", "false", "n", and
- *** "off" are recognized in any case.
+ *** true, and the strings "yes", "true", "y", "on", "1", "no", "false", "n",
+ *** "off", and "0" are recognized in any case.
  *** Returns 1 or 0, default_value if data_ptr is NULL, or -1 if the value is
  *** not a recognized boolean.
  ***/
