@@ -1930,7 +1930,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 
 	/** Correct the pathname. **/
-	obj_internal_PathPart(obj->Pathname, 0, 0);
+	objResetPathname(obj);
 
 	return inf;
 
@@ -2079,7 +2079,7 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    }
 	else
 	    {
-	    char* path = obj_internal_PathPart(obj->Pathname, 0, 0);
+	    char* path = objResetPathname(obj);
 	    mssError(1, "SMTP", "Could not create \"%s\": expected an email file (.eml or .msg).", (path != NULL) ? path : "unknown path");
 	    goto error;
 	    }
