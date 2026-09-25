@@ -880,49 +880,6 @@ objDataToDouble(int data_type, void* data_ptr)
     }
 
 
-/*** objDataToBoolean - convert data to a boolean.  Any nonzero integer is
- *** true, and the strings "yes", "true", "y", "on", "no", "false", "n", and
- *** "off" are recognized in any case.
- *** Returns 1 or 0, default_value if data_ptr is NULL, or -1 if the value is
- *** not a recognized boolean.
- ***/
-int
-objDataToBoolean(int data_type, void* data_ptr, int default_value)
-    {
-    char* str;
-    int rval = -1;
-
-	/** NULL? use the default. **/
-	if (data_ptr == NULL) return default_value;
-
-	switch (data_type)
-	    {
-	    case DATA_T_INTEGER:
-		rval = (*(int*)data_ptr != 0);
-		break;
-
-	    case DATA_T_STRING:
-		str = (char*)data_ptr;
-		if (strcasecmp(str, "yes") == 0
-		    || strcasecmp(str, "true") == 0
-		    || strcasecmp(str, "y") == 0
-		    || strcasecmp(str, "on") == 0
-		)   {
-		    rval = 1;
-		    }
-		else if (strcasecmp(str, "no") == 0
-		    || strcasecmp(str, "false") == 0
-		    || strcasecmp(str, "n") == 0
-		    || strcasecmp(str, "off") == 0
-		)   {
-		    rval = 0;
-		    }
-		break;
-	    }
-
-    return rval;
-    }
-
 
 /*** objDataToStringTmp - writes the string representation of the given
  *** data type to a temporary string, or in some cases, returns the string
