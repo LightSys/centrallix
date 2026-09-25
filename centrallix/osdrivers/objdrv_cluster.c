@@ -3927,10 +3927,7 @@ clusterOpen(pObject parent, int mask, pContentType sys_type, char* usr_type, pOb
 	if (node_data != NULL) cluster_i_freeNodeData(node_data);
 	if (driver_data != NULL) nmFree(driver_data, sizeof(DriverData));
 	
-	mssError(0, "Cluster",
-	    "Failed to open cluster file \"%s\" at: %s",
-	    objFileName(parent), objFilePath(parent)
-	);
+	mssError(0, "Cluster", "Failed to open cluster file: %s", objFilePath(parent));
 	
 	return NULL;
     }
