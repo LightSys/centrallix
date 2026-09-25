@@ -22,7 +22,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	Email Objectsystem driver				*/
+/* Module: 	objdrv_smtp.c						*/
 /* Authors:	Hazen Johnson, Justin Southworth			*/
 /* Creation:	May 29, 2014						*/
 /* Description:	Provides an email interface for Centrallix through the	*/
@@ -30,7 +30,7 @@
 /*									*/
 /*		Current Shortcomings:					*/
 /*		  - All functionality is perfect... There is no		*/
-/*		  functionality.*/
+/*		  functionality.					*/
 /*									*/
 /************************************************************************/
 
@@ -114,6 +114,12 @@ struct
     XArray		DefaultEmailHeaders;		/* XArray of pSmtpAttribute */
     }
     SMTP_INF;
+
+
+/** Forward declarations for functions that need them. **/
+int smtp_internal_Close(pSmtpData inf);
+int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
+int smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
 
 
 /*** smtp_internal_SpawnSendmail - launch the sendmail process to actually
@@ -219,7 +225,7 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    if (UNLIKELY(pid < 0))
 		{
 		mssErrorErrno(1, "SMTP", "Unable to fork (2).");
-		exit(EXIT_FAILURE);
+		_exit(EXIT_FAILURE);
 		}
 	    if (pid == 0)
 		{
@@ -239,7 +245,7 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 		/** Execve. **/
 		execve("/usr/sbin/sendmail", (char**)(argv->Items), envp);
 
-		/** if execve() is successfull, this is never reached **/
+		/** if execve() is successful, this is never reached **/
 		mssError(1, "SMTP", "execve() failed: %s", strerror(errno));
 		_exit(EXIT_FAILURE);
 		}
@@ -604,7 +610,7 @@ smtp_internal_SendEmail(pSmtpData inf)
     }
 
 
-/*** smtp_internal_CreateRoot - Creates a root smtp node.
+/*** smtp_internal_CreateRootNode - Creates a root smtp node.
  *** Returns the newly created root node or NULL (if creation failed).
  ***/
 pSnNode
@@ -636,7 +642,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 		goto error;
 		}
 
-	    /** Set the attribute to it's default value. **/
+	    /** Set the attribute to its default value. **/
 	    if (UNLIKELY(stSetAttrValue(currentParam, currentAttr->Type, &currentAttr->Value, 0) != 0))
 		{
 		mssError(0, "SMTP", "Could not set attribute value %s", currentAttr->Name);
@@ -677,7 +683,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 
     pFile checkFile = NULL;
     pFile emailStructFile = NULL;
-    char message_id[80];;
+    char message_id[80];
     ObjData pod;
     int i;
     unsigned char email_id[8];
@@ -823,7 +829,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    goto end;
 	    }
 
-	/** Set the default name value. **/
+	/** Set the default message_id value. **/
 	pod.String = message_id;
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_STRING, &pod, 0) != 0))
 	    {
@@ -863,7 +869,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    goto end;
 	    }
 
-	/** Set the default name value. **/
+	/** Set the default expire_date value. **/
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_DATETIME, POD(&attrDate), 0) != 0))
 	    {
 	    mssError(1, "SMTP", "Unable to write to the default attribute (expire_date).");
@@ -872,7 +878,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	nmFree(attrDate, sizeof(DateTime));
 	attrDate = NULL;
 
-	/** Allocate a new date datastructure. **/
+	/** Allocate a new date data structure. **/
 	attrDate = (pDateTime)nmMalloc(sizeof(DateTime));
 	if (UNLIKELY(attrDate == NULL))
 	    {
@@ -881,7 +887,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    }
 	memset(attrDate, 0, sizeof(DateTime));
 
-	/** Create the message_id attribute. **/
+	/** Create the last_try_date attribute. **/
 	createdStruct = stAddAttr(emailStruct, "last_try_date");
 	if (UNLIKELY(createdStruct == NULL))
 	    {
@@ -889,7 +895,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    goto end;
 	    }
 
-	/** Set the default name value. **/
+	/** Set the default last_try_date value. **/
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_DATETIME, POD(&attrDate), 0) != 0))
 	    {
 	    mssError(1, "SMTP", "Unable to write to the default attribute (last_try_date).");
@@ -1145,7 +1151,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    else
 		{
 		/** File does not exist, and creation not requested **/
-		mssErrorErrno(1, "SMTP", "Could not open email file.");
+		mssErrorErrno(1, "SMTP", "Could not open email file: \"%s\".", inf->EmailPath.String);
 		goto end;
 		}
 	    }
@@ -1164,7 +1170,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 		mssError(1, "SMTP", "Failed to copy email struct path.");
 		goto end;
 		}
-	    if (xsSubst(&inf->EmailStructPath, inf->EmailStructPath.Length - 4, 4, ".struct", 7) < 0)
+	    if (UNLIKELY(xsSubst(&inf->EmailStructPath, inf->EmailStructPath.Length - 4, 4, ".struct", 7) < 0))
 		{
 		mssError(1, "SMTP", "Failed to substitute .struct into email struct path.");
 		goto end;
@@ -1188,7 +1194,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	emailStructureFile = fdOpen(inf->EmailStructPath.String, open_mode, inf->Mask);
 	if (UNLIKELY(emailStructureFile == NULL))
 	    {
-	    mssError(1, "SMTP", "Could not open email structure file (%s).", inf->EmailStructPath.String);
+	    mssErrorErrno(1, "SMTP", "Could not open email structure file: \"%s\".", inf->EmailStructPath.String);
 	    goto end;
 	    }
 
@@ -1200,7 +1206,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
-	/** Get the structure's attribues **/
+	/** Get the structure's attributes **/
 	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf) != 0))
 	    {
 	    mssError(0, "SMTP", "Could not load email attributes.");
@@ -1281,7 +1287,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    goto error;
 	    }
 
-	/** Correct the the pathname. **/
+	/** Correct the pathname. **/
 	obj_internal_PathPart(obj->Pathname, 0, 0);
 
 	return inf;
@@ -1687,7 +1693,7 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
-/*** smtpGetAttrType - get the type (DATA_T_json) of an attribute by name.
+/*** smtpGetAttrType - get the type (DATA_T_xxx) of an attribute by name.
  ***/
 int
 smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
@@ -1771,7 +1777,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return 0;
 	    }
 
-	/** If outer type, and it wasn't specified in the JSON **/
+	/** outer_type is the driver's type for the object **/
 	if (strcmp(attrname,"outer_type") == 0)
 	    {
 	    if (datatype != DATA_T_STRING)
@@ -2029,7 +2035,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    /** Write changes to the email struct file. **/
 	    if (UNLIKELY(stGenerateMsg(emlStructFileWrite, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) != 0))
 		{
-		mssError(1, "SMTP", "Unable to write to the attribute to the email struct file.");
+		mssError(1, "SMTP", "Unable to write the attribute to the email struct file.");
 		goto end;
 		}
 
@@ -2107,7 +2113,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		}
 	    }
 
-	/** Set the default value appropriately if it is a integer. **/
+	/** Set the default value appropriately if it is an integer. **/
 	if (attr->Type == DATA_T_INTEGER)
 	    {
 	    attr->Value.Integer = 0;
@@ -2275,7 +2281,7 @@ smtpInfo(void* inf_v, pObjectInfo info)
 int
 smtpInitialize()
     {
-    pObjDriver drv;
+    pObjDriver drv = NULL;
 
 	/** Allocate the driver **/
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
@@ -2343,6 +2349,9 @@ smtpInitialize()
 
     error:
 	mssError(0, "SMTP", "Failed to initialize the SMTP driver.");
+
+	if (drv != NULL) nmFree(drv, sizeof(ObjDriver));
+
 	return -1;
     }
 
