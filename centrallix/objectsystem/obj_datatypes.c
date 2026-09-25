@@ -967,19 +967,19 @@ objDataToBoolean(int data_type, void* data_ptr, int default_value)
 
 	    case DATA_T_STRING:
 		str = (char*)data_ptr;
-		if (strcasecmp(str, "yes") == 0
-		    || strcasecmp(str, "true") == 0
+		if (strcasecmp(str, "true") == 0
+		    || strcasecmp(str, "1") == 0
+		    || strcasecmp(str, "yes") == 0
 		    || strcasecmp(str, "y") == 0
 		    || strcasecmp(str, "on") == 0
-		    || strcasecmp(str, "1") == 0
 		)   {
 		    rval = 1;
 		    }
-		else if (strcasecmp(str, "no") == 0
-		    || strcasecmp(str, "false") == 0
+		else if (strcasecmp(str, "false") == 0
+		    || strcasecmp(str, "0") == 0
+		    || strcasecmp(str, "no") == 0
 		    || strcasecmp(str, "n") == 0
 		    || strcasecmp(str, "off") == 0
-		    || strcasecmp(str, "0") == 0
 		)   {
 		    rval = 0;
 		    }
