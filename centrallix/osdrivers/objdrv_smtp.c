@@ -49,6 +49,7 @@
 
 #include "centrallix.h"
 #include "cxlib/expect.h"
+#include "cxlib/magic.h"
 #include "cxlib/xarray.h"
 #include "obj.h"
 #include "st_node.h"
@@ -70,6 +71,7 @@
 /*** Structure to store attribute information. ***/
 typedef struct
     {
+    Magic_t	Magic;
     char*	Name;
     int		Type; /* DATA_T_xxx */
     ObjData	Value;
@@ -82,6 +84,7 @@ typedef struct
 /*** Structure used by this driver internally. ***/
 typedef struct
     {
+    Magic_t		Magic;
     char*		Name;
     int			Type;
     pObject		Obj;
@@ -106,6 +109,7 @@ typedef struct
 /*** Structure used by queries in this driver. ***/
 typedef struct
     {
+    Magic_t		Magic;
     pSmtpData	Data;
     DIR*	Directory;
     }
@@ -117,6 +121,7 @@ typedef struct
 /*** Structure to track sweeps of a spool directory. ***/
 typedef struct
     {
+    Magic_t	Magic;
     char*	Path;
     time_t	LastSweep;
     }
@@ -152,6 +157,10 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
     char *envp[] = {NULL};
     int wstatus;
     int rval = -1;
+
+	/** Magic. **/
+	ASSERTMAGIC(envFrom, MGK_SMTP_ATTRIBUTE);
+	ASSERTMAGIC(envTo, MGK_SMTP_ATTRIBUTE);
 
 	/** Build the sendmail argument list **/
 	XArray argv_buf;
@@ -321,6 +330,9 @@ smtp_internal_ClearAttribute(char* inf_c, void* customParams)
     {
     pSmtpAttribute attr = SMTP_ATTR(inf_c);
 
+	/** Magic. **/
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
+
 	if (attr->Name)
 	    nmSysFree(attr->Name);
 
@@ -355,6 +367,7 @@ smtp_internal_CreateAttribute(char* name, int type, int intVal, char* strVal)
 	    goto error;
 	    }
 	memset(inf, 0, sizeof(SmtpAttribute));
+	SETMAGIC(inf, MGK_SMTP_ATTRIBUTE);
 
 	/** Set attribute name. **/
 	inf->Name = nmSysStrdup(name);
@@ -593,6 +606,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 
 	/** Track each spool directory. **/
 	spool = (pSmtpSpool)xhLookup(&SMTP_INF.Spools, spoolDir);
+	ASSERTMAGIC(spool, MGK_SMTP_SPOOL);
 	if (spool == NULL)
 	    {
 	    newSpool = nmMalloc(sizeof(SmtpSpool));
@@ -602,6 +616,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 		goto end;
 		}
 	    memset(newSpool, 0, sizeof(SmtpSpool));
+	    SETMAGIC(newSpool, MGK_SMTP_SPOOL);
 	    newSpool->Path = nmSysStrdup(spoolDir);
 	    if (UNLIKELY(newSpool->Path == NULL))
 		{
@@ -732,6 +747,9 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
     int i;
     pDateTime dt;
 
+	/** Magic. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
 	for (i = 0; i < structInf->nSubInf; i++)
 	    {
 	    currentAttr = structInf->SubInf[i];
@@ -743,6 +761,7 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 		goto error;
 		}
 	    memset(attr, 0, sizeof(SmtpAttribute));
+	    SETMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 
 	    attr->Name = nmSysStrdup(currentAttr->Name);
 	    if (UNLIKELY(attr->Name == NULL))
@@ -878,6 +897,9 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     int has_headers;
     int rval = -1;
 
+	/** Magic. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
 	/** Build the headers set by header attributes. **/
 	new_headers = xsNew();
 	if (UNLIKELY(new_headers == NULL))
@@ -888,6 +910,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	for (i = 0; i < n_headers; i++)
 	    {
 	    attr = SMTP_ATTR(xhLookup(inf->Attributes, headers[i].Attr));
+	    ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	    if (strcmp(headers[i].Attr, "header_date") == 0)
 		{
 		/** Get the date, defaulting to now. **/
@@ -976,6 +999,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 
 	/** Check whether the content starts with headers. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, "content_has_headers"));
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	has_headers = 1;
 	if (attr != NULL)
 	    {
@@ -1079,8 +1103,12 @@ smtp_internal_SendEmail(pSmtpData inf)
     bool recordFailed = false;
     int rval = -1;
 
+	/** Magic. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
 	/** Get the expire time. **/
 	expireTimeAttr = SMTP_ATTR(xhLookup(inf->Attributes, "expire_time"));
+	ASSERTMAGIC(expireTimeAttr, MGK_SMTP_ATTRIBUTE);
 	if (expireTimeAttr != NULL)
 	    {
 	    if (UNLIKELY(expireTimeAttr->Type != DATA_T_INTEGER))
@@ -1166,6 +1194,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	for (i = 0; i < SMTP_INF.DefaultRootAttributes.nItems; i ++)
 	    {
 	    currentAttr = SMTP_ATTR(SMTP_INF.DefaultRootAttributes.Items[i]);
+	    ASSERTMAGIC(currentAttr, MGK_SMTP_ATTRIBUTE);
 
 	    /** Add the attribute to the node. **/
 	    currentParam = stAddAttr(node->Data, currentAttr->Name);
@@ -1222,6 +1251,9 @@ smtp_internal_CreateEmail(pSmtpData inf)
 
     int prefix_len;
     int rval = -1;
+
+	/** Magic. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	autoName = xsNew();
 	if (UNLIKELY(autoName == NULL))
@@ -1324,6 +1356,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 		mssError(1, "SMTP", "Unable to get default attribute %d.", i);
 		goto end;
 		}
+	    ASSERTMAGIC(currentAttr, MGK_SMTP_ATTRIBUTE);
 
 	    /** Add the attribute to the email struct. **/
 	    createdStruct = stAddAttr(emailStruct, currentAttr->Name);
@@ -1344,6 +1377,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	/** Add dynamic attributes which have object specific defaults. **/
 	/** Calculate the message id (name without suffix). **/
 	hostName = SMTP_ATTR(xhLookup(inf->Attributes, "local_host_name"));
+	ASSERTMAGIC(hostName, MGK_SMTP_ATTRIBUTE);
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
 	    fprintf(stderr, "Warning: gethostname() failed (%s); using \"%s\".\n", strerror(errno), local_host_name);
 	strtcpy(message_id, inf->Name, sizeof(message_id));
@@ -1479,6 +1513,9 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
     {
     pSnNode node = NULL;
 
+	/** Magic. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
 	/** Try to open the root node first. **/
 	if (!node)
 	    {
@@ -1574,6 +1611,9 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 int
 smtp_internal_OpenRoot(pSmtpData inf, char* usrtype)
     {
+	/** Magic. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
 	/** Perform a general open. **/
 	if (UNLIKELY(smtp_internal_OpenGeneral(inf, usrtype) < 0))
 	    goto error;
@@ -1600,6 +1640,9 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     pStructInf emailStructure = NULL;
     int rval = -1;
 
+	/** Magic. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
 	/** Perform a general open. **/
 	if (UNLIKELY(smtp_internal_OpenGeneral(inf, usrtype) < 0))
 	    goto end;
@@ -1609,6 +1652,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 
 	/** Calculate the real path of the email file. **/
 	pSmtpAttribute spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
 	if (UNLIKELY(spoolDir == NULL))
 	    {
 	    mssError(1, "SMTP", "The SMTP node does not have the required 'spool_dir' attribute.");
@@ -1751,6 +1795,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    goto error;
 	    }
 	memset(inf, 0, sizeof(SmtpData));
+	SETMAGIC(inf, MGK_SMTP_DATA);
 	inf->Mask = mask;
 	inf->Obj = obj;
 	if (UNLIKELY(xsInit(&inf->EmailPath) != 0
@@ -1814,6 +1859,7 @@ smtp_internal_Close(pSmtpData inf)
 
 	if (UNLIKELY(inf == NULL))
 	    return -1;
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 	obj = inf->Obj; /* Save obj for error messages. */
 
 	/** Check if the object is the root node. **/
@@ -1980,6 +2026,7 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	inf = (pSmtpData)smtpOpen(obj, 0, NULL, "", oxt);
 	if (UNLIKELY(inf == NULL))
 	    goto end;
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Determine the type of the object. **/
 	if (inf->Type == SMTP_T_ROOT)
@@ -2040,6 +2087,7 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    mssError(1, "SMTP", "Failed to read from NULL smtp object.");
 	    return -1;
 	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Read the contents of emails directly. **/
 	if (UNLIKELY(inf->Type != SMTP_T_EML))
@@ -2070,6 +2118,7 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    mssError(1, "SMTP", "Failed to write to NULL smtp object.");
 	    return -1;
 	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Write the contents of emails directly. **/
 	if (UNLIKELY(inf->Type != SMTP_T_EML))
@@ -2104,6 +2153,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    mssError(1, "SMTP", "Failed to open a query on NULL smtp object.");
 	    return NULL; /* Skip error handler, which expects a valid object. */
 	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Allocate the query object. **/
 	qy = (pSmtpQueryData)nmMalloc(sizeof(SmtpQueryData));
@@ -2113,6 +2163,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    goto error;
 	    }
 	memset(qy, 0, sizeof(SmtpQueryData));
+	SETMAGIC(qy, MGK_SMTP_QUERY_DATA);
 
 	qy->Data = inf;
 
@@ -2121,6 +2172,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    /** Find and open the spool directory path. **/
 	    attr = (pSmtpAttribute)xhLookup(inf->Attributes, "spool_dir");
+	    ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	    if (UNLIKELY(attr == NULL))
 		{
 		mssError(1, "SMTP", "The SMTP node is missing the required 'spool_dir' attribute.");
@@ -2175,6 +2227,8 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    mssError(1, "SMTP", "Failed to fetch from NULL query object.");
 	    return NULL; /* Skip error handler, which expects a valid query. */
 	    }
+	ASSERTMAGIC(qy, MGK_SMTP_QUERY_DATA);
+	ASSERTMAGIC(qy->Data, MGK_SMTP_DATA);
 	if (UNLIKELY(obj == NULL))
 	    {
 	    mssError(1, "SMTP", "Failed to fetch query result into NULL object.");
@@ -2221,6 +2275,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		goto error;
 		}
 	    memset(inf, 0, sizeof(SmtpData));
+	    SETMAGIC(inf, MGK_SMTP_DATA);
 	    inf->Obj = obj;
 	    if (UNLIKELY(xsInit(&inf->EmailPath) != 0
 		|| xsInit(&inf->EmailStructPath) != 0
@@ -2267,6 +2322,7 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
 	    mssError(1, "SMTP", "Failed to close NULL query object.");
 	    return -1;
 	    }
+	ASSERTMAGIC(qy, MGK_SMTP_QUERY_DATA);
 
 	if (qy->Directory)
 	    {
@@ -2297,6 +2353,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    }
 
 	inf = SMTP(inf_v);
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Default values all happen to be strings. **/
 	if (strcmp(attrname, "name") == 0) return DATA_T_STRING;
@@ -2307,6 +2364,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	/** Get the type of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	if (attr)
 	    {
 	    return attr->Type;
@@ -2332,6 +2390,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	inf = SMTP(inf_v);
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	if (strcmp(attrname, "name") == 0)
 	    {
@@ -2399,6 +2458,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Get the type of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	if (attr)
 	    {
 	    if (datatype != attr->Type)
@@ -2444,6 +2504,7 @@ smtpGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	    mssError(1, "SMTP", "Failed to get next attribute from NULL smtp object.");
 	    return NULL;
 	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	if (inf->CurAttr < inf->AttributeNames->nItems)
 	    {
@@ -2467,6 +2528,7 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 	    mssError(1, "SMTP", "Failed to get first attribute from NULL smtp object.");
 	    return NULL;
 	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	inf->CurAttr = 0;
 
@@ -2499,6 +2561,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    mssError(1, "SMTP", "Failed to set attribute '%s' on NULL smtp object.", attrname);
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Get the requested attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -2519,6 +2582,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		goto end;
 		}
 	    }
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 
 	/** Check the requested datatype. **/
 	if (attr->Type != datatype)
@@ -2714,6 +2778,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    mssError(1, "SMTP", "Failed to add attribute '%s' to NULL smtp object.", attrname);
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Initialize the new attribute. **/
 	attr = nmMalloc(sizeof(SmtpAttribute));
@@ -2723,6 +2788,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    goto end;
 	    }
 	memset(attr, 0, sizeof(SmtpAttribute));
+	SETMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	unstoredAttr = attr;
 
 	/** Set the meta-data fields of the new attribute. **/
