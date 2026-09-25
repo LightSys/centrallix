@@ -588,20 +588,21 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 
 
 /*** smtp_internal_ApplyHeaders - Writes the headers from the header_*
- *** attributes into the email file, replacing existing headers of the same
- *** name.
+ *** and message_id attributes into the email file, replacing existing
+ *** headers of the same name.
  *** Returns 0 on success and -1 on failure.
  ***/
 int
 smtp_internal_ApplyHeaders(pSmtpData inf)
     {
-    struct { char* Attr; char* Name; char* Value; } headers[] =
+    struct { char* Attr; char* Name; char* Format; char* Value; } headers[] =
 	{
-	{ "header_from",		"From",		NULL },
-	{ "header_to",			"To",		NULL },
-	{ "header_subject",		"Subject",	NULL },
-	{ "header_user_agent",		"User-Agent",	NULL },
-	{ "header_mime_version",	"MIME-Version",	NULL },
+	{ "message_id",			"Message-ID",	"%s: <%s>\n",	NULL },
+	{ "header_from",		"From",		"%s: %s\n",	NULL },
+	{ "header_to",			"To",		"%s: %s\n",	NULL },
+	{ "header_subject",		"Subject",	"%s: %s\n",	NULL },
+	{ "header_user_agent",		"User-Agent",	"%s: %s\n",	NULL },
+	{ "header_mime_version",	"MIME-Version",	"%s: %s\n",	NULL },
 	};
     const int n_headers = sizeof(headers) / sizeof(headers[0]);
     pSmtpAttribute attr = NULL;
@@ -628,7 +629,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 		mssError(1, "SMTP", "Attribute '%s' contains a line break: \"%s\".", headers[i].Attr, attr->Value.String);
 		goto end;
 		}
-	    if (UNLIKELY(xsConcatPrintf(new_headers, "%s: %s\n", headers[i].Name, attr->Value.String) < 0))
+	    if (UNLIKELY(xsConcatPrintf(new_headers, headers[i].Format, headers[i].Name, attr->Value.String) < 0))
 		{
 		mssError(1, "SMTP", "Failed to add header '%s: %s'.", headers[i].Name, attr->Value.String);
 		goto end;
@@ -1068,13 +1069,6 @@ smtp_internal_CreateEmail(pSmtpData inf)
 
 	/** Fill in the non-static default headers. **/
 	// TODO: Add current date to the header... once we implement date support in the MIME driver
-
-	/** Add the dynamic attributes to the file. **/
-	if (UNLIKELY(fdPrintf(inf->ContentFile, "Message-ID: <%s>\n", message_id) < 0))
-	    {
-	    mssErrorErrno(1, "SMTP", "Failed to write message id to new message");
-	    goto end;
-	    }
 
 	/** Add an empty line for header separation to the file. **/
 	if (UNLIKELY(fdWrite(inf->ContentFile, "\n", 1, 0, 0) < 0))
