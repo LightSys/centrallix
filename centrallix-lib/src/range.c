@@ -1,10 +1,3 @@
-#ifndef _STRTCPY_H
-#define _STRTCPY_H
-
-#include <unistd.h>
-#include <stdarg.h>
-#include <stdlib.h>
-
 /************************************************************************/
 /* Centrallix Application Server System                                 */
 /* Centrallix Base Library                                              */
@@ -15,18 +8,20 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the     */
 /* included file "COPYING".                                             */
 /*                                                                      */
-/* Module:	strtcpy.h, strtcpy.c                                    */
-/* Author:	Greg Beeley (GRB)                                       */
-/* Date:	April 14th, 2006                                        */
-/*									*/
-/* Description:	Provides truncating string functions, which respect the	*/
-/*		bounds of the destination and ensure null-termination.	*/
+/* Module:      range.c, range.h                                        */
+/* Author:      Israel Fuller                                           */
+/* Date:        October 13, 2025                                        */
+/* Description: Adds some useful numerical range functions/macros that  */
+/*              C does not provide by default, such as min(), max(),    */
+/*              clamp(), etc.                                           */
 /************************************************************************/
 
+#include <math.h>
 
-int strtcpy(char* dst, const char* src, size_t dstlen);
-int strtcat(char* dst, const char* src, size_t dstlen);
-int strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...);
-int strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap);
+#include "range.h"
 
-#endif /* not defined _STRTCPY_H */
+double roundTo(double value, int decimals)
+    {
+    const double mul = pow(10, decimals);
+    return round(value * mul) / mul;
+    }

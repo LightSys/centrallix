@@ -1148,7 +1148,7 @@ rpt_internal_QyGetAttrValue(void* qyobj, char* attrname, int datatype, pObjData 
 		if (datatype != exp->DataType && !was_null)
 		    {
 		    mssError(1,"RPT","Type mismatch accessing query property '%s' [requested=%s, actual=%s]",
-			    attrname, datatype, exp->DataType);
+			    attrname, obj_type_names[datatype], obj_type_names[exp->DataType]);
 		    return -1;
 		    }
 
@@ -5642,7 +5642,11 @@ rpt_internal_Generator(void* v)
 	    }
 
 	/** Close the slave side and exit. **/
-	prtCloseSession(ps);
+	if (prtCloseSession(ps) < 0)
+	    {
+	    mssError(1,"RPT","Could not generate the report");
+	    inf->Flags |= RPT_F_ERROR;
+	    }
 	fdClose(inf->SlaveFD,0);
 	inf->SlaveFD = NULL;
 	rpt_internal_Close(inf, NULL);
