@@ -443,6 +443,9 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "envelope_to",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_from",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_to",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_cc",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_bcc",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_reply_to",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_subject",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_user_agent",	DATA_T_STRING,	0,	"Centrallix/" PACKAGE_VERSION) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_mime_version",	DATA_T_STRING,	0,	"") < 0)) goto error;
@@ -600,6 +603,9 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	{ "message_id",			"Message-ID",	"%s: <%s>\n",	NULL },
 	{ "header_from",		"From",		"%s: %s\n",	NULL },
 	{ "header_to",			"To",		"%s: %s\n",	NULL },
+	{ "header_cc",			"Cc",		"%s: %s\n",	NULL },
+	{ "header_bcc",			"Bcc",		"%s: %s\n",	NULL },
+	{ "header_reply_to",		"Reply-To",	"%s: %s\n",	NULL },
 	{ "header_subject",		"Subject",	"%s: %s\n",	NULL },
 	{ "header_user_agent",		"User-Agent",	"%s: %s\n",	NULL },
 	{ "header_mime_version",	"MIME-Version",	"%s: %s\n",	NULL },
