@@ -2297,10 +2297,27 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    mssError(1, "SMTP", "Type mismatch getting attribute '%s' (requested %d, should be %d)", attrname, datatype, attr->Type);
 		return -1;
 		}
-	    if (attr->Type == DATA_T_INTEGER)
-		val->Integer = attr->Value.Integer;
-	    else
-		val->String = attr->Value.String;
+	    switch (attr->Type)
+		{
+		case DATA_T_INTEGER:
+		    val->Integer = attr->Value.Integer;
+		    break;
+
+		case DATA_T_STRING:
+		    val->String = attr->Value.String;
+		    break;
+
+		case DATA_T_DATETIME:
+		    val->DateTime = attr->Value.DateTime;
+		    break;
+
+		default:
+		    if (0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
+			mssError(1, "SMTP", "Cannot get attribute '%s' of unsupported type %s.", attrname, obj_type_names[attr->Type]);
+		    else
+			mssError(1, "SMTP", "Cannot get attribute '%s' of unknown type %d.", attrname, attr->Type);
+		    return -1;
+		}
 	    return 0;
 	    }
 
