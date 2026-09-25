@@ -128,6 +128,93 @@ char* obj_default_money_fmt = "$0.00";
 char* obj_default_null_fmt = "NULL";
 
 
+/** Should maybe replace current type parsing in the presentation hints. **/
+/*** Parse the given string into a datatype. The case of the first character
+ *** is ignored, but all other characters must be capitalized correctly.
+ *** 
+ *** @attention - This function is optimized to prevent performance hits in
+ *** 	situations where it may need to be called many thousands of times.
+ *** 
+ *** @param str The string to be parsed to a datatype.
+ *** @returns The datatype.
+ *** 
+ *** LINK ../../centrallix-lib/include/datatypes.h:72
+ ***/
+int
+objTypeFromStr(const char* str)
+    {
+	/** All valid types are non-null strings, at least 2 characters long. **/
+	if (str == NULL || str[0] == '\0' || str[1] == '\0') return -1;
+	
+	/** Check type. **/
+	switch (str[0])
+	    {
+	    case 'A': case 'a':
+		if (strcmp(str+1, "Array"+1) == 0) return DATA_T_ARRAY;
+		if (strcmp(str+1, "Any"+1) == 0) return DATA_T_ANY;
+		break;
+	    
+	    case 'B': case 'b':
+		if (strcmp(str+1, "Binary"+1) == 0) return DATA_T_BINARY;
+		break;
+	    
+	    case 'C': case 'c':
+		if (strcmp(str+1, "Code"+1) == 0) return DATA_T_CODE;
+		break;
+	    
+	    case 'D': case 'd':
+		if (strcmp(str+1, "Double"+1) == 0) return DATA_T_DOUBLE;
+		if (strcmp(str+1, "DateTime"+1) == 0) return DATA_T_DATETIME;
+		break;
+	    
+	    case 'I': case 'i':
+		if (strcmp(str+1, "Integer"+1) == 0) return DATA_T_INTEGER;
+		if (strcmp(str+1, "IntVector"+1) == 0) return DATA_T_INTVEC;
+		break;
+	    
+	    case 'M': case 'm':
+		if (strcmp(str+1, "Money"+1) == 0) return DATA_T_MONEY;
+		break;
+	    
+	    case 'S': case 's':
+		if (strcmp(str+1, "String"+1) == 0) return DATA_T_STRING;
+		if (strcmp(str+1, "StringVector"+1) == 0) return DATA_T_STRINGVEC;
+		break;
+	    
+	    case 'U': case 'u':
+		if (strcmp(str+1, "Unknown"+1) == 0) return DATA_T_UNAVAILABLE;
+		if (strcmp(str+1, "Unavailable"+1) == 0) return DATA_T_UNAVAILABLE;
+		break;
+	    }
+    
+    /** Invalid type. **/
+    return -1;
+    }
+
+
+/*** Convert a type to its string name.
+ *** 
+ *** @param type The type to be converted.
+ *** @returns A char* to the type name, or
+ ***          "(unknown)" if the type is unknown, or
+ ***          "invalid" if the type number cannot even be a valid type.
+ ***/
+char*
+objTypeToStr(const int type)
+    {
+	/** Guard out of bounds reads. **/
+	if (type < 0 || OBJ_TYPE_NAMES_CNT <= type)
+	    {
+	    /** Invalid type. **/
+	    mssError(1, "OBJ", "Invalid type %d.", type);
+	    
+	    return "invalid"; /* Shall not parse to a valid type in objTypeFromStr(). */
+	    }
+    
+    return obj_type_names[type];
+    }
+
+
 /*** obj_internal_ParseDateLang - looks up a list of language internationalization
  *** strings inside the date format.  WARNING - modifies the "srcptr" data in
  *** place.
@@ -877,6 +964,50 @@ objDataToDouble(int data_type, void* data_ptr)
 	    }
 
     return v;
+    }
+
+
+/*** objDataToBoolean - convert data to a boolean.  Any nonzero integer is
+ *** true, and the strings "yes", "true", "y", "on", "no", "false", "n", and
+ *** "off" are recognized in any case.
+ *** Returns 1 or 0, default_value if data_ptr is NULL, or -1 if the value is
+ *** not a recognized boolean.
+ ***/
+int
+objDataToBoolean(int data_type, void* data_ptr, int default_value)
+    {
+    char* str;
+    int rval = -1;
+
+	/** NULL? use the default. **/
+	if (data_ptr == NULL) return default_value;
+
+	switch (data_type)
+	    {
+	    case DATA_T_INTEGER:
+		rval = (*(int*)data_ptr != 0);
+		break;
+
+	    case DATA_T_STRING:
+		str = (char*)data_ptr;
+		if (strcasecmp(str, "yes") == 0
+		    || strcasecmp(str, "true") == 0
+		    || strcasecmp(str, "y") == 0
+		    || strcasecmp(str, "on") == 0
+		)   {
+		    rval = 1;
+		    }
+		else if (strcasecmp(str, "no") == 0
+		    || strcasecmp(str, "false") == 0
+		    || strcasecmp(str, "n") == 0
+		    || strcasecmp(str, "off") == 0
+		)   {
+		    rval = 0;
+		    }
+		break;
+	    }
+
+    return rval;
     }
 
 

@@ -632,6 +632,34 @@ typedef struct
 #define OBJ_MQ_F_NOUPDATE	(1<<1)		/* disallow any updates in this query */
 #define	OBJ_MQ_F_ONEROW		(1<<2)		/* only need first row from results */
 
+/** @returns The file name for the provided object. **/
+#define objFileName(obj) \
+    ({ \
+	__typeof__ (obj) _obj = (obj); \
+	obj_internal_PathPart(_obj->Pathname, _obj->SubPtr - 1, 1); \
+    })
+/** @returns The file path to the provided object. **/
+#define objFilePath(obj) \
+    ({ \
+	__typeof__ (obj) _obj = (obj); \
+	obj_internal_PathPart(_obj->Pathname, 0, _obj->SubPtr); \
+    })
+
+/*** An array of the names of the general attributes that must be implemented
+ *** for every object system driver.  See `OSDriver_Authoring.md` for more
+ *** information.
+ ***/
+#define DRIVER_ATTRIBUTE_NAMES \
+    ((char*[]){ \
+    "name", \
+    "annotation", \
+    "content_type", \
+    "inner_type", \
+    "outer_type", \
+    "last_modification", \
+    })
+#define N_DRIVER_ATTRIBUTE_NAMES ((unsigned int)(sizeof(DRIVER_ATTRIBUTE_NAMES) / sizeof(DRIVER_ATTRIBUTE_NAMES[0])))
+
 
 /** objectsystem main functions **/
 int objInitialize();
