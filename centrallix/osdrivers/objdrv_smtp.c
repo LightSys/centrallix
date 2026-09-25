@@ -2564,9 +2564,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     pSmtpAttribute attr = NULL;
     pSmtpAttribute unstoredAttr = NULL;
     pStructInf createdStruct = NULL;
-
     pSnNode rootNode = NULL;
-
     pFile emlStructFile = NULL;
     pStructInf emlStruct = NULL;
     int rval = -1;
@@ -2590,33 +2588,38 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    }
 	attr->Type = type;
 
-	/** Set the default value appropriately if it is a string. **/
-	if (attr->Type == DATA_T_STRING)
+	/** Set the default value based on the type. **/
+	switch (attr->Type)
 	    {
-	    attr->Value.String = nmSysStrdup("");
-	    if (UNLIKELY(attr->Value.String == NULL))
-		{
-		mssError(1, "SMTP", "Failed to allocate an empty string value.");
-		goto end;
-		}
-	    }
+	    case DATA_T_STRING:
+		attr->Value.String = nmSysStrdup("");
+		if (UNLIKELY(attr->Value.String == NULL))
+		    {
+		    mssError(1, "SMTP", "Failed to allocate an empty string value.");
+		    goto end;
+		    }
+		break;
 
-	/** Set the default value appropriately if it is an integer. **/
-	if (attr->Type == DATA_T_INTEGER)
-	    {
-	    attr->Value.Integer = 0;
-	    }
+	    case DATA_T_INTEGER:
+		attr->Value.Integer = 0;
+		break;
 
-	/** Set the default value appropriately if it is a date. **/
-	if (attr->Type == DATA_T_DATETIME)
-	    {
-	    attr->Value.DateTime = nmMalloc(sizeof(DateTime));
-	    if (UNLIKELY(attr->Value.DateTime == NULL))
-		{
-		mssError(1, "SMTP", "Failed to allocate %zu bytes for a date.", sizeof(DateTime));
+	    case DATA_T_DATETIME:
+		attr->Value.DateTime = nmMalloc(sizeof(DateTime));
+		if (UNLIKELY(attr->Value.DateTime == NULL))
+		    {
+		    mssError(1, "SMTP", "Failed to allocate %zu bytes for a date.", sizeof(DateTime));
+		    goto end;
+		    }
+		memset(attr->Value.DateTime, 0, sizeof(DateTime));
+		break;
+
+	    default:
+		if (0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
+		    mssError(1, "SMTP", "Cannot add attribute '%s' of unsupported type %s.", attr->Name, obj_type_names[attr->Type]);
+		else
+		    mssError(1, "SMTP", "Cannot add attribute '%s' of unknown type %d.", attr->Name, attr->Type);
 		goto end;
-		}
-	    memset(attr->Value.DateTime, 0, sizeof(DateTime));
 	    }
 
 	/** Add the attribute to the attribute hash and the attribute name list. **/
