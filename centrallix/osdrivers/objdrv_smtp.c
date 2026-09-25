@@ -874,7 +874,8 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     char date_str[64];
     char buf[1024];
     int i, cnt, name_len, line, line_end, newline;
-    int has_headers = 1;
+    void* value;
+    int has_headers;
     int rval = -1;
 
 	/** Build the headers set by header attributes. **/
@@ -976,15 +977,20 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 
 	/** Check whether the content starts with headers. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, "content_has_headers"));
+	has_headers = 1;
 	if (attr != NULL)
 	    {
-	    if (UNLIKELY(attr->Type != DATA_T_INTEGER))
+	    value = (attr->Type == DATA_T_INTEGER) ? (void*)&attr->Value.Integer : attr->Value.Generic;
+	    has_headers = objDataToBoolean(attr->Type, value, 1);
+	    if (UNLIKELY(has_headers < 0))
 		{
-		mssError(1, "SMTP", "Attribute 'content_has_headers' must be an integer (got %s).",
-		    (0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT) ? obj_type_names[attr->Type] : "unknown type");
-		goto end;
+		fprintf(stderr,
+		    "Warning: Ignored unrecognized value '%s' for boolean attribute "
+		    "'content_has_headers' of \"%s\" (defaulting to 1).\n",
+		    objDataToStringTmp(attr->Type, value, 0), inf->EmailPath.String
+		);
+		has_headers = 1;
 		}
-	    has_headers = attr->Value.Integer;
 	    }
 
 	/** Add the blank line before the body. **/
