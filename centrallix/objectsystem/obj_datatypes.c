@@ -159,8 +159,8 @@ objTypeFromStr(const char* str)
 	if (strcasecmp(str, obj_type_names[DATA_T_BINARY]) == 0) return DATA_T_BINARY;
 	
 	/** Unavailable types. **/
-	if (strcasecmp(str, obj_type_names[DATA_T_ANY]) == 0) return DATA_T_ANY;
 	if (strcasecmp(str, obj_type_names[DATA_T_UNAVAILABLE]) == 0) return DATA_T_UNAVAILABLE;
+	if (strcasecmp(str, "Any") == 0) return DATA_T_ANY;
 	if (strcasecmp(str, "Unknown") == 0) return DATA_T_UNAVAILABLE;
 	
 	/** Invalid type. **/
