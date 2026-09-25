@@ -148,45 +148,19 @@ objTypeFromStr(const char* str)
 	if (str == NULL || str[0] == '\0' || str[1] == '\0') return -1;
 	
 	/** Check type. **/
-	switch (str[0])
-	    {
-	    case 'A': case 'a':
-		if (strcasecmp(str+1, "Any"+1) == 0) return DATA_T_ANY;
-		if (strcasecmp(str+1, "Array"+1) == 0) return DATA_T_ARRAY;
-		break;
-	    
-	    case 'B': case 'b':
-		if (strcasecmp(str+1, "Binary"+1) == 0) return DATA_T_BINARY;
-		break;
-	    
-	    case 'C': case 'c':
-		if (strcasecmp(str+1, "Code"+1) == 0) return DATA_T_CODE;
-		break;
-	    
-	    case 'D': case 'd':
-		if (strcasecmp(str+1, "Double"+1) == 0) return DATA_T_DOUBLE;
-		if (strcasecmp(str+1, "DateTime"+1) == 0) return DATA_T_DATETIME;
-		break;
-	    
-	    case 'I': case 'i':
-		if (strcasecmp(str+1, "Integer"+1) == 0) return DATA_T_INTEGER;
-		if (strcasecmp(str+1, "IntVector"+1) == 0) return DATA_T_INTVEC;
-		break;
-	    
-	    case 'M': case 'm':
-		if (strcasecmp(str+1, "Money"+1) == 0) return DATA_T_MONEY;
-		break;
-	    
-	    case 'S': case 's':
-		if (strcasecmp(str+1, "String"+1) == 0) return DATA_T_STRING;
-		if (strcasecmp(str+1, "StringVector"+1) == 0) return DATA_T_STRINGVEC;
-		break;
-	    
-	    case 'U': case 'u':
-		if (strcasecmp(str+1, "Unknown"+1) == 0) return DATA_T_UNAVAILABLE;
-		if (strcasecmp(str+1, "Unavailable"+1) == 0) return DATA_T_UNAVAILABLE;
-		break;
-	    }
+	if (strcasecmp(str, obj_type_names[DATA_T_ANY]) == 0) return DATA_T_ANY;
+	if (strcasecmp(str, obj_type_names[DATA_T_ARRAY]) == 0) return DATA_T_ARRAY;
+	if (strcasecmp(str, obj_type_names[DATA_T_BINARY]) == 0) return DATA_T_BINARY;
+	if (strcasecmp(str, obj_type_names[DATA_T_CODE]) == 0) return DATA_T_CODE;
+	if (strcasecmp(str, obj_type_names[DATA_T_DOUBLE]) == 0) return DATA_T_DOUBLE;
+	if (strcasecmp(str, obj_type_names[DATA_T_DATETIME]) == 0) return DATA_T_DATETIME;
+	if (strcasecmp(str, obj_type_names[DATA_T_INTEGER]) == 0) return DATA_T_INTEGER;
+	if (strcasecmp(str, obj_type_names[DATA_T_INTVEC]) == 0) return DATA_T_INTVEC;
+	if (strcasecmp(str, obj_type_names[DATA_T_MONEY]) == 0) return DATA_T_MONEY;
+	if (strcasecmp(str, obj_type_names[DATA_T_STRING]) == 0) return DATA_T_STRING;
+	if (strcasecmp(str, obj_type_names[DATA_T_STRINGVEC]) == 0) return DATA_T_STRINGVEC;
+	if (strcasecmp(str, obj_type_names[DATA_T_UNAVAILABLE]) == 0) return DATA_T_UNAVAILABLE;
+	if (strcasecmp(str, "Unknown") == 0) return DATA_T_UNAVAILABLE;
     
     /** Invalid type. **/
     return -1;
