@@ -381,7 +381,7 @@ smtp_internal_CreateAttribute(char* name, int type, int intVal, char* strVal)
 	    }
 	else
 	    {
-	    mssError(1, "SMTP", "Unsupported attribute type %d or missing string value.", type);
+	    mssError(1, "SMTP", "Unsupported attribute type %s or missing string value.", objTypeToStr(type));
 	    goto error;
 	    }
 
@@ -810,7 +810,7 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 		}
 	    else
 		{
-		mssError(1, "SMTP", "Unsupported attribute type %d in structure file.", currentAttr->Value->DataType);
+		mssError(1, "SMTP", "Unsupported attribute type %s in structure file.", objTypeToStr(currentAttr->Value->DataType));
 		goto error;
 		}
 
@@ -906,8 +906,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 		    }
 		else
 		    {
-		    mssError(1, "SMTP", "Attribute '%s' must be a datetime (got %s).", headers[i].Attr,
-			(0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT) ? obj_type_names[attr->Type] : "unknown type");
+		    mssError(1, "SMTP", "Attribute '%s' must be a datetime (got %s).", headers[i].Attr, objTypeToStr(attr->Type));
 		    goto end;
 		    }
 
@@ -1086,8 +1085,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    {
 	    if (UNLIKELY(expireTimeAttr->Type != DATA_T_INTEGER))
 		{
-		mssError(1, "SMTP", "Attribute 'expire_time' must be an integer (got %s).",
-		    (0 <= expireTimeAttr->Type && expireTimeAttr->Type < OBJ_TYPE_NAMES_CNT) ? obj_type_names[expireTimeAttr->Type] : "unknown type");
+		mssError(1, "SMTP", "Attribute 'expire_time' must be an integer (got %s).", objTypeToStr(expireTimeAttr->Type));
 		return -1;
 		}
 	    expireTime = expireTimeAttr->Value.Integer;
@@ -2341,11 +2339,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    {
 	    if (datatype != attr->Type)
 		{
-		if (0 <= datatype && datatype < OBJ_TYPE_NAMES_CNT
-		    && 0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
-		    mssError(1, "SMTP", "Type mismatch getting attribute '%s' (requested %s, should be %s)", attrname, obj_type_names[datatype], obj_type_names[attr->Type]);
-		else
-		    mssError(1, "SMTP", "Type mismatch getting attribute '%s' (requested %d, should be %d)", attrname, datatype, attr->Type);
+		mssError(1, "SMTP", "Type mismatch getting attribute '%s' (requested %s, should be %s)", attrname, objTypeToStr(datatype), objTypeToStr(attr->Type));
 		return -1;
 		}
 	    switch (attr->Type)
@@ -2363,10 +2357,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    break;
 
 		default:
-		    if (0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
-			mssError(1, "SMTP", "Cannot get attribute '%s' of unsupported type %s.", attrname, obj_type_names[attr->Type]);
-		    else
-			mssError(1, "SMTP", "Cannot get attribute '%s' of unknown type %d.", attrname, attr->Type);
+		    mssError(1, "SMTP", "Cannot get attribute '%s' of unsupported type %s.", attrname, objTypeToStr(attr->Type));
 		    return -1;
 		}
 	    return 0;
@@ -2447,15 +2438,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Check the requested datatype. **/
 	if (attr->Type != datatype)
 	    {
-	    if (0 <= datatype && datatype < OBJ_TYPE_NAMES_CNT
-		&& 0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
-		{
-		mssError(1 ,"SMTP", "Attempt to assign invalid data type to attribute. (Assigning %s to %s)", obj_type_names[datatype], obj_type_names[attr->Type]);
-		}
-	    else
-		{
-		mssError(1 ,"SMTP", "Attempt to assign invalid data type to attribute. (Assigning %d to %d)", datatype, attr->Type);
-		}
+	    mssError(1, "SMTP", "Attempt to assign invalid data type to attribute. (Assigning %s to %s)", objTypeToStr(datatype), objTypeToStr(attr->Type));
 	    goto end;
 	    }
 
@@ -2496,7 +2479,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 	else
 	    {
-	    mssError(1, "SMTP", "Unsupported data type %d.", datatype);
+	    mssError(1, "SMTP", "Unsupported data type %s.", objTypeToStr(datatype));
 	    goto end;
 	    }
 
@@ -2686,10 +2669,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		break;
 
 	    default:
-		if (0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
-		    mssError(1, "SMTP", "Cannot add attribute '%s' of unsupported type %s.", attr->Name, obj_type_names[attr->Type]);
-		else
-		    mssError(1, "SMTP", "Cannot add attribute '%s' of unknown type %d.", attr->Name, attr->Type);
+		mssError(1, "SMTP", "Cannot add attribute '%s' of unsupported type %s.", attr->Name, objTypeToStr(attr->Type));
 		goto end;
 	    }
 
