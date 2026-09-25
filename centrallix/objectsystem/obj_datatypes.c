@@ -151,8 +151,8 @@ objTypeFromStr(const char* str)
 	switch (str[0])
 	    {
 	    case 'A': case 'a':
-		if (strcasecmp(str+1, "Array"+1) == 0) return DATA_T_ARRAY;
 		if (strcasecmp(str+1, "Any"+1) == 0) return DATA_T_ANY;
+		if (strcasecmp(str+1, "Array"+1) == 0) return DATA_T_ARRAY;
 		break;
 	    
 	    case 'B': case 'b':
