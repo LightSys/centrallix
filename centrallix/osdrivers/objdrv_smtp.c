@@ -604,20 +604,20 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 int
 smtp_internal_ApplyHeaders(pSmtpData inf)
     {
-    struct { char* Attr; char* Name; char* Format; char* Value; } headers[] =
+    struct { char* Attr; char* Name; char* Value; } headers[] =
 	{
-	{ "message_id",                     "Message-ID",              "%s: <%s>\n", NULL },
-	{ "header_date",                    "Date",                    "%s: %s\n",   NULL },
-	{ "header_from",                    "From",                    "%s: %s\n",   NULL },
-	{ "header_to",                      "To",                      "%s: %s\n",   NULL },
-	{ "header_cc",                      "Cc",                      "%s: %s\n",   NULL },
-	{ "header_bcc",                     "Bcc",                     "%s: %s\n",   NULL },
-	{ "header_reply_to",                "Reply-To",                "%s: %s\n",   NULL },
-	{ "header_list_unsubscribe",        "List-Unsubscribe",        "%s: %s\n",   NULL },
-	{ "header_list_unsubscribe_post",   "List-Unsubscribe-Post",   "%s: %s\n",   NULL },
-	{ "header_subject",                 "Subject",                 "%s: %s\n",   NULL },
-	{ "header_user_agent",              "User-Agent",              "%s: %s\n",   NULL },
-	{ "header_mime_version",            "MIME-Version",            "%s: %s\n",   NULL },
+	{ "message_id",                     "Message-ID",              NULL },
+	{ "header_date",                    "Date",                    NULL },
+	{ "header_from",                    "From",                    NULL },
+	{ "header_to",                      "To",                      NULL },
+	{ "header_cc",                      "Cc",                      NULL },
+	{ "header_bcc",                     "Bcc",                     NULL },
+	{ "header_reply_to",                "Reply-To",                NULL },
+	{ "header_list_unsubscribe",        "List-Unsubscribe",        NULL },
+	{ "header_list_unsubscribe_post",   "List-Unsubscribe-Post",   NULL },
+	{ "header_subject",                 "Subject",                 NULL },
+	{ "header_user_agent",              "User-Agent",              NULL },
+	{ "header_mime_version",            "MIME-Version",            NULL },
 	};
     const int n_headers = sizeof(headers) / sizeof(headers[0]);
     pSmtpAttribute attr = NULL;
@@ -698,7 +698,9 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 		mssError(1, "SMTP", "Attribute '%s' contains a line break: \"%s\".", headers[i].Attr, headers[i].Value);
 		goto end;
 		}
-	    if (UNLIKELY(xsConcatPrintf(new_headers, headers[i].Format, headers[i].Name, headers[i].Value) < 0))
+	    if (UNLIKELY(xsConcatPrintf(new_headers,
+		(strcmp(headers[i].Attr, "message_id") == 0) ? "%s: <%s>\n" : "%s: %s\n",
+		headers[i].Name, headers[i].Value) < 0))
 		{
 		mssError(1, "SMTP", "Failed to add header '%s: %s'.", headers[i].Name, headers[i].Value);
 		goto end;
