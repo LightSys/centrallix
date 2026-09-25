@@ -182,7 +182,13 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    goto end;
 	    }
 
-	/** Fork. **/
+	/*** Create a child process to launch sendmail.  This lets us detach
+	 *** from it so that we don't block all of centrallix while we wait
+	 *** for an email to send.
+	 ***
+	 *** Note: Children don't have our error session so failures should
+	 *** not call mssError().  Thus, we use fprintf(stderr) instead.
+	 ***/
 	pid = fork();
 	if (UNLIKELY(pid < 0))
 	    {
@@ -208,14 +214,14 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    fd = open(emailPath, O_RDONLY);
 	    if (UNLIKELY(fd < 0))
 		{
-		mssErrorErrno(1, "SMTP", "Could not open email file (%s) for sendmail.", emailPath);
+		fprintf(stderr, "SMTP: Could not open email file (%s) for sendmail. (%s)\n", emailPath, strerror(errno));
 		_exit(EXIT_FAILURE);
 		}
 
 	    /** Hopefully this makes our file stdin so we don't have to cat it into sendmail. **/
 	    if (UNLIKELY(dup2(fd, 0) < 0))
 		{
-		mssErrorErrno(1, "SMTP", "Could not redirect email file (%s) to stdin for sendmail.", emailPath);
+		fprintf(stderr, "SMTP: Could not redirect email file (%s) to stdin for sendmail. (%s)\n", emailPath, strerror(errno));
 		_exit(EXIT_FAILURE);
 		}
 
@@ -224,7 +230,7 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    pid = fork();
 	    if (UNLIKELY(pid < 0))
 		{
-		mssErrorErrno(1, "SMTP", "Unable to fork (2).");
+		fprintf(stderr, "SMTP: Unable to fork (2). (%s)\n", strerror(errno));
 		_exit(EXIT_FAILURE);
 		}
 	    if (pid == 0)
@@ -246,7 +252,7 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 		execve("/usr/sbin/sendmail", (char**)(argv->Items), envp);
 
 		/** if execve() is successful, this is never reached **/
-		mssError(1, "SMTP", "execve() failed: %s", strerror(errno));
+		fprintf(stderr, "SMTP: execve(\"/usr/sbin/sendmail\") failed: \"%s\"\n", strerror(errno));
 		_exit(EXIT_FAILURE);
 		}
 	    else
