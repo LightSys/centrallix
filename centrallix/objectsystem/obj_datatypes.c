@@ -136,8 +136,8 @@ char* obj_default_null_fmt = "NULL";
  *** 	situations where it may need to be called many thousands of times.
  *** 
  *** @param str The string to be parsed to a datatype.
- *** @returns The datatype.
- *** 
+ *** @returns The datatype, or -1 if the string is not a valid type.
+ ***
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
 int
