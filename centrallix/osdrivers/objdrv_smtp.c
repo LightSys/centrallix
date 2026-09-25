@@ -1935,10 +1935,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	return inf;
 
     error:
-	mssError(0, "SMTP",
-	    "Failed to open smtp file \"%s\" at: %s",
-	    objFileName(obj), objFilePath(obj)
-	);
+	mssError(0, "SMTP", "Failed to open smtp file: %s", objFilePath(obj));
 
 	if (inf != NULL) smtp_internal_Close(inf);
 
@@ -2009,10 +2006,7 @@ smtp_internal_Close(pSmtpData inf)
 	nmFree(inf, sizeof(SmtpData));
 
 	if (UNLIKELY(rval != 0))
-	    mssError(0, "SMTP",
-		"Failed to close smtp object in \"%s\" at: %s",
-		objFileName(obj), objFilePath(obj)
-	    );
+	    mssError(0, "SMTP", "Failed to close smtp object in: %s", objFilePath(obj));
 
 	return rval;
     }
@@ -2093,10 +2087,7 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	return 0;
 
     error:
-	mssError(0, "SMTP",
-	    "Failed to create smtp object in \"%s\" at: %s",
-	    objFileName(obj), objFilePath(obj)
-	);
+	mssError(0, "SMTP", "Failed to create smtp object in: %s", objFilePath(obj));
 	return -1;
     }
 
@@ -2162,10 +2153,7 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	    rval = -1;
 
 	if (UNLIKELY(rval != 0))
-	    mssError(0, "SMTP",
-		"Failed to delete smtp object in \"%s\" at: %s",
-		objFileName(obj), objFilePath(obj)
-	    );
+	    mssError(0, "SMTP", "Failed to delete smtp object in: %s", objFilePath(obj));
 
 	return rval;
     }
@@ -2300,8 +2288,8 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 
     error:
 	mssError(0, "SMTP",
-	    "Failed to open query on smtp file \"%s\" at: %s",
-	    objFileName(inf->Obj), objFilePath(inf->Obj)
+	    "Failed to open query on smtp file: %s",
+	    objFilePath(inf->Obj)
 	);
 
 	if (qy != NULL) smtpQueryClose(qy, NULL);
@@ -2400,9 +2388,9 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
     error:
 	mssError(0, "SMTP",
-	    "Failed to fetch query result (%s) from smtp file \"%s\" at: %s",
+	    "Failed to fetch query result (%s) from smtp file: %s",
 	    (mailEntry != NULL) ? mailEntry->d_name : "none",
-	    objFileName(qy->Data->Obj), objFilePath(qy->Data->Obj)
+	    objFilePath(qy->Data->Obj)
 	);
 
 	if (inf != NULL) smtp_internal_Close(inf);
@@ -2853,8 +2841,8 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     end:
 	if (UNLIKELY(rval != 0))
 	    mssError(0, "SMTP",
-		"Failed to set attribute '%s' of \"%s\" in \"%s\" at: %s",
-		attrname, inf->Name, objFileName(inf->Obj), objFilePath(inf->Obj)
+		"Failed to set attribute '%s' of \"%s\" in: %s",
+		attrname, inf->Name, objFilePath(inf->Obj)
 	    );
 
 	/** Free appropriate memory and close appropriate files. **/
@@ -3047,8 +3035,8 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     end:
 	if (UNLIKELY(rval != 0))
 	    mssError(0, "SMTP",
-		"Failed to add attribute '%s' to \"%s\" in \"%s\" at: %s",
-		attrname, inf->Name, objFileName(inf->Obj), objFilePath(inf->Obj)
+		"Failed to add attribute '%s' to \"%s\" in: %s",
+		attrname, inf->Name, objFilePath(inf->Obj)
 	    );
 
 	/** Free appropriate memory and close appropriate files. **/
