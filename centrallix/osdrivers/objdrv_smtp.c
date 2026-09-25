@@ -1817,7 +1817,10 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be %s)", attrname, obj_type_names[attr->Type]);
 		return -1;
 		}
-	    val->String = attr->Value.String;
+	    if (attr->Type == DATA_T_INTEGER)
+		val->Integer = attr->Value.Integer;
+	    else
+		val->String = attr->Value.String;
 	    return 0;
 	    }
 
