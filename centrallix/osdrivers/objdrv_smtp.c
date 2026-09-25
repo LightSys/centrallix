@@ -443,6 +443,9 @@ smtp_internal_InitGlobals()
 	/** Add all the required email attributes. Behold the hard code; standeth it against all but the hardest hammer. **/
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "envelope_from",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "envelope_to",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_from",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_to",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_subject",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "status",		DATA_T_STRING,	0,	"Draft") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "is_ready",		DATA_T_INTEGER,	0,	0) < 0)) goto error;
 	/** Not strictly necessary. **/
@@ -453,7 +456,6 @@ smtp_internal_InitGlobals()
 
 	/** Add all the default headers for an email file. **/
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailHeaders, "User-Agent",		DATA_T_STRING,	0,	"Centrallix/" PACKAGE_VERSION) < 0)) goto error;
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailHeaders, "Subject",			DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailHeaders, "MIME-Version",		DATA_T_STRING,	0,	"1.0") < 0)) goto error;
 
 	return 0;
@@ -590,6 +592,143 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
     }
 
 
+/*** smtp_internal_ApplyHeaders - Writes the headers from the header_*
+ *** attributes into the email file, replacing existing headers of the same
+ *** name.
+ *** Returns 0 on success and -1 on failure.
+ ***/
+int
+smtp_internal_ApplyHeaders(pSmtpData inf)
+    {
+    struct { char* Attr; char* Name; char* Value; } headers[] =
+	{
+	{ "header_from",	"From",		NULL },
+	{ "header_to",		"To",		NULL },
+	{ "header_subject",	"Subject",	NULL },
+	};
+    const int n_headers = sizeof(headers) / sizeof(headers[0]);
+    pSmtpAttribute attr = NULL;
+    pXString new_headers = NULL;
+    pXString content = NULL;
+    char buf[1024];
+    int i, cnt, name_len, line, line_end, newline;
+    int rval = -1;
+
+	/** Build the headers set by header attributes. **/
+	new_headers = xsNew();
+	if (UNLIKELY(new_headers == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate an xstring for the email headers.");
+	    goto end;
+	    }
+	for (i = 0; i < n_headers; i++)
+	    {
+	    attr = SMTP_ATTR(xhLookup(inf->Attributes, headers[i].Attr));
+	    if (attr == NULL || attr->Type != DATA_T_STRING || attr->Value.String == NULL || attr->Value.String[0] == '\0')
+		continue;
+	    if (UNLIKELY(strpbrk(attr->Value.String, "\r\n") != NULL))
+		{
+		mssError(1, "SMTP", "Attribute '%s' contains a line break: \"%s\".", headers[i].Attr, attr->Value.String);
+		goto end;
+		}
+	    if (UNLIKELY(xsConcatPrintf(new_headers, "%s: %s\n", headers[i].Name, attr->Value.String) < 0))
+		{
+		mssError(1, "SMTP", "Failed to add header '%s: %s'.", headers[i].Name, attr->Value.String);
+		goto end;
+		}
+	    headers[i].Value = attr->Value.String;
+	    }
+
+	/** No header attributes set. **/
+	if (new_headers->Length == 0)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Read the email. **/
+	content = xsNew();
+	if (UNLIKELY(content == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate an xstring for the email content.");
+	    goto end;
+	    }
+	while ((cnt = fdRead(inf->ContentFile, buf, sizeof(buf), content->Length, FD_U_SEEK)) > 0)
+	    {
+	    if (UNLIKELY(xsConcatenate(content, buf, cnt) < 0))
+		{
+		mssError(1, "SMTP", "Failed to store %d bytes of email content.", cnt);
+		goto end;
+		}
+	    }
+	if (UNLIKELY(cnt < 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to read email file at offset %d.", content->Length);
+	    goto end;
+	    }
+
+	/** Remove existing headers that the new headers replace. **/
+	line = 0;
+	while (line < content->Length && content->String[line] != '\n' && strncmp(content->String + line, "\r\n", 2) != 0)
+	    {
+	    /** Find the end of the header, including continuation lines. **/
+	    line_end = line;
+	    do  {
+		newline = xsFind(content, "\n", 1, line_end);
+		line_end = (newline < 0) ? content->Length : newline + 1;
+		} while (line_end < content->Length && (content->String[line_end] == ' ' || content->String[line_end] == '\t'));
+
+	    /** Check whether a header attribute replaces it. **/
+	    for (i = 0; i < n_headers; i++)
+		{
+		if (headers[i].Value == NULL) continue;
+		name_len = strlen(headers[i].Name);
+		if (strncasecmp(content->String + line, headers[i].Name, name_len) == 0 && content->String[line + name_len] == ':')
+		    break;
+		}
+
+	    /** Remove it or move past it. **/
+	    if (i < n_headers)
+		{
+		if (UNLIKELY(xsSubst(content, line, line_end - line, "", 0) < 0))
+		    {
+		    mssError(1, "SMTP", "Failed to remove existing '%s' header.", headers[i].Name);
+		    goto end;
+		    }
+		}
+	    else
+		{
+		line = line_end;
+		}
+	    }
+
+	/** Write the email back with the new headers. **/
+	if (UNLIKELY(xsConcatenate(new_headers, content->String, content->Length) < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to add %d bytes of email content after the headers.", content->Length);
+	    goto end;
+	    }
+	cnt = fdWrite(inf->ContentFile, new_headers->String, new_headers->Length, 0, FD_U_SEEK | FD_U_TRUNCATE | FD_U_PACKET);
+	if (UNLIKELY(cnt != new_headers->Length))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to write %d bytes to email file (wrote %d).", new_headers->Length, cnt);
+	    goto end;
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(rval != 0))
+	    mssError(0, "SMTP", "Failed to apply header attributes to email file (%s).", inf->EmailPath.String);
+
+	if (LIKELY(new_headers != NULL)) xsFree(new_headers);
+	if (LIKELY(content != NULL)) xsFree(content);
+
+	return rval;
+    }
+
+
 /*** smtp_internal_SendEmail - fire off the email message.
  ***/
 int
@@ -597,6 +736,10 @@ smtp_internal_SendEmail(pSmtpData inf)
     {
     pSmtpAttribute envFrom = NULL;
     pSmtpAttribute envTo = NULL;
+
+	/** Add the header attributes to the email. **/
+	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
+	    goto error;
 
 	/** Get the to and from. **/
 	envFrom = SMTP_ATTR(xhLookup(inf->Attributes, "envelope_from"));
