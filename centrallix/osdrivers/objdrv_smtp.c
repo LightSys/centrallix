@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 
 #include "centrallix.h"
 #include "cxlib/expect.h"
@@ -506,8 +507,11 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 		}
 	    attr->Type = currentAttr->Value->DataType;
 
-	    if (currentAttr->Value->DataType == DATA_T_STRING && (strcmp(attr->Name, "expire_date") == 0 || strcmp(attr->Name, "last_try_date") == 0))
-		{
+	    if (currentAttr->Value->DataType == DATA_T_STRING && (
+		strcmp(attr->Name, "expire_date") == 0
+		|| strcmp(attr->Name, "last_try_date") == 0
+		|| strcmp(attr->Name, "header_date") == 0
+	    ))  {
 		/** DateTime attribute, but from a string **/
 		attr->Type = DATA_T_DATETIME;
 		attr->Value.DateTime = NULL;
@@ -592,7 +596,7 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 
 /*** smtp_internal_ApplyHeaders - Writes the headers from the header_*
  *** and message_id attributes into the email file, replacing existing
- *** headers of the same name.
+ *** headers of the same name.  The date defaults to the current time.
  *** Returns 0 on success and -1 on failure.
  ***/
 int
@@ -601,6 +605,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     struct { char* Attr; char* Name; char* Format; char* Value; } headers[] =
 	{
 	{ "message_id",			"Message-ID",	"%s: <%s>\n",	NULL },
+	{ "header_date",		"Date",		"%s: %s\n",	NULL },
 	{ "header_from",		"From",		"%s: %s\n",	NULL },
 	{ "header_to",			"To",		"%s: %s\n",	NULL },
 	{ "header_cc",			"Cc",		"%s: %s\n",	NULL },
@@ -614,6 +619,10 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     pSmtpAttribute attr = NULL;
     pXString new_headers = NULL;
     pXString content = NULL;
+    DateTime now;
+    pDateTime date = NULL;
+    struct tm date_tm;
+    char date_str[64];
     char buf[1024];
     int i, cnt, name_len, line, line_end, newline;
     int rval = -1;
@@ -628,26 +637,68 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	for (i = 0; i < n_headers; i++)
 	    {
 	    attr = SMTP_ATTR(xhLookup(inf->Attributes, headers[i].Attr));
-	    if (attr == NULL || attr->Type != DATA_T_STRING || attr->Value.String == NULL || attr->Value.String[0] == '\0')
-		continue;
-	    if (UNLIKELY(strpbrk(attr->Value.String, "\r\n") != NULL))
+	    if (strcmp(headers[i].Attr, "header_date") == 0)
 		{
-		mssError(1, "SMTP", "Attribute '%s' contains a line break: \"%s\".", headers[i].Attr, attr->Value.String);
-		goto end;
-		}
-	    if (UNLIKELY(xsConcatPrintf(new_headers, headers[i].Format, headers[i].Name, attr->Value.String) < 0))
-		{
-		mssError(1, "SMTP", "Failed to add header '%s: %s'.", headers[i].Name, attr->Value.String);
-		goto end;
-		}
-	    headers[i].Value = attr->Value.String;
-	    }
+		/** Get the date, defaulting to now. **/
+		if (attr == NULL || (attr->Type == DATA_T_DATETIME && attr->Value.DateTime == NULL))
+		    {
+		    if (UNLIKELY(objCurrentDate(&now) != 0))
+			{
+			mssError(1, "SMTP", "Unable to obtain the current date for the Date header.");
+			goto end;
+			}
+		    date = &now;
+		    }
+		else if (attr->Type == DATA_T_DATETIME)
+		    {
+		    date = attr->Value.DateTime;
+		    }
+		else
+		    {
+		    mssError(1, "SMTP", "Attribute '%s' must be a datetime (got %s).", headers[i].Attr,
+			(0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT) ? obj_type_names[attr->Type] : "unknown type");
+		    goto end;
+		    }
 
-	/** No header attributes set. **/
-	if (new_headers->Length == 0)
-	    {
-	    rval = 0;
-	    goto end;
+		/** Format the date for the header. **/
+		memset(&date_tm, 0, sizeof(date_tm));
+		date_tm.tm_sec = date->Part.Second;
+		date_tm.tm_min = date->Part.Minute;
+		date_tm.tm_hour = date->Part.Hour;
+		date_tm.tm_mday = date->Part.Day + 1;
+		date_tm.tm_mon = date->Part.Month;
+		date_tm.tm_year = date->Part.Year;
+		date_tm.tm_isdst = -1;
+		if (UNLIKELY(mktime(&date_tm) == (time_t)-1
+		    || strftime(date_str, sizeof(date_str), "%a, %d %b %Y %H:%M:%S %z", &date_tm) == 0
+		))   {
+		    mssError(1, "SMTP", "Failed to format date %04d-%02d-%02d %02d:%02d:%02d for the Date header.",
+			date->Part.Year + 1900, date->Part.Month + 1, date->Part.Day + 1,
+			date->Part.Hour, date->Part.Minute, date->Part.Second);
+		    goto end;
+		    }
+		headers[i].Value = date_str;
+		}
+	    else if (attr != NULL && attr->Type == DATA_T_STRING && attr->Value.String != NULL && attr->Value.String[0] != '\0')
+		{
+		headers[i].Value = attr->Value.String;
+		}
+	    else
+		{
+		continue;
+		}
+
+	    /** Add the header. **/
+	    if (UNLIKELY(strpbrk(headers[i].Value, "\r\n") != NULL))
+		{
+		mssError(1, "SMTP", "Attribute '%s' contains a line break: \"%s\".", headers[i].Attr, headers[i].Value);
+		goto end;
+		}
+	    if (UNLIKELY(xsConcatPrintf(new_headers, headers[i].Format, headers[i].Name, headers[i].Value) < 0))
+		{
+		mssError(1, "SMTP", "Failed to add header '%s: %s'.", headers[i].Name, headers[i].Value);
+		goto end;
+		}
 	    }
 
 	/** Read the email. **/
@@ -2258,6 +2309,18 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	if (attr->Type == DATA_T_INTEGER)
 	    {
 	    attr->Value.Integer = 0;
+	    }
+
+	/** Set the default value appropriately if it is a date. **/
+	if (attr->Type == DATA_T_DATETIME)
+	    {
+	    attr->Value.DateTime = nmMalloc(sizeof(DateTime));
+	    if (UNLIKELY(attr->Value.DateTime == NULL))
+		{
+		mssError(1, "SMTP", "Failed to allocate %zu bytes for a date.", sizeof(DateTime));
+		goto end;
+		}
+	    memset(attr->Value.DateTime, 0, sizeof(DateTime));
 	    }
 
 	/** Add the attribute to the attribute hash and the attribute name list. **/
