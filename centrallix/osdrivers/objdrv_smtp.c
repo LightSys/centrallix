@@ -606,18 +606,18 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     {
     struct { char* Attr; char* Name; char* Format; char* Value; } headers[] =
 	{
-	{ "message_id",			"Message-ID",	"%s: <%s>\n",	NULL },
-	{ "header_date",		"Date",		"%s: %s\n",	NULL },
-	{ "header_from",		"From",		"%s: %s\n",	NULL },
-	{ "header_to",			"To",		"%s: %s\n",	NULL },
-	{ "header_cc",			"Cc",		"%s: %s\n",	NULL },
-	{ "header_bcc",			"Bcc",		"%s: %s\n",	NULL },
-	{ "header_reply_to",		"Reply-To",	"%s: %s\n",	NULL },
-	{ "header_list_unsubscribe",	"List-Unsubscribe",	"%s: %s\n",	NULL },
-	{ "header_list_unsubscribe_post",	"List-Unsubscribe-Post",	"%s: %s\n",	NULL },
-	{ "header_subject",		"Subject",	"%s: %s\n",	NULL },
-	{ "header_user_agent",		"User-Agent",	"%s: %s\n",	NULL },
-	{ "header_mime_version",	"MIME-Version",	"%s: %s\n",	NULL },
+	{ "message_id",                     "Message-ID",              "%s: <%s>\n", NULL },
+	{ "header_date",                    "Date",                    "%s: %s\n",   NULL },
+	{ "header_from",                    "From",                    "%s: %s\n",   NULL },
+	{ "header_to",                      "To",                      "%s: %s\n",   NULL },
+	{ "header_cc",                      "Cc",                      "%s: %s\n",   NULL },
+	{ "header_bcc",                     "Bcc",                     "%s: %s\n",   NULL },
+	{ "header_reply_to",                "Reply-To",                "%s: %s\n",   NULL },
+	{ "header_list_unsubscribe",        "List-Unsubscribe",        "%s: %s\n",   NULL },
+	{ "header_list_unsubscribe_post",   "List-Unsubscribe-Post",   "%s: %s\n",   NULL },
+	{ "header_subject",                 "Subject",                 "%s: %s\n",   NULL },
+	{ "header_user_agent",              "User-Agent",              "%s: %s\n",   NULL },
+	{ "header_mime_version",            "MIME-Version",            "%s: %s\n",   NULL },
 	};
     const int n_headers = sizeof(headers) / sizeof(headers[0]);
     pSmtpAttribute attr = NULL;
