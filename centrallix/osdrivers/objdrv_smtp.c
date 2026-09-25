@@ -432,6 +432,7 @@ smtp_internal_InitGlobals()
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
 	    {
 	    strtcpy(local_host_name, "localhost.localdomain", sizeof(local_host_name));
+	    fprintf(stderr, "Warning: gethostname() failed (%s); using \"%s\".\n", strerror(errno), local_host_name);
 	    }
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "local_host_name",	DATA_T_STRING,	0,	local_host_name) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "send_method",		DATA_T_STRING,	0,	"sendmail") < 0)) goto error;
@@ -859,7 +860,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	attrDate = (pDateTime)nmMalloc(sizeof(DateTime));
 	if (UNLIKELY(attrDate == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to allocate a date structure for a default attribute.");
+	    mssError(1, "SMTP", "Failed to allocate a date structure for the default attribute (expire_date).");
 	    goto end;
 	    }
 	memset(attrDate, 0, sizeof(DateTime));
@@ -893,7 +894,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	attrDate = (pDateTime)nmMalloc(sizeof(DateTime));
 	if (UNLIKELY(attrDate == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to allocate a date structure for a default attribute.");
+	    mssError(1, "SMTP", "Failed to allocate a date structure for the default attribute (last_try_date).");
 	    goto end;
 	    }
 	memset(attrDate, 0, sizeof(DateTime));
@@ -926,7 +927,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	/** Write the struct file. **/
 	if (UNLIKELY(stGenerateMsg(emailStructFile, emailStruct, 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to write the email struct file.");
+	    mssError(1, "SMTP", "Failed to write the email struct file: %s.", inf->EmailStructPath.String);
 	    goto end;
 	    }
 
@@ -1027,7 +1028,8 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	/** If _still_ no node, quit out. **/
 	if (UNLIKELY(node == NULL))
 	    {
-	    mssError(0,"SMTP","Could not open structure file");
+	    char* node_path = obj_internal_PathPart(inf->Obj->Prev->Pathname, 0, inf->Obj->Prev->SubPtr + inf->Obj->Prev->SubCnt - 1);
+	    mssError(0, "SMTP", "Could not open structure file: %s.", (node_path != NULL) ? node_path : "unknown path");
 	    goto error;
 	    }
 
@@ -1126,7 +1128,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	pSmtpAttribute spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
 	if (UNLIKELY(spoolDir == NULL))
 	    {
-	    mssError(1, "SMTP", "Unable to get the spool directory path.");
+	    mssError(1, "SMTP", "The SMTP node does not have the required 'spool_dir' attribute.");
 	    goto end;
 	    }
 
@@ -1171,7 +1173,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    /** Creation requested with exclude, but file exists? **/
 	    if ((inf->Obj->Mode & OBJ_O_CREAT) && (inf->Obj->Mode & OBJ_O_EXCL))
 		{
-		mssError(1, "SMTP", "Email creation request failed because the email already exists.");
+		mssError(1, "SMTP", "Email creation request failed because the email already exists: %s.", inf->EmailPath.String);
 		goto end;
 		}
 
@@ -1213,7 +1215,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	emailStructure = stParseMsg(emailStructureFile, 0);
 	if (UNLIKELY(emailStructure == NULL))
 	    {
-	    mssError(0, "SMTP", "Could not parse the email structure file.");
+	    mssError(0, "SMTP", "Could not parse the email structure file: %s.", inf->EmailStructPath.String);
 	    goto end;
 	    }
 
@@ -1229,7 +1231,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 
     end:
 	if (UNLIKELY(rval != 0))
-	    mssError(0, "SMTP", "Failed to open email.");
+	    mssError(0, "SMTP", "Failed to open email: %s.", (inf->Name != NULL) ? inf->Name : "unknown name");
 
 	if (UNLIKELY(fd != NULL)) fdClose(fd, 0);
 	if (LIKELY(emailStructureFile != NULL)) fdClose(emailStructureFile, 0);
@@ -1294,7 +1296,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 	else
 	    {
-	    mssError(1,"SMTP","Could not open file");
+	    mssError(1, "SMTP", "Could not open \"%s\": expected an email file (.eml or .msg).", internalPath);
 	    goto error;
 	    }
 
@@ -1429,7 +1431,8 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    }
 	else
 	    {
-	    mssError(1,"SMTP","Could not create file");
+	    char* path = obj_internal_PathPart(obj->Pathname, 0, 0);
+	    mssError(1, "SMTP", "Could not create \"%s\": expected an email file (.eml or .msg).", (path != NULL) ? path : "unknown path");
 	    goto error;
 	    }
 
@@ -1575,7 +1578,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    attr = (pSmtpAttribute)xhLookup(inf->Attributes, "spool_dir");
 	    if (UNLIKELY(attr == NULL))
 		{
-		mssError(1,"SMTP","Unable to locate spool directory");
+		mssError(1, "SMTP", "The SMTP node is missing the required 'spool_dir' attribute.");
 		goto error;
 		}
 	    spoolPath = attr->Value.String;
@@ -2017,7 +2020,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    emlStruct = stParseMsg(emlStructFileRead, 0);
 	    if (UNLIKELY(emlStruct == NULL))
 		{
-		mssError(0, "SMTP", "Could not parse the email structure file.");
+		mssError(0, "SMTP", "Could not parse the email structure file: %s.", inf->EmailStructPath.String);
 		goto end;
 		}
 
@@ -2054,7 +2057,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    /** Write changes to the email struct file. **/
 	    if (UNLIKELY(stGenerateMsg(emlStructFileWrite, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) != 0))
 		{
-		mssError(1, "SMTP", "Unable to write the attribute to the email struct file.");
+		mssError(1, "SMTP", "Unable to write the attribute to the email struct file: %s.", inf->EmailStructPath.String);
 		goto end;
 		}
 
@@ -2204,7 +2207,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    emlStruct = stParseMsg(emlStructFile, 0);
 	    if (UNLIKELY(emlStruct == NULL))
 		{
-		mssError(0, "SMTP", "Could not parse the email structure file.");
+		mssError(0, "SMTP", "Could not parse the email structure file: %s.", inf->EmailStructPath.String);
 		goto end;
 		}
 
@@ -2226,7 +2229,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    /** Write changes to the email struct file. **/
 	    if (UNLIKELY(stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) < 0))
 		{
-		mssError(1, "SMTP", "Unable to write the updated email struct file.");
+		mssError(1, "SMTP", "Unable to write the updated email struct file: %s.", inf->EmailStructPath.String);
 		goto end;
 		}
 	    }
