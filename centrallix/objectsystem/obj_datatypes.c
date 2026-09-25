@@ -971,6 +971,7 @@ objDataToBoolean(int data_type, void* data_ptr, int default_value)
 		    || strcasecmp(str, "true") == 0
 		    || strcasecmp(str, "y") == 0
 		    || strcasecmp(str, "on") == 0
+		    || strcasecmp(str, "1") == 0
 		)   {
 		    rval = 1;
 		    }
@@ -978,6 +979,7 @@ objDataToBoolean(int data_type, void* data_ptr, int default_value)
 		    || strcasecmp(str, "false") == 0
 		    || strcasecmp(str, "n") == 0
 		    || strcasecmp(str, "off") == 0
+		    || strcasecmp(str, "0") == 0
 		)   {
 		    rval = 0;
 		    }
