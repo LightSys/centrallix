@@ -769,6 +769,7 @@ int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
 double objDataToDouble(int data_type, void* data_ptr);
 int objDataToInteger(int data_type, void* data_ptr, char* format);
+int objDataToBoolean(int data_type, void* data_ptr, int default_value);
 int objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format);
 int objDataToMoney(int data_type, void* data_ptr, pMoneyType m);
 char* objDataToStringTmp(int data_type, void* data_ptr, int flags);
@@ -776,6 +777,8 @@ int objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* dat
 char* objDataToWords(int data_type, void* data_ptr);
 int objCopyData(pObjData src, pObjData dst, int type);
 int objTypeID(char* name);
+int objTypeFromStr(const char* str);
+char* objTypeToStr(const int type);
 int objDebugDate(pDateTime dt);
 int objDataFromString(pObjData pod, int type, char* str);
 int objDataFromStringAlloc(pObjData pod, int type, char* str);
