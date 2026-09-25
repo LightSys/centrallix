@@ -339,7 +339,7 @@ smtp_internal_CreateAttribute(char* name, int type, int intVal, char* strVal)
 	inf = nmMalloc(sizeof(SmtpAttribute));
 	if (UNLIKELY(inf == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to allocate %d bytes for an attribute.", (int)sizeof(SmtpAttribute));
+	    mssError(1, "SMTP", "Failed to allocate %zu bytes for an attribute.", sizeof(SmtpAttribute));
 	    goto error;
 	    }
 	memset(inf, 0, sizeof(SmtpAttribute));
@@ -526,12 +526,12 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 		    dt = nmMalloc(sizeof(DateTime));
 		    if (UNLIKELY(dt == NULL))
 			{
-			mssError(1, "SMTP", "Failed to allocate %d bytes for a date.", (int)sizeof(DateTime));
+			mssError(1, "SMTP", "Failed to allocate %zu bytes for a date.", sizeof(DateTime));
 			goto error;
 			}
 		    if (UNLIKELY(objDataToDateTime(DATA_T_STRING, dateStr, dt, NULL) != 0))
 			{
-			mssError(0, "SMTP", "Failed to parse date \"%s\".", dateStr);
+			mssError(1, "SMTP", "Failed to parse date \"%s\".", dateStr);
 			nmFree(dt, sizeof(DateTime));
 			goto error;
 			}
@@ -566,7 +566,7 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 		}
 	    else
 		{
-		mssError(1, "SMTP", "Unsupported attribute type %d in email data file", currentAttr->Value->DataType);
+		mssError(1, "SMTP", "Unsupported attribute type %d in structure file.", currentAttr->Value->DataType);
 		goto error;
 		}
 
@@ -656,7 +656,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	    /** Set the attribute to its default value. **/
 	    if (UNLIKELY(stSetAttrValue(currentParam, currentAttr->Type, &currentAttr->Value, 0) != 0))
 		{
-		mssError(0, "SMTP", "Could not set attribute value %s", currentAttr->Name);
+		mssError(1, "SMTP", "Could not set attribute value %s", currentAttr->Name);
 		goto error;
 		}
 	    }
@@ -926,7 +926,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	/** Write the struct file. **/
 	if (UNLIKELY(stGenerateMsg(emailStructFile, emailStruct, 0) != 0))
 	    {
-	    mssError(0, "SMTP", "Failed to write the email struct file.");
+	    mssError(1, "SMTP", "Failed to write the email struct file.");
 	    goto end;
 	    }
 
@@ -938,7 +938,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	/** Add the dynamic attributes to the file. **/
 	if (UNLIKELY(fdPrintf(inf->ContentFile, "Message-ID: <%s>\n", message_id) < 0))
 	    {
-	    mssError(0, "SMTP", "Failed to write message id to new message");
+	    mssErrorErrno(1, "SMTP", "Failed to write message id to new message");
 	    goto end;
 	    }
 
@@ -950,7 +950,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    /** Add the attribute to the file. **/
 	    if (UNLIKELY(fdPrintf(inf->ContentFile, "%s: %s\n", currentHeader->Name, currentHeader->Value.String) < 0))
 		{
-		mssError(0, "SMTP", "Failed to write default header to new message (%s: %s).",
+		mssErrorErrno(1, "SMTP", "Failed to write default header to new message (%s: %s).",
 			currentHeader->Name, currentHeader->Value.String);
 		goto end;
 		}
@@ -959,7 +959,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	/** Add an empty line for header separation to the file. **/
 	if (UNLIKELY(fdWrite(inf->ContentFile, "\n", 1, 0, 0) < 0))
 	    {
-	    mssError(0, "SMTP", "Failed to write default header separator to new message.");
+	    mssErrorErrno(1, "SMTP", "Failed to write default header separator to new message.");
 	    goto end;
 	    }
 
@@ -1006,7 +1006,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	    {
 	    if (UNLIKELY(node != NULL))
 		{
-		mssError(0, "SMTP", "Node exists and CREAT and EXCL flags are set. Cannot create new node.");
+		mssError(1, "SMTP", "Node exists and CREAT and EXCL flags are set. Cannot create new node.");
 		goto error;
 		}
 
@@ -1249,7 +1249,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** Edge cases. **/
 	if (UNLIKELY(obj == NULL))
 	    {
-	    mssError(0, "SMTP", "Call to smtpOpen(NULL, ...);");
+	    mssError(1, "SMTP", "Call to smtpOpen(NULL, ...);");
 	    goto error;
 	    }
 	ASSERTMAGIC(obj, MGK_OBJECT);
@@ -1642,7 +1642,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	    if (UNLIKELY(obj_internal_AddToPath(obj->Pathname, mailEntry->d_name) < 0))
 		{
-		mssError(1, "SMTP", "Query result pathname exceeds internal limits");
+		mssError(0, "SMTP", "Query result pathname exceeds internal limits");
 		goto error;
 		}
 	    obj->Mode = mode;
@@ -1749,7 +1749,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	if (!inf_v)
 	    {
-	    mssError(1, "SMTP", "Attribute not found '%s'", attrname);
+	    mssError(1, "SMTP", "Cannot get attribute '%s' of a NULL object.", attrname);
 	    return -1;
 	    }
 
@@ -1825,7 +1825,11 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    {
 	    if (datatype != attr->Type)
 		{
-		mssError(1,"SMTP","Type mismatch getting attribute '%s' (should be %s)", attrname, obj_type_names[attr->Type]);
+		if (0 <= datatype && datatype < OBJ_TYPE_NAMES_CNT
+		    && 0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
+		    mssError(1, "SMTP", "Type mismatch getting attribute '%s' (requested %s, should be %s)", attrname, obj_type_names[datatype], obj_type_names[attr->Type]);
+		else
+		    mssError(1, "SMTP", "Type mismatch getting attribute '%s' (requested %d, should be %d)", attrname, datatype, attr->Type);
 		return -1;
 		}
 	    if (attr->Type == DATA_T_INTEGER)
@@ -1910,7 +1914,8 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Check the requested datatype. **/
 	if (attr->Type != datatype)
 	    {
-	    if (datatype < OBJ_TYPE_NAMES_CNT && attr->Type < OBJ_TYPE_NAMES_CNT && datatype >= 0 && attr->Type >= 0)
+	    if (0 <= datatype && datatype < OBJ_TYPE_NAMES_CNT
+		&& 0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT)
 		{
 		mssError(1 ,"SMTP", "Attempt to assign invalid data type to attribute. (Assigning %s to %s)", obj_type_names[datatype], obj_type_names[attr->Type]);
 		}
@@ -1951,7 +1956,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		attr->Value.DateTime = nmMalloc(sizeof(DateTime));
 	    if (UNLIKELY(attr->Value.DateTime == NULL))
 		{
-		mssError(1, "SMTP", "Failed to allocate %d bytes for a date.", (int)sizeof(DateTime));
+		mssError(1, "SMTP", "Failed to allocate %zu bytes for a date.", sizeof(DateTime));
 		goto end;
 		}
 	    memcpy(attr->Value.DateTime, val->DateTime, sizeof(DateTime));
@@ -2221,7 +2226,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    /** Write changes to the email struct file. **/
 	    if (UNLIKELY(stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) < 0))
 		{
-		mssError(0, "SMTP", "Unable to write the updated email struct file.");
+		mssError(1, "SMTP", "Unable to write the updated email struct file.");
 		goto end;
 		}
 	    }
@@ -2301,7 +2306,7 @@ smtpInitialize()
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
 	if (UNLIKELY(drv == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to allocate %d bytes for the driver.", (int)sizeof(ObjDriver));
+	    mssError(1, "SMTP", "Failed to allocate %zu bytes for the driver.", sizeof(ObjDriver));
 	    goto error;
 	    }
 	memset(drv, 0, sizeof(ObjDriver));
