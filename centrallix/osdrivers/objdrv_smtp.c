@@ -40,6 +40,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +60,12 @@
 /** Define types of SMTP objects. **/
 #define SMTP_T_ROOT	0
 #define SMTP_T_EML	1
+
+/** Seconds to keep a sent or failed email (3 days). **/
+#define SMTP_DEFAULT_EXPIRE_TIME	(3 * 24 * 60 * 60)
+
+/** Minimum seconds between sweeps of one spool directory. **/
+#define SMTP_SWEEP_INTERVAL	(60 * 60)
 
 /*** Structure to store attribute information. ***/
 typedef struct
@@ -107,11 +114,21 @@ typedef struct
 #define SMTP_QY(x) ((pSmtpQueryData)(x))
 
 
+/*** Structure to track sweeps of a spool directory. ***/
+typedef struct
+    {
+    char*	Path;
+    time_t	LastSweep;
+    }
+    SmtpSpool, *pSmtpSpool;
+
+
 /*** Global data structure for the SMTP module. ***/
 struct
     {
     XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
+    XHashTable		Spools;				/* Hash of spool_dir to pSmtpSpool */
     }
     SMTP_INF;
 
@@ -120,6 +137,7 @@ struct
 int smtp_internal_Close(pSmtpData inf);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
 int smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
+int smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
 
 
 /*** smtp_internal_SpawnSendmail - launch the sendmail process to actually
@@ -420,6 +438,11 @@ smtp_internal_InitGlobals()
 	    mssError(1, "SMTP", "Failed to initialize default attribute lists.");
 	    goto error;
 	    }
+	if (UNLIKELY(xhInit(&SMTP_INF.Spools, 17, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the spool directory table.");
+	    goto error;
+	    }
 
 	/** Add all the required attributes. Yay hardcoding! **/
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
@@ -438,6 +461,7 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_info_attr",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "ratelimit_time",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "domlimit_time",		DATA_T_INTEGER,	5,	NULL) < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "expire_time",		DATA_T_INTEGER,	SMTP_DEFAULT_EXPIRE_TIME,	NULL) < 0)) goto error;
 
 	/** Add all the required email attributes. Behold the hard code; standeth it against all but the hardest hammer. **/
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "envelope_from",	DATA_T_STRING,	0,	"") < 0)) goto error;
@@ -469,11 +493,229 @@ smtp_internal_InitGlobals()
 
 /*** smtp_internal_IsEmail - Returns 1 if the filename is an email.
  ***/
-int
+bool
 smtp_internal_IsEmail(char* filename)
     {
     int l = strlen(filename);
     return l >= 4 && (strcmp(filename + l - 4, ".msg") == 0 || strcmp(filename + l - 4, ".eml") == 0);
+    }
+
+
+/*** smtp_internal_IsExpired - Checks whether a sent or failed email has
+ *** passed its expire_date.  Drafts never expire.
+ *** @param structPath The path of the email's struct file.
+ *** @param now The current date.
+ *** @returns 1 if expired, 0 if not, or -1 if the struct is unreadable.
+ ***/
+int
+smtp_internal_IsExpired(char* structPath, pDateTime now)
+    {
+    pFile structFile = NULL;
+    pStructInf emailStruct = NULL;
+    char* status = NULL;
+    char* expireStr = NULL;
+    DateTime expireDate;
+    int rval = -1;
+
+	/** Parse the struct file, which a new email may not have yet. **/
+	structFile = fdOpen(structPath, O_RDONLY, 0);
+	if (structFile == NULL)
+	    {
+	    if (errno != ENOENT)
+		{
+		mssErrorErrno(1, "SMTP", "Could not open email struct file \"%s\".", structPath);
+		goto end;
+		}
+	    rval = 0; /* No struct yet. */
+	    goto end;
+	    }
+	emailStruct = stParseMsg(structFile, 0);
+	if (UNLIKELY(emailStruct == NULL))
+	    {
+	    mssError(0, "SMTP", "Could not parse email struct file \"%s\".", structPath);
+	    goto end;
+	    }
+
+	/** Only sent and failed emails expire. **/
+	if (stAttrValue(stLookup(emailStruct, "status"), NULL, &status, 0) != 0
+	    || (strcmp(status, "Sent") != 0 && strcmp(status, "Error") != 0))
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** An expire_date of 01 Jan 1900 means none. **/
+	if (stAttrValue(stLookup(emailStruct, "expire_date"), NULL, &expireStr, 0) != 0)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Get expire_date. **/
+	memset(&expireDate, 0, sizeof(DateTime));
+	if (UNLIKELY(objDataToDateTime(DATA_T_STRING, expireStr, &expireDate, NULL) != 0))
+	    {
+	    mssError(1, "SMTP", "Invalid expire_date \"%s\" in \"%s\".", expireStr, structPath);
+	    goto end;
+	    }
+
+	/** Success. **/
+	rval = (expireDate.Value != 0 && expireDate.Value <= now->Value) ? 1 : 0;
+
+    end:
+	if (LIKELY(structFile != NULL)) fdClose(structFile, 0);
+	if (LIKELY(emailStruct != NULL)) stFreeInf(emailStruct);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_SweepSpool - Deletes expired emails from a spool
+ *** directory, at most once per SMTP_SWEEP_INTERVAL.  Callers continue
+ *** without the sweep, so it resolves its own errors with a warning.
+ *** @param spoolDir The spool directory to sweep.
+ ***/
+void
+smtp_internal_SweepSpool(char* spoolDir)
+    {
+    pSmtpSpool spool = NULL;
+    pSmtpSpool newSpool = NULL;
+    DIR* dir = NULL;
+    struct dirent* entry = NULL;
+    char emailPath[PATH_MAX];
+    char structPath[PATH_MAX];
+    DateTime now;
+    time_t curTime = time(NULL);
+    int nameLen;
+    int expired;
+    bool successful = false;
+
+	/** Track each spool directory. **/
+	spool = (pSmtpSpool)xhLookup(&SMTP_INF.Spools, spoolDir);
+	if (spool == NULL)
+	    {
+	    newSpool = nmMalloc(sizeof(SmtpSpool));
+	    if (UNLIKELY(newSpool == NULL))
+		{
+		mssError(0, "SMTP", "Could not allocate sweep state for spool directory \"%s\".", spoolDir);
+		goto end;
+		}
+	    memset(newSpool, 0, sizeof(SmtpSpool));
+	    newSpool->Path = nmSysStrdup(spoolDir);
+	    if (UNLIKELY(newSpool->Path == NULL))
+		{
+		mssError(0, "SMTP", "Failed to set spool directory path: \"%s\".", spoolDir);
+		goto end;
+		}
+	    if (UNLIKELY(xhAdd(&SMTP_INF.Spools, newSpool->Path, (char*)newSpool) != 0))
+		{
+		mssError(1, "SMTP", "Failed to add spool directory to hashtable: \"%s\".", spoolDir);
+		goto end;
+		}
+	    spool = newSpool;
+	    newSpool = NULL;
+	    }
+
+	/** Throttle sweeps. **/
+	if (curTime - spool->LastSweep < SMTP_SWEEP_INTERVAL)
+	    {
+	    /** No sweep needed, we're done. **/
+	    successful = true;
+	    goto end;
+	    }
+	spool->LastSweep = curTime;
+
+	/** Open the spool directory. **/
+	if (UNLIKELY(objCurrentDate(&now) != 0))
+	    {
+	    mssError(1, "SMTP", "Could not get the current date to sweep \"%s\".", spoolDir);
+	    goto end;
+	    }
+	dir = opendir(spoolDir);
+	if (UNLIKELY(dir == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not open spool directory \"%s\" to sweep it.", spoolDir);
+	    goto end;
+	    }
+
+	/** Delete each expired email with its struct file. **/
+	while (1)
+	    {
+	    /** Get the next file. **/
+	    errno = 0;
+	    entry = readdir(dir);
+	    if (entry == NULL)
+		{
+		if (UNLIKELY(errno != 0))
+		    {
+		    mssErrorErrno(1, "SMTP", "Could not read spool directory \"%s\".", spoolDir);
+		    goto end;
+		    }
+		break; /* No more files. */
+		}
+
+	    /** Skip non-email files. **/
+	    if (!smtp_internal_IsEmail(entry->d_name))
+		continue;
+
+	    /** Build the file paths. **/
+	    nameLen = strlen(entry->d_name) - 4;
+	    if (UNLIKELY(snprintf(emailPath, sizeof(emailPath), "%s/%s", spoolDir, entry->d_name) >= (int)sizeof(emailPath)
+		|| snprintf(structPath, sizeof(structPath), "%s/%.*s.struct", spoolDir, nameLen, entry->d_name) >= (int)sizeof(structPath)
+	    ))  {
+		fprintf(stderr,
+		    "Warning: Path of email \"%s\" in \"%s\" is too long to sweep, skipping.\n",
+		    entry->d_name, spoolDir
+		);
+		continue;
+		}
+
+	    /** Check if the email is expired. **/
+	    expired = smtp_internal_IsExpired(structPath, &now);
+	    if (UNLIKELY(expired < 0))
+		{
+		fprintf(stderr, "Warning: Could not check whether email \"%s\" expired, skipping.\n", emailPath);
+		mssClearError();
+		continue;
+		}
+	    if (expired != 1) continue;
+
+	    /** Delete the expired email. **/
+	    if (UNLIKELY(remove(emailPath) != 0))
+		{
+		fprintf(stderr,
+		    "Warning: Could not delete expired email \"%s\": %s, skipping.\n",
+		    emailPath, strerror(errno)
+		);
+		continue;
+		}
+	    if (UNLIKELY(remove(structPath) != 0))
+		{
+		fprintf(stderr,
+		    "Warning: Could not delete expired email struct \"%s\": %s, skipping.\n",
+		    structPath, strerror(errno)
+		);
+		continue;
+		}
+	    }
+
+	/** Success. **/
+	successful = true;
+
+    end:
+	if (dir != NULL) closedir(dir);
+	if (UNLIKELY(newSpool != NULL))
+	    {
+	    if (newSpool->Path != NULL) nmSysFree(newSpool->Path);
+	    nmFree(newSpool, sizeof(SmtpSpool));
+	    }
+
+	/** Resolve sweep errors. **/
+	if (UNLIKELY(!successful))
+	    {
+	    fprintf(stderr, "Warning: Failed to sweep spool directory \"%s\"; continuing.\n", spoolDir);
+	    mssClearError();
+	    }
     }
 
 
@@ -790,17 +1032,40 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     }
 
 
-/*** smtp_internal_SendEmail - fire off the email message.
+/*** smtp_internal_SendEmail - fire off the email message, then set its
+ *** status and its expire_date (expire_time seconds from now).
+ *** A negative expire_time keeps the email indefinitely.
+ *** @returns 0 if the email was sent, or -1 if it was not.
  ***/
 int
 smtp_internal_SendEmail(pSmtpData inf)
     {
     pSmtpAttribute envFrom = NULL;
     pSmtpAttribute envTo = NULL;
+    pSmtpAttribute expireTimeAttr = NULL;
+    int expireTime = SMTP_DEFAULT_EXPIRE_TIME;
+    DateTime expireDate;
+    ObjData pod;
+    char* status = "Error";
+    bool recordFailed = false;
+    int rval = -1;
+
+	/** Get the expire time. **/
+	expireTimeAttr = SMTP_ATTR(xhLookup(inf->Attributes, "expire_time"));
+	if (expireTimeAttr != NULL)
+	    {
+	    if (UNLIKELY(expireTimeAttr->Type != DATA_T_INTEGER))
+		{
+		mssError(1, "SMTP", "Attribute 'expire_time' must be an integer (got %s).",
+		    (0 <= expireTimeAttr->Type && expireTimeAttr->Type < OBJ_TYPE_NAMES_CNT) ? obj_type_names[expireTimeAttr->Type] : "unknown type");
+		return -1;
+		}
+	    expireTime = expireTimeAttr->Value.Integer;
+	    }
 
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
-	    goto error;
+	    goto end;
 
 	/** Get the to and from. **/
 	envFrom = SMTP_ATTR(xhLookup(inf->Attributes, "envelope_from"));
@@ -810,13 +1075,43 @@ smtp_internal_SendEmail(pSmtpData inf)
 	if (UNLIKELY(smtp_internal_SpawnSendmail(inf->EmailPath.String, envFrom, envTo) < 0))
 	    {
 	    mssError(0, "SMTP", "Could not send the mail.");
-	    goto error;
+	    goto end;
 	    }
 
-	return 0;
+	/** Success. **/
+	status = "Sent";
+	rval = 0;
 
-    error:
-	return -1;
+    end:
+	/** Record the status. **/
+	pod.String = status;
+	if (UNLIKELY(smtpSetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
+	    recordFailed = true;
+
+	/** Record the expire date. **/
+	if (expireTime >= 0)
+	    {
+	    if (UNLIKELY(objCurrentDate(&expireDate) != 0 || objDateAddPart(&expireDate, expireTime, "second") != 0))
+		{
+		mssError(0, "SMTP", "Failed to calculate the expire date (%d seconds from now).", expireTime);
+		recordFailed = true;
+		}
+	    else
+		{
+		pod.DateTime = &expireDate;
+		if (UNLIKELY(smtpSetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
+		    recordFailed = true;
+		}
+	    }
+
+	/** Resolve recording errors, since the email was sent. **/
+	if (UNLIKELY(recordFailed && rval == 0))
+	    {
+	    fprintf(stderr, "Warning: Sent email \"%s\" but could not record the result, so it will not expire.\n", inf->Name);
+	    mssClearError();
+	    }
+
+	return rval;
     }
 
 
@@ -888,7 +1183,6 @@ smtp_internal_CreateEmail(pSmtpData inf)
     pStructInf createdStruct = NULL;
     pSmtpAttribute currentAttr = NULL;
     pDateTime attrDate = NULL;
-    DateTime currentDate;
 
     pFile checkFile = NULL;
     pFile emailStructFile = NULL;
@@ -1046,14 +1340,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    goto end;
 	    }
 
-	/** Get the current date. **/
-	if (UNLIKELY(objCurrentDate(&currentDate) != 0))
-	    {
-	    mssError(1, "SMTP", "Unable to obtain the current date.");
-	    goto end;
-	    }
-
-	/** Allocate a new date data structure. **/
+	/** Allocate an empty expire_date, which is set when sent. **/
 	attrDate = (pDateTime)nmMalloc(sizeof(DateTime));
 	if (UNLIKELY(attrDate == NULL))
 	    {
@@ -1061,14 +1348,6 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    goto end;
 	    }
 	memset(attrDate, 0, sizeof(DateTime));
-
-	/** Calculate the default expire date for the object. **/
-	memcpy(attrDate, &currentDate, sizeof(DateTime));
-	if (UNLIKELY(objDateAddPart(attrDate, 72, "hour") != 0))
-	    {
-	    mssError(0, "SMTP", "Failed to calculate the default expire date.");
-	    goto end;
-	    }
 
 	/** Create the expire_date attribute. **/
 	createdStruct = stAddAttr(emailStruct, "expire_date");
@@ -1331,6 +1610,10 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    /** Create the file if it doesn't exist and the create flag is set. **/
 	    if (inf->Obj->Mode & OBJ_O_CREAT)
 		{
+		/** Sweep the spool dir to clean up expired emails. **/
+		smtp_internal_SweepSpool(spoolDir->Value.String);
+
+		/** Create the requested email. **/
 		if (UNLIKELY(smtp_internal_CreateEmail(inf) < 0))
 		    {
 		    mssError(0, "SMTP", "Failed to create a new email.");
@@ -1758,6 +2041,9 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		goto error;
 		}
 	    spoolPath = attr->Value.String;
+
+	    /** Sweep the spool dir to clean up expired emails. **/
+	    smtp_internal_SweepSpool(spoolPath);
 
 	    qy->Directory = opendir(spoolPath);
 	    if (UNLIKELY(qy->Directory == NULL))
@@ -2240,6 +2526,10 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    /** If the email is ready to send, send it. **/
 	    if (strcmp(attrname, "is_ready") == 0 && val->Integer == 1 && old_int_val == 0)
 		{
+		/** Flush the struct file so sending can update it. **/
+		fdClose(emlStructFileWrite, 0);
+		emlStructFileWrite = NULL;
+
 		if (UNLIKELY(smtp_internal_SendEmail(inf) < 0))
 		    {
 		    goto end;
@@ -2547,6 +2837,7 @@ smtpInitialize()
 	nmRegister(sizeof(SmtpAttribute), "SmtpAttribute");
 	nmRegister(sizeof(SmtpData), "SmtpData");
 	nmRegister(sizeof(SmtpQueryData), "SmtpQueryData");
+	nmRegister(sizeof(SmtpSpool), "SmtpSpool");
 
 	/** Register the driver **/
 	if (UNLIKELY(objRegisterDriver(drv) < 0))

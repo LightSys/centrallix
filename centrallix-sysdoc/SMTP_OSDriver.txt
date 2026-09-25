@@ -143,7 +143,7 @@ INTERFACE AND IMPLEMENTATION
 	may be easily integrated into SMTP objects as necessary. Default
 	attributes are stored in the global data structure for the SMTP driver
 	and/or are calculated on the fly when an object is created (e.g.
-	Expire Date).
+	Message ID).
 
 	While many attributes were specified in the Email_OSDriver.txt
 	specifications, only a few attributes actually carry functional weight.
@@ -195,6 +195,9 @@ INTERFACE AND IMPLEMENTATION
 			    each email sent to recipients at a given domain name. This
 			    defaults to 5 seconds (20 emails per minute).
 
+	    expire_time	    The number of seconds to keep a sent or failed email
+			    (default 3 days). Negative values keep it forever.
+
 	2.  EMAIL ATTRIBUTES
 
 	    name	    A unique identifier for this email. Generally is the
@@ -213,9 +216,8 @@ INTERFACE AND IMPLEMENTATION
 
 	    envelope_to	    The envelope recipient (or recipient list) of the email.
 
-	    status	    The status of the email: Draft, Pending, Sent, Error.
-			    Status updates are not yet implemented in the SMTP
-			    driver. This will be constantly set to Draft.
+	    status	    The status of the email: Draft until is_ready is set
+			    to 1, then Sent or Error.
 
 	    is_ready	    Either 0 (default) to indicate that the email is not
 			    ready to be sent or set to 1 to indicate that the email is
@@ -234,14 +236,11 @@ INTERFACE AND IMPLEMENTATION
 	    try_count	    Not yet implemented. The number of times that the
 			    system has attempted to transmit the message.
 
-	    expire_date	    Not yet implemented. The latest date/time that this
-			    driver will retain status information about this email
-			    (after that, only the log messages in log_dir will
-			    remain available). This defaults to 72 hours (3 days)
-			    after the email either permanently failed or was
-			    successfully sent. While this attribute is not yet
-			    implemented, it is calculated based off of the
-			    creation date.
+	    expire_date	    When a sent or failed email expires, set to
+			    expire_time seconds after sending. 01 Jan 1900 means
+			    never, and drafts never expire. Expired emails are
+			    deleted when the spool directory is queried or an
+			    email is created, at most once per hour.
 
 	    last_try_date   Not yet implemented. The date/time of the most recent
 			    attempt to send this email.
