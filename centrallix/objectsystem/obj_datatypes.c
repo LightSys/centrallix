@@ -131,13 +131,14 @@ char* obj_default_null_fmt = "NULL";
 /** Should maybe replace current type parsing in the presentation hints. **/
 /*** Parse the given string into a datatype. The case of the first character
  *** is ignored, but all other characters must be capitalized correctly.
+ *** Names returned by objTypeToStr() are also accepted.
  *** 
  *** @attention - This function is optimized to prevent performance hits in
  *** 	situations where it may need to be called many thousands of times.
  *** 
  *** @param str The string to be parsed to a datatype.
- *** @returns The datatype.
- *** 
+ *** @returns The datatype, or -1 if the string is not a valid type.
+ ***
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
 int
@@ -150,40 +151,40 @@ objTypeFromStr(const char* str)
 	switch (str[0])
 	    {
 	    case 'A': case 'a':
-		if (strcmp(str+1, "Array"+1) == 0) return DATA_T_ARRAY;
-		if (strcmp(str+1, "Any"+1) == 0) return DATA_T_ANY;
+		if (strcasecmp(str+1, "Any"+1) == 0) return DATA_T_ANY;
+		if (strcasecmp(str+1, "Array"+1) == 0) return DATA_T_ARRAY;
 		break;
 	    
 	    case 'B': case 'b':
-		if (strcmp(str+1, "Binary"+1) == 0) return DATA_T_BINARY;
+		if (strcasecmp(str+1, "Binary"+1) == 0) return DATA_T_BINARY;
 		break;
 	    
 	    case 'C': case 'c':
-		if (strcmp(str+1, "Code"+1) == 0) return DATA_T_CODE;
+		if (strcasecmp(str+1, "Code"+1) == 0) return DATA_T_CODE;
 		break;
 	    
 	    case 'D': case 'd':
-		if (strcmp(str+1, "Double"+1) == 0) return DATA_T_DOUBLE;
-		if (strcmp(str+1, "DateTime"+1) == 0) return DATA_T_DATETIME;
+		if (strcasecmp(str+1, "Double"+1) == 0) return DATA_T_DOUBLE;
+		if (strcasecmp(str+1, "DateTime"+1) == 0) return DATA_T_DATETIME;
 		break;
 	    
 	    case 'I': case 'i':
-		if (strcmp(str+1, "Integer"+1) == 0) return DATA_T_INTEGER;
-		if (strcmp(str+1, "IntVector"+1) == 0) return DATA_T_INTVEC;
+		if (strcasecmp(str+1, "Integer"+1) == 0) return DATA_T_INTEGER;
+		if (strcasecmp(str+1, "IntVector"+1) == 0) return DATA_T_INTVEC;
 		break;
 	    
 	    case 'M': case 'm':
-		if (strcmp(str+1, "Money"+1) == 0) return DATA_T_MONEY;
+		if (strcasecmp(str+1, "Money"+1) == 0) return DATA_T_MONEY;
 		break;
 	    
 	    case 'S': case 's':
-		if (strcmp(str+1, "String"+1) == 0) return DATA_T_STRING;
-		if (strcmp(str+1, "StringVector"+1) == 0) return DATA_T_STRINGVEC;
+		if (strcasecmp(str+1, "String"+1) == 0) return DATA_T_STRING;
+		if (strcasecmp(str+1, "StringVector"+1) == 0) return DATA_T_STRINGVEC;
 		break;
 	    
 	    case 'U': case 'u':
-		if (strcmp(str+1, "Unknown"+1) == 0) return DATA_T_UNAVAILABLE;
-		if (strcmp(str+1, "Unavailable"+1) == 0) return DATA_T_UNAVAILABLE;
+		if (strcasecmp(str+1, "Unknown"+1) == 0) return DATA_T_UNAVAILABLE;
+		if (strcasecmp(str+1, "Unavailable"+1) == 0) return DATA_T_UNAVAILABLE;
 		break;
 	    }
     
