@@ -748,11 +748,14 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
     pDateTime dt;
 
 	/** Magic. **/
+	ASSERTMAGIC(structInf, MGK_STRUCTINF);
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	for (i = 0; i < structInf->nSubInf; i++)
 	    {
 	    currentAttr = structInf->SubInf[i];
+	    ASSERTMAGIC(currentAttr, MGK_STRUCTINF);
+	    ASSERTMAGIC(currentAttr->Value, MGK_EXPRESSION);
 
 	    attr = nmMalloc(sizeof(SmtpAttribute));
 	    if (UNLIKELY(attr == NULL))
@@ -907,6 +910,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    mssError(1, "SMTP", "Failed to allocate an xstring for the email headers.");
 	    goto end;
 	    }
+	ASSERTMAGIC(new_headers, MGK_XSTRING);
 	for (i = 0; i < n_headers; i++)
 	    {
 	    attr = SMTP_ATTR(xhLookup(inf->Attributes, headers[i].Attr));
@@ -983,6 +987,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    mssError(1, "SMTP", "Failed to allocate an xstring for the email content.");
 	    goto end;
 	    }
+	ASSERTMAGIC(content, MGK_XSTRING);
 	while ((cnt = fdRead(inf->ContentFile, buf, sizeof(buf), content->Length, FD_U_SEEK)) > 0)
 	    {
 	    if (UNLIKELY(xsConcatenate(content, buf, cnt) < 0))
@@ -1189,6 +1194,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	    mssError(0, "SMTP", "Could not create new node object");
 	    goto error;
 	    }
+	ASSERTMAGIC(node, MGK_STNODE);
 
 	/** Iterate through all the default root attributes. **/
 	for (i = 0; i < SMTP_INF.DefaultRootAttributes.nItems; i ++)
@@ -1254,6 +1260,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 
 	/** Magic. **/
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	autoName = xsNew();
 	if (UNLIKELY(autoName == NULL))
@@ -1261,6 +1268,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    mssError(1, "SMTP", "Failed to allocate an xstring for the email name.");
 	    goto end;
 	    }
+	ASSERTMAGIC(autoName, MGK_XSTRING);
 
 	/** Resolve autonaming. **/
 	prefix_len = inf->EmailPath.Length - 1;
@@ -1515,6 +1523,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 
 	/** Magic. **/
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	/** Try to open the root node first. **/
 	if (!node)
@@ -1548,10 +1557,12 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	/** If _still_ no node, quit out. **/
 	if (UNLIKELY(node == NULL))
 	    {
+	    ASSERTMAGIC(inf->Obj->Prev, MGK_OBJECT);
 	    char* node_path = obj_internal_PathPart(inf->Obj->Prev->Pathname, 0, inf->Obj->Prev->SubPtr + inf->Obj->Prev->SubCnt - 1);
 	    mssError(0, "SMTP", "Could not open structure file: %s.", (node_path != NULL) ? node_path : "unknown path");
 	    goto error;
 	    }
+	ASSERTMAGIC(node, MGK_STNODE);
 
 	/** Store the node object. **/
 	inf->Node = node;
@@ -1642,6 +1653,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 
 	/** Magic. **/
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	/** Perform a general open. **/
 	if (UNLIKELY(smtp_internal_OpenGeneral(inf, usrtype) < 0))
@@ -1899,6 +1911,7 @@ smtp_internal_Close(pSmtpData inf)
 	/** We're closing the object... let the world know. **/
 	if (inf->Node)
 	    {
+	    ASSERTMAGIC(inf->Node, MGK_STNODE);
 	    inf->Node->OpenCnt--;
 	    }
 
@@ -2562,6 +2575,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	/** Get the requested attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -2642,6 +2656,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		mssError(0, "SMTP", "Unable to open root node for writing");
 		goto end;
 		}
+	    ASSERTMAGIC(rootNode, MGK_STNODE);
 
 	    /** Set the attribute value in the root node. **/
 	    attrStruct = stLookup(rootNode->Data, attrname);
@@ -2779,6 +2794,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
 	/** Initialize the new attribute. **/
 	attr = nmMalloc(sizeof(SmtpAttribute));
@@ -2855,6 +2871,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		mssError(0, "SMTP", "Unable to open root node.");
 		goto end;
 		}
+	    ASSERTMAGIC(rootNode, MGK_STNODE);
 
 	    /** Add the attribute to the root node. **/
 	    createdStruct = stAddAttr(rootNode->Data, attr->Name);
