@@ -462,6 +462,7 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "ratelimit_time",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "domlimit_time",		DATA_T_INTEGER,	5,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "expire_time",		DATA_T_INTEGER,	SMTP_DEFAULT_EXPIRE_TIME,	NULL) < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "content_has_headers",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 
 	/** Add all the required email attributes. Behold the hard code; standeth it against all but the hardest hammer. **/
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "envelope_from",	DATA_T_STRING,	0,	"") < 0)) goto error;
@@ -841,6 +842,8 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 /*** smtp_internal_ApplyHeaders - Writes the headers from the header_*
  *** and message_id attributes into the email file, replacing existing
  *** headers of the same name.  The date defaults to the current time.
+ *** If content_has_headers is false, a blank line separates the headers
+ *** from the content.
  *** Returns 0 on success and -1 on failure.
  ***/
 int
@@ -871,6 +874,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     char date_str[64];
     char buf[1024];
     int i, cnt, name_len, line, line_end, newline;
+    int has_headers = 1;
     int rval = -1;
 
 	/** Build the headers set by header attributes. **/
@@ -970,9 +974,29 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    goto end;
 	    }
 
+	/** Check whether the content starts with headers. **/
+	attr = SMTP_ATTR(xhLookup(inf->Attributes, "content_has_headers"));
+	if (attr != NULL)
+	    {
+	    if (UNLIKELY(attr->Type != DATA_T_INTEGER))
+		{
+		mssError(1, "SMTP", "Attribute 'content_has_headers' must be an integer (got %s).",
+		    (0 <= attr->Type && attr->Type < OBJ_TYPE_NAMES_CNT) ? obj_type_names[attr->Type] : "unknown type");
+		goto end;
+		}
+	    has_headers = attr->Value.Integer;
+	    }
+
+	/** Add the blank line before the body. **/
+	if (!has_headers && UNLIKELY(xsConcatenate(new_headers, "\n", 1) < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to add the blank line after the headers.");
+	    goto end;
+	    }
+
 	/** Remove existing headers that the new headers replace. **/
 	line = 0;
-	while (line < content->Length && content->String[line] != '\n' && strncmp(content->String + line, "\r\n", 2) != 0)
+	while (has_headers && line < content->Length && content->String[line] != '\n' && strncmp(content->String + line, "\r\n", 2) != 0)
 	    {
 	    /** Find the end of the header, including continuation lines. **/
 	    line_end = line;
