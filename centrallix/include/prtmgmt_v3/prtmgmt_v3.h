@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -471,37 +471,8 @@ int prtGetResolution(pPrtSession s, int* xres, int* yres);
 int prtSetImageStore(pPrtSession s, char* extdir, char* sysdir, void* open_ctx, void* (*open_fn)(), int (*write_fn)(), int (*close_fn)());
 int prtSetSessionParam(pPrtSession s, char* paramname, char* value);
 char* prtGetSessionParam(pPrtSession s, char* paramname, char* defaultvalue);
-int prt_internal_NoZ(pPrtSession s);
 char* prtGetOutputType(pPrtSession s);
 
-/** Internal management functions **/
-pPrtObjStream prt_internal_AllocObj(char* type);
-pPrtObjStream prt_internal_AllocObjByID(int type_id);
-int prt_internal_FreeObj(pPrtObjStream obj);
-int prt_internal_Add(pPrtObjStream parent, pPrtObjStream new_child);
-int prt_internal_Insert(pPrtObjStream sibling, pPrtObjStream new_obj);
-int prt_internal_CopyAttrs(pPrtObjStream src, pPrtObjStream dst);
-int prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst);
-double prt_internal_GetFontHeight(pPrtObjStream obj);
-double prt_internal_FontToLineHeight(pPrtObjStream obj);
-double prt_internal_GetFontBaseline(pPrtObjStream obj);
-double prt_internal_GetStringWidth(pPrtObjStream obj, char* str, int n);
-pPrtObjStream prt_internal_YSort(pPrtObjStream obj);
-int prt_internal_AddYSorted(pPrtObjStream obj, pPrtObjStream newobj);
-int prt_internal_FreeTree(pPrtObjStream obj);
-int prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page);
-pPrtObjStream prt_internal_GetPage(pPrtObjStream obj);
-pPrtObjStream prt_internal_AddEmptyObj(pPrtObjStream container);
-pPrtObjStream prt_internal_CreateEmptyObj(pPrtObjStream container);
-int prt_internal_Dump(pPrtObjStream obj);
-pPrtObjStream prt_internal_Duplicate(pPrtObjStream obj, int with_content);
-int prt_internal_AdjustOpenCount(pPrtObjStream obj, int adjustment);
-int prt_internal_Reflow(pPrtObjStream obj);
-int prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, void* param);
-int prt_internal_DispatchEvents(pPrtSession s);
-int prt_internal_MakeBorder(pPrtObjStream parent, double x, double y, double len, int flags, pPrtBorder b, pPrtBorder sb, pPrtBorder eb);
-int prt_internal_GetPixel(pPrtImage img, double xoffset, double yoffset);
-int prt_internal_GetPixelDirect(pPrtImage img, int x, int y);
 double prtInnerWidth(pPrtObjStream obj);
 double prtInnerHeight(pPrtObjStream obj);
 
@@ -549,11 +520,9 @@ pPrtBorder prtAllocBorder(int n_lines, double sep, double pad, ...);
 int prtFreeBorder(pPrtBorder b);
 pPrtImage prtAllocImage(int width, int height, int color_type);
 pPrtImage prtCreateImageFromPNG(int (*read_fn)(), void* read_arg);
-int prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prtFreeImage(pPrtImage i);
 int prtImageSize(pPrtImage i);
 pPrtSvg prtReadSvg(int (*read_fn)(), void* read_arg);
-int prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg, int w, int h);
 int prtFreeSvg(pPrtSvg svg);
 int prtSvgSize(pPrtSvg svg);
 pXString prtConvertSvgToEps(pPrtSvg svg, double w, double h);
