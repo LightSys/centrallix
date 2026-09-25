@@ -102,7 +102,7 @@ typedef struct _RB
 pRegisteredBlockType blknames[MAX_SIZE+1];
 
 void
-nmInitialize()
+nmInitialize(void)
     {
     int i;
 
@@ -150,7 +150,7 @@ nmCheckItem(pMemStruct mem)
 #endif
 
 void
-nmCheckAll()
+nmCheckAll(void)
     {
 #ifdef BUFFER_OVERFLOW_CHECKING
     pMemStruct mem;
@@ -240,7 +240,7 @@ nmSetErrFunction(int (*error_fn)())
     }
 
 void
-nmClear()
+nmClear(void)
     {
     int i;
     pOverlay ov,del;
@@ -425,7 +425,7 @@ nmFree(void* ptr, int size)
 
 
 void
-nmStats()
+nmStats(void)
     {
 
     	if (!isinit) nmInitialize();
@@ -463,7 +463,7 @@ nmRegister(int size,char* name)
 
 
 void
-nmDebug()
+nmDebug(void)
     {
     int i;
     pRegisteredBlockType blk;
@@ -497,7 +497,7 @@ nmDebug()
 
 
 void
-nmDeltas()
+nmDeltas(void)
     {
     int i, total;
     pRegisteredBlockType blk;
