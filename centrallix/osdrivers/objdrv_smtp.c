@@ -262,16 +262,10 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 		}
 	    }
 
-	/** Get status of child process, releasing it from the process table. **/
-	int wait_rval = waitpid(pid, &wstatus, WNOHANG);
-	if (wait_rval == 0)
-	    {
-	    /** Try again in 1 msec if not immediately ready to reap; this lets
-	     ** us yield to other threads.
-	     **/
-	    thSleep(1);
-	    wait_rval = waitpid(pid, &wstatus, 0);
-	    }
+	/** Reap the launcher, yielding to other threads while it runs. **/
+	int wait_rval;
+	while ((wait_rval = waitpid(pid, &wstatus, WNOHANG)) == 0)
+	    thSleep(10);
 	if (UNLIKELY(wait_rval < 0))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to wait for child sendmail launcher process (pid %d).", pid);
