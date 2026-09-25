@@ -274,12 +274,17 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    }
 	if (UNLIKELY(wait_rval < 0))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to wait for child sendmail process (pid %d).", pid);
+	    mssErrorErrno(1, "SMTP", "Failed to wait for child sendmail launcher process (pid %d).", pid);
 	    goto end;
 	    }
-	if (UNLIKELY(WEXITSTATUS(wstatus) != EXIT_SUCCESS))
+	if (UNLIKELY(WIFSIGNALED(wstatus)))
 	    {
-	    mssError(1, "SMTP", "Failed to start child sendmail process (%d)", WEXITSTATUS(wstatus));
+	    mssError(1, "SMTP", "Sendmail launcher process (pid %d) was killed by signal %d.", pid, WTERMSIG(wstatus));
+	    goto end;
+	    }
+	if (UNLIKELY(!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != EXIT_SUCCESS))
+	    {
+	    mssError(1, "SMTP", "Sendmail launcher process (pid %d) exited with status %d.", pid, WEXITSTATUS(wstatus));
 	    goto end;
 	    }
 
