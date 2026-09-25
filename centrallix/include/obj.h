@@ -644,6 +644,8 @@ typedef struct
 	__typeof__ (obj) _obj = (obj); \
 	obj_internal_PathPart(_obj->Pathname, 0, _obj->SubPtr); \
     })
+#define objResetPathname(obj) \
+    obj_internal_PathPart(obj->Pathname, 0, 0);
 
 /*** An array of the names of the general attributes that must be implemented
  *** for every object system driver.  See `OSDriver_Authoring.md` for more
