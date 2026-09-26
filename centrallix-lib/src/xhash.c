@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <string.h>
 #include "xhash.h"
 #include "xarray.h"
@@ -13,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -290,4 +291,79 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
     return 0;
     }
 
+/*** Executes an operation on each entry of the hash table.
+ *** 
+ *** @param this The affected hash table (passing NULL causes undefined
+ *** 	behavior).
+ *** @param callback_fn A callback function to be called on each hash table
+ *** 	entry. It takes 2 parameters: the current hash table entry and a
+ *** 	va_list of the additional arguments passed to this function. If any
+ *** 	invocation of the callback function returns a value other than 0,
+ *** 	xhForEach() will immediately fail, returning that value as the error
+ *** 	code.
+ *** @param ... Additional arguments, which are passed to each invocation of
+ *** 	the callback function as a va_list.
+ *** @returns 0 if the function executes successfully.
+ ***          1 if the callback function is NULL.
+ ***          n (where n != 0) if the callback function returns n.
+ ***/
+int
+xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, va_list), ...)
+    {
+	if (callback_fn == NULL) return 1;
+	
+	for (int row = 0; row < this->nRows; row++) 
+	    {
+	    pXHashEntry entry = (pXHashEntry)(this->Rows.Items[row]);
+	    while (entry != NULL)
+		{
+		pXHashEntry next = entry->Next;
+		
+		/** Start the arguments fresh so each call gets a fresh args value. **/
+		va_list args;
+		va_start(args, callback_fn);
+		const int ret = callback_fn(entry, args);
+		va_end(args);
+		
+		if (ret != 0) return ret;
+		entry = next;
+		}
+	    }
+    
+    return 0;
+    }
 
+/*** Clears all contents from a hash table using a free function.
+ *** 
+ *** @param this The affected hash table (passing NULL causes undefined
+ *** 	behavior).
+ *** @param free_fn A pointer to a free function, which is passed each hash
+ *** 	entry struct and is responsible for freeing the key, the value, and
+ *** 	any data they own (but not the passed entry itself).  The function
+ *** 	is also passed a `void*` argument, which is `free_arg`.
+ *** @param free_arg The void pointer value passed to the free function.
+ *** @returns 0 if successful, or
+ ***         -1 if `free_fn()` is `NULL`.
+ ***/
+int
+xhClearKeySafe(pXHashTable this, void (*free_fn)(pXHashEntry, void*), void* free_arg)
+    {
+	if (free_fn == NULL) return -1;
+	
+	/** Free each row. **/
+	for (int row = 0; row < this->nRows; row++)
+	    {
+	    pXHashEntry entry = (pXHashEntry)(this->Rows.Items[row]);
+	    while (entry != NULL)
+		{
+		pXHashEntry next = entry->Next;
+		free_fn(entry, free_arg);
+		nmFree(entry, sizeof(XHashEntry));
+		entry = next;
+		}
+	    this->Rows.Items[row] = NULL;
+	    }
+	this->nItems = 0;
+    
+    return 0;
+    }
