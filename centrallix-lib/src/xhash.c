@@ -227,6 +227,21 @@ xhRemove(pXHashTable this, char* key)
     return -1;
     }
 
+/*** xhReplace - finds and replaces an entry in the hash table.
+ *** TODO This may be rather inefficient. Should probably make this more
+ *** than a wrapper function. (i.e. function specific code needed)
+ ***/
+int
+xhReplace(pXHashTable this, char* key, char* data)
+    {
+    if (xhRemove(this, key))
+	{
+	return -1;
+	}
+
+    return xhAdd(this, key, data);
+    }
+
 
 /*** xhLookup - find an entry in the hash table by looking up via its
  *** key.
@@ -290,4 +305,56 @@ xhClear(pXHashTable this, int (*free_fn)(), void* free_arg)
     return 0;
     }
 
+/*** xhGetNextElement - iterates through the hash elements one at
+ *** a time. Returns NULL when no more elements remain. To start
+ *** iteration, set currentElement to NULL.
+ ***/
+pXHashEntry
+xhGetNextElement(pXHashTable this, pXHashEntry currentElement)
+    {
+    int i = 0;
+    pXHashEntry rval = NULL;
+    int key_len;
 
+	/** For the first iteration, find the first element. **/
+	if (!currentElement)
+	    {
+	    for (i = 0; i < this->nRows; i++)
+		{
+		rval = (pXHashEntry)this->Rows.Items[i];
+		if (rval)
+		    {
+		    return rval;
+		    }
+		}
+
+	    /** No elements found. **/
+	    return NULL;
+	    }
+
+	/** If there are more elements in the list, return the next one. **/
+	if (currentElement->Next)
+	    {
+	    return currentElement->Next;
+	    }
+
+	/** Get a valid key length **/
+	if (this->KeyLen) key_len = this->KeyLen;
+	else key_len = strlen(currentElement->Key);
+
+	/** Find the index of the current element. **/
+	i = xh_internal_ComputeHash(currentElement->Key, key_len, this->nRows);
+
+	/** Find the next element in the table. **/
+	for (i++; i < this->nRows; i++)
+	    {
+	    rval = (pXHashEntry)this->Rows.Items[i];
+	    if (rval)
+		{
+		return rval;
+		}
+	    }
+
+	/** No more elements. **/
+	return NULL;
+    }

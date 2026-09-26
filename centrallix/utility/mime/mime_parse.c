@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "obj.h"
 #include "mime.h"
 
@@ -59,33 +60,28 @@ char* EncodingStrings[] =
     "binary"
     };
 
-/*  libmime_ParseHeader
-**
-**  Parses a message (located at obj->Prev) starting at the "start" byte, and ending
-**  at the "end" byte.  This creates the MimeHeader data structure and recursively
-**  calls itself to fill it in.  Note that no data is actually stored.  This is just
-**  the shell of the message and contains seek points denoting where to start
-**  and end reading.
-*/
+/***  libmime_ParseHeader
+ ***
+ ***  Parses a message (located at obj->Prev) starting at the "start" byte, and ending
+ ***  at the "end" byte.  This creates the MimeHeader data structure and recursively
+ ***  calls itself to fill it in.  Note that no data is actually stored.  This is just
+ ***  the shell of the message and contains seek points denoting where to start
+ ***  and end reading.
+ ***/
 int
 libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     {
-    int flag, toktype, alloc, err, len;
+    int flag, toktype, alloc, len;
     XString xsbuf;
     char *hdrnme, *hdrbdy;
+    char *ptr;
+    long attrSeekStart = start, attrSeekEnd = start, nameOffset;
 
     /** Initialize the message structure **/
-    msg->ContentLength = 0;
-    msg->ContentDisposition[0] = 0;
-    msg->Filename[0] = 0;
-    msg->ContentMainType = MIME_TYPE_TEXT;
-    msg->ContentSubType[0] = 0;
-    msg->Boundary[0] = 0;
-    msg->Subject[0] = 0;
-    msg->Charset[0] = 0;
-    msg->TransferEncoding = MIME_ENC_7BIT;
-    msg->MIMEVersion[0] = 0;
-    msg->Mailer[0] = 0;
+    libmime_CreateStringAttr(msg, "Content-Type", NULL, "text/plain", 0);
+    libmime_CreateIntAttr(msg, "Content-Type", "ContentMainType", MIME_TYPE_TEXT);
+    libmime_CreateStringAttr(msg, "Content-Type", "ContentSubType", "plain", 0);
+    libmime_CreateIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_7BIT);
     msg->MsgSeekStart = 0;
     msg->MsgSeekEnd = 0;
 
@@ -94,68 +90,65 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	return -1;
 	}
 
+    /** Seek to the beginning of the message and store the offset. **/
     mlxSetOffset(lex, start);
-    if (MIME_DEBUG) fprintf(stderr, "\nStarting Header Parsing... (s:%ld)\n", start);
+    msg->HdrSeekStart = start;
+
     flag = 1;
     while (flag)
 	{
-	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
 	toktype = mlxNextToken(lex);
-	if (toktype == MLX_TOK_ERROR)
+	if (toktype == MLX_TOK_ERROR || toktype == MLX_TOK_EOF)
 	    {
-	    mlxCloseSession(lex);
 	    return -1;
 	    }
-	/* get the next line */
+	/** get the next line **/
 	alloc = 0;
 	xsInit(&xsbuf);
 	xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
 	len = strlen(xsbuf.String);
 	xsRTrim(&xsbuf);
-	//if (MIME_DEBUG) fprintf(stderr, "MIME: Got Token (%s)\n", xsbuf.String);
-	/* check if this is the end of the headers, if so, exit the loop (flag=0), */
-	/* otherwise parse the header elements */
+	/** check if this is the end of the headers, if so, exit the loop (flag=0), **/
+	/** otherwise parse the header elements **/
 	if (!strlen(xsbuf.String))
 	    {
 	    flag = 0;
 	    }
 	else
 	    {
-	    if (libmime_LoadExtendedHeader(lex, msg, &xsbuf) < 0)
+	    if (libmime_LoadExtendedHeader(lex, msg, &xsbuf, &attrSeekEnd) < 0)
 		{
 		return -1;
 		}
 
-	    hdrnme = (char*)nmMalloc(64);
+	    hdrnme = (char*)nmMalloc(MIME_HDRNAME_SIZE);
+	    if (!hdrnme)
+		return -1;
 	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
-	    strncpy(hdrbdy, xsbuf.String, strlen(xsbuf.String));
-	    if (libmime_ParseHeaderElement(hdrbdy, hdrnme) == 0)
+	    if (!hdrbdy)
+		return -1;
+	    strcpy(hdrbdy, xsbuf.String);
+	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, MIME_HDRNAME_SIZE, &attrSeekStart, &nameOffset))
 		{
-		if      (!strcasecmp(hdrnme, "Content-Type")) err = libmime_SetContentType(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Content-Disposition")) err = libmime_SetContentDisp(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Content-Transfer-Encoding")) err = libmime_SetTransferEncoding(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Content-Length")) err = libmime_SetContentLength(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "To")) err = libmime_SetTo(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Cc")) err = libmime_SetCc(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "From")) err = libmime_SetFrom(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Subject")) err = libmime_SetSubject(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "Date")) err = libmime_SetDate(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "MIME-Version")) err = libmime_SetMIMEVersion(msg, hdrbdy);
-		else if (!strcasecmp(hdrnme, "X-Mailer")) err = libmime_SetMailer(msg, hdrbdy);
-
-		if (err < 0)
+		/** Parse the attribute and store it in the Mime header. **/
+		if (libmime_ParseAttr(msg, hdrnme, hdrbdy, attrSeekStart, attrSeekEnd, nameOffset))
 		    {
-		    if (MIME_DEBUG) fprintf(stderr, "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
+		    mssError(0, "MIME", "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
 		    }
 		}
 	    else
 		{
-		if (MIME_DEBUG) fprintf(stderr, "ERROR PARSING: %s\n", xsbuf.String);
+		mssError(1, "MIME", "ERROR PARSING: %s\n", xsbuf.String);
 		}
+
+	    /** Get the offset at the beginning of the next attribute. **/
+	    attrSeekStart = attrSeekEnd;
 	    }
 	xsDeInit(&xsbuf);
+
+	msg->HdrSeekEnd = attrSeekEnd;
 	}
-    if (!msg->ContentSubType[0]) strcpy(msg->ContentSubType, "plain");
 
     /** Set the start and end offsets for the message **/
     msg->MsgSeekStart = mlxGetOffset(lex) + len;
@@ -171,18 +164,19 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	mlxSetOffset(lex, msg->MsgSeekStart);
 	while (flag)
 	    {
-	    mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	    mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
 	    toktype = mlxNextToken(lex);
-	    if (toktype == MLX_TOK_ERROR)
+	    if (toktype == MLX_TOK_ERROR || toktype == MLX_TOK_EOF)
 		{
 		flag = 0;
 		}
 	    else
 		{
-		xsInit(&xsbuf);
-		xsCopy(&xsbuf, mlxStringVal(lex, &alloc), -1);
-		msg->MsgSeekEnd += strlen(xsbuf.String);
-		xsDeInit(&xsbuf);
+		alloc = 0;
+		ptr = mlxStringVal(lex, &alloc);
+		msg->MsgSeekEnd += strlen(ptr);
+		if (alloc)
+		    nmSysFree(ptr);
 		}
 	    }
 	}
@@ -191,16 +185,16 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     }
 
 
-/*  libmime_LoadExtendedHeader
-**
-**  Header elements can span multiple lines.  We know that this occurs when there
-**  is any white space at the beginning of the line.  This function will check if
-**  there are any more lines that belong to the current header element.  If so, 
-**  they will be read into xsbuf replacing all white spaces with just normal spaces.
-*/
+/***  libmime_LoadExtendedHeader
+ ***
+ ***  Header elements can span multiple lines.  We know that this occurs when there
+ ***  is any white space at the beginning of the line.  This function will check if
+ ***  there are any more lines that belong to the current header element.  If so,
+ ***  they will be read into xsbuf replacing all white spaces with just normal spaces.
+ ***/
 
 int
-libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
+libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long* attrSeekEnd)
     {
     int toktype, i;
     unsigned long offset;
@@ -216,58 +210,25 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf)
 	    }
 	ptr = mlxStringVal(lex, NULL);
 	if (!strchr(" \t", ptr[0])) break;
-	libmime_StringTrim(ptr);
 	xsConcatPrintf(xsbuf, " %s", ptr);
 	}
     /** Be kind, rewind! (resetting the offset because we don't use the last string it fetched) **/
     mlxSetOffset(lex, offset);
+
+    /** Store the offset at the end of the attribute string. **/
+    *attrSeekEnd = offset;
+
     /** Set all tabs, NL's, CR's to spaces **/
     for(i=0;i<strlen(xsbuf->String);i++) if (strchr("\t\r\n",xsbuf->String[i])) xsbuf->String[i]=' ';
 
     return 0;
     }
 
-/*  libmime_SetMailer
-**
-**  Parses the "X-Mailer" header element and fills in the MimeHeader data structure
-**  with the data accordingly.
-*/
-int
-libmime_SetMailer(pMimeHeader msg, char *buf)
-    {
-    strncpy(msg->Mailer, buf, 79);
-    msg->Mailer[79] = 0;
-
-    if (MIME_DEBUG)
-	{
-	printf("  X-MAILER    : \"%s\"\n", msg->Mailer);
-	}
-    return 0;
-    }
-
-/*  libmime_SetMIMEVersion
-**
-**  Parses the "MIME-Version" header element and fills in the MimeHeader data structure
-**  with the data accordingly.
-*/
-int
-libmime_SetMIMEVersion(pMimeHeader msg, char *buf)
-    {
-    strncpy(msg->MIMEVersion, buf, 15);
-    msg->MIMEVersion[15] = 0;
-
-    if (MIME_DEBUG)
-	{
-	printf("  MIME-VERSION: \"%s\"\n", msg->MIMEVersion);
-	}
-    return 0;
-    }
-
-/*  libmime_SetDate
-**
-**  Parses the "Date" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetDate
+ ***
+ ***  Parses the "Date" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetDate(pMimeHeader msg, char *buf)
     {
@@ -282,288 +243,187 @@ libmime_SetDate(pMimeHeader msg, char *buf)
     return 0;
     }
 
-/*  libmime_SetSubject
-**
-**  Parses the "Subject" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
-int
-libmime_SetSubject(pMimeHeader msg, char *buf)
-    {
-    /** Get the date **/
-    strncpy(msg->Subject, buf, 79);
-    msg->Subject[79] = 0;
-
-    if (MIME_DEBUG)
-	{
-	printf("  SUBJECT     : \"%s\"\n", msg->Subject);
-	}
-
-    return 0;
-    }
-
-/*  libmime_SetFrom
-**
-**  Parses the "From" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
-int
-libmime_SetFrom(pMimeHeader msg, char *buf)
-    {
-    msg->FromList = (pXArray)nmMalloc(sizeof(XArray));
-    xaInit(msg->FromList, sizeof(EmailAddr));
-    libmime_ParseAddressList(buf, msg->FromList);
-    if (MIME_DEBUG)
-	{
-	printf("  FROM        : ");
-	libmime_PrintAddressList(msg->FromList, 0);
-	}
-
-    return 0;
-    }
-
-/*  libmime_SetCc
-**
-**  Parses the "Cc" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
-int
-libmime_SetCc(pMimeHeader msg, char *buf)
-    {
-    msg->CcList = (pXArray)nmMalloc(sizeof(XArray));
-    xaInit(msg->CcList, sizeof(EmailAddr));
-    libmime_ParseAddressList(buf, msg->CcList);
-    if (MIME_DEBUG)
-	{
-	printf("  CC          : ");
-	libmime_PrintAddressList(msg->CcList, 0);
-	}
-    return 0;
-    }
-
-/*  libmime_SetTo
-**
-**  Parses the "To" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
-int
-libmime_SetTo(pMimeHeader msg, char *buf)
-    {
-    msg->ToList = (pXArray)nmMalloc(sizeof(XArray));
-    xaInit(msg->ToList, sizeof(EmailAddr));
-    libmime_ParseAddressList(buf, msg->ToList);
-    if (MIME_DEBUG)
-	{
-	printf("  TO          : ");
-	libmime_PrintAddressList(msg->ToList, 0);
-	}
-    return 0;
-    }
-
-/*  libmime_SetContentLength
-**
-**  Parses the "Content-Length" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
-int
-libmime_SetContentLength(pMimeHeader msg, char *buf)
-    {
-    msg->ContentLength = atoi(buf);
-
-    if (MIME_DEBUG)
-	{
-	printf("  CONTENT-LEN : %d\n", msg->ContentLength);
-	}
-    return 0;
-    }
-
-/*  libmime_SetTransferEncoding
-**
-**  Parses the "Content-Transfer-Encoding" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetTransferEncoding
+ ***
+ ***  Parses the "Content-Transfer-Encoding" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     {
-    if (!strlen(buf) || !strcasecmp(buf, "7bit"))
-	msg->TransferEncoding = MIME_ENC_7BIT;
-    else if (!strcasecmp(buf, "8bit"))
-	msg->TransferEncoding = MIME_ENC_8BIT;
-    else if (!strcasecmp(buf, "base64"))
-	msg->TransferEncoding = MIME_ENC_BASE64;
-    else if (!strcasecmp(buf, "quoted-printable"))
-	msg->TransferEncoding = MIME_ENC_QP;
-    else if (!strcasecmp(buf, "binary"))
-	msg->TransferEncoding = MIME_ENC_BINARY;
-    else
-	msg->TransferEncoding = MIME_ENC_7BIT;
-
-    if (MIME_DEBUG)
-	{
-	printf("  TRANS-ENC   : %d\n", msg->TransferEncoding);
-	}
-    return 0;
-    }
-
-/*  libmime_SetContentDisp
-**
-**  Parses the "Content-Disposition" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
-int
-libmime_SetContentDisp(pMimeHeader msg, char *buf)
-    {
-    char *ptr, *cptr;
-
-    /** get the display main type **/
-    if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
-
-    strncpy(msg->ContentDisposition, ptr, 79);
-    msg->ContentDisposition[79] = 0;
-
-    /** Check for the "filename=" content-disp token **/
-    while ((ptr = strtok_r(buf, "= ", &buf)))
-	{
-	if (!(cptr = strtok_r(buf, ";", &buf))) break;
-	while (*ptr == ' ') ptr++;
-	if (!libmime_StringFirstCaseCmp(ptr, "filename"))
-	    {
-	    strncpy(msg->Filename, libmime_StringUnquote(cptr), 79);
-	    msg->Filename[79] = 0;
-	    }
-	}
-
-    if (MIME_DEBUG)
-	{
-	printf("  CONTENT DISP: \"%s\"\n", msg->ContentDisposition);
-	printf("  FILENAME    : \"%s\"\n", msg->Filename);
-	}
+	if (!strlen(buf) || !strcasecmp(buf, "7bit"))
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_7BIT);
+	else if (!strcasecmp(buf, "8bit"))
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_8BIT);
+	else if (!strcasecmp(buf, "base64"))
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_BASE64);
+	else if (!strcasecmp(buf, "quoted-printable"))
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_QP);
+	else if (!strcasecmp(buf, "binary"))
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_BINARY);
+	else
+	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_7BIT);
 
     return 0;
     }
 
-/*  libmime_SetContentType
-**
-**  Parses the "Content-Type" header element and fills in the MimeHeader data structure
-**  with the data accordingly.  If certain elements are not there, defaults are used.
-*/
+/***  libmime_SetContentType
+ ***
+ ***  Parses the "Content-Type" header element and fills in the MimeHeader data structure
+ ***  with the data accordingly.  If certain elements are not there, defaults are used.
+ ***/
 int
 libmime_SetContentType(pMimeHeader msg, char *buf)
     {
     char *ptr, *cptr;
-    char maintype[32], tmpname[128];
+    char maintype[32];
     int i;
     ptrdiff_t len;
 
-    /** Get the disp main type and subtype **/
-    if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
-    if ((cptr=strchr(ptr,'/')))
-	{
-	len = cptr - ptr;
-	if (len>31) len=31;
-	strncpy(maintype, ptr, len);
-	maintype[len] = 0;
-	strncpy(msg->ContentSubType, cptr+1, 79);
-	msg->ContentSubType[79] = 0;
-	libmime_StringToLower(msg->ContentSubType);
-	}
-    else
-	{
-	strncpy(maintype, ptr, 31);
-	maintype[31] = 0;
-	}
-    for (i=0; i<7; i++)
-	{
-	if (!libmime_StringFirstCaseCmp(maintype, TypeStrings[i]))
-	    {
-	    msg->ContentMainType = i+1;
-	    }
-	}
-    
-    /** Look at any possible parameters **/
-    while ((ptr = strtok_r(buf, "= ", &buf)))
-	{
-	if (!(cptr=strtok_r(buf, ";", &buf))) break;
-	while (*ptr == ' ') ptr++;
-	if (!libmime_StringFirstCaseCmp(ptr, "boundary"))
-	    {
-	    strncpy(msg->Boundary, libmime_StringUnquote(cptr), 79);
-	    msg->Boundary[79] = 0;
-	    }
-	else if (!libmime_StringFirstCaseCmp(ptr, "name") && !strlen(msg->Filename))
-	    {
-	    strncpy(tmpname, libmime_StringUnquote(cptr), 127);
-	    tmpname[127] = 0;
-	    if (strchr(tmpname,'/'))
-		strncpy(msg->Filename, strrchr(tmpname,'/')+1,79);
-	    else 
-		strncpy(msg->Filename, tmpname, 79);
-	    msg->Filename[79] = 0;
-	    if (strchr(msg->Filename,'\\'))
-		strncpy(msg->Filename,strrchr(tmpname,'\\')+1,79);
-	    msg->Filename[79] = 0;
-	    }
-	else if (!libmime_StringFirstCaseCmp(ptr, "subject"))
-	    {
-	    strncpy(msg->Subject, libmime_StringUnquote(cptr), 79);
-	    msg->Subject[79] = 0;
-	    }
-	else if (!libmime_StringFirstCaseCmp(ptr, "charset"))
-	    {
-	    strncpy(msg->Charset, libmime_StringUnquote(cptr), 31);
-	    msg->Charset[31] = 0;
-	    }
-	}
+	/** Get the disp main type and subtype **/
+	if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
 
-    if (MIME_DEBUG)
-	{
-	printf("  TYPE        : \"%s\"\n", TypeStrings[msg->ContentMainType-1]);
-	printf("  SUBTYPE     : \"%s\"\n", msg->ContentSubType);
-	printf("  BOUNDARY    : \"%s\"\n", msg->Boundary);
-	printf("  FILENAME    : \"%s\"\n", msg->Filename);
-	printf("  SUBJECT     : \"%s\"\n", msg->Subject);
-	printf("  CHARSET     : \"%s\"\n", msg->Charset);
-	}
+	/** Store the raw content type string. **/
+	libmime_StringToLower(ptr);
+	libmime_SetStringAttr(msg, "Content-Type", NULL, ptr, -1);
+
+	/** Parse out the secondary content type. **/
+	if ((cptr=strchr(ptr,'/')))
+	    {
+	    len = cptr - ptr;
+	    if (len>=sizeof(maintype)) len=sizeof(maintype)-1;
+	    strncpy(maintype, ptr, len);
+	    maintype[len] = 0;
+	    libmime_StringToLower(cptr+1);
+	    libmime_SetStringAttr(msg, "Content-Type", "ContentSubType", cptr+1, -1);
+	    }
+	else
+	    {
+	    strtcpy(maintype, ptr, sizeof(maintype));
+	    }
+
+	/** Determine the primary content type. **/
+	for (i=0; i<7; i++)
+	    {
+	    if (!libmime_StringFirstCaseCmp(maintype, TypeStrings[i]))
+		{
+		libmime_SetIntAttr(msg, "Content-Type", "ContentMainType", i);
+		break;
+		}
+	    }
 
     return 0;
     }
 
-/*
-**  int
-**  libmime_ParseHeaderElement(char* buf, char* hdr);
-**     Parameters:
-**         (char*) buf     A string of characters with no CRLF's in it.  This
-**                         string should represent the whole header, including any
-**                         folded header elements below itself.  This string will
-**                         be modified to contain the main part of the header.
-**         (char*) hdr     This string will be overwritten with a string that 
-**                         is the name of the header element (To, From, Sender...)
-**     Returns:
-**         This function returns 0 on success, and -1 on failure.  It modifies
-**         the "buf" parameter and sends its work back in this way.  This
-**         function will return a string of characters that is properly
-**         formatted according to RFC822.  The header tag will be stripped away
-**         from the beginning ("X-Header"), all extra whitespace will be
-**         removed, and all comments will be removed as well.  This will be a
-**         clean header line.
-**
-**     State Definitions:
-**         0 == We have only seen non-space, non-tab, and non-colon characters
-**              up to this point.  As soon as one of those characters is seen,
-**              the state will change.
-**         1 == We have seen a whitespace character, thus only a colon or more
-**              whitespace should be visible.  If not, return an error.
-**         2 == We have seen the colon!  The next character is the beginning of
-**              the header content.  Trim and return that string.
-*/
+/*** libmime_SetFilename - Sets the Name attribute based on other relevant
+ *** attributes. If no name is indicated by other attributes, the given default
+ *** name is used.
+ ***/
+int
+libmime_SetFilename(pMimeHeader msg, char *defaultName)
+    {
+    char *fileName = NULL;
+    char name[128];
+
+	/** Get the name from the message-id **/
+	if (!libmime_GetStringAttr(msg, "Message-ID", NULL, &fileName))
+	    {
+	    strtcpy(name, (fileName[0] == '<')?(fileName+1):fileName, sizeof(name));
+	    if (strrchr(name, '>'))
+		*(strrchr(name, '>')) = '\0';
+	    if (libmime_SetStringAttr(msg, "Name", NULL, name, 0))
+		{
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
+		}
+	    return 0;
+	    }
+
+	/** Get the name from the content-id **/
+	if (!libmime_GetStringAttr(msg, "Content-ID", NULL, &fileName))
+	    {
+	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, 0))
+		{
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
+		}
+	    return 0;
+	    }
+
+	/** Get the name from the Content-Disposition attribute. **/
+	if (libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName) < 0)
+	    {
+	    if (libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName) < 0)
+		libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName);
+	    }
+
+	/** If found, store the name in the Name attribute. **/
+	if (fileName)
+	    {
+	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
+		{
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
+		}
+	    return 0;
+	    }
+
+	/** Get the name from the Content-Type attribute.
+	 ** If found, store the name in the Name attribute.
+	 **/
+	if (!libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName))
+	    {
+	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
+		{
+		mssError(0, "MIME", "Failed to create the name attribute.");
+		return -1;
+		}
+	    return 0;
+	    }
+
+	/** If neither is found, use the default name. **/
+	libmime_SetStringAttr(msg, "Name", NULL, defaultName, -1);
+
+    return 0;
+    }
+
+/***
+ ***  int
+ ***  libmime_ParseHeaderElement(char* buf, char* hdr);
+ ***     Parameters:
+ ***         (char*) buf            A string of characters with no CRLF's in it.  This
+ ***                                string should represent the whole header, including any
+ ***                                folded header elements below itself.  This string will
+ ***                                be modified to contain the main part of the header.
+ ***         (char*) hdr            This string will be overwritten with a string that
+ ***                                is the name of the header element (To, From, Sender...)
+ ***         (int*)  attrSeekStart  Pointer to an integer indicating the seek offset
+ ***                                to the beginning of the attribute value.
+ ***     Returns:
+ ***         This function returns 0 on success, and -1 on failure.  It modifies
+ ***         the "buf" parameter and sends its work back in this way.  This
+ ***         function will return a string of characters that is properly
+ ***         formatted according to RFC822.  The header tag will be stripped away
+ ***         from the beginning ("X-Header"), all extra whitespace will be
+ ***         removed, and all comments will be removed as well.  This will be a
+ ***         clean header line.
+ ***
+ ***     State Definitions:
+ ***         0 == We have only seen non-space, non-tab, and non-colon characters
+ ***              up to this point.  As soon as one of those characters is seen,
+ ***              the state will change.
+ ***         1 == We have seen a whitespace character, thus only a colon or more
+ ***              whitespace should be visible.  If not, return an error.
+ ***         2 == We have seen the colon!  The next character is the beginning of
+ ***              the header content.  Trim and return that string.
+ ***/
 
 int
-libmime_ParseHeaderElement(char *buf, char* hdr)
+libmime_ParseHeaderElement(char *buf, char* hdr, int hdrsize, long* attrSeekStart, long* nameOffset)
     {
     int count=0, state=0;
     // char* ptr;
     char ch;
-
     while (count < strlen(buf))
 	{
 	ch = buf[count];
@@ -572,7 +432,6 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    if (ch == ':')
 		{
-		// ptr = buf+count+1;
 		state = 2;
 		}
 	    else if (ch==' ' || ch=='\t')
@@ -585,7 +444,6 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	    {
 	    if (ch == ':')
 		{
-		// ptr = buf+count+1;
 		state = 2;
 		}
 	    else if (ch!=' ' && ch!='\t')
@@ -596,27 +454,56 @@ libmime_ParseHeaderElement(char *buf, char* hdr)
 	/** STATE 2 (the colon has been spotted, left side is header, right is body **/
 	else if (state == 2)
 	    {
-	    memcpy(hdr, buf, (count-1>79?79:count-1));
-	    hdr[(count-1>79?79:count-1)] = 0;
-	    memcpy(buf, &buf[count+1], strlen(&buf[count+1])+1);
+	    memcpy(hdr, buf, ((count-1)>(hdrsize-1)?(hdrsize-1):(count-1)));
+	    hdr[((count-1)>(hdrsize-1)?(hdrsize-1):(count-1))] = '\0';
+	    memmove(buf, buf+count, strlen(buf+count)+1);
+	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
 	    libmime_StringTrim(hdr);
 	    libmime_StringTrim(buf);
+
+	    /** Store the count of characters between the beginning of the name and the value. **/
+	    *nameOffset = count + 1;
+
+	    /** Add the offset of the name to the start offset. **/
+	    *attrSeekStart += hdr - ptr;
 	    return 0;
 	    }
 	count++;
 	}
+
+	/** Handle empty attributes without error. (Not sure if this is
+	 ** standard)
+	 **/
+	if (state == 2)
+	    {
+	    memcpy(hdr, buf, ((count-1)>(hdrsize-1)?(hdrsize-1):(count-1)));
+	    hdr[((count-1)>(hdrsize-1)?(hdrsize-1):(count-1))] = '\0';
+	    memmove(buf, buf+count, strlen(buf+count)+1);
+	    ptr = hdr; /* Shanghai'ed or rather, captured/destroyed/pillaged */
+	    libmime_StringTrim(hdr);
+	    libmime_StringTrim(buf);
+
+	    /** Store the count of characters between the beginning of the name and the value. **/
+	    *nameOffset = count + 1;
+
+	    /** Add the offset of the name to the start offset. **/
+	    *attrSeekStart += hdr - ptr;
+
+	    return 0;
+	    }
+
     return -1;
     }
 
-/*
-**  int
-**  libmime_ParseMultipartBody
-**
-**  Parses the body of a multipart message.  This fills in the Parts section of the
-**  pMimeHeader data structure.  It will start parsing at the "start" location, and
-**  will keep parsing until all the boundaries have been found or until the byte "end"
-**  has been reached.
-*/
+/***
+ ***  int
+ ***  libmime_ParseMultipartBody
+ ***
+ ***  Parses the body of a multipart message.  This fills in the Parts section of the
+ ***  pMimeHeader data structure.  It will start parsing at the "start" location, and
+ ***  will keep parsing until all the boundaries have been found or until the byte "end"
+ ***  has been reached.
+ ***/
 int
 libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     {
@@ -626,7 +513,9 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     int l_pos=0;
     char bound[sizeof(msg->Boundary) + 2];	/* "--" + boundary */
     char bound_end[sizeof(msg->Boundary) + 4];	/* "--" + boundary + "--" */
-    char ext[5];
+    char ext[5], buf[80];
+    char* sub_type = NULL;
+    int main_type;
 
     if (!lex)
 	{
@@ -635,14 +524,15 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    snprintf(bound, sizeof(bound), "--%s", msg->Boundary);
-    snprintf(bound_end, sizeof(bound_end), "--%s--", msg->Boundary);
+    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type); /* Reusing variable :P */
+    snprintf(bound, sizeof(bound), "--%s", sub_type);
+    snprintf(bound_end, sizeof(bound_end), "--%s--", sub_type);
 
     while (flag)
 	{
-	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD);
+	mlxSetOptions(lex, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
 	toktype = mlxNextToken(lex);
-	if (toktype == MLX_TOK_ERROR || end <= count)
+	if (toktype == MLX_TOK_ERROR || end <= count || toktype == MLX_TOK_EOF)
 	    {
 	    flag = 0;
 	    }
@@ -657,20 +547,32 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		{
 		if (l_pos != 0)
 		    {
-		    l_msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
+		    l_msg = libmime_AllocateHeader();
+		    if (!l_msg) return -1;
+
 		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);
 		    num++;
-		    if (!strlen(l_msg->Filename))
+
+		    /** Check for an extension for the file in order to calculate the default filename. **/
+		    if (!libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType", &main_type)  &&
+			    !libmime_GetStringAttr(l_msg, "Content-Type", "ContentSubType", &sub_type) &&
+			    libmime_ContentExtension(ext, main_type, sub_type))
 			{
-			if (libmime_ContentExtension(ext, l_msg->ContentMainType, l_msg->ContentSubType))
-			    {
-			    sprintf(l_msg->Filename, "attachment%d.%s", num, ext);
-			    }
-			else
-			    {
-			    sprintf(l_msg->Filename, "attachment%d", num);
-			    }
+			snprintf(buf, sizeof(buf), "attachment%d.%s", num, ext);
+			}
+		    else
+			{
+			snprintf(buf, sizeof(buf), "attachment%d", num);
+			}
+
+		    /** Set the Name attribute. **/
+		    libmime_SetFilename(l_msg, buf);
+
+		    if (!libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType", &main_type) &&
+			    main_type == MIME_TYPE_MULTIPART)
+			{
+			libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
 			}
 		    }
 		s=strlen(xsbuf.String);
@@ -690,138 +592,146 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     return 0;
     }
 
-/*
-**  int
-**  libmime_PartRead
-**
-**  Using nearly the same interface as objRead (except for the first
-**  parameter), this function will read an arbitrary number of bytes from a
-**  MIME part, doing all the decoding of that part behind the scenes (as
-**  specified by the Content-Transfer-Encoding header element).
-*/
+/***
+ ***  libmime_PartRead
+ ***
+ ***  Using nearly the same interface as objRead (except for the first
+ ***  parameter), this function will read an arbitrary number of bytes from a
+ ***  MIME part, doing all the decoding of that part behind the scenes (as
+ ***  specified by the Content-Transfer-Encoding header element).
+ ***/
 int
 libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags)
     {
-    int size=0, bytes_left, len, rem=0, end;
-    int tlen, tsize, tremoved, trem_total, toffset, tleft;  // these are used for getting a purified b64 chunk
-    char *ptr, *bptr, *tptr;
+    int size=0;
+    int tlen, tsize, tremoved;  /* these are used for getting a purified b64 chunk */
+    int transfer_encoding;
 
-    switch (msg->TransferEncoding)
+    libmime_GetIntAttr(msg, "Transfer-Encoding", NULL, &transfer_encoding);
+    switch (transfer_encoding)
 	{
 	/** 7BIT AND 8BIT ENCODING **/
 	/** BINARY ENCODING **/
 	/** QUOTED-PRINTABLE ENCODING **/
 	case MIME_ENC_7BIT:
 	case MIME_ENC_8BIT:
-	case MIME_ENC_BINARY:  /**  Split this off to its own if needed at some point  **/
-	case MIME_ENC_QP:  /**  Not currently supported, just print the text  **/
+	case MIME_ENC_BINARY:  /*  Split this off to its own if needed at some point  */
+	case MIME_ENC_QP:  /*  Not currently supported, just print the text  */
 	    if (msg->MsgSeekStart+offset > msg->MsgSeekEnd)
 		return 0;
 	    if (msg->MsgSeekStart+offset+maxcnt > msg->MsgSeekEnd)
 		maxcnt = msg->MsgSeekEnd - (msg->MsgSeekStart + offset);
 	    size = mdat->ReadFn(mdat->Parent, buffer, maxcnt, msg->MsgSeekStart+offset, FD_U_SEEK);
 	    break;
+
 	/** BASE64 ENCODING **/
 	case MIME_ENC_BASE64:
-	    ptr = buffer;
-	    if (flags & FD_U_SEEK)
+	    /**
+	     **  Seeking or not?  Make sure 'offset' always indicates where we want
+	     **  to start reading from.
+	     **/
+	    if (!(flags & FD_U_SEEK))
+		offset = mdat->DecodedSeek;
+
+	    /**
+	     **  Is the offset within our existing buffered chunk?  If not, we need to
+	     **  re-fill the buffer, possibly scanning from the very beginning of the
+	     **  encoded content.
+	     **/
+	    if (offset < mdat->DecodedChunkSeek)
 		{
-		mdat->InternalSeek = offset;
+		/**
+		 **  Reset back to the beginning, and scan forward from there.
+		 **/
+		mdat->DecodedChunkSeek = 0;
+		mdat->DecodedChunkSize = 0;
+		mdat->EncodedChunkSeek = 0;
+		mdat->EncodedChunkSize = 0;
+		mdat->EncodedSeek = 0;
+		mdat->EncodedSeekBeforePurify = 0;
 		}
-	    bytes_left = maxcnt;
-
-	    end = 0;
-	    while (bytes_left > 0 && !end && mdat->ExternalChunkSeek <= msg->MsgSeekEnd)
+	    while (offset >= mdat->DecodedChunkSeek + mdat->DecodedChunkSize)
 		{
-		/**  Figure out what chunk we're inside  **/
-		mdat->InternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_BUF_SIZE;
-		mdat->ExternalChunkSeek = (int)(mdat->InternalSeek/MIME_BUF_SIZE)*MIME_ENCBUF_SIZE+rem;
-		/*
-		**  If the InternalSeek is not inside the chunk that is already buffered
-		**  then we need to rebuffer.  We also need to rebuffer if there is nothing
-		**  currently buffered.
-		*/
-		if (!mdat->InternalChunkSize || (mdat->InternalSeek <= mdat->InternalChunkSeek || mdat->InternalSeek > (mdat->InternalChunkSeek + mdat->InternalChunkSize)))
+		/**
+		 **  Scan forward from our current location to find the data that
+		 **  we want.  This handles both situations where we're re-scanning
+		 **  from beginning of file, and where the data we want is later
+		 **  than where we currently are.
+		 **
+		 **  Any data left in the encoded buffer to be decoded?  If so, scoot
+		 **  it over; otherwise, clear the encoded buffer so it can be filled.
+		 **/
+		if (mdat->EncodedSeek < mdat->EncodedChunkSeek + mdat->EncodedChunkSize)
 		    {
-		    /*
-		    **  Figure out the ExternalChunkSize (number of b64 characters to get).
-		    **  This checks if we're trying to read past the end or not.  Note that
-		    **  this number includes characters that are not in the b64 alphabet.
-		    **  The next code chunk goes through and purifies the stream, refilling
-		    **  the buffer as necessary.  This is just the initial chunk.
-		    */
-		    mdat->ExternalChunkSize = MIME_ENCBUF_SIZE;
-		    if (msg->MsgSeekEnd < (msg->MsgSeekStart + mdat->ExternalChunkSeek + MIME_ENCBUF_SIZE))
-			mdat->ExternalChunkSize = msg->MsgSeekEnd - msg->MsgSeekStart - mdat->ExternalChunkSeek;
-
-		    /*
-		    **  Now we need to fetch a chunk of base64 encoded data.  The only
-		    **  problems is that we need to ignore anything that is not in the
-		    **  base64 alphabet.  Here, I'm looping through and filling up the
-		    **  buffer with base64 encoded data until the buffer is full or
-		    **  until I've reached the end of the stream, ignoring all characters
-		    **  that are not part of the base64 alphabet.
-		    */
-		    tptr = mdat->EncBuffer;
-		    tlen = tsize = toffset = tremoved = trem_total = 0;
-		    tleft = mdat->ExternalChunkSize;
-		    while (tleft > 0)
-			{
-			if (msg->MsgSeekEnd < msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen + tleft)
-			    {
-			    toffset = msg->MsgSeekEnd - (msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen);
-			    tleft = 0;
-			    }
-			else
-			    {
-			    toffset = msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen;
-			    }
-			tsize = mdat->ReadFn(mdat->Parent, tptr, tleft, toffset, FD_U_SEEK);
-			tlen += tsize;
-			tremoved = libmime_B64Purify(mdat->EncBuffer); // tremoved is the number of chars removed this iteration
-			trem_total += tremoved; // trem_total is the total number of chars removed for this chunk
-			tptr += (tsize - tremoved);
-			tleft -= (tsize - tremoved);
-			}
-		    mdat->EncBuffer[tlen-trem_total] = 0;
-		    tsize = libmime_DecodeBase64(mdat->Buffer, mdat->EncBuffer, tlen-trem_total);
-		    rem += trem_total; // rem is the total characters removed (non b64 chars)
-		    }
-
-		/*
-		**  Now lets figure out the number of characters that we want out of
-		**  this chunk.  It could be a few characters on the left side of the
-		**  buffer, on the right side of the buffer, or the whole buffer.  We
-		**  gotta check.
-		*/
-		bptr = mdat->Buffer + (mdat->InternalSeek - mdat->InternalChunkSeek);
-		len = MIME_BUF_SIZE - (bptr - mdat->Buffer);
-		if (len > bytes_left) len = bytes_left;
-		if (len >= MIME_BUF_SIZE || len >= maxcnt)
-		    {
-		    if ((tsize-(bptr-mdat->Buffer)) < MIME_BUF_SIZE)
-			{
-			mdat->InternalChunkSize = (tsize-(bptr-mdat->Buffer));
-			end = 1;
-			}
-		    else
-			{
-			mdat->InternalChunkSize = MIME_BUF_SIZE;
-			}
+		    memmove(mdat->EncodedBuffer, mdat->EncodedBuffer + (mdat->EncodedSeek - mdat->EncodedChunkSeek), mdat->EncodedChunkSize - (mdat->EncodedSeek - mdat->EncodedChunkSeek));
+		    mdat->EncodedChunkSize -= (mdat->EncodedSeek - mdat->EncodedChunkSeek);
+		    mdat->EncodedChunkSeek = mdat->EncodedSeek;
 		    }
 		else
 		    {
-		    mdat->InternalChunkSize = len;
+		    mdat->EncodedChunkSeek = mdat->EncodedSeek;
+		    mdat->EncodedChunkSize = 0;
 		    }
 
-		/**  Now copy the chunk of bytes into the buffer  **/
-		memcpy(ptr, bptr, mdat->InternalChunkSize);
-		/**  Update counters and pointers **/
-		ptr += mdat->InternalChunkSize;
-		bytes_left -= mdat->InternalChunkSize;
-		mdat->InternalSeek += mdat->InternalChunkSize;
-		size += mdat->InternalChunkSize;
+		/** Attempt to fill the encoded buffer **/
+		while (mdat->EncodedChunkSize < sizeof(mdat->EncodedBuffer) - 1)
+		    {
+		    tlen = sizeof(mdat->EncodedBuffer) - 1 - mdat->EncodedChunkSize;
+		    if (tlen > (msg->MsgSeekEnd - msg->MsgSeekStart) - mdat->EncodedSeekBeforePurify)
+			tlen = (msg->MsgSeekEnd - msg->MsgSeekStart) - mdat->EncodedSeekBeforePurify;
+		    if (tlen <= 0)
+			break;
+		    tsize = mdat->ReadFn(mdat->Parent,
+				    mdat->EncodedBuffer + mdat->EncodedChunkSize,
+				    tlen,
+				    msg->MsgSeekStart,
+				    (mdat->EncodedChunkSeek + mdat->EncodedChunkSize == 0)?FD_U_SEEK:0);
+		    if (tsize < 0)
+			return -1;
+		    if (tsize == 0)
+			break;
+		    mdat->EncodedSeekBeforePurify += tsize;
+
+		    /**
+		     **  Remove characters not in the B64 alphabet.  Technically, we should
+		     **  probably only do this for whitespace, and then flag other chars as
+		     **  an error condition.  But this works and may be more robust.
+		     **/
+		    tremoved = libmime_B64Purify(mdat->EncodedBuffer);
+		    mdat->EncodedChunkSize += (tsize - tremoved);
+		    }
+		mdat->EncodedBuffer[mdat->EncodedChunkSize] = '\0';
+
+		/** Not enough data in encoded buffer for any decoding? **/
+		if (mdat->EncodedChunkSize == 0)
+		    return 0;
+		if (mdat->EncodedChunkSize < 4)
+		    {
+		    mssError(1, "MIME", "Malformed end of Base64-encoded MIME data");
+		    return -1;
+		    }
+
+		/** Decode what we are able to decode **/
+		mdat->DecodedChunkSeek += mdat->DecodedChunkSize;
+		tsize = libmime_DecodeBase64(mdat->DecodedBuffer, mdat->EncodedBuffer, sizeof(mdat->DecodedBuffer));
+		if (tsize < 0)
+		    {
+		    mdat->DecodedChunkSize = 0;
+		    return -1;
+		    }
+		mdat->DecodedChunkSize = tsize;
+		mdat->EncodedSeek += ((tsize+2)/3)*4;
 		}
+
+	    /**
+	     **  Okay, we have a buffer with relevant data.  Return the data to the
+	     **  user and update our offset accordingly.
+	     **/
+	    size = mdat->DecodedChunkSeek + mdat->DecodedChunkSize - offset;
+	    if (size > maxcnt)
+		size = maxcnt;
+	    memcpy(buffer, mdat->DecodedBuffer + (offset - mdat->DecodedChunkSeek), size);
+	    mdat->DecodedSeek = offset + size;
 	    break;
 	}
 

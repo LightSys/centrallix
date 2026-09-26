@@ -70,8 +70,8 @@ Attributes marked with an asterisk (*) are only available when using direct SMTP
 | ----------------- | -----------
 | name              | A unique identifier for this email.  Likely will be the same as the Message-ID, but with ".eml" appended to the end, for clarity.
 | message_id        | The Message-ID of the email message being created.
-| env_from+         | The envelope From address of the email (return-path).
-| env_to+           | The envelope recipient (or recipient list) of the email.
+| envelope_from+    | The envelope From address of the email (return-path).
+| envelope_to+      | The envelope recipient (or recipient list) of the email.
 | status            | The status of the email: Draft, Pending, Sent, Error.  The 'Error' status indicates a permanent failure to send the email.  If a TempFail (4xx) occurs while sending, then the message will remain in the Pending status (and the last_try_status attribute will be set to TempFail).
 | is_ready+         | Either 0 (default) to indicate that the email is not ready to be sent or set to 1 to indicate that the email is ready for the SMTP driver to send.
 | first_try_date    | The date/time of the first attempt to send this email.

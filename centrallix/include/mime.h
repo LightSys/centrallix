@@ -31,9 +31,6 @@
 /* Description:	Provides declarations for the MIME parser		*/
 /************************************************************************/
 
-#define MIME_DEBUG            0
-#define MIME_DEBUG_ADDR       0
-
 #define MIME_ST_NORM          0
 #define MIME_ST_QUOTE         1
 #define MIME_ST_COMMENT       2
@@ -43,24 +40,26 @@
 #define MIME_ST_ADR_MAILBOX   1
 #define MIME_ST_ADR_DISPLAY   2
 
-#define MIME_BUFSIZE          64
+#define MIME_BUFSIZE          63 /* TODO: Change to 64 and refactor accordingly. */
 
-#define MIME_TYPE_TEXT        1
-#define MIME_TYPE_MULTIPART   2
-#define MIME_TYPE_APPLICATION 3
-#define MIME_TYPE_MESSAGE     4
-#define MIME_TYPE_IMAGE       5
-#define MIME_TYPE_AUDIO       6
-#define MIME_TYPE_VIDEO       7
+#define MIME_HDRNAME_SIZE     64
 
-#define MIME_ENC_7BIT         1
-#define MIME_ENC_8BIT         2
-#define MIME_ENC_BASE64       3
-#define MIME_ENC_QP           4
-#define MIME_ENC_BINARY       5
+#define MIME_TYPE_TEXT        0
+#define MIME_TYPE_MULTIPART   1
+#define MIME_TYPE_APPLICATION 2
+#define MIME_TYPE_MESSAGE     3
+#define MIME_TYPE_IMAGE       4
+#define MIME_TYPE_AUDIO       5
+#define MIME_TYPE_VIDEO       6
 
-#define MIME_BUF_SIZE         768   // These must be in a 3/4 ratio (or higher) of
-#define MIME_ENCBUF_SIZE      1024  // each other because of how b64 encoding works
+#define MIME_ENC_7BIT         0
+#define MIME_ENC_8BIT         1
+#define MIME_ENC_BASE64       2
+#define MIME_ENC_QP           3
+#define MIME_ENC_BINARY       4
+
+#define MIME_BUF_SIZE         (768+3)   // These must be in a 3/4 ratio (or higher) of
+#define MIME_ENCBUF_SIZE      (1024+1)  // each other because of how b64 encoding works
 
 /** Structure used to represent an email address **/
 typedef struct
@@ -73,28 +72,43 @@ typedef struct
     }
     EmailAddr, *pEmailAddr;
 
+/** Structure to store arbitrary Mime parameters **/
+typedef struct
+    {
+    char*	Name;
+    pTObjData	Ptod;
+    long	ValueSeekStart;
+    long	ValueSeekEnd;
+    }
+    MimeParam, *pMimeParam;
+
+/** Structure to store arbitrary Mime attributes
+ ** Stores default param inside itself and points
+ ** to an xarray of any extra params.
+ **/
+typedef struct
+    {
+    char*	Name;
+    pTObjData	Ptod;
+    XHashTable	Params;
+    long	AttrSeekStart;
+    long	AttrSeekEnd;
+    long	ValueSeekStart;
+    long	ValueSeekEnd;
+    }
+    MimeAttr, *pMimeAttr;
+
 /** information structure for MIME msg **/
 typedef struct _MM
     {
-    int		ContentLength;
-    int		ContentMainType;
-    char	ContentSubType[80];
-    char	ContentDisposition[80];
-    char	Filename[80];
-    char	Boundary[80];
-    char	Subject[80];
-    char	Charset[32];
-    char	MIMEVersion[16];
-    char	Mailer[80];
-    int		TransferEncoding;
     DateTime	Date;
+    long	HdrSeekStart;
+    long	HdrSeekEnd;
     long	MsgSeekStart;
     long	MsgSeekEnd;
-    pXArray	ToList;
-    pXArray	FromList;
-    pXArray	CcList;
     pEmailAddr	Sender;
     XArray	Parts;
+    XHashTable	Attrs;
     }
     MimeHeader, *pMimeHeader;
 
@@ -104,13 +118,15 @@ typedef struct
     void*	Parent;
     int		(*ReadFn)();
     int		(*WriteFn)();
-    long	ExternalChunkSeek;
-    int		ExternalChunkSize;
-    long	InternalSeek;
-    long	InternalChunkSeek;
-    int		InternalChunkSize;
-    char	Buffer[MIME_BUF_SIZE];
-    char	EncBuffer[MIME_ENCBUF_SIZE+1];
+    long	EncodedSeek;
+    long	EncodedSeekBeforePurify;
+    long	EncodedChunkSeek;
+    int		EncodedChunkSize;
+    char	EncodedBuffer[MIME_ENCBUF_SIZE];
+    long	DecodedSeek;
+    long	DecodedChunkSeek;
+    int		DecodedChunkSize;
+    char	DecodedBuffer[MIME_BUF_SIZE];
     }
     MimeData, *pMimeData;
 
@@ -120,20 +136,15 @@ extern char* EncodingStrings[];
 
 /** mime_parse.c **/
 int libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end);
-int libmime_ParseHeaderElement(char *buf, char *element);
+int libmime_ParseHeaderElement(char *buf, char *element, int maxsize, long* attrSeekEnd, long* nameOffset);
 int libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end);
-int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf);
-int libmime_SetMIMEVersion(pMimeHeader msg, char *buf);
+int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long* attrSeekStart);
 int libmime_SetDate(pMimeHeader msg, char *buf);
-int libmime_SetSubject(pMimeHeader msg, char *buf);
-int libmime_SetFrom(pMimeHeader msg, char *buf);
-int libmime_SetCc(pMimeHeader msg, char *buf);
-int libmime_SetTo(pMimeHeader msg, char *buf);
 int libmime_SetTransferEncoding(pMimeHeader msg, char *buf);
-int libmime_SetContentDisp(pMimeHeader msg, char *buf);
 int libmime_SetContentType(pMimeHeader msg, char *buf);
 void libmime_PrintEntityContent(pMimeHeader msg, pLxSession lex);
 int libmime_GetEntityContent(long start, long end, pLxSession lex);
+int libmime_SetFilename(pMimeHeader msg, char *defaultName);
 int libmime_ReadPart(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags);
 
 /** mime_address.c **/
@@ -143,7 +154,8 @@ int libmime_ParseAddress(char *buf, pEmailAddr addr);
 int libmime_ParseAddressElements(char *buf, pEmailAddr addr);
 
 /** mime_util.c **/
-void libmime_Cleanup(pMimeHeader msg);
+pMimeHeader libmime_AllocateHeader();
+void libmime_DeallocateHeader(pMimeHeader msg);
 int libmime_StringLTrim(char *str);
 int libmime_StringRTrim(char *str);
 int libmime_StringTrim(char *str);
@@ -152,6 +164,55 @@ int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
 int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
+void* libmime_xhLookup(pXHashTable this, char* key);
+int libmime_xhAdd(pXHashTable this, char* key, char* data);
+int libmime_xhDeInit(pXHashTable this);
+int libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek);
+int libmime_internal_MakeARandomFilename(char* name, int len);
+
+
+/** mime_attributes.c **/
+int libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd, int nameOffset);
+int libmime_ParseIntAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseStringAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data);
+int libmime_ParseParameterListAttr(pMimeAttr attr, char* data);
+
+int libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data);
+int libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags);
+int libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param);
+int libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype);
+int libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param);
+
+pTObjData* libmime_CreateAttrParam(pMimeHeader this, char* attr, char* param);
+pTObjData libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param);
+pTObjData* libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param);
+int libmime_GetAttrParamNames(char* raw, char** attr, char** param);
+pMimeAttr libmime_GetMimeAttr(pMimeHeader this, char* attr);
+pMimeParam libmime_GetMimeParam(pMimeHeader this, char* attr, char* param);
+
+int libmime_GetIntAttr(pMimeHeader this, char* attr, char* param, int* ret);
+int libmime_GetStringAttr(pMimeHeader this, char* attr, char* param, char** ret);
+int libmime_GetStringArrayAttr(pMimeHeader this, char* attr, char* param, pStringVec* ret);
+int libmime_GetAttr(pMimeHeader this, char* attr, char* param, void** ret);
+int libmime_GetArrayAttr(pMimeHeader this, char* attr, char* param, pXArray* ret);
+
+int libmime_SetIntAttr(pMimeHeader this, char* attr, char* param, int data);
+int libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags);
+int libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype);
+
+int libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList);
+int libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param,  char* data);
+int libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList);
+int libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data);
+
+int libmime_ClearAttr(char* attr_c, void* arg);
+int libmime_ClearParam(char* param_c, void* arg);
+int libmime_ClearSpecials(pTObjData ptod);
+
+int libmime_WriteAttrParam(pFile fd, pMimeHeader msg, char* attrName, char* paramName, int datatype, pObjData val);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();

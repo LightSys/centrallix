@@ -1,0 +1,110 @@
+Title:	  MIME ObjectSystem Driver
+Author:	  Justin Southworth, Hazen Johnson
+Date:	  July 31, 2014
+-------------------------------------------------------------------------------
+
+INTRODUCTION
+
+    The MIME OS Driver is designed to allow MIME files to be integrated into
+    the ObjectSystem. Multipart MIME files are treated like directories and
+    individual MIME objects present their content seamlessly to
+    following OS Drivers.
+
+    This driver is particularly useful when parsing or constructing email
+    files because messages are generally formatted using the MIME standard.
+
+INTERFACE AND IMPLEMENTATION
+
+    The MIME driver attempts to provide a standard interface for the
+    ObjectSystem; however, some key functionality has been left unimplemented
+    due to time constraints. Currently, the MIME driver should be functional,
+    though slightly inefficient and lacking certain features.
+
+    A.  Initialization
+
+	Content types handled by the MIME driver include "message/rfc822",
+	"multipart/mixed", "multipart/alternative", "multipart/form-data",
+	"multipart/parallel", and "multipart/digest". All of these multiparts
+	are included so that multipart MIME content is handled by the MIME
+	driver.
+
+	The MIME driver is loaded dynamically as a linked library; as a
+	result, it occasionally fails to load if code is not correctly
+	compiled. This is particularly relevant when troubleshooting errors
+	with the MIME driver.
+
+	One key feature for optimization of the MIME driver is that of
+	transaction support. Currently, the MIME driver does not support
+	transactions and, as a result, ends up repeating file reads/writes
+	multiple times during the opening, altering, and closing process. In
+	order to make the MIME driver more efficient, adding transaction
+	support would be a considerable help.
+
+    B.  Opening and Closing Objects
+
+	The mimeOpen function parses the entire MIME file and discovers all
+	the MIME objects and subobjects. After parsing the entire file, the
+	MIME driver searches through the tree for the specified object. If it
+	cannot find the object and the OBJ_O_CREAT flag is set, then the MIME
+	driver attempt to create a text/plain child object.
+
+    C.  Creating and Deleting Objects
+
+	The mimeCreate function generates a default header and writes to the
+	previous object in the OS path. At the beginning of the mimeCreate
+	function, the MIME driver detects whether or not the new object is a
+	subobject. If the new object is a subobject, then the function parses
+	the MIME object tree and searches for the parent of the new MIME
+	object. This determines the offsets within the file at which the new
+	MIME object should be inserted.
+
+	If creating an object inside a non-multipart MIME object, then the
+	MIME driver creates a new multipart and puts the old non-multipart
+	inside the new mutipart. The new MIME object is then added to the new
+	multipart object. The new multipart object will have the same name as
+	the old non-multipart object so that the creating pathname is preserved.
+
+	Deletion is not currently implemented due to time constraints, though
+	some amount of the necessary framework is already in place.
+
+    D.  Reading and Writing Object Content
+
+	Both reading and writing have both been implemented similar to the
+	creation of new MIME objects. Because the object has already been
+	opened, file offsets are gained through the INF passed in from the
+	ObjectSystem.
+
+	Decoding is automatically performed for base64 while other encodings
+	are simply returned. Encoding is not currently implemented.
+
+    E.  Querying for Child Objects
+
+	Queries are supported on any multipart object. The MIME object tree
+	is stored in the open object in the Header property so that all
+	children may be accessed through the Parts array which enumerates a
+	MIME object's children.
+
+    F.  Managing Object Attributes
+
+	MIME attributes are stored internally as a hash table so that
+	arbitrary attributes may be added. Attributes that are changed or
+	added are automatically added to the MIME file. In order to write the
+	changes to the file, temporary files are stored in the /tmp directory
+	before writing to the actual file.
+
+    G.  Managing Object Methods
+
+	The MIME driver does not support methods.
+
+    In order to keep the main implementation file clean, the MIME driver
+    locates all of its helper functions in the utility/mime directory. The
+    files in this directory segment the helper functions into different
+    categories:
+
+	mime_address.c	    Contains functions to parse and handle email
+			    addresses.
+	mime_attributes.c   Contains functions to handle attributes.
+	mime_encode.c	    Contains functions to encode and decode from
+			    transfer encodings (i.e. base64)
+	mime_parse.c	    Contains functions to parse MIME files.
+	mime_util.c	    Contains miscellaneous utility functions.
