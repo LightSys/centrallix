@@ -1462,7 +1462,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs)
 	    {
 	    if (!table->UserData)
 	        {
-		mssError(1,"Table '%s' has no source, and no 'expressions=yes'", table->Name);
+		mssError(1,"RPT","Table '%s' has no source, and no 'expressions=yes'", table->Name);
 	        rpt_internal_CheckFormats(table, oldmfmt, olddfmt, oldnfmt, 1);
 	        return -1;
 		}
@@ -3778,4 +3778,3 @@ rptInitialize()
 
     return 0;
     }
-
