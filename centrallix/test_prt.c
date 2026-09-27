@@ -24,6 +24,7 @@
 #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
 #endif
 #include "prtmgmt_v3/prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3_private.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/

@@ -8,6 +8,7 @@
 #include "cxlib/mtlexer.h"
 #include "cxlib/mtsession.h"
 #include "obj.h"
+#include "obj_private.h"
 #include "expression.h"
 #include "cxlib/xhandle.h"
 #include "cxlib/strtcpy.h"
