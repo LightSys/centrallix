@@ -1492,6 +1492,39 @@ objGetPathname(pObject this)
     return (obj_internal_PathPart(this->Pathname, 0, 0) + 1); 
     }
 
+
+/*** objFileName - return the file name of an open object, or "/" for
+ *** the root.
+ ***/
+char*
+objFileName(pObject this)
+    {
+    ASSERTMAGIC(this, MGK_OBJECT);
+    return (this->SubPtr > 0) ? obj_internal_PathPart(this->Pathname, this->SubPtr - 1, 1) : "/";
+    }
+
+
+/*** objFilePath - return the file path to an open object.
+ ***/
+char*
+objFilePath(pObject this)
+    {
+    ASSERTMAGIC(this, MGK_OBJECT);
+    return obj_internal_PathPart(this->Pathname, 0, this->SubPtr);
+    }
+
+
+/*** objResetPathname - untruncate the whole pathname of an open object after
+ *** a partial path lookup, and return it.
+ ***/
+char*
+objResetPathname(pObject this)
+    {
+    ASSERTMAGIC(this, MGK_OBJECT);
+    return obj_internal_PathPart(this->Pathname, 0, 0);
+    }
+
+
 /*((pDirectoryCache)((pObjSession)(OSYS.OpenSessions.Items[0]))->DirectoryCache.Queue.Next->Next->Next->Next->Next->Next->Next->DataPtr)->Pathname*/
 void
 obj_internal_DumpDC(pObjSession session)
