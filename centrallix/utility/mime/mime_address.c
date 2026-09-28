@@ -357,7 +357,7 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	{
 	/** First, get the <mailbox@host> part parsed out of there **/
 	s_ptr++;
-	if (!(e_ptr = strchr(buf, '>')))
+	if (!(e_ptr = strchr(s_ptr, '>')))
 	    {
 	    return -1;
 	    }
