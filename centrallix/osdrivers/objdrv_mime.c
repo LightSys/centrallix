@@ -348,7 +348,7 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    inf->InternalSeek = 0;
 	else if (offset || (flags & FD_U_SEEK))
 	    inf->InternalSeek = offset;
-	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
+	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, FD_U_SEEK);
 	if (size < 0)
 	    return size;
 	inf->InternalSeek += size;
