@@ -67,7 +67,8 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	    }
 	else if (!strcasecmp(name, "Content-Transfer-Encoding"))
 	    {
-	    return libmime_SetTransferEncoding(this, data);
+	    libmime_SetTransferEncoding(this, data);
+	    name = "Transfer-Encoding";
 	    }
 	/** Check for integer attributes. **/
 	else if (!strcasecmp(name, "Content-Length"))
