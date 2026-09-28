@@ -580,7 +580,9 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		return libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
 		}
 
-	    goto error;
+	    /** A missing header defaults to null. **/
+	    nmSysFree(local_attrname);
+	    return 1;
 	    }
 
 	/** If no parameter was specified, return the attribute. **/
@@ -595,7 +597,9 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	param = libmime_GetMimeParam(inf->Header, attrName, paramName);
 	if (!param)
 	    {
-	    goto error;
+	    /** A missing header defaults to null. **/
+	    nmSysFree(local_attrname);
+	    return 1;
 	    }
 
 	/** Return the data stored in the parameter. **/
