@@ -59,6 +59,14 @@
 
 /*** GLOBALS ***/
 
+/*** Parsed message tree, shared by an open message and the parts fetched from it. ***/
+typedef struct
+    {
+    pMimeHeader	Root;
+    int		LinkCnt;
+    }
+    MimeTree, *pMimeTree;
+
 /*** Structure used by this driver internally. ***/
 typedef struct
     {
@@ -67,7 +75,7 @@ typedef struct
     char	Pathname[256];
     char*	AttrValue; /* GetAttrValue has to return a refence to memory that won't be free()ed */
     pMimeHeader	Header;
-    pMimeHeader	MessageRoot;
+    pMimeTree	Tree;
     pMimeData	MimeDat;
     pXHashEntry	CurrAttr;
     int		InternalSeek;
@@ -116,6 +124,16 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     msg = libmime_AllocateHeader();
     if (!msg) goto error;
 
+    /** Share the parsed tree with any parts fetched from this message. **/
+    inf->Tree = (pMimeTree)nmMalloc(sizeof(MimeTree));
+    if (!inf->Tree)
+	{
+	libmime_DeallocateHeader(msg);
+	goto error;
+	}
+    inf->Tree->Root = msg;
+    inf->Tree->LinkCnt = 1;
+
     /** Set object parameters **/
     inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
     if (!inf->MimeDat) goto error;
@@ -126,7 +144,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     inf->MimeDat->WriteFn = objWrite;
     inf->MimeDat->DecodedBuffer[0] = 0;
     inf->MimeDat->EncodedBuffer[0] = 0;
-    inf->MessageRoot = msg;
     inf->Header = msg;
     inf->Obj = obj;
     inf->Mask = mask;
@@ -260,11 +277,11 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
 	nmFree(inf->MimeDat, sizeof(MimeData));
 	}
 
-    /** probably needs to be more done here, but I have _no_ clue what's going on :) -- JDR **/
-    /** Making this do stuff, but may still need more work. Justin Southworth and Hazen Johnson **/
-    if (inf->MessageRoot)
+    /** Reduce the link count and free the tree once nothing links to it. **/
+    if (inf->Tree && --inf->Tree->LinkCnt == 0)
 	{
-	libmime_DeallocateHeader(inf->MessageRoot);
+	libmime_DeallocateHeader(inf->Tree->Root);
+	nmFree(inf->Tree, sizeof(MimeTree));
 	}
 
     if (inf)
@@ -406,6 +423,8 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     inf->InternalType = MIME_INTERNAL_MESSAGE;
 
     inf->Header = xaGetItem(&(qy->Data->Header->Parts), qy->ItemCnt);
+    inf->Tree = qy->Data->Tree;
+    inf->Tree->LinkCnt++;
     qy->ItemCnt++;
 
     return (void*)inf;
@@ -445,39 +464,51 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pMimeParam param = NULL;
     char *local_attrname = NULL;
     char *attrName = NULL, *paramName = NULL;
-    int ret;
+    int rval = -1;
 
 	/** For certain attributes, we defer to obj->Prev **/
 	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
-	    return objGetAttrType(inf->Obj->Prev, attrname);
+	    {
+	    rval = objGetAttrType(inf->Obj->Prev, attrname);
+	    goto end;
+	    }
 
 	/** Create a local copy of the attrname parameter so we can modify it. **/
 	local_attrname = nmSysStrdup(attrname);
+	if (!local_attrname)
+	    {
+	    mssError(1, "MIME", "Could not allocate a copy of attribute name \"%s\".", attrname);
+	    goto end;
+	    }
 
 	/** Split the given attribute name into attribute and parameter. **/
 	libmime_GetAttrParamNames(local_attrname, &attrName, &paramName);
 
 	/** Handle special attributes in the attribute list. **/
-	if (!strcmp(attrName, "Transfer-Encoding")) return DATA_T_STRING;
+	if (!strcmp(attrName, "Transfer-Encoding"))
+	    {
+	    rval = DATA_T_STRING;
+	    goto end;
+	    }
 
 	/** The attribute wasn't readable. **/
 	if (!attrName)
 	    {
-	    goto error;
+	    goto end;
 	    }
 
 	/** Get the indicated attribute. **/
 	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrName);
 	if (!attr)
 	    {
-	    ret = DATA_T_STRING;
+	    rval = DATA_T_STRING;
 	    }
 	else
 	    {
 	    /** If no parameter was specified, return data about the attribute. **/
 	    if (!paramName)
 		{
-		ret = attr->Ptod->DataType;
+		rval = attr->Ptod->DataType;
 		}
 	    else
 		{
@@ -485,27 +516,22 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 		param = libmime_GetMimeParam(inf->Header, attrName, paramName);
 		if (!param)
 		    {
-		    ret = DATA_T_STRING;
+		    rval = DATA_T_STRING;
 		    }
 		else
 		    {
-		    ret = param->Ptod->DataType;
+		    rval = param->Ptod->DataType;
 		    }
 		}
 	    }
-	/** Free the local copy of attrname. **/
-	nmSysFree(local_attrname);
 
-    /** Return the apropriate data type. **/
-    return ret;
-
-    error:
+    end:
 	if (local_attrname)
 	    {
 	    nmSysFree(local_attrname);
 	    }
 
-	return -1;
+	return rval;
     }
 
 
@@ -525,13 +551,22 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     char tmp[32];
     char *local_attrname = NULL;
     char *attrName = NULL, *paramName = NULL;
+    int rval = -1;
 
 	/** For certain attributes, we defer to obj->Prev **/
 	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
-	    return objGetAttrValue(inf->Obj->Prev, attrname, datatype, val);
+	    {
+	    rval = objGetAttrValue(inf->Obj->Prev, attrname, datatype, val);
+	    goto end;
+	    }
 
 	/** Create a local copy of the attrname parameter so we can modify it. **/
 	local_attrname = nmSysStrdup(attrname);
+	if (!local_attrname)
+	    {
+	    mssError(1, "MIME", "Could not allocate a copy of attribute name \"%s\".", attrname);
+	    goto end;
+	    }
 
 	/** Deallocate the previous result if necessary. **/
 	if (inf->AttrValue)
@@ -545,7 +580,8 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    {
 	    libmime_GetIntAttr(inf->Header, "Transfer-Encoding", NULL, &int_attr);
 	    val->String = EncodingStrings[int_attr];
-	    return 0;
+	    rval = 0;
+	    goto end;
 	    }
 
 	/** Split the given attribute name into attribute and parameter. **/
@@ -554,7 +590,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** The attribute wasn't readable. **/
 	if (!attrName)
 	    {
-	    goto error;
+	    goto end;
 	    }
 
 	/** Get the indicated attribute. **/
@@ -564,25 +600,27 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    if (!strcmp(attrName, "annotation"))
 		{
 		val->String = "";
-		return 0;
+		rval = 0;
 		}
-	    if (!strcmp(attrName, "name"))
+	    else if (!strcmp(attrName, "name"))
 		{
-		return libmime_GetStringAttr(inf->Header, "Name", NULL, &val->String);
+		rval = libmime_GetStringAttr(inf->Header, "Name", NULL, &val->String);
 		}
-	    if (!strcmp(attrName, "outer_type"))
+	    else if (!strcmp(attrName, "outer_type"))
 		{
 		val->String = "message/rfc822";
-		return 0;
+		rval = 0;
 		}
 	    else if (!strcmp(attrName, "content_type") || !strcmp(attrName, "inner_type"))
 		{
-		return libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
+		rval = libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
 		}
-
-	    /** A missing header defaults to null. **/
-	    nmSysFree(local_attrname);
-	    return 1;
+	    else
+		{
+		/** A missing header defaults to null. **/
+		rval = 1;
+		}
+	    goto end;
 	    }
 
 	/** If no parameter was specified, return the attribute. **/
@@ -590,7 +628,8 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    {
 	    /** Return the data stored in the attribute. **/
 	    val->Generic = attr->Ptod->Data.Generic;
-	    return 0;
+	    rval = 0;
+	    goto end;
 	    }
 
 	/** Get the indicated parameter. **/
@@ -598,25 +637,21 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	if (!param)
 	    {
 	    /** A missing header defaults to null. **/
-	    nmSysFree(local_attrname);
-	    return 1;
+	    rval = 1;
+	    goto end;
 	    }
 
 	/** Return the data stored in the parameter. **/
 	val->Generic = param->Ptod->Data.Generic;
+	rval = 0;
 
-	/** Free the local copy of attrname. **/
-	nmSysFree(local_attrname);
-
-	return 0;
-
-    error:
+    end:
 	if (local_attrname)
 	    {
 	    nmSysFree(local_attrname);
 	    }
 
-	return -1;
+	return rval;
     }
 
 

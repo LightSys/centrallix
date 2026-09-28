@@ -399,14 +399,15 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	else
 	    {
 	    /** Display text is whatever is outside the <> **/
-	    t_str = (char*)nmSysMalloc(strlen(buf)+1);
-	    if (!t_str)
-		return -1;
 	    s_ptr = strchr(buf, '<');
 	    e_ptr = strchr(s_ptr, '>');
 
 	    /** entire string is <user@host> **/
 	    if (s_ptr == buf && e_ptr[1] == '\0') return 0;
+
+	    t_str = (char*)nmSysMalloc(strlen(buf)+1);
+	    if (!t_str)
+		return -1;
 
 	    /** Copy whatever is outside the < > **/
 	    if (s_ptr > buf && s_ptr[-1] == ' ')
