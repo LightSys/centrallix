@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -801,8 +802,10 @@ mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    /** Delete the temp file. **/
 	    if (remove(fileName.String))
 		{
-		mssError(1, "MIME", "Failed to delete temporary file.");
-		goto error;
+		fprintf(stderr,
+		    "Warning: Unable to delete temporary file \"%s\" (%s).\n",
+		    fileName.String, strerror(errno)
+		);
 		}
 	    }
 
@@ -1184,12 +1187,18 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	/** Delete the temporary files. **/
 	if (remove(rootFileName.String))
 	    {
-	    mssError(1, "MIME", "Unable to delete the temporary compiling file.");
+	    fprintf(stderr,
+		"Warning: Unable to delete temporary file \"%s\" (%s).\n",
+		rootFileName.String, strerror(errno)
+	    );
 	    }
 
 	if (remove(messageFileName.String))
 	    {
-	    mssError(1, "MIME", "Unable to delete the temporary message file.");
+	    fprintf(stderr,
+		"Warning: Unable to delete temporary file \"%s\" (%s).\n",
+		messageFileName.String, strerror(errno)
+	    );
 	    }
 
 	/** Deinitialize some stuffz. **/
@@ -1682,7 +1691,10 @@ mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Delete the temp file. **/
 	if (remove(filename))
 	    {
-	    mssError(1, "MIME", "Could not remove temp file ('%s'). Possible issues changing the file in the future.", filename);
+	    fprintf(stderr,
+		"Warning: Unable to delete temporary file \"%s\" (%s).\n",
+		filename, strerror(errno)
+	    );
 	    }
 
 	/** Free the temp name. **/
@@ -1845,7 +1857,10 @@ mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree
 	/** Delete the temp file. **/
 	if (remove(filename.String))
 	    {
-	    mssError(1, "MIME", "Could not remove temp file ('%s'). Possible issues changing the file in the future.", filename.String);
+	    fprintf(stderr,
+		"Warning: Unable to delete temporary file \"%s\" (%s).\n",
+		filename.String, strerror(errno)
+	    );
 	    }
 
 	/** Deinitialize the filename string. **/
