@@ -78,6 +78,8 @@ typedef struct
     pMimeTree	Tree;
     pMimeData	MimeDat;
     pXHashEntry	CurrAttr;
+    pXHashEntry	CurrParam;
+    char*	ParamAttrName; /* "<header>.<param>" name from GetNextAttr, valid until its next call */
     int		InternalSeek;
     int		InternalType;
     }
@@ -270,6 +272,11 @@ mimeClose(void* inf_v, pObjTrxTree* oxt)
 	{
 	nmSysFree(inf->AttrValue);
 	inf->AttrValue=NULL;
+	}
+    if (inf->ParamAttrName)
+	{
+	nmSysFree(inf->ParamAttrName);
+	inf->ParamAttrName = NULL;
 	}
 
     if (inf->MimeDat)
@@ -485,7 +492,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	libmime_GetAttrParamNames(local_attrname, &attrName, &paramName);
 
 	/** Handle special attributes in the attribute list. **/
-	if (!strcmp(attrName, "Transfer-Encoding"))
+	if (!strcasecmp(attrName, "Content-Transfer-Encoding"))
 	    {
 	    rval = DATA_T_STRING;
 	    goto end;
@@ -576,7 +583,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	/** Handle special attributes. **/
-	if (!strcmp(attrname, "Transfer-Encoding"))
+	if (!strcasecmp(attrname, "Content-Transfer-Encoding"))
 	    {
 	    libmime_GetIntAttr(inf->Header, "Transfer-Encoding", NULL, &int_attr);
 	    val->String = EncodingStrings[int_attr];
@@ -663,27 +670,54 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeInfo inf = MIME(inf_v);
     pMimeAttr attr;
+    pMimeParam param;
+    char* attrName;
+    int len;
 
-	/** Get the next element from the attributes hash. **/
-	inf->CurrAttr = xhGetNextElement(&inf->Header->Attrs, inf->CurrAttr);
-
-	/** If there are no more attributes, return NULL. **/
-	if (!inf->CurrAttr)
+	while (1)
 	    {
-	    return NULL;
+	    /** List the current header's parameters as "<header>.<param>". **/
+	    if (inf->CurrAttr)
+		{
+		attr = (pMimeAttr)inf->CurrAttr->Data;
+		attrName = (strcmp(attr->Name, "Transfer-Encoding")) ? attr->Name : "Content-Transfer-Encoding";
+		while (attr->Params.nRows && (inf->CurrParam = xhGetNextElement(&attr->Params, inf->CurrParam)))
+		    {
+		    param = (pMimeParam)inf->CurrParam->Data;
+
+		    /** Skip parameters the parser derives from the header. **/
+		    if (!strcmp(param->Name, "ContentMainType") || !strcmp(param->Name, "ContentSubType") ||
+			    !strcmp(param->Name, "List") || !strcmp(param->Name, "Struct"))
+			continue;
+
+		    /** Build the name, which lasts until the next call. **/
+		    if (inf->ParamAttrName)
+			nmSysFree(inf->ParamAttrName);
+		    len = strlen(attrName) + strlen(param->Name) + 2;
+		    inf->ParamAttrName = (char*)nmSysMalloc(len);
+		    if (!inf->ParamAttrName)
+			{
+			mssError(1, "MIME", "Could not allocate the name of parameter \"%s\" of \"%s\".", param->Name, attrName);
+			return NULL;
+			}
+		    snprintf(inf->ParamAttrName, len, "%s.%s", attrName, param->Name);
+		    return inf->ParamAttrName;
+		    }
+		}
+
+	    /** Move to the next header. **/
+	    inf->CurrAttr = xhGetNextElement(&inf->Header->Attrs, inf->CurrAttr);
+	    inf->CurrParam = NULL;
+	    if (!inf->CurrAttr)
+		return NULL;
+	    attr = (pMimeAttr)inf->CurrAttr->Data;
+
+	    /** Name and Content-Type are system attributes, so only Content-Type's parameters are listed. **/
+	    if (!strcasecmp(attr->Name, "Name") || !strcasecmp(attr->Name, "Content-Type"))
+		continue;
+
+	    return (strcmp(attr->Name, "Transfer-Encoding")) ? attr->Name : "Content-Transfer-Encoding";
 	    }
-
-	/** Get the attribute from the current hash element. **/
-	attr = (pMimeAttr)inf->CurrAttr->Data;
-
-	/** Handle special attributes. **/
-	if (!strcasecmp(attr->Name, "Content-Type") ||
-		!strcasecmp(attr->Name, "Name"))
-	    {
-	    return mimeGetNextAttr(inf_v, oxt);
-	    }
-
-    return attr->Name;
     }
 
 
@@ -698,6 +732,7 @@ mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 
 	/** Set up to get the first element in the attribute list. **/
 	inf->CurrAttr = NULL;
+	inf->CurrParam = NULL;
 
     return mimeGetNextAttr(inf_v, oxt);
     }
