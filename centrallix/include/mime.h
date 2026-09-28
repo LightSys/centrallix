@@ -43,6 +43,7 @@
 #define MIME_BUFSIZE          63 /* TODO: Change to 64 and refactor accordingly. */
 
 #define MIME_HDRNAME_SIZE     64
+#define MIME_BOUNDARY_SIZE    80
 
 #define MIME_TYPE_TEXT        0
 #define MIME_TYPE_MULTIPART   1
