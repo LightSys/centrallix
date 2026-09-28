@@ -130,21 +130,18 @@ mime_internal_TransferDecode(pMimeInfo inf, pMimeHeader src_msg, void* dst, int 
 
 
 /*** mime_internal_TransferEncode() - transfers data from an object or file
- *** into a message part, encoding (if needed) along the way.
+ *** to a file or object, encoding it with the given transfer encoding along
+ *** the way.  Returns the number of encoded bytes.
  ***/
 int
-mime_internal_TransferEncode(pMimeInfo inf, void* src, int (*src_read)(), pMimeHeader dst_msg)
+mime_internal_TransferEncode(void* src, int (*src_read)(), void* dst, int (*dst_write)(), int encoding)
     {
-    int encoding = -1;
     char dec_buf[57]; /* must be divisible by 3 */
     char enc_buf[sizeof(dec_buf)*5];
     char* output;
     int rcnt, rcnt_blk, enc_cnt;
     int wcnt, wcnt_total;
     int xfer_cnt = 0;
-
-	libmime_GetIntAttr(dst_msg, "Transfer-Encoding", NULL, &encoding);
-	if (encoding < 0) encoding = MIME_ENC_7BIT;
 
 	while(1)
 	    {
@@ -159,6 +156,8 @@ mime_internal_TransferEncode(pMimeInfo inf, void* src, int (*src_read)(), pMimeH
 		    break;
 		rcnt_blk += rcnt;
 		}
+	    if (rcnt_blk == 0)
+		break;
 
 	    /** Encode **/
 	    switch(encoding)
@@ -182,7 +181,7 @@ mime_internal_TransferEncode(pMimeInfo inf, void* src, int (*src_read)(), pMimeH
 	    wcnt_total = 0;
 	    while (wcnt_total < enc_cnt)
 		{
-		wcnt = objWrite(inf->Obj->Prev, output + wcnt_total, enc_cnt - wcnt_total, 0, 0);
+		wcnt = dst_write(dst, output + wcnt_total, enc_cnt - wcnt_total, 0, 0);
 		if (wcnt <= 0)
 		    return -1;
 		wcnt_total += wcnt;
@@ -190,7 +189,7 @@ mime_internal_TransferEncode(pMimeInfo inf, void* src, int (*src_read)(), pMimeH
 	    xfer_cnt += wcnt_total;
 	    if (encoding == MIME_ENC_BASE64)
 		{
-		wcnt = objWrite(inf->Obj->Prev, "\r\n", 2, 0, 0);
+		wcnt = dst_write(dst, "\r\n", 2, 0, 0);
 		if (wcnt < 2)
 		    return -1;
 		xfer_cnt += 2;
