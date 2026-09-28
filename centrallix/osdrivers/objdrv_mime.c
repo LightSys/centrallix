@@ -974,14 +974,29 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
     XString rootFileName;
     pFile rootFile = NULL;
 
+    XString hdr_data;
+    pMimeAttr attr;
+    int hdrlen, new_hdrlen;
+
     char* fileHash = NULL;
-    char buf [MIME_BUFSIZE+1];
-    long readSize, currentOffset, targetOffset;
+    long targetOffset;
     int internalSeek;
-    int rcnt, wcnt, xfer_size;
-    int is_7bit = 1, was_7bit = 1;
+    int wcnt, xfer_size, enc_size;
+    int is_7bit = 1;
     int i;
-    int xfer_encoding = -1;
+    int main_type;
+    int xfer_encoding = -1, new_encoding;
+
+	xsInit(&messageFileName);
+	xsInit(&rootFileName);
+	xsInit(&hdr_data);
+
+	/** Multipart messages have no content of their own. **/
+	if (!libmime_GetIntAttr(inf->Header, "Content-Type", "ContentMainType", &main_type) && main_type == MIME_TYPE_MULTIPART)
+	    {
+	    mssError(1, "MIME", "Cannot write content to a multipart message.");
+	    goto error;
+	    }
 
 	/** Nature of data being written -- 7bit clean? **/
 	for(i=0;i<cnt;i++)
@@ -993,8 +1008,15 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 		}
 	    }
 	libmime_GetIntAttr(inf->Header, "Transfer-Encoding", NULL, &xfer_encoding);
-	if (xfer_encoding == MIME_ENC_BASE64)
-	    was_7bit = 0;
+	if (xfer_encoding < 0) xfer_encoding = MIME_ENC_7BIT;
+
+	/** Choose the encoding for the new content. **/
+	if (xfer_encoding == MIME_ENC_QP)
+	    {
+	    mssError(1, "MIME", "Writing to a quoted-printable message part is not supported.");
+	    goto error;
+	    }
+	new_encoding = (xfer_encoding == MIME_ENC_7BIT && !is_7bit) ? MIME_ENC_BASE64 : xfer_encoding;
 
 	/** Cache the internal seek. **/
 	internalSeek = inf->InternalSeek;
@@ -1009,7 +1031,6 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	libmime_GetStringAttr(inf->Header, "Name", NULL, &messageName);
 
 	/** Build the name of the temporary message file. **/
-	xsInit(&messageFileName);
 	xsConcatPrintf(&messageFileName, "/tmp/%s%s", messageName, fileHash);
 
 	/** Create the temporary message file. **/
@@ -1020,15 +1041,8 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    goto error;
 	    }
 
-	/** Seek to the beginning of the message contents. **/
-	objSeek(inf->Obj, 0);
-	currentOffset = inf->Header->MsgSeekStart;
-	targetOffset = inf->Header->MsgSeekEnd;
-
-	/** Copy the message contents into the temporary file. **/
-	//xfer_size = objTransfer(inf->Obj, objRead, messageFile, fdWrite, targetOffset - currentOffset);
-	xfer_size = mime_internal_TransferDecode(inf, inf->Obj, objRead, messageFile, fdWrite, targetOffset - currentOffset);
-	if (xfer_size < targetOffset - currentOffset)
+	/** Decode the message contents into the temporary file. **/
+	if (mime_internal_TransferDecode(inf, inf->Header, messageFile, fdWrite) < 0)
 	    {
 	    mssError(0, "MIME", "Unable to copy message contents to temporary file.");
 	    goto error;
@@ -1048,6 +1062,11 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 
 	/** Write to the temporary file as indicated by the function arguments. **/
 	wcnt = fdWrite(messageFile, buffer, cnt, offset, flags);
+	if (wcnt < 0)
+	    {
+	    mssError(1, "MIME", "Could not write to the temporary message file.");
+	    goto error;
+	    }
 	inf->InternalSeek += wcnt;
 
 	/** Get the name of the entire Mime file. **/
@@ -1058,38 +1077,72 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	libmime_internal_MakeARandomFilename(fileHash, 8);
 
 	/** Build the name of the temporary file to store the entire Mime file. **/
-	xsInit(&rootFileName);
 	xsConcatPrintf(&rootFileName, "/tmp/%s%s", rootName, fileHash);
 
 	/** Open a temporary file to compile the entire Mime file. **/
 	rootFile = fdOpen(rootFileName.String, O_RDWR | O_CREAT, 0755);
+	if (!rootFile)
+	    {
+	    mssError(1, "MIME", "Could not create temporary file.");
+	    goto error;
+	    }
 
-	/** Seek to the beginning of the Mime file. **/
+	/** Copy the contents before the message header into the temporary file. **/
 	objSeek(inf->Obj->Prev, 0);
-
-	/** Set the offset variables to read to the beginning of the message. **/
-	targetOffset = inf->Header->MsgSeekStart;
-
-	/** Copy the pre-message contents of the Mime file into the temporary file. **/
+	targetOffset = inf->Header->HdrSeekStart;
 	xfer_size = objTransfer(inf->Obj->Prev, objRead, rootFile, fdWrite, targetOffset);
 	if (xfer_size < targetOffset)
 	    {
 	    mssError(0, "MIME", "Unable to copy pre-message contents to temporary file.");
 	    goto error;
 	    }
-	currentOffset = targetOffset;
+
+	/** Copy the message header, updating its transfer encoding. **/
+	hdrlen = inf->Header->HdrSeekEnd - inf->Header->HdrSeekStart;
+	if (objTransfer(inf->Obj->Prev, objRead, &hdr_data, xsWrite, hdrlen) != hdrlen)
+	    {
+	    mssError(0, "MIME", "Unable to copy message header to memory.");
+	    goto error;
+	    }
+	if (new_encoding != xfer_encoding)
+	    {
+	    attr = libmime_GetMimeAttr(inf->Header, "Transfer-Encoding");
+	    if (attr && attr->AttrSeekEnd > attr->AttrSeekStart)
+		i = xsSubst(&hdr_data, attr->AttrSeekStart - inf->Header->HdrSeekStart, attr->AttrSeekEnd - attr->AttrSeekStart, "Content-Transfer-Encoding: base64\n", -1);
+	    else
+		i = xsConcatenate(&hdr_data, "Content-Transfer-Encoding: base64\n", -1);
+	    if (i < 0)
+		{
+		mssError(0, "MIME", "Unable to update the message transfer encoding.");
+		goto error;
+		}
+	    }
+	new_hdrlen = strlen(hdr_data.String);
+	if (fdWrite(rootFile, hdr_data.String, new_hdrlen, 0, FD_U_PACKET) < new_hdrlen)
+	    {
+	    mssError(0, "MIME", "Unable to write message header to temporary file.");
+	    goto error;
+	    }
+
+	/** Copy the blank line between the header and the message. **/
+	targetOffset = inf->Header->MsgSeekStart - inf->Header->HdrSeekEnd;
+	xfer_size = objTransfer(inf->Obj->Prev, objRead, rootFile, fdWrite, targetOffset);
+	if (xfer_size < targetOffset)
+	    {
+	    mssError(0, "MIME", "Unable to copy the blank line after the message header to temporary file.");
+	    goto error;
+	    }
 
 	/** Seek to the beginning of the temporary message file. **/
 	fdWrite(messageFile, NULL, 0, 0, FD_U_SEEK);
 
-	/** Copy the contents of the temporary message file into the compiling file. **/
-	xfer_size = objTransfer(messageFile, fdRead, rootFile, fdWrite, -1);
-	if (xfer_size < 0)
+	/** Encode the contents of the temporary message file into the compiling file. **/
+	enc_size = mime_internal_TransferEncode(messageFile, fdRead, rootFile, fdWrite, new_encoding);
+	if (enc_size < 0)
 	    {
 	    mssError(0, "MIME", "Unable to copy modified contents to temporary file.");
 	    goto error;
 	    }
-	currentOffset += xfer_size;
 
 	/** Seek to the end of the message in the Mime file. **/
 	objSeek(inf->Obj->Prev, inf->Header->MsgSeekEnd);
@@ -1102,11 +1155,27 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    goto error;
 	    }
 
-	/** Recalculate the offset at the end of the message. **/
-	inf->Header->MsgSeekEnd = currentOffset;
-
 	/** Write the changes back to the Object System. **/
-	libmime_SaveTemporaryFile(rootFile, inf->Obj, inf->Header->MsgSeekStart);
+	if (libmime_SaveTemporaryFile(rootFile, inf->Obj, inf->Header->HdrSeekStart) < 0)
+	    {
+	    mssError(0, "MIME", "Unable to save the modified message.");
+	    goto error;
+	    }
+
+	/** Recalculate the message offsets and encoding. **/
+	inf->Header->HdrSeekEnd += new_hdrlen - hdrlen;
+	inf->Header->MsgSeekStart += new_hdrlen - hdrlen;
+	inf->Header->MsgSeekEnd = inf->Header->MsgSeekStart + enc_size;
+	libmime_SetIntAttr(inf->Header, "Transfer-Encoding", NULL, new_encoding);
+
+	/** Discard data buffered from the old contents. **/
+	inf->MimeDat->EncodedSeek = 0;
+	inf->MimeDat->EncodedSeekBeforePurify = 0;
+	inf->MimeDat->EncodedChunkSeek = 0;
+	inf->MimeDat->EncodedChunkSize = 0;
+	inf->MimeDat->DecodedSeek = inf->InternalSeek;
+	inf->MimeDat->DecodedChunkSeek = 0;
+	inf->MimeDat->DecodedChunkSize = 0;
 
 	/** Close the files. **/
 	fdClose(rootFile, 0);
@@ -1124,18 +1193,29 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    }
 
 	/** Deinitialize some stuffz. **/
+	xsDeInit(&messageFileName);
 	xsDeInit(&rootFileName);
+	xsDeInit(&hdr_data);
 	nmSysFree(fileHash);
 
     return wcnt;
 
     error:
 	if (fileHash) nmSysFree(fileHash);
-	if (messageFile) fdClose(messageFile, 0);
-	if (rootFile) fdClose(rootFile, 0);
+	if (messageFile)
+	    {
+	    fdClose(messageFile, 0);
+	    remove(messageFileName.String);
+	    }
+	if (rootFile)
+	    {
+	    fdClose(rootFile, 0);
+	    remove(rootFileName.String);
+	    }
 
 	xsDeInit(&messageFileName);
 	xsDeInit(&rootFileName);
+	xsDeInit(&hdr_data);
 
 	return -1;
     }
