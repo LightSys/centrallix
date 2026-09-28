@@ -33,6 +33,8 @@ xhi_internal_MatchKey(char* key)
 	    case '1':
 		return "contents1";
 	    }
+
+	    return "";
     }
 
 long long
@@ -100,4 +102,3 @@ test(char** tname)
 
     return iter;
     }
-
