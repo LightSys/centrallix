@@ -216,6 +216,9 @@ INTERFACE AND IMPLEMENTATION
 
 	    envelope_to	    The envelope recipient (or recipient list) of the email.
 
+	    tag		    An arbitrary label (not necessarily unique) used to
+			    find this email in later queries.
+
 	    status	    The status of the email: Draft until is_ready is set
 			    to 1, then Sent or Error.
 
