@@ -73,7 +73,8 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     {
     int flag, toktype, alloc, len;
     XString xsbuf;
-    char *hdrnme, *hdrbdy;
+    char hdrnme[MIME_HDRNAME_SIZE];
+    char *hdrbdy;
     char *ptr;
     long attrSeekStart = start, attrSeekEnd = start, nameOffset;
 
@@ -119,16 +120,16 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    {
 	    if (libmime_LoadExtendedHeader(lex, msg, &xsbuf, &attrSeekEnd) < 0)
 		{
+		xsDeInit(&xsbuf);
 		return -1;
 		}
 
-	    hdrnme = (char*)nmMalloc(MIME_HDRNAME_SIZE);
-	    if (!hdrnme)
-		return -1;
-	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
+	    hdrbdy = nmSysStrdup(xsbuf.String);
 	    if (!hdrbdy)
+		{
+		xsDeInit(&xsbuf);
 		return -1;
-	    strcpy(hdrbdy, xsbuf.String);
+		}
 	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, MIME_HDRNAME_SIZE, &attrSeekStart, &nameOffset))
 		{
 		/** Parse the attribute and store it in the Mime header. **/
@@ -141,6 +142,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		{
 		mssError(1, "MIME", "ERROR PARSING: %s\n", xsbuf.String);
 		}
+	    nmSysFree(hdrbdy);
 
 	    /** Get the offset at the beginning of the next attribute. **/
 	    attrSeekStart = attrSeekEnd;

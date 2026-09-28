@@ -393,12 +393,20 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    memset(attr, 0, sizeof(MimeAttr));
 
 	    /** Set the name of the attribute. **/
-	    attr->Name = attrName;
+	    attr->Name = nmSysStrdup(attrName);
+	    if (!attr->Name)
+		{
+		mssError(1, "MIME", "Could not allocate the name of attribute \"%s\".", attrName);
+		nmFree(attr, sizeof(MimeAttr));
+		return NULL;
+		}
 
 	    /** Add the Mime attribute to the attributes array. **/
 	    if (libmime_xhAdd(&this->Attrs, attrName, (char*)attr) == -1)
 		{
 		mssError(1, "MIME", "Attribute or parameter already exists.");
+		nmSysFree(attr->Name);
+		nmFree(attr, sizeof(MimeAttr));
 		return NULL;
 		}
 
@@ -426,7 +434,13 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    memset(param, 0, sizeof(MimeParam));
 
 	    /** Set the name of the parameter. **/
-	    param->Name = paramName;
+	    param->Name = nmSysStrdup(paramName);
+	    if (!param->Name)
+		{
+		mssError(1, "MIME", "Could not allocate the name of parameter \"%s\".", paramName);
+		nmFree(param, sizeof(MimeParam));
+		return NULL;
+		}
 
 	    /** If necessary, initialize the parameter table. **/
 	    if (!attr->Params.nRows)
@@ -435,7 +449,13 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 		}
 
 	    /** Add the Mime parameter to the parameter hash. **/
-	    libmime_xhAdd(&attr->Params, paramName, (char*)param);
+	    if (libmime_xhAdd(&attr->Params, paramName, (char*)param) == -1)
+		{
+		mssError(1, "MIME", "Parameter \"%s\" of \"%s\" already exists.", paramName, attrName);
+		nmSysFree(param->Name);
+		nmFree(param, sizeof(MimeParam));
+		return NULL;
+		}
 
 	    /** Return the pointer to the relevant ptod.**/
 	    return &param->Ptod;
@@ -937,6 +957,7 @@ libmime_ClearAttr(char* attr_c, void* arg)
 	ptodFree(attr->Ptod);
 
 	/** Free the attribute memory. **/
+	nmSysFree(attr->Name);
 	nmFree(attr, sizeof(MimeAttr));
 
     return 0;
@@ -957,6 +978,7 @@ libmime_ClearParam(char* param_c, void* arg)
 	ptodFree(param->Ptod);
 
 	/** Free the parameter memory. **/
+	nmSysFree(param->Name);
 	nmFree(param, sizeof(MimeParam));
 
     return 0;

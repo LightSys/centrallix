@@ -368,6 +368,8 @@ libmime_xhAdd(pXHashTable this, char* key, char* data)
 	libmime_StringToLower(buf);
 
 	rval = xhAdd(this, buf, data);
+	if (rval < 0)
+	    nmSysFree(buf);
 
     return rval;
     }
