@@ -686,8 +686,8 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		    tsize = mdat->ReadFn(mdat->Parent,
 				    mdat->EncodedBuffer + mdat->EncodedChunkSize,
 				    tlen,
-				    msg->MsgSeekStart,
-				    (mdat->EncodedChunkSeek + mdat->EncodedChunkSize == 0)?FD_U_SEEK:0);
+				    msg->MsgSeekStart + mdat->EncodedSeekBeforePurify,
+				    FD_U_SEEK);
 		    if (tsize < 0)
 			return -1;
 		    if (tsize == 0)
