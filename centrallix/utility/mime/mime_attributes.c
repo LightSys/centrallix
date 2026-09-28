@@ -129,6 +129,10 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	    beginPtr = paramName;
 	    libmime_StringTrim(paramName);
 
+	    /** If the parameter has no value, default to an empty value. **/
+	    if (val_ptr == NULL)
+		val_ptr = paramName + strlen(paramName);
+
 	    /** Add the offset from the beginning of the untrimmed parameter name to the beginning of the actual parameter name. **/
 	    seekStart = seekEnd + (paramName - beginPtr) + 1; /* NOTE: +1 skips the semicolon. */
 
