@@ -22,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2015 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -107,23 +107,19 @@ mime_internal_TransferDecode(pMimeInfo inf, pMimeHeader src_msg, void* dst, int 
 	//if (encoding < 0) encoding = MIME_ENC_7BIT;
 
 	total_xfer = 0;
-	while((rcnt = libmime_PartRead(inf, src_msg, xfer_buf, sizeof(xfer_buf), 0, (total_xfer == 0)?FD_U_SEEK:0)) > 0)
+	while(1)
 	    {
+	    rcnt = libmime_PartRead(inf->MimeDat, src_msg, xfer_buf, sizeof(xfer_buf), total_xfer, FD_U_SEEK);
 	    if (rcnt < 0)
 		return rcnt;
 	    if (rcnt == 0)
-		{
-		mssError(1, "MIME", "Incomplete read of message body while decoding.");
-		return -1;
-		}
+		break;
 	    wcnt_total = 0;
 	    while(wcnt_total < rcnt)
 		{
 		wcnt = dst_write(dst, xfer_buf+wcnt_total, rcnt-wcnt_total, 0, 0);
-		if (wcnt < 0)
-		    return wcnt;
-		if (wcnt == 0)
-		    break;
+		if (wcnt <= 0)
+		    return -1;
 		wcnt_total += wcnt;
 		}
 	    total_xfer += wcnt_total;
