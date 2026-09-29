@@ -633,8 +633,16 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 	    else if (!strcmp(attrName, "outer_type"))
 		{
-		val->String = "message/rfc822";
-		rval = 0;
+		/** The message itself is rfc822; each part is its own content type. **/
+		if (inf->Header == inf->Tree->Root)
+		    {
+		    val->String = "message/rfc822";
+		    rval = 0;
+		    }
+		else
+		    {
+		    rval = libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
+		    }
 		}
 	    else if (!strcmp(attrName, "content_type") || !strcmp(attrName, "inner_type"))
 		{
