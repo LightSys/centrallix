@@ -1031,8 +1031,10 @@ libmime_ClearSpecials(pTObjData ptod)
 		    nmSysFree(stringVec->Strings[i]);
 		    }
 
-		/** Deallocate the StringVec string array. **/
+		/** Deallocate the StringVec string array and the StringVec. **/
 		nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
+		nmFree(stringVec, sizeof(StringVec));
+		ptod->Data.StringVec = NULL;
 		}
 	    /** Handle our custom XArray type attribute. Yeah hijacked type names! **/
 	    else if (ptod->DataType == DATA_T_ARRAY)
@@ -1051,8 +1053,10 @@ libmime_ClearSpecials(pTObjData ptod)
 			}
 		    }
 
-		/** Deinit the XArray. **/
+		/** Deinit and free the XArray. **/
 		xaDeInit(array);
+		nmFree(array, sizeof(XArray));
+		ptod->Data.Generic = NULL;
 		}
 	    }
 
