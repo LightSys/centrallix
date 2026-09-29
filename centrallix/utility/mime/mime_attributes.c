@@ -1063,7 +1063,7 @@ libmime_ClearSpecials(pTObjData ptod)
 		    addr = xaGetItem(array, i);
 		    if (addr)
 			{
-			nmFree(addr, sizeof(EmailAddr));
+			libmime_FreeAddress(addr);
 			addr = NULL;
 			}
 		    }

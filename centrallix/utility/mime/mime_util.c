@@ -194,6 +194,30 @@ libmime_PrintAddressList(pXArray xary, int level)
     return 0;
     }
 
+/*** libmime_FreeAddress - Frees an email address, including the members of a
+ *** group address.
+ ***
+ *** @param addr The address to free.
+ ***/
+void
+libmime_FreeAddress(pEmailAddr addr)
+    {
+    int i;
+
+	/** Free the group's members. **/
+	if (addr->Group)
+	    {
+	    for (i = 0; i < xaCount(addr->Group); i++)
+		libmime_FreeAddress((pEmailAddr)xaGetItem(addr->Group, i));
+	    xaDeInit(addr->Group);
+	    nmFree(addr->Group, sizeof(XArray));
+	    }
+
+	nmFree(addr, sizeof(EmailAddr));
+
+    return;
+    }
+
 /***  libmime_StringUnquote
  ***
  ***  Internal function used to unquote strings if they are quoted.
