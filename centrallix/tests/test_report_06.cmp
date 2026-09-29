@@ -12,8 +12,8 @@
 Flags: no_subobjects cant_have_subobjects cant_add_attrs cant_seek can_have_content has_content 
 Attributes:
             outer_type: "system/report" [Hints: ]
-            inner_type: "system/report" [Hints: ]
-          content_type: "system/report" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
                   name: "Datatypes_outparam.rpt" [Hints: ]
             annotation: "" [Hints: ]
      last_modification: (no such attribute)
