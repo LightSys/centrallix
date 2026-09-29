@@ -457,6 +457,40 @@ mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
+/*** mime_internal_FindAttr() - find the header that name refers to, where name
+ *** may end in ".<param>".  Tries the whole name first, then each dot from the
+ *** left as the separator, so header names that contain dots are found too.
+ *** Returns the header, or NULL if there is none.  On success, name is cut down
+ *** to the header's name, and *param_name points at the parameter name (NULL
+ *** when name is the header itself).
+ ***/
+pMimeAttr
+mime_internal_FindAttr(pMimeInfo inf, char* name, char** param_name)
+    {
+    pMimeAttr attr;
+    char* dot = NULL;
+
+	*param_name = NULL;
+	do  {
+	    if (dot)
+		*dot = '\0';
+	    attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, name);
+
+	    /** libmime's internal Transfer-Encoding is not a header. **/
+	    if (attr && strcmp(attr->Name, "Transfer-Encoding"))
+		{
+		if (dot)
+		    *param_name = dot + 1;
+		return attr;
+		}
+	    if (dot)
+		*dot = '.';
+	    } while ((dot = strchr(dot ? dot + 1 : name, '.')));
+
+    return NULL;
+    }
+
+
 /***
  ***  mimeGetAttrType
  ***
@@ -488,24 +522,16 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    goto end;
 	    }
 
-	/** Split the given attribute name into attribute and parameter. **/
-	libmime_GetAttrParamNames(local_attrname, &attrName, &paramName);
-
 	/** Handle special attributes in the attribute list. **/
-	if (!strcasecmp(attrName, "Content-Transfer-Encoding"))
+	if (!strcasecmp(local_attrname, "Content-Transfer-Encoding"))
 	    {
 	    rval = DATA_T_STRING;
 	    goto end;
 	    }
 
-	/** The attribute wasn't readable. **/
-	if (!attrName)
-	    {
-	    goto end;
-	    }
-
 	/** Get the indicated attribute. **/
-	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrName);
+	attr = mime_internal_FindAttr(inf, local_attrname, &paramName);
+	attrName = local_attrname;
 	if (!attr)
 	    {
 	    rval = DATA_T_STRING;
@@ -591,17 +617,9 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    goto end;
 	    }
 
-	/** Split the given attribute name into attribute and parameter. **/
-	libmime_GetAttrParamNames(local_attrname, &attrName, &paramName);
-
-	/** The attribute wasn't readable. **/
-	if (!attrName)
-	    {
-	    goto end;
-	    }
-
 	/** Get the indicated attribute. **/
-	attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, attrName);
+	attr = mime_internal_FindAttr(inf, local_attrname, &paramName);
+	attrName = local_attrname;
 	if (!attr)
 	    {
 	    if (!strcmp(attrName, "annotation"))
