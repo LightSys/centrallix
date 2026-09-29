@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -46,17 +46,28 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
     char* currentOffset = NULL;
     char* val_ptr;
     pMimeAttr attr;
+    int hasParams;
 
 	/** Keep only the first of a repeated header. **/
 	attr = libmime_GetMimeAttr(this, strcasecmp(name, "Content-Transfer-Encoding") ? name : "Transfer-Encoding");
 	if (attr && attr->AttrSeekEnd)
 	    return 0;
 
+	/** Only these headers have parameters. Other headers may contain semicolons as content. **/
+	hasParams = !strcasecmp(name, "Content-Type") || !strcasecmp(name, "Content-Disposition");
+
 	/** Append all data up to the next semicolon. **/
-	token  = strtok_r(data, ";", &currentOffset);
-	if (!token)
+	if (hasParams)
 	    {
-	    token = currentOffset;
+	    token  = strtok_r(data, ";", &currentOffset);
+	    if (!token)
+		{
+		token = currentOffset;
+		}
+	    }
+	else
+	    {
+	    token = data;
 	    }
 	libmime_StringTrim(token);
 
@@ -120,7 +131,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	/** Attempt to find the first parameter. **/
 
 	/** Process all parameters until the end of the line. **/
-	while ((token = strtok_r(NULL, ";", &currentOffset)) != NULL)
+	while (hasParams && (token = strtok_r(NULL, ";", &currentOffset)) != NULL)
 	    {
 	    /** Does this parameter have a value? **/
 	    val_ptr = strchr(token, '=');
