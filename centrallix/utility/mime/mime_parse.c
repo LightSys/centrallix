@@ -325,32 +325,6 @@ int
 libmime_SetFilename(pMimeHeader msg, char *defaultName)
     {
     char *fileName = NULL;
-    char name[128];
-
-	/** Get the name from the message-id **/
-	if (!libmime_GetStringAttr(msg, "Message-ID", NULL, &fileName))
-	    {
-	    strtcpy(name, (fileName[0] == '<')?(fileName+1):fileName, sizeof(name));
-	    if (strrchr(name, '>'))
-		*(strrchr(name, '>')) = '\0';
-	    if (libmime_SetStringAttr(msg, "Name", NULL, name, 0))
-		{
-		mssError(0, "MIME", "Failed to create the name attribute.");
-		return -1;
-		}
-	    return 0;
-	    }
-
-	/** Get the name from the content-id **/
-	if (!libmime_GetStringAttr(msg, "Content-ID", NULL, &fileName))
-	    {
-	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, 0))
-		{
-		mssError(0, "MIME", "Failed to create the name attribute.");
-		return -1;
-		}
-	    return 0;
-	    }
 
 	/** Get the name from the Content-Disposition attribute. **/
 	if (libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName) < 0)
