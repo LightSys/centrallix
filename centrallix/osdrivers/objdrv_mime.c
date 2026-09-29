@@ -1100,7 +1100,7 @@ mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	inf->InternalSeek += wcnt;
 
 	/** Get the name of the entire Mime file. **/
-	libmime_GetStringAttr(inf->MessageRoot, "Name", NULL, &rootName);
+	libmime_GetStringAttr(inf->Tree->Root, "Name", NULL, &rootName);
 
 	/** Generate a new file hash for the new temporary file. **/
 	memset(fileHash, 0, 9);
