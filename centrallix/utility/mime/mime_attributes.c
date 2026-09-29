@@ -979,8 +979,7 @@ libmime_ClearAttr(char* attr_c, void* arg)
 	/** Clear the parameters. **/
 	if (attr->Params.nRows)
 	    {
-	    xhClear(&attr->Params, libmime_ClearParam, NULL);
-	    libmime_xhDeInit(&attr->Params);
+	    libmime_xhDeInit(&attr->Params, libmime_ClearParam);
 	    }
 
 	/** Free the data memory of the attribute. **/

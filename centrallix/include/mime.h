@@ -167,7 +167,7 @@ int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
 void* libmime_xhLookup(pXHashTable this, char* key);
 int libmime_xhAdd(pXHashTable this, char* key, char* data);
-int libmime_xhDeInit(pXHashTable this);
+int libmime_xhDeInit(pXHashTable this, int (*free_fn)());
 
 
 /** mime_attributes.c **/
