@@ -212,7 +212,7 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long
 	    }
 	ptr = mlxStringVal(lex, NULL);
 	if (!strchr(" \t", ptr[0])) break;
-	xsConcatPrintf(xsbuf, " %s", ptr);
+	xsConcatenate(xsbuf, ptr, strcspn(ptr, "\r\n"));
 	}
     /** Be kind, rewind! (resetting the offset because we don't use the last string it fetched) **/
     mlxSetOffset(lex, offset);
