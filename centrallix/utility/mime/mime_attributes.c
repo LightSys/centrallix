@@ -47,6 +47,11 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
     char* val_ptr;
     pMimeAttr attr;
 
+	/** Keep only the first of a repeated header. **/
+	attr = libmime_GetMimeAttr(this, strcasecmp(name, "Content-Transfer-Encoding") ? name : "Transfer-Encoding");
+	if (attr && attr->AttrSeekEnd)
+	    return 0;
+
 	/** Append all data up to the next semicolon. **/
 	token  = strtok_r(data, ";", &currentOffset);
 	if (!token)
