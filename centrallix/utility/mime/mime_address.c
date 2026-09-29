@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -184,7 +184,9 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 			}
 		    break;
 		}
-	    prev_state = state;
+	    /** Remember the state to return to after a quote or comment. **/
+	    if (new_state != state && (new_state == MIME_ST_QUOTE || new_state == MIME_ST_COMMENT))
+		prev_state = state;
 	    state = new_state;
 	    if (count >= strlen(buf))
 		done = 1;
