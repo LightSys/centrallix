@@ -761,7 +761,6 @@ int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 /** objectsystem datatype functions **/
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
 double objDataToDouble(int data_type, void* data_ptr);
-int objDataToBoolean(int data_type, void* data_ptr, int default_value);
 int objDataToInteger(int data_type, void* data_ptr, char* format);
 int objDataToBoolean(int data_type, void* data_ptr, int default_value);
 int objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format);
