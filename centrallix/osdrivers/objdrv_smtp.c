@@ -2776,9 +2776,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	else if (inf->Type == SMTP_T_EML)
 	    {
 	    /** Open the email structure file. **/
-	    emlStructFileRead = fdOpen(inf->EmailStructPath.String,
-					    inf->Obj->Mode & ~(O_TRUNC | O_CREAT | O_EXCL),
-					    inf->Mask);
+	    emlStructFileRead = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
 	    if (UNLIKELY(emlStructFileRead == NULL))
 		{
 		mssErrorErrno(1, "SMTP", "Could not open email structure file (%s).", inf->EmailStructPath.String);
@@ -2814,9 +2812,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 
 	    /** Open a fd with trunc to get rid of the old stuff. **/
-	    emlStructFileWrite = fdOpen(inf->EmailStructPath.String,
-					    (inf->Obj->Mode | (O_TRUNC)) & ~(O_EXCL | O_CREAT),
-					    inf->Mask);
+	    emlStructFileWrite = fdOpen(inf->EmailStructPath.String, O_WRONLY | O_TRUNC, inf->Mask);
 	    if (UNLIKELY(emlStructFileWrite == NULL))
 		{
 		mssErrorErrno(1, "SMTP", "Could not open email structure file (%s) for writing.", inf->EmailStructPath.String);
@@ -2875,7 +2871,8 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     pSmtpAttribute unstoredAttr = NULL;
     pStructInf createdStruct = NULL;
     pSnNode rootNode = NULL;
-    pFile emlStructFile = NULL;
+    pFile emlStructFileRead = NULL;
+    pFile emlStructFileWrite = NULL;
     pStructInf emlStruct = NULL;
     int rval = -1;
 
@@ -3005,17 +3002,15 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	else if (inf->Type == SMTP_T_EML)
 	    {
 	    /** Open the email structure file. **/
-	    emlStructFile = fdOpen(inf->EmailStructPath.String,
-					    inf->Obj->Mode & ~(O_TRUNC | O_CREAT | O_EXCL),
-					    inf->Mask);
-	    if (UNLIKELY(emlStructFile == NULL))
+	    emlStructFileRead = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
+	    if (UNLIKELY(emlStructFileRead == NULL))
 		{
 		mssErrorErrno(1, "SMTP", "Could not open email structure file (%s).", inf->EmailStructPath.String);
 		goto end;
 		}
 
 	    /** Parse the structure file. **/
-	    emlStruct = stParseMsg(emlStructFile, 0);
+	    emlStruct = stParseMsg(emlStructFileRead, 0);
 	    if (UNLIKELY(emlStruct == NULL))
 		{
 		mssError(0, "SMTP", "Could not parse the email structure file: %s.", inf->EmailStructPath.String);
@@ -3037,8 +3032,20 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 		goto end;
 		}
 
+	    /** Done reading. **/
+	    fdClose(emlStructFileRead, 0);
+	    emlStructFileRead = NULL;
+
+	    /** Open a fd with trunc to get rid of the old stuff. **/
+	    emlStructFileWrite = fdOpen(inf->EmailStructPath.String, O_WRONLY | O_TRUNC, inf->Mask);
+	    if (UNLIKELY(emlStructFileWrite == NULL))
+		{
+		mssErrorErrno(1, "SMTP", "Could not open email structure file (%s) for writing.", inf->EmailStructPath.String);
+		goto end;
+		}
+
 	    /** Write changes to the email struct file. **/
-	    if (UNLIKELY(stGenerateMsg(emlStructFile, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) < 0))
+	    if (UNLIKELY(stGenerateMsg(emlStructFileWrite, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) < 0))
 		{
 		mssError(1, "SMTP", "Unable to write the updated email struct file: %s.", inf->EmailStructPath.String);
 		goto end;
@@ -3057,7 +3064,8 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 
 	/** Free appropriate memory and close appropriate files. **/
 	if (UNLIKELY(unstoredAttr != NULL)) smtp_internal_ClearAttribute((char*)unstoredAttr, NULL);
-	if (emlStructFile != NULL) fdClose(emlStructFile, 0);
+	if (emlStructFileRead != NULL) fdClose(emlStructFileRead, 0);
+	if (emlStructFileWrite != NULL) fdClose(emlStructFileWrite, 0);
 	if (emlStruct != NULL) stFreeInf(emlStruct);
 
 	return rval;
