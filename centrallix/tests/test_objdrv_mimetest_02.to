@@ -1,0 +1,8 @@
+##NAME MimeTest charsets
+
+query select :name, charset = :"Content-Type.charset" from object /tests/mimetest/M4.1.1.eml
+query select :name, charset = :"Content-Type.charset" from object /tests/mimetest/M4.1.2.eml
+query select :name, charset = :"Content-Type.charset" from object /tests/mimetest/M4.1.3.eml
+query select :name, charset = :"Content-Type.charset" from object /tests/mimetest/S1.eml
+query select :name, charset = :"Content-Type.charset" from object /tests/mimetest/EM1.1.1.eml
+query select :name, charset = :"Content-Type.charset" from object /tests/mimetest/EM1.1.2.eml

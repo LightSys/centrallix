@@ -162,12 +162,13 @@ int libmime_StringRTrim(char *str);
 int libmime_StringTrim(char *str);
 int libmime_StringFirstCaseCmp(char *c1, char *c2);
 int libmime_PrintAddressList(pXArray ary, int level);
+void libmime_FreeAddress(pEmailAddr addr);
 char* libmime_StringUnquote(char *str);
 int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
 void* libmime_xhLookup(pXHashTable this, char* key);
 int libmime_xhAdd(pXHashTable this, char* key, char* data);
-int libmime_xhDeInit(pXHashTable this);
+int libmime_xhDeInit(pXHashTable this, int (*free_fn)());
 int libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek);
 int libmime_internal_MakeARandomFilename(char* name, int len);
 

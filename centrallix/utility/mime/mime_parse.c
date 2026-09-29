@@ -73,7 +73,8 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     {
     int flag, toktype, alloc, len;
     XString xsbuf;
-    char *hdrnme, *hdrbdy;
+    char hdrnme[MIME_HDRNAME_SIZE];
+    char *hdrbdy;
     char *ptr;
     long attrSeekStart = start, attrSeekEnd = start, nameOffset;
 
@@ -119,16 +120,16 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 	    {
 	    if (libmime_LoadExtendedHeader(lex, msg, &xsbuf, &attrSeekEnd) < 0)
 		{
+		xsDeInit(&xsbuf);
 		return -1;
 		}
 
-	    hdrnme = (char*)nmMalloc(MIME_HDRNAME_SIZE);
-	    if (!hdrnme)
-		return -1;
-	    hdrbdy = (char*)nmMalloc(strlen(xsbuf.String)+1);
+	    hdrbdy = nmSysStrdup(xsbuf.String);
 	    if (!hdrbdy)
+		{
+		xsDeInit(&xsbuf);
 		return -1;
-	    strcpy(hdrbdy, xsbuf.String);
+		}
 	    if (!libmime_ParseHeaderElement(hdrbdy, hdrnme, MIME_HDRNAME_SIZE, &attrSeekStart, &nameOffset))
 		{
 		/** Parse the attribute and store it in the Mime header. **/
@@ -139,8 +140,9 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		}
 	    else
 		{
-		mssError(1, "MIME", "ERROR PARSING: %s\n", xsbuf.String);
+		fprintf(stderr, "Warning: Skipping MIME header line with no colon: \"%s\"\n", xsbuf.String);
 		}
+	    nmSysFree(hdrbdy);
 
 	    /** Get the offset at the beginning of the next attribute. **/
 	    attrSeekStart = attrSeekEnd;
@@ -210,7 +212,7 @@ libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long
 	    }
 	ptr = mlxStringVal(lex, NULL);
 	if (!strchr(" \t", ptr[0])) break;
-	xsConcatPrintf(xsbuf, " %s", ptr);
+	xsConcatenate(xsbuf, ptr, strcspn(ptr, "\r\n"));
 	}
     /** Be kind, rewind! (resetting the offset because we don't use the last string it fetched) **/
     mlxSetOffset(lex, offset);
@@ -323,55 +325,23 @@ int
 libmime_SetFilename(pMimeHeader msg, char *defaultName)
     {
     char *fileName = NULL;
-    char name[128];
-
-	/** Get the name from the message-id **/
-	if (!libmime_GetStringAttr(msg, "Message-ID", NULL, &fileName))
-	    {
-	    strtcpy(name, (fileName[0] == '<')?(fileName+1):fileName, sizeof(name));
-	    if (strrchr(name, '>'))
-		*(strrchr(name, '>')) = '\0';
-	    if (libmime_SetStringAttr(msg, "Name", NULL, name, 0))
-		{
-		mssError(0, "MIME", "Failed to create the name attribute.");
-		return -1;
-		}
-	    return 0;
-	    }
-
-	/** Get the name from the content-id **/
-	if (!libmime_GetStringAttr(msg, "Content-ID", NULL, &fileName))
-	    {
-	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, 0))
-		{
-		mssError(0, "MIME", "Failed to create the name attribute.");
-		return -1;
-		}
-	    return 0;
-	    }
 
 	/** Get the name from the Content-Disposition attribute. **/
 	if (libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName) < 0)
 	    {
-	    if (libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName) < 0)
-		libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName);
+	    if (libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName) < 0 &&
+		    !libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName))
+		{
+		/** Drop any directory from the content type's name. **/
+		if (strrchr(fileName, '/'))
+		    fileName = strrchr(fileName, '/') + 1;
+		if (strrchr(fileName, '\\'))
+		    fileName = strrchr(fileName, '\\') + 1;
+		}
 	    }
 
 	/** If found, store the name in the Name attribute. **/
 	if (fileName)
-	    {
-	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
-		{
-		mssError(0, "MIME", "Failed to create the name attribute.");
-		return -1;
-		}
-	    return 0;
-	    }
-
-	/** Get the name from the Content-Type attribute.
-	 ** If found, store the name in the Name attribute.
-	 **/
-	if (!libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName))
 	    {
 	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
 		{
@@ -521,10 +491,17 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 	{
 	return -1;
 	}
+
+    /** Read the boundary into sub_type. **/
+    if (libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type) < 0 || !sub_type)
+	{
+	/** No boundary (not a multipart). **/
+	return 0;
+	}
+
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type); /* Reusing variable :P */
     snprintf(bound, sizeof(bound), "--%s", sub_type);
     snprintf(bound_end, sizeof(bound_end), "--%s--", sub_type);
 
@@ -684,8 +661,8 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		    tsize = mdat->ReadFn(mdat->Parent,
 				    mdat->EncodedBuffer + mdat->EncodedChunkSize,
 				    tlen,
-				    msg->MsgSeekStart,
-				    (mdat->EncodedChunkSeek + mdat->EncodedChunkSize == 0)?FD_U_SEEK:0);
+				    msg->MsgSeekStart + mdat->EncodedSeekBeforePurify,
+				    FD_U_SEEK);
 		    if (tsize < 0)
 			return -1;
 		    if (tsize == 0)

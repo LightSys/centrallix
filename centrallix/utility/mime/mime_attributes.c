@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -46,12 +46,28 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
     char* currentOffset = NULL;
     char* val_ptr;
     pMimeAttr attr;
+    int hasParams;
+
+	/** Keep only the first of a repeated header. **/
+	attr = libmime_GetMimeAttr(this, strcasecmp(name, "Content-Transfer-Encoding") ? name : "Transfer-Encoding");
+	if (attr && attr->AttrSeekEnd)
+	    return 0;
+
+	/** Only these headers have parameters. Other headers may contain semicolons as content. **/
+	hasParams = !strcasecmp(name, "Content-Type") || !strcasecmp(name, "Content-Disposition");
 
 	/** Append all data up to the next semicolon. **/
-	token  = strtok_r(data, ";", &currentOffset);
-	if (!token)
+	if (hasParams)
 	    {
-	    token = currentOffset;
+	    token  = strtok_r(data, ";", &currentOffset);
+	    if (!token)
+		{
+		token = currentOffset;
+		}
+	    }
+	else
+	    {
+	    token = data;
 	    }
 	libmime_StringTrim(token);
 
@@ -102,6 +118,11 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 
 	/** Set the offset values in the attribute structure. **/
 	attr = libmime_GetMimeAttr(this, name);
+	if (!attr)
+	    {
+	    mssError(0, "MIME", "Could not store header \"%s\".", name);
+	    return -1;
+	    }
 	attr->ValueSeekStart = seekStart;
 	attr->ValueSeekEnd = seekEnd;
 	attr->AttrSeekStart = attrSeekStart;
@@ -110,7 +131,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	/** Attempt to find the first parameter. **/
 
 	/** Process all parameters until the end of the line. **/
-	while ((token = strtok_r(NULL, ";", &currentOffset)) != NULL)
+	while (hasParams && (token = strtok_r(NULL, ";", &currentOffset)) != NULL)
 	    {
 	    /** Does this parameter have a value? **/
 	    val_ptr = strchr(token, '=');
@@ -128,6 +149,10 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	    /** Trim the parameter name. **/
 	    beginPtr = paramName;
 	    libmime_StringTrim(paramName);
+
+	    /** If the parameter has no value, default to an empty value. **/
+	    if (val_ptr == NULL)
+		val_ptr = paramName + strlen(paramName);
 
 	    /** Add the offset from the beginning of the untrimmed parameter name to the beginning of the actual parameter name. **/
 	    seekStart = seekEnd + (paramName - beginPtr) + 1; /* NOTE: +1 skips the semicolon. */
@@ -154,6 +179,7 @@ int
 libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
     {
     pEmailAddr emailAddr = NULL;
+    pXArray array = NULL;
 
 	/** Allocate the email address. **/
 	emailAddr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
@@ -163,20 +189,28 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 	    return -1;
 	    }
 
-	/** Parse the email address. **/
-	if (!libmime_ParseAddress(data, emailAddr))
+	/** Parse the email address, falling back to text if parsing fails. **/
+	if (libmime_ParseAddress(data, emailAddr) < 0)
 	    {
-	    mssError(1, "MIME", "Failed to parse the email address");
-	    return -1;
+	    nmFree(emailAddr, sizeof(EmailAddr));
+	    return libmime_CreateStringAttr(this, name, NULL, data, 0);
 	    }
 
 	/** Create the email attribute. **/
 	if (libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0) < 0)
+	    {
+	    nmFree(emailAddr, sizeof(EmailAddr));
 	    return -1;
+	    }
 
-	/** Store the struct as a parameter. **/
-	if (libmime_CreateAttr(this, name, "Struct", emailAddr, 0) < 0)
+	/** Store the struct as a one-item array, like the address list headers. **/
+	if (libmime_CreateArrayAttr(this, name, "Struct") < 0 ||
+		libmime_GetArrayAttr(this, name, "Struct", &array) < 0 ||
+		xaAddItem(array, emailAddr) < 0)
+	    {
+	    nmFree(emailAddr, sizeof(EmailAddr));
 	    return -1;
+	    }
 
     return 0;
     }
@@ -389,12 +423,20 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    memset(attr, 0, sizeof(MimeAttr));
 
 	    /** Set the name of the attribute. **/
-	    attr->Name = attrName;
+	    attr->Name = nmSysStrdup(attrName);
+	    if (!attr->Name)
+		{
+		mssError(1, "MIME", "Could not allocate the name of attribute \"%s\".", attrName);
+		nmFree(attr, sizeof(MimeAttr));
+		return NULL;
+		}
 
 	    /** Add the Mime attribute to the attributes array. **/
 	    if (libmime_xhAdd(&this->Attrs, attrName, (char*)attr) == -1)
 		{
 		mssError(1, "MIME", "Attribute or parameter already exists.");
+		nmSysFree(attr->Name);
+		nmFree(attr, sizeof(MimeAttr));
 		return NULL;
 		}
 
@@ -422,7 +464,13 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    memset(param, 0, sizeof(MimeParam));
 
 	    /** Set the name of the parameter. **/
-	    param->Name = paramName;
+	    param->Name = nmSysStrdup(paramName);
+	    if (!param->Name)
+		{
+		mssError(1, "MIME", "Could not allocate the name of parameter \"%s\".", paramName);
+		nmFree(param, sizeof(MimeParam));
+		return NULL;
+		}
 
 	    /** If necessary, initialize the parameter table. **/
 	    if (!attr->Params.nRows)
@@ -431,7 +479,13 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 		}
 
 	    /** Add the Mime parameter to the parameter hash. **/
-	    libmime_xhAdd(&attr->Params, paramName, (char*)param);
+	    if (libmime_xhAdd(&attr->Params, paramName, (char*)param) == -1)
+		{
+		mssError(1, "MIME", "Parameter \"%s\" of \"%s\" already exists.", paramName, attrName);
+		nmSysFree(param->Name);
+		nmFree(param, sizeof(MimeParam));
+		return NULL;
+		}
 
 	    /** Return the pointer to the relevant ptod.**/
 	    return &param->Ptod;
@@ -925,14 +979,14 @@ libmime_ClearAttr(char* attr_c, void* arg)
 	/** Clear the parameters. **/
 	if (attr->Params.nRows)
 	    {
-	    xhClear(&attr->Params, libmime_ClearParam, NULL);
-	    libmime_xhDeInit(&attr->Params);
+	    libmime_xhDeInit(&attr->Params, libmime_ClearParam);
 	    }
 
 	/** Free the data memory of the attribute. **/
 	ptodFree(attr->Ptod);
 
 	/** Free the attribute memory. **/
+	nmSysFree(attr->Name);
 	nmFree(attr, sizeof(MimeAttr));
 
     return 0;
@@ -953,6 +1007,7 @@ libmime_ClearParam(char* param_c, void* arg)
 	ptodFree(param->Ptod);
 
 	/** Free the parameter memory. **/
+	nmSysFree(param->Name);
 	nmFree(param, sizeof(MimeParam));
 
     return 0;
@@ -991,8 +1046,10 @@ libmime_ClearSpecials(pTObjData ptod)
 		    nmSysFree(stringVec->Strings[i]);
 		    }
 
-		/** Deallocate the StringVec string array. **/
+		/** Deallocate the StringVec string array and the StringVec. **/
 		nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
+		nmFree(stringVec, sizeof(StringVec));
+		ptod->Data.StringVec = NULL;
 		}
 	    /** Handle our custom XArray type attribute. Yeah hijacked type names! **/
 	    else if (ptod->DataType == DATA_T_ARRAY)
@@ -1006,13 +1063,15 @@ libmime_ClearSpecials(pTObjData ptod)
 		    addr = xaGetItem(array, i);
 		    if (addr)
 			{
-			nmFree(addr, sizeof(EmailAddr));
+			libmime_FreeAddress(addr);
 			addr = NULL;
 			}
 		    }
 
-		/** Deinit the XArray. **/
+		/** Deinit and free the XArray. **/
 		xaDeInit(array);
+		nmFree(array, sizeof(XArray));
+		ptod->Data.Generic = NULL;
 		}
 	    }
 

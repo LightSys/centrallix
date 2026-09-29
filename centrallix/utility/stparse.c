@@ -266,7 +266,7 @@ stAddInf(pStructInf main_inf, pStructInf sub_inf)
 	/** Add it. **/
 	main_inf->SubInf[main_inf->nSubInf++] = sub_inf;
 	sub_inf->Parent = main_inf;
-	sub_inf->Flags |= (main_inf->Flags | ST_F_VERSION2);
+	sub_inf->Flags |= (main_inf->Flags & ST_F_VERSION2);
 	sub_inf->LinkCnt--;
 
     return 0;

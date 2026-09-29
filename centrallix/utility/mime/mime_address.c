@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -91,7 +91,7 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 			cnest++;
 			new_state = MIME_ST_COMMENT;
 			}
-		    else if (ch == ':' && buf[count-1] != '\\')
+		    else if (ch == ':' && (count == 0 || buf[count-1] != '\\'))
 			{
 			new_state = MIME_ST_GROUP;
 			}
@@ -184,9 +184,11 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 			}
 		    break;
 		}
-	    prev_state = state;
+	    /** Remember the state to return to after a quote or comment. **/
+	    if (new_state != state && (new_state == MIME_ST_QUOTE || new_state == MIME_ST_COMMENT))
+		prev_state = state;
 	    state = new_state;
-	    if (count > strlen(buf))
+	    if (count >= strlen(buf))
 		done = 1;
 	    count++;
 	    }
@@ -221,7 +223,7 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 int
 libmime_HdrParseGroup(char *buf, pEmailAddr addr)
     {
-    int count=0, done=0, ncount=0;
+    int count=0, done=0, ncount=0, i;
     char *s_ptr, *e_ptr;
     char *t_str = NULL;
     char ch;
@@ -303,6 +305,8 @@ libmime_HdrParseGroup(char *buf, pEmailAddr addr)
 	if (p_xary)
 	    {
 	    addr->Group = NULL;
+	    for (i = 0; i < xaCount(p_xary); i++)
+		libmime_FreeAddress((pEmailAddr)xaGetItem(p_xary, i));
 	    xaDeInit(p_xary);
 	    nmFree(p_xary, sizeof(XArray));
 	    }
@@ -357,7 +361,7 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	{
 	/** First, get the <mailbox@host> part parsed out of there **/
 	s_ptr++;
-	if (!(e_ptr = strchr(buf, '>')))
+	if (!(e_ptr = strchr(s_ptr, '>')))
 	    {
 	    return -1;
 	    }
@@ -399,14 +403,15 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	else
 	    {
 	    /** Display text is whatever is outside the <> **/
-	    t_str = (char*)nmSysMalloc(strlen(buf)+1);
-	    if (!t_str)
-		return -1;
 	    s_ptr = strchr(buf, '<');
 	    e_ptr = strchr(s_ptr, '>');
 
 	    /** entire string is <user@host> **/
 	    if (s_ptr == buf && e_ptr[1] == '\0') return 0;
+
+	    t_str = (char*)nmSysMalloc(strlen(buf)+1);
+	    if (!t_str)
+		return -1;
 
 	    /** Copy whatever is outside the < > **/
 	    if (s_ptr > buf && s_ptr[-1] == ' ')

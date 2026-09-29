@@ -1,0 +1,30 @@
+Flags: has_subobjects can_have_subobjects subobject_cnt_known cant_add_attrs cant_seek cant_have_content no_content 
+Subobject count: 3
+Attributes:
+            outer_type: "message/rfc822" [Hints: ]
+            inner_type: "multipart/mixed" [Hints: ]
+          content_type: "multipart/mixed" [Hints: ]
+                  name: "MimePartTypes.eml" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: NULL [Hints: ]
+               Subject: "Parts of different types" [Hints: ]
+  Content-Type.boundar: "b1" [Hints: ]
+                  From: "tester@example.com" [Hints: ]
+  Content-Transfer-Enc: "7bit" [Hints: ]
+
+Methods:
+  (no methods)
+
+Flags: no_subobjects cant_have_subobjects cant_add_attrs cant_seek can_have_content has_content 
+Attributes:
+            outer_type: "text/plain" [Hints: ]
+            inner_type: "text/plain" [Hints: ]
+          content_type: "text/plain" [Hints: ]
+                  name: "attachment1.txt" [Hints: ]
+            annotation: "" [Hints: ]
+     last_modification: NULL [Hints: ]
+  Content-Transfer-Enc: "7bit" [Hints: ]
+
+Methods:
+  (no methods)
+

@@ -1,0 +1,6 @@
+##NAME Unreadable content
+
+query select :name from object /tests/MimeBadBase64.eml/attachment1.txt
+query select :name, c = :objcontent from object /tests/MimeBadBase64.eml/attachment1.txt
+query select :name from object /tests/MimePartTypes.eml
+query select :name, c = :objcontent from object /tests/MimePartTypes.eml

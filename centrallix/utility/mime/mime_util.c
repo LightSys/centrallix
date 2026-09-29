@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2015 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -77,8 +77,7 @@ libmime_DeallocateHeader(pMimeHeader msg)
 	if (msg->Sender) nmFree(msg->Sender, sizeof(EmailAddr));
 
 	/** Clear the attributes. **/
-	xhClear(&msg->Attrs, &libmime_ClearAttr, NULL);
-	libmime_xhDeInit(&msg->Attrs);
+	libmime_xhDeInit(&msg->Attrs, libmime_ClearAttr);
 
 	nmFree(msg, sizeof(MimeHeader));
 
@@ -193,6 +192,30 @@ libmime_PrintAddressList(pXArray xary, int level)
 	    }
 	}
     return 0;
+    }
+
+/*** libmime_FreeAddress - Frees an email address, including the members of a
+ *** group address.
+ ***
+ *** @param addr The address to free.
+ ***/
+void
+libmime_FreeAddress(pEmailAddr addr)
+    {
+    int i;
+
+	/** Free the group's members. **/
+	if (addr->Group)
+	    {
+	    for (i = 0; i < xaCount(addr->Group); i++)
+		libmime_FreeAddress((pEmailAddr)xaGetItem(addr->Group, i));
+	    xaDeInit(addr->Group);
+	    nmFree(addr->Group, sizeof(XArray));
+	    }
+
+	nmFree(addr, sizeof(EmailAddr));
+
+    return;
     }
 
 /***  libmime_StringUnquote
@@ -346,6 +369,7 @@ libmime_xhLookup(pXHashTable this, char* key)
 	libmime_StringToLower(buf);
 
 	rval = xhLookup(this, buf);
+	nmSysFree(buf);
 
     return rval;
     }
@@ -368,25 +392,32 @@ libmime_xhAdd(pXHashTable this, char* key, char* data)
 	libmime_StringToLower(buf);
 
 	rval = xhAdd(this, buf, data);
+	if (rval < 0)
+	    nmSysFree(buf);
 
     return rval;
     }
 
-/*** libmime_xhDeInit - Deallocate anything necessary to save memory.
+/*** libmime_xhDeInit - Frees the keys, entries, and data of a hash table
+ *** filled by libmime_xhAdd(), then deinitializes it.
+ ***
+ *** @param this The hash table.
+ *** @param free_fn Called on each entry's data, as with xhClear().
+ *** @returns 0.
  ***/
 int
-libmime_xhDeInit(pXHashTable this)
+libmime_xhDeInit(pXHashTable this, int (*free_fn)())
     {
-    pXHashEntry entry = NULL;
+    pXHashEntry entry, next;
 
-	/** While we have elements, do the deallocation stuff. **/
-	entry = xhGetNextElement(this, NULL);
-	while (entry)
+	/** Free the keys, finding each next entry while its key is still valid. **/
+	for (entry = xhGetNextElement(this, NULL); entry != NULL; entry = next)
 	    {
+	    next = xhGetNextElement(this, entry);
 	    nmSysFree(entry->Key);
-	    entry = xhGetNextElement(this, entry);
 	    }
 
+	xhClear(this, free_fn, NULL);
 	xhDeInit(this);
 
     return 0;
