@@ -1072,13 +1072,7 @@ obj_internal_PathPart(pPathname path, int start_element, int length)
 
     	/** Off end of path? **/
 	if (UNLIKELY(start_element >= path->nElements))
-	    {
-	    mssError(1, "OBJ",
-		"Cannot request path element #%d from path of length %d.",
-		start_element, path->nElements
-	    );
 	    return NULL;
-	    }
 
 	/** Restricted length? **/
 	if (length != 0)
