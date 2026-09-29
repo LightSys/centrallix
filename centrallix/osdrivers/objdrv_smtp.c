@@ -2661,6 +2661,13 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
+	/** Refuse writes to a read-only email. **/
+	if (UNLIKELY(inf->Type == SMTP_T_EML && (inf->Obj->Mode & O_ACCMODE) == O_RDONLY))
+	    {
+	    mssError(1, "SMTP", "Email was opened read-only.");
+	    goto end;
+	    }
+
 	/** Get the requested attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
 	if (!attr)
