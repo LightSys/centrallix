@@ -584,6 +584,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     pMimeAttr attr = NULL;
     pMimeParam param = NULL;
     int int_attr = 0;
+    int expected_datatype;
     char *local_attrname = NULL;
     char *attrName = NULL, *paramName = NULL;
     int rval = -1;
@@ -592,6 +593,19 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
 	    {
 	    rval = objGetAttrValue(inf->Obj->Prev, attrname, datatype, val);
+	    goto end;
+	    }
+
+	/** Type check. **/
+	expected_datatype = mimeGetAttrType(inf_v, attrname, oxt);
+	if (expected_datatype < 0)
+	    goto end;
+	if (datatype != expected_datatype)
+	    {
+	    mssError(1, "MIME",
+		"Type mismatch: Accessing attribute ['%s' : %s] as type %s.",
+		attrname, objTypeToStr(expected_datatype), objTypeToStr(datatype)
+	    );
 	    goto end;
 	    }
 
@@ -662,7 +676,11 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	if (!paramName)
 	    {
 	    /** Return the data stored in the attribute. **/
-	    val->Generic = attr->Ptod->Data.Generic;
+	    if (objCopyData(&(attr->Ptod->Data), val, datatype) != 0)
+		{
+		mssError(1, "MIME", "Failed to copy attribute '%s' of type %s.", attrname, objTypeToStr(datatype));
+		goto end;
+		}
 	    rval = 0;
 	    goto end;
 	    }
@@ -677,7 +695,11 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	/** Return the data stored in the parameter. **/
-	val->Generic = param->Ptod->Data.Generic;
+	if (objCopyData(&(param->Ptod->Data), val, datatype) != 0)
+	    {
+	    mssError(1, "MIME", "Failed to copy attribute '%s' of type %s.", attrname, objTypeToStr(datatype));
+	    goto end;
+	    }
 	rval = 0;
 
     end:
