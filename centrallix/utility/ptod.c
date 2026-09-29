@@ -178,22 +178,22 @@ ptodCreateString(char* data, int flags)
 	if (flags & DATA_TF_ATTACHED)
 	    {
 	    /** Allocate the ptod (+1 for null char) **/
-	    datPtod = (pTObjData)nmSysMalloc(sizeof(TObjData) +
-					     strlen(data) * sizeof(char) + 1);
+	    const size_t strSize = strlen(data) * sizeof(char) + 1;
+	    datPtod = (pTObjData)nmSysMalloc(sizeof(TObjData) + strSize);
 	    if (!datPtod)
 		{
 		mssError(1, "PTOD", "Could not allocate string ptod object.");
 		return NULL;
 		}
-	    memset(datPtod, 0, sizeof(TObjData) + strlen(data) * sizeof(char) + 1);
+	    memset(datPtod, 0, sizeof(TObjData) + strSize);
 
 	    /** Point it to the attached buffer **/
 	    datPtod->Data.String = (char*) datPtod + sizeof(TObjData);
-	    strtcpy(datPtod->Data.String, data, strlen(data) * sizeof(char));
+	    strtcpy(datPtod->Data.String, data, strSize);
 
 	    datPtod->DataType = DATA_T_STRING;
 	    datPtod->LinkCnt = 1;
-	    datPtod->AttachedLen = strlen(data);
+	    datPtod->AttachedLen = strSize;
 	    datPtod->Flags = flags;
 	    }
 
