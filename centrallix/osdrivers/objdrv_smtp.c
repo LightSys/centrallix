@@ -56,7 +56,7 @@
 
 
 /** Debugging mode **/
-#define	SMTP_DEBUG	1
+#define	SMTP_DEBUG	0
 
 /** Define types of SMTP objects. **/
 #define SMTP_T_ROOT	0
