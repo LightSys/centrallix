@@ -113,9 +113,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     pMimeHeader phdr;
     char *node_path;
     char *nodeName;
-    char *buffer;
     char *ptr;
-    int i, size, foundMatch = 0;
+    int i, foundMatch = 0;
     char nullbuf[1];
 
     /** Allocate and initialize the MIME structure **/
@@ -581,7 +580,6 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     pMimeAttr attr = NULL;
     pMimeParam param = NULL;
     int int_attr = 0;
-    char tmp[32];
     char *local_attrname = NULL;
     char *attrName = NULL, *paramName = NULL;
     int rval = -1;
@@ -754,7 +752,6 @@ char*
 mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    pMimeAttr attr;
 
 	/** Set up to get the first element in the attribute list. **/
 	inf->CurrAttr = NULL;
