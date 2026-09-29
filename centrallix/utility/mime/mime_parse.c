@@ -351,19 +351,6 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
 	    return 0;
 	    }
 
-	/** Get the name from the Content-Type attribute.
-	 ** If found, store the name in the Name attribute.
-	 **/
-	if (!libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName))
-	    {
-	    if (libmime_SetStringAttr(msg, "Name", NULL, fileName, -1))
-		{
-		mssError(0, "MIME", "Failed to create the name attribute.");
-		return -1;
-		}
-	    return 0;
-	    }
-
 	/** If neither is found, use the default name. **/
 	libmime_SetStringAttr(msg, "Name", NULL, defaultName, -1);
 
