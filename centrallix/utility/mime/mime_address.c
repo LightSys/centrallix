@@ -221,7 +221,7 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 int
 libmime_HdrParseGroup(char *buf, pEmailAddr addr)
     {
-    int count=0, done=0, ncount=0;
+    int count=0, done=0, ncount=0, i;
     char *s_ptr, *e_ptr;
     char *t_str = NULL;
     char ch;
@@ -303,6 +303,8 @@ libmime_HdrParseGroup(char *buf, pEmailAddr addr)
 	if (p_xary)
 	    {
 	    addr->Group = NULL;
+	    for (i = 0; i < xaCount(p_xary); i++)
+		libmime_FreeAddress((pEmailAddr)xaGetItem(p_xary, i));
 	    xaDeInit(p_xary);
 	    nmFree(p_xary, sizeof(XArray));
 	    }
