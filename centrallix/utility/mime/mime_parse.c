@@ -355,8 +355,15 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
 	/** Get the name from the Content-Disposition attribute. **/
 	if (libmime_GetStringAttr(msg, "Content-Disposition", "Filename", &fileName) < 0)
 	    {
-	    if (libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName) < 0)
-		libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName);
+	    if (libmime_GetStringAttr(msg, "Content-Disposition", "Name", &fileName) < 0 &&
+		    !libmime_GetStringAttr(msg, "Content-Type", "Name", &fileName))
+		{
+		/** Drop any directory from the content type's name. **/
+		if (strrchr(fileName, '/'))
+		    fileName = strrchr(fileName, '/') + 1;
+		if (strrchr(fileName, '\\'))
+		    fileName = strrchr(fileName, '\\') + 1;
+		}
 	    }
 
 	/** If found, store the name in the Name attribute. **/
