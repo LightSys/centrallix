@@ -159,6 +159,8 @@ ptodCreateInt(int data)
     pTObjData datPtod;
 
 	datPtod = ptodAllocate();
+	if (!datPtod)
+	    return NULL;
 	datPtod->Data.Integer = data;
 	datPtod->DataType = DATA_T_INTEGER;
 
@@ -201,6 +203,8 @@ ptodCreateString(char* data, int flags)
 	else if (!(flags & DATA_TF_UNMANAGED))
 	    {
 	    datPtod = ptodAllocate();
+	    if (!datPtod)
+		return NULL;
 
 	    datPtod->Data.String = nmSysStrdup(data);
 	    datPtod->DataType = DATA_T_STRING;
@@ -211,6 +215,8 @@ ptodCreateString(char* data, int flags)
 	else
 	    {
 	    datPtod = ptodAllocate();
+	    if (!datPtod)
+		return NULL;
 
 	    datPtod->Data.String = data;
 	    datPtod->DataType = DATA_T_STRING;
@@ -229,6 +235,8 @@ ptodCreate(void* data, int datatype)
     pTObjData datPtod;
 
 	datPtod = ptodAllocate();
+	if (!datPtod)
+	    return NULL;
 
 	datPtod->Data.Generic = data;
 	datPtod->DataType = datatype;
