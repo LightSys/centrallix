@@ -196,8 +196,9 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    }
 	if (envTo && envTo->Value.String[0] != '\0')
 	    {
-	    if (UNLIKELY(xaAddItem(argv, envTo->Value.String) < 0))
-		{
+	    if (UNLIKELY(xaAddItem(argv, "--") < 0
+		|| xaAddItem(argv, envTo->Value.String) < 0
+	    ))   {
 		mssError(1, "SMTP", "Failed to add envelope to '%s' to the sendmail argument list.", envTo->Value.String);
 		goto end;
 		}
