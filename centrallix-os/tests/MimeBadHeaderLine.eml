@@ -1,0 +1,12 @@
+From: tester@example.com
+Subject: A header line with no colon
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+X-Before: before
+This line has no colon
+X-After: after
+Content-Type: text/plain
+
+Body.
+--b1--
