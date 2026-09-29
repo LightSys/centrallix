@@ -140,7 +140,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		}
 	    else
 		{
-		mssError(1, "MIME", "ERROR PARSING: %s\n", xsbuf.String);
+		fprintf(stderr, "Warning: Skipping MIME header line with no colon: \"%s\"\n", xsbuf.String);
 		}
 	    nmSysFree(hdrbdy);
 
