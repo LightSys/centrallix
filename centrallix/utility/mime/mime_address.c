@@ -72,6 +72,13 @@ libmime_ParseAddressList(char *buf, pXArray xary)
     char tmp_ch;
     pEmailAddr p_addr = NULL;
 
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "MIME", "Could not parse address list: resource exhaustion occurred");
+	    return -1;
+	    }
+
 	libmime_StringTrim(buf);
 	s_ptr = buf;
 	while (!done)

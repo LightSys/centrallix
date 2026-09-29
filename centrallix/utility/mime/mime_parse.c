@@ -492,6 +492,13 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 	return -1;
 	}
 
+    /** Check recursion **/
+    if (thExcessiveRecursion())
+	{
+	mssError(1, "MIME", "Could not parse multipart body: resource exhaustion occurred");
+	return -1;
+	}
+
     /** Read the boundary into sub_type. **/
     if (libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type) < 0 || !sub_type)
 	{
@@ -549,7 +556,11 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		    if (!libmime_GetIntAttr(l_msg, "Content-Type", "ContentMainType", &main_type) &&
 			    main_type == MIME_TYPE_MULTIPART)
 			{
-			libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd);
+			if (libmime_ParseMultipartBody(lex, l_msg, l_msg->MsgSeekStart, l_msg->MsgSeekEnd) < 0)
+			    {
+			    xsDeInit(&xsbuf);
+			    return -1;
+			    }
 			}
 		    }
 		s=strlen(xsbuf.String);
