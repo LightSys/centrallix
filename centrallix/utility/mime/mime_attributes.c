@@ -102,6 +102,11 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 
 	/** Set the offset values in the attribute structure. **/
 	attr = libmime_GetMimeAttr(this, name);
+	if (!attr)
+	    {
+	    mssError(0, "MIME", "Could not store header \"%s\".", name);
+	    return -1;
+	    }
 	attr->ValueSeekStart = seekStart;
 	attr->ValueSeekEnd = seekEnd;
 	attr->AttrSeekStart = attrSeekStart;
@@ -158,6 +163,7 @@ int
 libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
     {
     pEmailAddr emailAddr = NULL;
+    pXArray array = NULL;
 
 	/** Allocate the email address. **/
 	emailAddr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
@@ -167,20 +173,28 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 	    return -1;
 	    }
 
-	/** Parse the email address. **/
-	if (!libmime_ParseAddress(data, emailAddr))
+	/** Parse the email address, falling back to text if parsing fails. **/
+	if (libmime_ParseAddress(data, emailAddr) < 0)
 	    {
-	    mssError(1, "MIME", "Failed to parse the email address");
-	    return -1;
+	    nmFree(emailAddr, sizeof(EmailAddr));
+	    return libmime_CreateStringAttr(this, name, NULL, data, 0);
 	    }
 
 	/** Create the email attribute. **/
 	if (libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0) < 0)
+	    {
+	    nmFree(emailAddr, sizeof(EmailAddr));
 	    return -1;
+	    }
 
-	/** Store the struct as a parameter. **/
-	if (libmime_CreateAttr(this, name, "Struct", emailAddr, 0) < 0)
+	/** Store the struct as a one-item array, like the address list headers. **/
+	if (libmime_CreateArrayAttr(this, name, "Struct") < 0 ||
+		libmime_GetArrayAttr(this, name, "Struct", &array) < 0 ||
+		xaAddItem(array, emailAddr) < 0)
+	    {
+	    nmFree(emailAddr, sizeof(EmailAddr));
 	    return -1;
+	    }
 
     return 0;
     }
