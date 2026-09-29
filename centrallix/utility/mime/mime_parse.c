@@ -523,10 +523,17 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 	{
 	return -1;
 	}
+
+    /** Read the boundary into sub_type. **/
+    if (libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type) < 0 || !sub_type)
+	{
+	/** No boundary (not a multipart). **/
+	return 0;
+	}
+
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    libmime_GetStringAttr(msg, "Content-Type", "Boundary", &sub_type); /* Reusing variable :P */
     snprintf(bound, sizeof(bound), "--%s", sub_type);
     snprintf(bound_end, sizeof(bound_end), "--%s--", sub_type);
 
