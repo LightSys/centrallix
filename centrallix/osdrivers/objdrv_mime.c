@@ -165,9 +165,13 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     mlxCloseSession(lex);
     lex = NULL;
 
-    /** Find and set the filename of the root node **/
+    /** Name the root node after its file. **/
     node_path = obj_internal_PathPart(obj->Pathname, obj->SubPtr - 1, 1);
-    libmime_SetFilename(msg, node_path);
+    if (libmime_SetStringAttr(msg, "Name", NULL, node_path, 0))
+	{
+	mssError(0, "MIME", "Failed to set the name of \"%s\".", node_path);
+	goto error;
+	}
 
     /** assume we're only going to handle one level...		  **/
     /** no longer. It now works for multipart messages. HKJ & JRS **/
