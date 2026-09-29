@@ -260,7 +260,7 @@ libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
 	/** Get the first item in the list. **/
 	token = strtok_r(data, ",", &currentOffset);
 
-	/** If there are no commas, the entire string is a single item. **/
+	/** If the string is empty, treat it as a single empty item. **/
 	if (!token)
 	    {
 	    token = currentOffset;
@@ -543,7 +543,7 @@ libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
 int
 libmime_GetAttrParamNames(char* raw, char** attr, char** param)
     {
-	/** Separate the raw string on a separating dash. **/
+	/** Separate the raw string on a separating period. **/
 	*attr = raw;
 	*param = strchr(raw, '.');
 
@@ -842,7 +842,7 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	/** Get the old attribute/parameter ptod. **/
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute/parametr wasn't found, create it. **/
+	/** If the attribute/parameter wasn't found, create it. **/
 	if (!ptod)
 	    {
 	    libmime_CreateStringArrayAttr(this, attr, param);
@@ -901,7 +901,7 @@ libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data)
 	/** Get the old attribute/parameter ptod. **/
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute/parametr wasn't found, create it. **/
+	/** If the attribute/parameter wasn't found, create it. **/
 	if (!ptod)
 	    {
 	    libmime_CreateStringArrayAttr(this, attr, param);
@@ -935,7 +935,7 @@ libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataL
 	/** Get the old attribute/parameter ptod. **/
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If the attribute/parametr wasn't found, create it. **/
+	/** If the attribute/parameter wasn't found, create it. **/
 	if (!ptod)
 	    {
 	    libmime_CreateArrayAttr(this, attr, param);

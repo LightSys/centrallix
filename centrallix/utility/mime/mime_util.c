@@ -59,7 +59,7 @@ libmime_AllocateHeader()
     return msg;
     }
 
-/*** libmime_Cleanup_Header
+/*** libmime_DeallocateHeader
  ***
  *** Deallocates all memory used for the mime header
  ***/
@@ -275,7 +275,7 @@ libmime_B64Purify(char *string)
 
 /***  libmime_ContentExtension
  ***
- ***  Modifies the first parameter to contain the three leter extension
+ ***  Modifies the first parameter to contain the three letter extension
  ***  that is associated with the given content type and subtype.
  ***/
 int

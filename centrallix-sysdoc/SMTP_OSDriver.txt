@@ -15,7 +15,7 @@ USAGE
     In order to use the SMTP driver, the root node must first have appropriate
     attributes. "spool_dir" is one of the more important attributes as this
     defines where child email objects will be searched for/stored. All other
-    attributes on the root node are currently inneffective because of how the
+    attributes on the root node are currently ineffective because of how the
     SMTP driver currently uses sendmail.
 
     Email objects may be created as children of the root SMTP node and, when
@@ -44,7 +44,7 @@ USAGE
 
 INTERFACE AND IMPLEMENTATION
 
-    The SMTP driver does not implement the entire OS driver interface. It's
+    The SMTP driver does not implement the entire OS driver interface. Its
     functionality in each of the standard interface functions is as follows.
 
     A. Initialization
@@ -67,7 +67,7 @@ INTERFACE AND IMPLEMENTATION
 	OBJ_O_TRUNC flag has not been implemented. Internally, the SMTP
 	driver opens objects as follows:
 
-	    1.  Determine if the object is a root node or a email object.
+	    1.  Determine if the object is a root node or an email object.
 	    2.  Open the root node and initialize any other properties held in
 		common between the root node and email objects using the
 		smtp_internal_OpenGeneral() function:
@@ -132,7 +132,7 @@ INTERFACE AND IMPLEMENTATION
 	subsequent smtpQueryFetch returns the next email object in the spool
 	directory. This means that if two root nodes share the same spool
 	directory, they will share children emails. Any changes made to the
-	children of on such root node will change the children of the other
+	children of one such root node will change the children of the other
 	root node because the children are actually the same objects. (Though
 	the OSML may create a second object because of the OSML pathname
 	difference.)
@@ -145,12 +145,12 @@ INTERFACE AND IMPLEMENTATION
 	and/or are calculated on the fly when an object is created (e.g.
 	Message ID).
 
-	While many attributes were specified in the Email_OSDriver.txt
+	While many attributes were specified in the Email_OSDriver.md
 	specifications, only a few attributes actually carry functional weight.
 	Following is a list of the specified attributes and the state of
 	their implementation:
 
-	1.  NODE ATTRIUTES
+	1.  NODE ATTRIBUTES
 
 	    send_method	    Not yet implemented. Specifies how emails are to
 			    be sent. The SMTP driver currently supports only
@@ -202,7 +202,7 @@ INTERFACE AND IMPLEMENTATION
 
 	    name	    A unique identifier for this email. Generally is the
 			    same as the Message-ID, but with ".eml" or ".msg" appended
-			    to thei end, for clarity.
+			    to the end, for clarity.
 
 	    message_id	    The Message-ID of the email message being created.
 
@@ -227,7 +227,7 @@ INTERFACE AND IMPLEMENTATION
 			    ready for the SMTP driver to send. When this attribute
 			    is set to 1, the SMTP driver immediately spawns a
 			    sendmail process to send the email. Setting the
-			    attribute to 1 gain will cause another process to be
+			    attribute to 1 again will cause another process to be
 			    sent. The current implementation is, as such, naive.
 
 	    first_try_date  Not yet implemented. The date/time of the first attempt
