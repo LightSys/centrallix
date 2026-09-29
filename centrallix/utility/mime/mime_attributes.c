@@ -708,16 +708,16 @@ libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int
     {
     pTObjData *pPtod = NULL;
 
+	/** Get the old ptod. **/
+	pPtod = libmime_GetPtodPointer(this, attr, param);
+
 	/** Use the new flags if we are passed specific values. **/
 	if (flags < 0)
 	    {
 	    /** Use flags from old ptod if we have it, otherwise assume 0 **/
-	    if (pPtod) flags = (*pPtod)->Flags;
+	    if (pPtod && *pPtod) flags = (*pPtod)->Flags;
 	    else flags = 0;
 	    }
-
-	/** Get the old ptod. **/
-	pPtod = libmime_GetPtodPointer(this, attr, param);
 
 	/** If our pointer to our other pointer is NULL or our pointer is NULL: create the attr/param. **/
 	if (!pPtod || !*pPtod)
