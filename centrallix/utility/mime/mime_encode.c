@@ -109,7 +109,7 @@ libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst, int src
 int
 libmime_DecodeBase64(char* dst, char* src, int maxdst)
     {
-    static char b64[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     char* ptr;
     char* origdst;
     int ix;
