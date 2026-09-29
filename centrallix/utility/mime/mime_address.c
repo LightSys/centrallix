@@ -91,7 +91,7 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 			cnest++;
 			new_state = MIME_ST_COMMENT;
 			}
-		    else if (ch == ':' && buf[count-1] != '\\')
+		    else if (ch == ':' && (count == 0 || buf[count-1] != '\\'))
 			{
 			new_state = MIME_ST_GROUP;
 			}
