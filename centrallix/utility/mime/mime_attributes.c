@@ -279,12 +279,6 @@ libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data)
 	    token = strtok_r(NULL, ",", &currentOffset);
 	    }
 
-	/** Trim the final token. **/
-	libmime_StringTrim(currentOffset);
-
-	/** Add the final token to the attribute list. **/
-	libmime_AddStringArrayAttr(this, name, NULL, currentOffset);
-
     return 0;
     }
 
