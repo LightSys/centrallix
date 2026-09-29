@@ -685,7 +685,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		     **  probably only do this for whitespace, and then flag other chars as
 		     **  an error condition.  But this works and may be more robust.
 		     **/
-		    tremoved = libmime_B64Purify(mdat->EncodedBuffer);
+		    tremoved = libmime_B64Purify(mdat->EncodedBuffer + mdat->EncodedChunkSize, tsize);
 		    mdat->EncodedChunkSize += (tsize - tremoved);
 		    }
 		mdat->EncodedBuffer[mdat->EncodedChunkSize] = '\0';

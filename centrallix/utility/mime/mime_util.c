@@ -247,30 +247,22 @@ libmime_StringUnquote(char *str)
 
 /***  libmime_B64Purify
  ***
- ***  Removes all characters from a Base64 string that are not part
- ***  of the Base64 alphabet.
+ ***  Removes all bytes that are not part of the Base64 alphabet from the
+ ***  first len bytes of buf, moving the remaining bytes to the front.
+ ***  Returns the number of bytes removed.
  ***/
 int
-libmime_B64Purify(char *string)
+libmime_B64Purify(char *buf, int len)
     {
-    char *wrk;
     static char allowset[66] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    int rem=0;
-    int n;
+    int i, kept = 0;
 
-    for (wrk = string; *wrk;)
+    for (i = 0; i < len; i++)
 	{
-	n = strspn(wrk, allowset);
-	if (n)
-	    wrk += n;
-	else
-	    {
-	    n = strcspn(wrk, allowset);
-	    memmove(wrk, wrk+n, strlen(wrk+n)+1);
-	    rem += n;
-	    }
+	if (buf[i] != '\0' && strchr(allowset, buf[i]))
+	    buf[kept++] = buf[i];
 	}
-    return rem;
+    return len - kept;
     }
 
 /***  libmime_ContentExtension

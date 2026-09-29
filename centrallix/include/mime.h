@@ -164,7 +164,7 @@ int libmime_StringFirstCaseCmp(char *c1, char *c2);
 int libmime_PrintAddressList(pXArray ary, int level);
 void libmime_FreeAddress(pEmailAddr addr);
 char* libmime_StringUnquote(char *str);
-int libmime_B64Purify(char *str);
+int libmime_B64Purify(char *buf, int len);
 int libmime_ContentExtension(char *str, int type, char *subtype);
 void* libmime_xhLookup(pXHashTable this, char* key);
 int libmime_xhAdd(pXHashTable this, char* key, char* data);
