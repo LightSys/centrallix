@@ -2893,6 +2893,13 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
 
+	/** Refuse writes to a read-only email. **/
+	if (UNLIKELY(inf->Type == SMTP_T_EML && (inf->Obj->Mode & O_ACCMODE) == O_RDONLY))
+	    {
+	    mssError(1, "SMTP", "Email was opened read-only.");
+	    goto end;
+	    }
+
 	/** Initialize the new attribute. **/
 	attr = nmMalloc(sizeof(SmtpAttribute));
 	if (UNLIKELY(attr == NULL))
