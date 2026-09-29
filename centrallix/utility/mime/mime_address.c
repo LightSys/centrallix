@@ -186,7 +186,7 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 		}
 	    prev_state = state;
 	    state = new_state;
-	    if (count > strlen(buf))
+	    if (count >= strlen(buf))
 		done = 1;
 	    count++;
 	    }
