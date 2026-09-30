@@ -4567,7 +4567,7 @@ int exp_fn_path_params(pExpression tree, pParamObjects objlist, pExpression i0, 
 		mssError(1, "EXP", "path_params() param name cannot be empty");
 		goto error;
 		}
-	    xsConcatQPrintf(dest, "%STR%STR&URL=", (param_num == 0)?"?":"&", param_name->String);
+	    xsConcatQPrintf(dest, "%STR%STR&URL=", (dest->Length == 0)?"?":"&", param_name->String);
 
 	    /** Parameter value... **/
 	    param_value = (param_num*2 + 1 < tree->Children.nItems)?((pExpression)tree->Children.Items[param_num * 2 + 1]):NULL;
