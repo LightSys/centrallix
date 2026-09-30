@@ -30,6 +30,8 @@
 /************************************************************************/
 
 #include <string.h>
+
+#include "cxlib/mtsession.h"
 #include "obj.h"
 #include "mime.h"
 
