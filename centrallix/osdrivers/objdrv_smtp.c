@@ -40,12 +40,15 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "centrallix.h"
 #include "cxlib/expect.h"
@@ -69,6 +72,12 @@
 
 /** Minimum seconds between sweeps of one spool directory. **/
 #define SMTP_SWEEP_INTERVAL	(60 * 60)
+
+/** Seconds to wait for sendmail before killing it. **/
+#define SMTP_SENDMAIL_TIMEOUT	60
+
+/** Bytes in the status line at the start of a sendmail result file. **/
+#define SMTP_RESULT_HEADER_LEN	16
 
 /*** Structure to store attribute information. ***/
 typedef struct
@@ -103,6 +112,7 @@ typedef struct
     pFile		ContentFile;
     XString		EmailPath;
     XString		EmailStructPath;
+    XString		ResultPath;
     }
     SmtpData, *pSmtpData;
 
@@ -151,14 +161,26 @@ int smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjDa
 /*** smtp_internal_SpawnSendmail - launch the sendmail process to actually
  *** send off an email message.  This also works with Postfix, via its
  *** "sendmail compatibility interface".
+ ***
+ *** This function also spawns a detached supervisor process that waits for
+ *** sendmail and writes the result to resultPath; starting with a status line
+ *** ("exit N", "signal N", "timeout", or "error") padded with spaces to
+ *** SMTP_RESULT_HEADER_LEN bytes, then the output of sendmail.
  ***/
 int
-smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttribute envTo)
+smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute envFrom, pSmtpAttribute envTo)
     {
     int pid, fd, maxfiles;
     pXArray argv = NULL;
     char *envp[] = {NULL};
-    int wstatus;
+    int wstatus, wait_rval;
+    int resultFd = -1;
+    char tmpPath[PATH_MAX];
+    char result[SMTP_RESULT_HEADER_LEN];
+    char header[SMTP_RESULT_HEADER_LEN + 1];
+    struct timespec pollInterval = {0, 100 * 1000 * 1000};
+    int polls;
+    bool tmpCreated = false;
     int rval = -1;
 
 	/** Magic. **/
@@ -219,6 +241,35 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    goto end;
 	    }
 
+	/** Remove the result of any earlier send. **/
+	if (UNLIKELY(unlink(resultPath) != 0 && errno != ENOENT))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not remove old sendmail result file (%s).", resultPath);
+	    goto end;
+	    }
+
+	/** Create the result file, which the supervisor renames when done. **/
+	if (UNLIKELY(snprintf(tmpPath, sizeof(tmpPath), "%s.tmp", resultPath) >= (int)sizeof(tmpPath)))
+	    {
+	    mssError(1, "SMTP", "Sendmail result file path is too long: \"%s.tmp\".", resultPath);
+	    goto end;
+	    }
+	resultFd = open(tmpPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (UNLIKELY(resultFd < 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not create sendmail result file (%s).", tmpPath);
+	    goto end;
+	    }
+	tmpCreated = true;
+
+	/** Reserve the status line. **/
+	snprintf(header, sizeof(header), "%-*s\n", SMTP_RESULT_HEADER_LEN - 1, "");
+	if (UNLIKELY(write(resultFd, header, SMTP_RESULT_HEADER_LEN) != SMTP_RESULT_HEADER_LEN))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not write to sendmail result file (%s).", tmpPath);
+	    goto end;
+	    }
+
 	/*** Create a child process to launch sendmail.  This lets us detach
 	 *** from it so that we don't block all of centrallix while we wait
 	 *** for an email to send.
@@ -248,7 +299,7 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 		maxfiles = 2048;
 		}
 
-	    for(fd=3;fd<maxfiles;fd++) close(fd);
+	    for(fd=3;fd<maxfiles;fd++) if (fd != resultFd) close(fd);
 
 	    /** Open the email. **/
 	    fd = open(emailPath, O_RDONLY);
@@ -272,7 +323,6 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 		}
 
 	    /** NOTE: We're currently double forking to get rid of zombie processes. **/
-	    /** TODO: Change this to look at the return value of sendmail and act accordingly. **/
 	    pid = fork();
 	    if (UNLIKELY(pid < 0))
 		{
@@ -281,7 +331,7 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 		}
 	    if (pid == 0)
 		{
-		/** we're in the child process -- disable MTask context switches to be safe **/
+		/** we're in the supervisor process -- disable MTask context switches to be safe **/
 		thLock();
 
 		/** close all open fds (except for 0-2 -- std{in,out,err}) **/
@@ -295,17 +345,79 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 		    maxfiles = 2048;
 		    }
 
-		for(fd=3;fd<maxfiles;fd++) close(fd);
+		for(fd=3;fd<maxfiles;fd++) if (fd != resultFd) close(fd);
 
-		/** Execve. **/
-		execve("/usr/sbin/sendmail", (char**)(argv->Items), envp);
+		/** Start sendmail, with its output in the result file. **/
+		pid = fork();
+		if (pid == 0)
+		    {
+		    if (UNLIKELY(dup2(resultFd, 1) < 0 || dup2(resultFd, 2) < 0))
+			{
+			dprintf(resultFd, "SMTP: Could not redirect sendmail output. (%s)\n", strerror(errno));
+			_exit(EXIT_FAILURE);
+			}
+		    close(resultFd);
 
-		/** if execve() is successful, this is never reached **/
-		fprintf(stderr,
-		    "SMTP: execve(\"/usr/sbin/sendmail\") failed: \"%s\"\n",
-		    strerror(errno)
-		);
-		_exit(EXIT_FAILURE);
+		    /** Execve. **/
+		    execve("/usr/sbin/sendmail", (char**)(argv->Items), envp);
+
+		    /** if execve() is successful, this is never reached **/
+		    fprintf(stderr,
+			"SMTP: execve(\"/usr/sbin/sendmail\") failed: \"%s\"\n",
+			strerror(errno)
+		    );
+		    _exit(EXIT_FAILURE);
+		    }
+
+		/** Supervise sendmail. **/
+		if (UNLIKELY(pid < 0))
+		    {
+		    dprintf(resultFd, "SMTP: Unable to fork (3). (%s)\n", strerror(errno));
+		    snprintf(result, sizeof(result), "error");
+		    }
+		else
+		    {
+		    /** Wait for sendmail, killing it after the timeout. **/
+		    polls = 0;
+		    while ((wait_rval = waitpid(pid, &wstatus, WNOHANG)) == 0 && polls < SMTP_SENDMAIL_TIMEOUT * 10)
+			{
+			nanosleep(&pollInterval, NULL);
+			polls++;
+			}
+		    if (wait_rval == 0)
+			{
+			kill(pid, SIGKILL);
+			waitpid(pid, &wstatus, 0);
+			snprintf(result, sizeof(result), "timeout");
+			}
+		    else if (UNLIKELY(wait_rval < 0))
+			{
+			dprintf(resultFd, "SMTP: Failed to wait for sendmail (pid %d). (%s)\n", pid, strerror(errno));
+			snprintf(result, sizeof(result), "error");
+			}
+		    else if (WIFSIGNALED(wstatus))
+			{
+			snprintf(result, sizeof(result), "signal %d", WTERMSIG(wstatus));
+			}
+		    else
+			{
+			snprintf(result, sizeof(result), "exit %d", WEXITSTATUS(wstatus));
+			}
+		    }
+
+		/** Write the status line, then publish the result. **/
+		snprintf(header, sizeof(header), "%-*s\n", SMTP_RESULT_HEADER_LEN - 1, result);
+		if (UNLIKELY(pwrite(resultFd, header, SMTP_RESULT_HEADER_LEN, 0) != SMTP_RESULT_HEADER_LEN
+		    || close(resultFd) != 0
+		    || rename(tmpPath, resultPath) != 0 /* Publish. */
+		))  {
+		    fprintf(stderr,
+			"SMTP: Could not write sendmail result file (%s). (%s)\n",
+			resultPath, strerror(errno)
+		    );
+		    _exit(EXIT_FAILURE);
+		    }
+		_exit(EXIT_SUCCESS);
 		}
 	    else
 		{
@@ -315,10 +427,18 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
 	    }
 
 	/** Reap the launcher, yielding to other threads while it runs. **/
-	int wait_rval;
 	while ((wait_rval = waitpid(pid, &wstatus, WNOHANG)) == 0)
 	    thSleep(10);
-	if (UNLIKELY(wait_rval < 0))
+	if (UNLIKELY(wait_rval < 0 && errno == ECHILD))
+	    {
+	    fprintf(stderr,
+		"Warning: Sendmail launcher process (pid %d) was reaped elsewhere; "
+		"the sendmail result file reports the send.\n",
+		pid
+	    );
+	    wstatus = 0; /* Treat as a successful exit. */
+	    }
+	else if (UNLIKELY(wait_rval < 0))
 	    {
 	    mssErrorErrno(1, "SMTP",
 		"Failed to wait for child sendmail launcher process (pid %d).",
@@ -349,6 +469,13 @@ smtp_internal_SpawnSendmail(char* emailPath, pSmtpAttribute envFrom, pSmtpAttrib
     end:
 	if (UNLIKELY(rval != 0))
 	    mssError(0, "SMTP", "Failed to spawn sendmail for email file (%s).", emailPath);
+
+	if (resultFd >= 0) close(resultFd);
+	if (UNLIKELY(rval != 0 && tmpCreated && unlink(tmpPath) != 0))
+	    fprintf(stderr,
+		"Warning: Failed to remove partial sendmail result file (%s): %s.\n",
+		tmpPath, strerror(errno)
+	    );
 
 	if (LIKELY(argv != NULL)) xaDeInit(argv);
 
@@ -1354,7 +1481,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	envTo = SMTP_ATTR(xhLookup(inf->Attributes, "envelope_to"));
 
 	/** Send it using sendmail. **/
-	if (UNLIKELY(smtp_internal_SpawnSendmail(inf->EmailPath.String, envFrom, envTo) < 0))
+	if (UNLIKELY(smtp_internal_SpawnSendmail(inf->EmailPath.String, inf->ResultPath.String, envFrom, envTo) < 0))
 	    {
 	    mssError(0, "SMTP", "Could not send the mail.");
 	    goto end;
@@ -1657,6 +1784,18 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (UNLIKELY(xsSubst(&inf->EmailStructPath, inf->EmailStructPath.Length - 4, 4, ".struct", 7) < 0))
 	    {
 	    mssError(1, "SMTP", "Failed to substitute .struct into email struct path.");
+	    goto end;
+	    }
+
+	/** Construct the sendmail result file path. **/
+	if (UNLIKELY(xsCopy(&inf->ResultPath, inf->EmailPath.String, -1) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to copy sendmail result path.");
+	    goto end;
+	    }
+	if (UNLIKELY(xsSubst(&inf->ResultPath, inf->ResultPath.Length - 4, 4, ".result", 7) < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to substitute .result into sendmail result path.");
 	    goto end;
 	    }
 
@@ -2153,6 +2292,18 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 		goto end;
 		}
 
+	    /** Construct the sendmail result file path. **/
+	    if (UNLIKELY(xsCopy(&inf->ResultPath, inf->EmailPath.String, -1) != 0))
+		{
+		mssError(1, "SMTP", "Failed to copy sendmail result path.");
+		goto end;
+		}
+	    if (UNLIKELY(xsSubst(&inf->ResultPath, inf->ResultPath.Length - 4, 4, ".result", 7) < 0))
+		{
+		mssError(1, "SMTP", "Failed to substitute .result into sendmail result path.");
+		goto end;
+		}
+
 	    fdClose(fd, 0);
 	    fd = NULL;
 	    }
@@ -2242,6 +2393,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf->Obj = obj;
 	if (UNLIKELY(xsInit(&inf->EmailPath) != 0
 	    || xsInit(&inf->EmailStructPath) != 0
+	    || xsInit(&inf->ResultPath) != 0
 	))   {
 	    mssError(1, "SMTP", "Failed to init xstring.");
 	    goto error;
@@ -2349,6 +2501,7 @@ smtp_internal_Close(pSmtpData inf)
 
 	if (UNLIKELY(xsDeInit(&inf->EmailPath) != 0
 	    || xsDeInit(&inf->EmailStructPath) != 0
+	    || xsDeInit(&inf->ResultPath) != 0
 	))   {
 	    mssError(1, "SMTP", "Failed to deinit xstring.");
 	    rval = -1;
@@ -2752,6 +2905,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    inf->Obj = obj;
 	    if (UNLIKELY(xsInit(&inf->EmailPath) != 0
 		|| xsInit(&inf->EmailStructPath) != 0
+		|| xsInit(&inf->ResultPath) != 0
 	    ))   {
 		mssError(1, "SMTP", "Failed to init xstring.");
 		goto error;
