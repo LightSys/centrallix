@@ -512,8 +512,16 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     mlxSetOffset(lex, msg->MsgSeekStart);
     count = msg->MsgSeekStart;
 
-    snprintf(bound, sizeof(bound), "--%s", sub_type);
-    snprintf(bound_end, sizeof(bound_end), "--%s--", sub_type);
+    /** Build the boundary markers, failing if the boundary is too long. **/
+    if (snprintf(bound, sizeof(bound), "--%s", sub_type) >= sizeof(bound) ||
+	    snprintf(bound_end, sizeof(bound_end), "--%s--", sub_type) >= sizeof(bound_end))
+	{
+	mssError(1, "MIME",
+	    "Boundary is %zu characters, which exceeds the maximum of %zu: \"%s\"",
+	    strlen(sub_type), sizeof(bound_end) - 5, sub_type
+	);
+	return -1;
+	}
 
     while (flag)
 	{
