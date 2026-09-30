@@ -2645,7 +2645,6 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     pFile emlStructFileWrite = NULL;
     pStructInf emlStruct = NULL;
 
-    int old_int_val = -1;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -2718,7 +2717,6 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 	else if (datatype == DATA_T_INTEGER)
 	    {
-	    old_int_val = attr->Value.Integer;
 	    attr->Value.Integer = val->Integer;
 	    }
 	else if (datatype == DATA_T_DATETIME)
@@ -2827,7 +2825,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		}
 
 	    /** If the email is ready to send, send it. **/
-	    if (strcmp(attrname, "is_ready") == 0 && val->Integer == 1 && old_int_val == 0)
+	    if (strcmp(attrname, "is_ready") == 0 && val->Integer == 1)
 		{
 		/** Flush the struct file so sending can update it. **/
 		fdClose(emlStructFileWrite, 0);
