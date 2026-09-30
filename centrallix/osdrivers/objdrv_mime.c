@@ -208,15 +208,8 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	if (!foundMatch) break;
 	}
 
-    /** Reset the file seek pointer. **/
-    if (objSeek(obj->Prev, 0) < 0)
-	{
-	mssError(0, "MIME", "Improperly reset mime object file pointer.");
-	goto error;
-	}
-
     /** If dealing with the base mime file, check to see if it has been initialized (aka 'created'). **/
-    if(objRead(obj->Prev, nullbuf, 1, 0, obj->Mode) > 0 &&
+    if(objRead(obj->Prev, nullbuf, 1, 0, OBJ_U_SEEK) > 0 &&
 	    obj->Pathname->nElements == obj->SubPtr)
 	{
 	foundMatch = 1;
