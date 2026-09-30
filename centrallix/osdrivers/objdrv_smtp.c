@@ -667,7 +667,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    newSpool = nmMalloc(sizeof(SmtpSpool));
 	    if (UNLIKELY(newSpool == NULL))
 		{
-		mssError(0, "SMTP", "Could not allocate sweep state for spool directory \"%s\".", spoolDir);
+		mssError(1, "SMTP", "Could not allocate sweep state for spool directory \"%s\".", spoolDir);
 		goto end;
 		}
 	    memset(newSpool, 0, sizeof(SmtpSpool));
@@ -675,7 +675,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    newSpool->Path = nmSysStrdup(spoolDir);
 	    if (UNLIKELY(newSpool->Path == NULL))
 		{
-		mssError(0, "SMTP", "Failed to set spool directory path: \"%s\".", spoolDir);
+		mssError(1, "SMTP", "Failed to set spool directory path: \"%s\".", spoolDir);
 		goto end;
 		}
 	    if (UNLIKELY(xhAdd(&SMTP_INF.Spools, newSpool->Path, (char*)newSpool) != 0))

@@ -135,7 +135,8 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		/** Parse the attribute and store it in the Mime header. **/
 		if (libmime_ParseAttr(msg, hdrnme, hdrbdy, attrSeekStart, attrSeekEnd, nameOffset))
 		    {
-		    mssError(0, "MIME", "ERROR PARSING \"%s\": \"%s\"\n", hdrnme, hdrbdy);
+		    fprintf(stderr, "Warning: Skipping MIME header that could not be parsed: \"%s\"\n", xsbuf.String);
+		    mssClearError();
 		    }
 		}
 	    else

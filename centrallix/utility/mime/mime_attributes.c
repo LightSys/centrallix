@@ -29,6 +29,7 @@
 /*		MIME object system driver (objdrv_mime.c)		*/
 /************************************************************************/
 
+#include <stdio.h>
 #include <string.h>
 
 #include "cxlib/mtsession.h"
@@ -167,6 +168,11 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 		/** Set the offset values in the parameter structure. **/
 		libmime_GetMimeParam(this, name, paramName)->ValueSeekStart = seekStart;
 		libmime_GetMimeParam(this, name, paramName)->ValueSeekEnd = seekEnd;
+		}
+	    else
+		{
+		fprintf(stderr, "Warning: Skipping parameter \"%s\" of MIME header \"%s\" that could not be stored.\n", paramName, name);
+		mssClearError();
 		}
 	    }
 
