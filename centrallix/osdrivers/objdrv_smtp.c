@@ -2237,6 +2237,13 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    return -1;
 	    }
 
+	/** Refuse reads from a write-only email. **/
+	if (UNLIKELY((inf->Obj->Mode & O_ACCMODE) == O_WRONLY))
+	    {
+	    mssError(1, "SMTP", "Failed to read email that was opened write-only.");
+	    return -1;
+	    }
+
 	rval = fdRead(inf->ContentFile, buffer, maxcnt, offset, flags);
 	if (UNLIKELY(rval < 0))
 	    mssErrorErrno(1, "SMTP", "Failed to read %d bytes at offset %d from email file (%s).", maxcnt, offset, inf->EmailPath.String);
@@ -2265,6 +2272,13 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	if (UNLIKELY(inf->Type != SMTP_T_EML))
 	    {
 	    mssError(1, "SMTP", "Unable to write content to smtp object of type %d.", inf->Type);
+	    return -1;
+	    }
+
+	/** Refuse writes to a read-only email. **/
+	if (UNLIKELY((inf->Obj->Mode & O_ACCMODE) == O_RDONLY))
+	    {
+	    mssError(1, "SMTP", "Failed to write to email that was opened read-only.");
 	    return -1;
 	    }
 
