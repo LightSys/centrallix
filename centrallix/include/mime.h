@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -137,9 +137,9 @@ extern char* EncodingStrings[];
 
 /** mime_parse.c **/
 int libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end);
-int libmime_ParseHeaderElement(char *buf, char *element, int maxsize, long* attrSeekEnd, long* nameOffset);
+int libmime_ParseHeaderElement(char *buf, char *element, int maxsize, long* attrSeekStart, long* nameOffset);
 int libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end);
-int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long* attrSeekStart);
+int libmime_LoadExtendedHeader(pLxSession lex, pMimeHeader msg, pXString xsbuf, long* attrSeekEnd);
 int libmime_SetDate(pMimeHeader msg, char *buf);
 int libmime_SetTransferEncoding(pMimeHeader msg, char *buf);
 int libmime_SetContentType(pMimeHeader msg, char *buf);
