@@ -1252,7 +1252,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	/** Record the expire date. **/
 	if (expireTime >= 0)
 	    {
-	    if (UNLIKELY(objCurrentDate(&expireDate) != 0 || objDateAddPart(&expireDate, expireTime, "second") != 0))
+	    if (UNLIKELY(objCurrentDate(&expireDate) != 0 || objDateAdd(&expireDate, expireTime, 0, 0, 0, 0, 0) != 0))
 		{
 		mssError(0, "SMTP", "Failed to calculate the expire date (%d seconds from now).", expireTime);
 		recordFailed = true;
