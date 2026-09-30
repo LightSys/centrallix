@@ -147,33 +147,33 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 \**Not implemented.*
 
 #### Email Attributes
-| Attribute           | Description
-| ------------------- | -----------
-| name                | A unique identifier for this email.  Generally is the same as the Message-ID, but with `.eml` or `.msg` appended to the end, for clarity.
-| message_id          | The Message-ID of the email message being created.
-| envelope_from       | The envelope From address of the email (return-path).  Because of the way the SMTP driver currently uses sendmail, this attribute determines the outgoing From address received by the foreign email server.  If this is not set correctly, then the email will be from the user currently running Centrallix.  This will generally be blocked by most email receiving servers.
-| envelope_to         | The envelope recipient (or recipient list) of the email.
-| header_date         | The `Date` header, as a datetime.  Defaults to the time the email is sent.
-| header_from         | The `From` header.
-| header_to           | The `To` header.
-| header_cc           | The `Cc` header.
-| header_bcc          | The `Bcc` header.
-| header_reply_to     | The `Reply-To` header.
-| header_list_unsubscribe | The `List-Unsubscribe` header.
+| Attribute                    | Description
+| ---------------------------- | -----------
+| name                         | A unique identifier for this email.  Generally is the same as the Message-ID, but with `.eml` or `.msg` appended to the end, for clarity.
+| message_id                   | The Message-ID of the email message being created.
+| envelope_from                | The envelope From address of the email (return-path).  Because of the way the SMTP driver currently uses sendmail, this attribute determines the outgoing From address received by the foreign email server.  If this is not set correctly, then the email will be from the user currently running Centrallix.  This will generally be blocked by most email receiving servers.
+| envelope_to                  | The envelope recipient (or recipient list) of the email.
+| header_date                  | The `Date` header, as a datetime.  Defaults to the time the email is sent.
+| header_from                  | The `From` header.
+| header_to                    | The `To` header.
+| header_cc                    | The `Cc` header.
+| header_bcc                   | The `Bcc` header.
+| header_reply_to              | The `Reply-To` header.
+| header_list_unsubscribe      | The `List-Unsubscribe` header.
 | header_list_unsubscribe_post | The `List-Unsubscribe-Post` header.
-| header_subject      | The `Subject` header.
-| header_user_agent   | The `User-Agent` header (default `Centrallix/<version>`).
-| header_mime_version | The `MIME-Version` header.
-| tag                 | An arbitrary label (not necessarily unique) used to find this email in later queries.
-| status              | The status of the email: Draft until `is_ready` is set to 1, then Sent or Error.
-| is_ready            | Either 0 (default) to indicate that the email is not ready to be sent or set to 1 to indicate that the email is ready for the SMTP driver to send.  When this attribute is set to 1, the SMTP driver immediately spawns a sendmail process to send the email.  Setting the attribute to 1 again will cause another process to be sent.  The current implementation is, as such, naive.
-| *first_try_date*\*  | The date/time of the first attempt to send this email.
-| *try_until_date*\*  | The latest that the driver will attempt to send this email.
-| *try_count*\*       | The number of times that the system has attempted to transmit the message.
-| expire_date         | When a sent or failed email expires, set to `expire_time` seconds after sending.  01 Jan 1900 means never, and drafts never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.
-| *last_try_date*\*   | The date/time of the most recent attempt to send this email.
-| *last_try_status*\* | The status of the last attempt to send this email (None, TempFail, Fail).
-| *last_try_msg*\*    | The message from the last attempt to send; this could be the message the remote SMTP server provided in response to the attempt to send this email.
+| header_subject               | The `Subject` header.
+| header_user_agent            | The `User-Agent` header (default `Centrallix/<version>`).
+| header_mime_version          | The `MIME-Version` header.
+| tag                          | An arbitrary label (not necessarily unique) used to find this email in later queries.
+| status                       | The status of the email: Draft until `is_ready` is set to 1, then Sent or Error.
+| is_ready                     | Either 0 (default) to indicate that the email is not ready to be sent or set to 1 to indicate that the email is ready for the SMTP driver to send.  When this attribute is set to 1, the SMTP driver immediately spawns a sendmail process to send the email.  Setting the attribute to 1 again will cause another process to be sent.  The current implementation is, as such, naive.
+| *first_try_date*\*           | The date/time of the first attempt to send this email.
+| *try_until_date*\*           | The latest that the driver will attempt to send this email.
+| *try_count*\*                | The number of times that the system has attempted to transmit the message.
+| expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after sending.  01 Jan 1900 means never, and drafts never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.
+| *last_try_date*\*            | The date/time of the most recent attempt to send this email.
+| *last_try_status*\*          | The status of the last attempt to send this email (None, TempFail, Fail).
+| *last_try_msg*\*             | The message from the last attempt to send; this could be the message the remote SMTP server provided in response to the attempt to send this email.
 \**Not implemented.*
 
 When the email is sent, `message_id` and each non-empty `header_*` attribute are written as headers, replacing any header of the same name in the content.
