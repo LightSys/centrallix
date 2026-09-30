@@ -1285,6 +1285,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
     pSnNode node = NULL;
     pSmtpAttribute currentAttr = NULL;
     pStructInf currentParam = NULL;
+    pSnNode rval = NULL;
     int i;
 
 	/** Create the node object **/
@@ -1292,7 +1293,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	if (UNLIKELY(node == NULL))
 	    {
 	    mssError(0, "SMTP", "Could not create new node object");
-	    goto error;
+	    goto end;
 	    }
 	ASSERTMAGIC(node, MGK_STNODE);
 
@@ -1304,7 +1305,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	    if (UNLIKELY(currentAttr == NULL))
 		{
 		mssError(1, "SMTP", "Default root attribute %d is NULL.", i);
-		goto error;
+		goto end;
 		}
 	    ASSERTMAGIC(currentAttr, MGK_SMTP_ATTRIBUTE);
 
@@ -1313,14 +1314,14 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	    if (UNLIKELY(currentParam == NULL))
 		{
 		mssError(0, "SMTP", "Could not add attribute value %s", currentAttr->Name);
-		goto error;
+		goto end;
 		}
 
 	    /** Set the attribute to its default value. **/
 	    if (UNLIKELY(stSetAttrValue(currentParam, currentAttr->Type, &currentAttr->Value, 0) != 0))
 		{
 		mssError(1, "SMTP", "Could not set attribute value %s", currentAttr->Name);
-		goto error;
+		goto end;
 		}
 	    }
 
@@ -1328,14 +1329,20 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	if (UNLIKELY(snWriteNode(obj, node) < 0))
 	    {
 	    mssError(0, "SMTP", "Could not write the root node structure file.");
-	    goto error;
+	    goto end;
 	    }
 
-	return node;
+	/** Success. **/
+	rval = node;
 
-    error:
-	mssError(0, "SMTP", "Failed to create root node.");
-	return NULL;
+    end:
+	if (UNLIKELY(rval == NULL))
+	    {
+	    mssError(0, "SMTP", "Failed to create root node.");
+	    if (node != NULL) snDelete(node);
+	    }
+
+	return rval;
     }
 
 
