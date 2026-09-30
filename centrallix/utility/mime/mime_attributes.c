@@ -171,7 +171,10 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 		}
 	    else
 		{
-		fprintf(stderr, "Warning: Skipping parameter \"%s\" of MIME header \"%s\" that could not be stored.\n", paramName, name);
+		fprintf(stderr,
+		    "Warning: Skipping parameter \"%s\" of MIME header \"%s\" that could not be stored.\n",
+		    paramName, name
+		);
 		mssClearError();
 		}
 	    }
@@ -482,7 +485,10 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    /** Add the Mime parameter to the parameter hash. **/
 	    if (libmime_xhAdd(&attr->Params, paramName, (char*)param) == -1)
 		{
-		mssError(1, "MIME", "Parameter \"%s\" of \"%s\" already exists.", paramName, attrName);
+		mssError(1, "MIME",
+		    "Parameter \"%s\" of \"%s\" already exists.",
+		    paramName, attrName
+		);
 		nmSysFree(param->Name);
 		nmFree(param, sizeof(MimeParam));
 		return NULL;

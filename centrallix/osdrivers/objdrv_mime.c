@@ -223,7 +223,9 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** Exclusive create is satisfied with a pre-filled root node. **/
 	if (obj->Pathname->nElements != obj->SubPtr)
 	    {
-	    mssError(1, "MIME", "Mime object exists but create and exclusive flags are set. Cannot create mime object.");
+	    mssError(1, "MIME",
+		"Mime object exists but create and exclusive flags are set. Cannot create mime object."
+	    );
 	    goto error;
 	    }
 	}
@@ -671,7 +673,10 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    /** Return the data stored in the attribute. **/
 	    if (objCopyData(&(attr->Ptod->Data), val, datatype) != 0)
 		{
-		mssError(1, "MIME", "Failed to copy attribute '%s' of type %s.", attrname, objTypeToStr(datatype));
+		mssError(1, "MIME",
+		    "Failed to copy attribute '%s' of type %s.",
+		    attrname, objTypeToStr(datatype)
+		);
 		goto end;
 		}
 	    rval = 0;
@@ -690,7 +695,10 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Return the data stored in the parameter. **/
 	if (objCopyData(&(param->Ptod->Data), val, datatype) != 0)
 	    {
-	    mssError(1, "MIME", "Failed to copy attribute '%s' of type %s.", attrname, objTypeToStr(datatype));
+	    mssError(1, "MIME",
+		"Failed to copy attribute '%s' of type %s.",
+		attrname, objTypeToStr(datatype)
+	    );
 	    goto end;
 	    }
 	rval = 0;
@@ -740,7 +748,10 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 		    inf->ParamAttrName = (char*)nmSysMalloc(len);
 		    if (!inf->ParamAttrName)
 			{
-			mssError(1, "MIME", "Could not allocate the name of parameter \"%s\" of \"%s\".", param->Name, attrName);
+			mssError(1, "MIME",
+			    "Could not allocate the name of parameter \"%s\" of \"%s\".",
+			    param->Name, attrName
+			);
 			return NULL;
 			}
 		    snprintf(inf->ParamAttrName, len, "%s.%s", attrName, param->Name);

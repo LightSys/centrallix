@@ -135,13 +135,19 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
 		/** Parse the attribute and store it in the Mime header. **/
 		if (libmime_ParseAttr(msg, hdrnme, hdrbdy, attrSeekStart, attrSeekEnd, nameOffset))
 		    {
-		    fprintf(stderr, "Warning: Skipping MIME header that could not be parsed: \"%s\"\n", xsbuf.String);
+		    fprintf(stderr,
+			"Warning: Skipping MIME header that could not be parsed: \"%s\"\n",
+			xsbuf.String
+		    );
 		    mssClearError();
 		    }
 		}
 	    else
 		{
-		fprintf(stderr, "Warning: Skipping MIME header line with no colon: \"%s\"\n", xsbuf.String);
+		fprintf(stderr,
+		    "Warning: Skipping MIME header line with no colon: \"%s\"\n",
+		    xsbuf.String
+		);
 		}
 	    nmSysFree(hdrbdy);
 
