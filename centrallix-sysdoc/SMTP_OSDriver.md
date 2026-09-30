@@ -72,7 +72,7 @@ Email objects are created as children of the root SMTP node and, when created, w
 
 Further modification of the email object should be accomplished through the MIME driver.
 
-- ⚠️ **Warning**: Before an email can be sent, the `envelope_from` attribute must be set.  Otherwise, the sent email will be registered as from the user running Centrallix.  As this is normally blocked by most email servers, this will cause the email to fail to send.
+> ⚠️ **Warning**: Before an email can be sent, the `envelope_from` attribute must be set.  Otherwise, the sent email will be registered as from the user running Centrallix.  As this is normally blocked by most email servers, this will cause the email to fail to send.
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
@@ -87,13 +87,13 @@ The SMTP driver does not implement the entire OS driver interface.  Its function
 ### A. Initialization
 The SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
 
-- ⚠️ **Warning**: The driver expects to only be openned once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
+> ⚠️ **Warning**: The driver expects to only be openned once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
 
 
 ### B. Opening and Closing Objects
 As far as it has been tested, the SMTP driver conforms to the standards required by the Object System for opening and closing.
 
-- 📖 **Note**:   The `OBJ_O_TRUNC` flag has not been implementedor tested.
+> 📖 **Note**:   The `OBJ_O_TRUNC` flag has not been implementedor tested.
 
 Internally, the SMTP driver opens objects as follows:
 
