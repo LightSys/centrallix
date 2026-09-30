@@ -4600,18 +4600,19 @@ int exp_fn_path_params(pExpression tree, pParamObjects objlist, pExpression i0, 
 	    xsConcatQPrintf(dest, "%STR&URL", ptr);
 	    }
 
+	/** Free the previous result. **/
+	if (tree->Alloc && tree->String)
+	    nmSysFree(tree->String);
+	tree->Alloc = 0;
+
 	/** Move our xstring data into the result **/
 	if (strlen(dest->String) < sizeof(tree->Types.StringBuf))
 	    {
-	    tree->Alloc = 0;
 	    tree->String = tree->Types.StringBuf;
 	    strtcpy(tree->Types.StringBuf, dest->String, sizeof(tree->Types.StringBuf));
 	    }
 	else
 	    {
-	    if (tree->Alloc && tree->String)
-		nmSysFree(tree->String);
-	    tree->Alloc = 0;
 	    tree->String = nmSysStrdup(dest->String);
 	    if (!tree->String)
 		goto error;
