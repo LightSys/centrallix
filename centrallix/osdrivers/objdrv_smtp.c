@@ -1408,7 +1408,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 		    mssError(1, "SMTP", "Failed to generate a random email name.");
 		    goto end;
 		    }
-		if (UNLIKELY(xsQPrintf(autoName, "%STR&HEX&8LEN-%STR&HEX&8LEN.eml", email_id, email_id+4) < 0))
+		if (UNLIKELY(xsQPrintf(autoName, "%4STR&HEX-%4STR&HEX.eml", email_id, email_id+4) < 0))
 		    {
 		    mssError(1, "SMTP", "Failed to format a random email name.");
 		    goto end;
