@@ -50,7 +50,9 @@
 #include "centrallix.h"
 #include "cxlib/expect.h"
 #include "cxlib/magic.h"
+#include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
+#include "cxss/cxss.h"
 #include "obj.h"
 #include "st_node.h"
 
