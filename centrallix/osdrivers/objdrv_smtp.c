@@ -972,6 +972,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     pSmtpAttribute attr = NULL;
     pXString new_headers = NULL;
     pXString content = NULL;
+    pFile emailFile = NULL;
     DateTime now;
     pDateTime date = NULL;
     struct tm date_tm;
@@ -1068,6 +1069,12 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    }
 
 	/** Read the email. **/
+	emailFile = fdOpen(inf->EmailPath.String, O_RDWR, inf->Mask);
+	if (UNLIKELY(emailFile == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not open email file (%s).", inf->EmailPath.String);
+	    goto end;
+	    }
 	content = xsNew();
 	if (UNLIKELY(content == NULL))
 	    {
@@ -1075,7 +1082,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    goto end;
 	    }
 	ASSERTMAGIC(content, MGK_XSTRING);
-	while ((cnt = fdRead(inf->ContentFile, buf, sizeof(buf), content->Length, FD_U_SEEK)) > 0)
+	while ((cnt = fdRead(emailFile, buf, sizeof(buf), content->Length, FD_U_SEEK)) > 0)
 	    {
 	    if (UNLIKELY(xsConcatenate(content, buf, cnt) < 0))
 		{
@@ -1156,7 +1163,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    mssError(1, "SMTP", "Failed to add %d bytes of email content after the headers.", content->Length);
 	    goto end;
 	    }
-	cnt = fdWrite(inf->ContentFile, new_headers->String, new_headers->Length, 0, FD_U_SEEK | FD_U_TRUNCATE | FD_U_PACKET);
+	cnt = fdWrite(emailFile, new_headers->String, new_headers->Length, 0, FD_U_SEEK | FD_U_TRUNCATE | FD_U_PACKET);
 	if (UNLIKELY(cnt != new_headers->Length))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to write %d bytes to email file (wrote %d).", new_headers->Length, cnt);
@@ -1172,6 +1179,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 
 	if (LIKELY(new_headers != NULL)) xsFree(new_headers);
 	if (LIKELY(content != NULL)) xsFree(content);
+	if (LIKELY(emailFile != NULL)) fdClose(emailFile, 0);
 
 	return rval;
     }
@@ -1346,6 +1354,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
     pDateTime attrDate = NULL;
 
     pFile checkFile = NULL;
+    pFile emailFile = NULL;
     pFile emailStructFile = NULL;
     char message_id[80];
     ObjData pod;
@@ -1426,12 +1435,9 @@ smtp_internal_CreateEmail(pSmtpData inf)
 		}
 	    }
 
-	/** Initialize the file descriptor for the content. **/
-	inf->ContentFile = NULL;
-
 	/** Create the email file. **/
-	inf->ContentFile = fdOpen(inf->EmailPath.String, inf->Obj->Mode & ~(O_TRUNC), inf->Mask);
-	if (UNLIKELY(inf->ContentFile == NULL))
+	emailFile = fdOpen(inf->EmailPath.String, O_WRONLY | O_CREAT | O_EXCL, inf->Mask);
+	if (UNLIKELY(emailFile == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to create a new email file (%s).", inf->EmailPath.String);
 	    goto end;
@@ -1591,7 +1597,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	// TODO: Add current date to the header... once we implement date support in the MIME driver
 
 	/** Add an empty line for header separation to the file. **/
-	if (UNLIKELY(fdWrite(inf->ContentFile, "\n", 1, 0, 0) < 0))
+	if (UNLIKELY(fdWrite(emailFile, "\n", 1, 0, 0) < 0))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to write default header separator to new message.");
 	    goto end;
@@ -1605,14 +1611,10 @@ smtp_internal_CreateEmail(pSmtpData inf)
 
     end:
 	if (UNLIKELY(rval != 0))
-	    {
 	    mssError(0, "SMTP", "Failed to create email (%s).", inf->EmailPath.String);
 
-	    if (inf->ContentFile != NULL) fdClose(inf->ContentFile, 0);
-	    inf->ContentFile = NULL;
-	    }
-
 	if (LIKELY(autoName != NULL)) xsFree(autoName);
+	if (LIKELY(emailFile != NULL)) fdClose(emailFile, 0);
 	if (LIKELY(emailStructFile != NULL)) fdClose(emailStructFile, 0);
 	if (UNLIKELY(attrDate != NULL)) nmFree(attrDate, sizeof(DateTime));
 	if (LIKELY(emailStruct != NULL)) stFreeInf(emailStruct);
@@ -1885,7 +1887,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    }
 
 	/** Open the email structure file. **/
-	emailStructureFile = fdOpen(inf->EmailStructPath.String, open_mode, inf->Mask);
+	emailStructureFile = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
 	if (UNLIKELY(emailStructureFile == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP", "Could not open email structure file: \"%s\".", inf->EmailStructPath.String);
