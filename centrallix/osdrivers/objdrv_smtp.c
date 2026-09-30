@@ -97,6 +97,7 @@ typedef struct
     /** Root node specific attributes. **/
 
     /** Email node specific attributes. **/
+    pXHashTable		RootAttributes; /* Hash of root attribute name to SmtpAttribute. */
     pFile		ContentFile;
     XString		EmailPath;
     XString		EmailStructPath;
@@ -354,6 +355,53 @@ smtp_internal_ClearAttribute(char* inf_c, void* customParams)
 	nmFree(attr, sizeof(SmtpAttribute));
 
     return 0;
+    }
+
+
+/*** smtp_internal_NewAttributes - Allocates an empty attributes hash table.
+ *** Returns the table on success and NULL on failure.
+ ***/
+pXHashTable
+smtp_internal_NewAttributes()
+    {
+    pXHashTable attributes;
+
+	attributes = (pXHashTable)nmMalloc(sizeof(XHashTable));
+	if (UNLIKELY(attributes == NULL))
+	    {
+	    mssError(1, "SMTP", "Could not create attributes hash table.");
+	    return NULL;
+	    }
+	memset(attributes, 0, sizeof(XHashTable));
+	if (UNLIKELY(xhInit(attributes, 17, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize attributes hash table.");
+	    nmFree(attributes, sizeof(XHashTable));
+	    return NULL;
+	    }
+
+    return attributes;
+    }
+
+
+/*** smtp_internal_FreeAttributes - Frees an attributes hash table and the
+ *** attributes in it.
+ *** Returns 0 on success and -1 on failure.
+ ***/
+int
+smtp_internal_FreeAttributes(pXHashTable attributes)
+    {
+    int rval = 0;
+
+	if (UNLIKELY(xhClear(attributes, smtp_internal_ClearAttribute, NULL) != 0
+	    || xhDeInit(attributes) != 0
+	))   {
+	    mssError(1, "SMTP", "Failed to free attributes.");
+	    rval = -1;
+	    }
+	nmFree(attributes, sizeof(XHashTable));
+
+    return rval;
     }
 
 
@@ -743,11 +791,15 @@ smtp_internal_SweepSpool(char* spoolDir)
 
 
 /*** smtp_internal_GetStructAttributes - Loads the attributes from the node into
- *** the SMTP object.
- *** Returns 0 on success and -1 on failure.
+ *** a hash table, and adds their names to a list if one is given.
+ ***
+ *** @param structInf  The struct to read attributes from.
+ *** @param attributes The hash table to add the attributes to.
+ *** @param names      The list to add attribute names to, or NULL.
+ *** @returns 0 on success and -1 on failure.
  ***/
 int
-smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
+smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, pXArray names)
     {
     pSmtpAttribute attr = NULL;
     pStructInf currentAttr = NULL;
@@ -761,12 +813,11 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 	    return -1; /* Skip error handler, which expects a valid structInf. */
 	    }
 	ASSERTMAGIC(structInf, MGK_STRUCTINF);
-	if (UNLIKELY(inf == NULL))
+	if (UNLIKELY(attributes == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to load attributes into NULL smtp object.");
-	    return -1; /* Skip error handler, which expects a valid inf. */
+	    mssError(1, "SMTP", "Failed to load attributes into NULL hash table.");
+	    return -1; /* Skip error handler, which expects a valid hash table. */
 	    }
-	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	for (i = 0; i < structInf->nSubInf; i++)
 	    {
@@ -865,15 +916,15 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pSmtpData inf)
 		}
 
 	    /** Store the attribute. **/
-	    if (UNLIKELY(xhAdd(inf->Attributes, attr->Name, (char*)attr) != 0))
+	    if (UNLIKELY(xhAdd(attributes, attr->Name, (char*)attr) != 0))
 		{
 		mssError(1, "SMTP", "Failed to add attribute (it may be a duplicate).");
 		goto error;
 		}
-	    if (UNLIKELY(xaAddItem(inf->AttributeNames, attr->Name) < 0))
+	    if (UNLIKELY(names != NULL && xaAddItem(names, attr->Name) < 0))
 		{
 		mssError(1, "SMTP", "Failed to add attribute name to list.");
-		xhRemove(inf->Attributes, attr->Name);
+		xhRemove(attributes, attr->Name);
 		goto error;
 		}
 	    }
@@ -1039,7 +1090,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    }
 
 	/** Check whether the content starts with headers. **/
-	attr = SMTP_ATTR(xhLookup(inf->Attributes, "content_has_headers"));
+	attr = SMTP_ATTR(xhLookup(inf->RootAttributes, "content_has_headers"));
 	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	has_headers = 1;
 	if (attr != NULL)
@@ -1153,7 +1204,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Get the expire time. **/
-	expireTimeAttr = SMTP_ATTR(xhLookup(inf->Attributes, "expire_time"));
+	expireTimeAttr = SMTP_ATTR(xhLookup(inf->RootAttributes, "expire_time"));
 	ASSERTMAGIC(expireTimeAttr, MGK_SMTP_ATTRIBUTE);
 	if (expireTimeAttr != NULL)
 	    {
@@ -1441,7 +1492,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 
 	/** Add dynamic attributes which have object specific defaults. **/
 	/** Calculate the message id (name without suffix). **/
-	hostName = SMTP_ATTR(xhLookup(inf->Attributes, "local_host_name"));
+	hostName = SMTP_ATTR(xhLookup(inf->RootAttributes, "local_host_name"));
 	ASSERTMAGIC(hostName, MGK_SMTP_ATTRIBUTE);
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
 	    fprintf(stderr, "Warning: gethostname() failed (%s); using \"%s\".\n", strerror(errno), local_host_name);
@@ -1657,28 +1708,11 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	    goto error;
 	    }
 
-	pXHashTable attributes = (pXHashTable)nmMalloc(sizeof(XHashTable));
-	if (UNLIKELY(attributes == NULL))
-	    {
-	    mssError(1,"SMTP","Could not create attributes hash table.");
+	inf->Attributes = smtp_internal_NewAttributes();
+	if (UNLIKELY(inf->Attributes == NULL))
 	    goto error;
-	    }
-	memset(attributes, 0, sizeof(XHashTable));
-	if (UNLIKELY(xhInit(attributes, 17, 0) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to initialize attributes hash table.");
-	    nmFree(attributes, sizeof(XHashTable));
-	    goto error;
-	    }
-	inf->Attributes = attributes;
 
 	inf->CurAttr = 0;
-
-	if (UNLIKELY(smtp_internal_GetStructAttributes(inf->Node->Data, inf) != 0))
-	    {
-	    mssError(0, "SMTP", "Could not load root attributes.");
-	    goto error;
-	    }
 
 	return 0;
 
@@ -1708,6 +1742,13 @@ smtp_internal_OpenRoot(pSmtpData inf, char* usrtype)
 
 	/** Set the node type. **/
 	inf->Type = SMTP_T_ROOT;
+
+	/** Load the root attributes. **/
+	if (UNLIKELY(smtp_internal_GetStructAttributes(inf->Node->Data, inf->Attributes, inf->AttributeNames) != 0))
+	    {
+	    mssError(0, "SMTP", "Failed to load root attributes.");
+	    goto error;
+	    }
 
 	return 0;
 
@@ -1749,8 +1790,18 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	/** Set the node type. **/
 	inf->Type = SMTP_T_EML;
 
+	/** Load the root attributes. **/
+	inf->RootAttributes = smtp_internal_NewAttributes();
+	if (UNLIKELY(inf->RootAttributes == NULL))
+	    goto end;
+	if (UNLIKELY(smtp_internal_GetStructAttributes(inf->Node->Data, inf->RootAttributes, NULL) != 0))
+	    {
+	    mssError(0, "SMTP", "Failed to load root attributes.");
+	    goto end;
+	    }
+
 	/** Calculate the real path of the email file. **/
-	pSmtpAttribute spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	pSmtpAttribute spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
 	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
 	if (UNLIKELY(spoolDir == NULL))
 	    {
@@ -1850,7 +1901,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    }
 
 	/** Get the structure's attributes **/
-	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf) != 0))
+	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf->Attributes, inf->AttributeNames) != 0))
 	    {
 	    mssError(0, "SMTP", "Could not load email attributes.");
 	    goto end;
@@ -1970,12 +2021,14 @@ smtp_internal_Close(pSmtpData inf)
 
 	if (inf->Attributes)
 	    {
-	    if (UNLIKELY(xhClear(inf->Attributes, smtp_internal_ClearAttribute, NULL) != 0
-		|| xhDeInit(inf->Attributes) != 0
-	    ))   {
-		mssError(1, "SMTP", "Failed to free attributes.");
+	    if (UNLIKELY(smtp_internal_FreeAttributes(inf->Attributes) != 0))
 		rval = -1;
-		}
+	    }
+
+	if (inf->RootAttributes)
+	    {
+	    if (UNLIKELY(smtp_internal_FreeAttributes(inf->RootAttributes) != 0))
+		rval = -1;
 	    }
 
 	if (inf->ContentFile)
