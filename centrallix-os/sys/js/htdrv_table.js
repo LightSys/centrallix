@@ -1015,6 +1015,11 @@ function tbld_clear_rows(fromobj, why)
 	this.initselect = this.initselect_orig;
     }
 
+function tbld_refresh(aparam)
+    {
+    this.RedrawAll(null, true);
+    }
+
 function tbld_select()
     {
     var txt;
@@ -1078,6 +1083,17 @@ function tbld_update_detail(dw)
 	    // already a part of another row?
 	    if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
 		{
+		if (dw.parentElement && dw.parentElement.detail)
+		    {
+		    for (var j=0; j<dw.parentElement.detail.length; j++)
+			{
+			if (dw.parentElement.detail[j] == dw)
+			    {
+			    dw.parentElement.detail.splice(j, 1);
+			    break;
+			    }
+			}
+		    }
 		pg_reveal_event(dw, dw, 'Obscure');
 		dw.is_visible = 0;
 		dw.ifcProbe(ifEvent).Activate('Close', {});
@@ -2385,6 +2401,7 @@ function tbld_init(param)
     var ia = t.ifcProbeAdd(ifAction);
     ia.Add("Clear", tbld_clear_rows);
     ia.Add("ShowSelection", tbld_show_selection);
+    ia.Add("Refresh", tbld_refresh);
 
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;
