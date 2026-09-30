@@ -165,16 +165,14 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | header_user_agent            | The `User-Agent` header (default `Centrallix/<version>`).
 | header_mime_version          | The `MIME-Version` header.
 | tag                          | An arbitrary label (not necessarily unique) used to find this email in later queries.
-| status                       | The status of the email: Draft until `is_ready` is set to 1, then Sent or Error.
+| status                       | The status of the email: Draft until `is_ready` is set to 1, then Sent or Error.  Read-only.
 | is_ready                     | Either 0 (default) to indicate that the email is not ready to be sent or set to 1 to indicate that the email is ready for the SMTP driver to send.  When this attribute is set to 1, the SMTP driver immediately spawns a sendmail process to send the email.  Setting the attribute to 1 again will cause another process to be sent.  The current implementation is, as such, naive.
-| *first_try_date*\*           | The date/time of the first attempt to send this email.
-| *try_until_date*\*           | The latest that the driver will attempt to send this email.
-| *try_count*\*                | The number of times that the system has attempted to transmit the message.
-| expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after sending.  01 Jan 1900 means never, and drafts never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.
-| *last_try_date*\*            | The date/time of the most recent attempt to send this email.
-| *last_try_status*\*          | The status of the last attempt to send this email (None, TempFail, Fail).
-| *last_try_msg*\*             | The message from the last attempt to send; this could be the message the remote SMTP server provided in response to the attempt to send this email.
-\**Not implemented.*
+| first_try_date               | The date/time of the first attempt to send this email (01 Jan 1900 until then).  Read-only.
+| try_count                    | The number of attempts to send this email.  Read-only.
+| expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after sending.  01 Jan 1900 means never, and drafts never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.  Read-only.
+| last_try_date                | The date/time of the most recent attempt to send this email (01 Jan 1900 until then).  Read-only.
+| last_try_status              | The result of the most recent attempt to send this email: None (not tried, or sent) or Fail.  Read-only.
+| last_try_msg                 | The error message from the most recent attempt to send this email, or empty if it did not fail.  Read-only.
 
 When the email is sent, `message_id` and each non-empty `header_*` attribute are written as headers, replacing any header of the same name in the content.
 

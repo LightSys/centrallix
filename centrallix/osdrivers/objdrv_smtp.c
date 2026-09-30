@@ -142,8 +142,8 @@ struct
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
-int smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
-int smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
+int smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
+int smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
 
 
 /*** smtp_internal_SpawnSendmail - launch the sendmail process to actually
@@ -547,8 +547,7 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_mime_version",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "status",		DATA_T_STRING,	0,	"Draft") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "is_ready",		DATA_T_INTEGER,	0,	0) < 0)) goto error;
-	/** Not strictly necessary. **/
-	/** xaAddItem(&SMTP_INF.DefaultEmailAttributes, smtp_internal_CreateAttribute("try_count",	DATA_T_INTEGER,	5,	0)); **/
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "try_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_status",	DATA_T_STRING,	0,	"None") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_msg",		DATA_T_STRING,	0,	"") < 0)) goto error;
 
@@ -567,6 +566,34 @@ smtp_internal_IsEmail(char* filename)
     {
     int l = strlen(filename);
     return l >= 4 && (strcmp(filename + l - 4, ".msg") == 0 || strcmp(filename + l - 4, ".eml") == 0);
+    }
+
+
+/*** smtp_internal_IsReadOnly - Checks whether an email attribute is set
+ *** only by the driver.
+ *** @param attrname The attribute name.
+ *** @returns true if the attribute is read-only, false otherwise.
+ ***/
+bool
+smtp_internal_IsReadOnly(char* attrname)
+    {
+    static char* readOnly[] =
+	{
+	"status",
+	"expire_date",
+	"try_count",
+	"first_try_date",
+	"last_try_date",
+	"last_try_status",
+	"last_try_msg",
+	};
+    const int n_readOnly = sizeof(readOnly) / sizeof(readOnly[0]);
+    int i;
+
+	for (i = 0; i < n_readOnly; i++)
+	    if (strcmp(attrname, readOnly[i]) == 0) return true;
+
+    return false;
     }
 
 
@@ -855,6 +882,7 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, 
 
 	    if (currentAttr->Value->DataType == DATA_T_STRING && (
 		strcmp(attr->Name, "expire_date") == 0
+		|| strcmp(attr->Name, "first_try_date") == 0
 		|| strcmp(attr->Name, "last_try_date") == 0
 		|| strcmp(attr->Name, "header_date") == 0
 	    ))  {
@@ -1186,7 +1214,8 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 
 
 /*** smtp_internal_SendEmail - fire off the email message, then set its
- *** status and its expire_date (expire_time seconds from now).
+ *** status, its expire_date (expire_time seconds from now), and the
+ *** try_count, *_try_date, and last_try_* attributes of this try.
  *** A negative expire_time keeps the email indefinitely.
  *** @returns 0 if the email was sent, or -1 if it was not.
  ***/
@@ -1196,8 +1225,13 @@ smtp_internal_SendEmail(pSmtpData inf)
     pSmtpAttribute envFrom = NULL;
     pSmtpAttribute envTo = NULL;
     pSmtpAttribute expireTimeAttr = NULL;
+    pSmtpAttribute tryCountAttr = NULL;
+    pSmtpAttribute firstTryAttr = NULL;
     int expireTime = SMTP_DEFAULT_EXPIRE_TIME;
     DateTime expireDate;
+    DateTime tryDate;
+    pXString tryMsg = NULL;
+    char* tryMsgStr = "";
     ObjData pod;
     char* status = "Error";
     bool recordFailed = false;
@@ -1244,10 +1278,61 @@ smtp_internal_SendEmail(pSmtpData inf)
 	rval = 0;
 
     end:
+	/** Get the errors of a failed try, before recording adds more. **/
+	if (UNLIKELY(rval != 0))
+	    {
+	    tryMsg = xsNew();
+	    if (UNLIKELY(tryMsg == NULL || mssUserError(tryMsg) != 0))
+		{
+		mssError(0, "SMTP", "Failed to get the error message of the failed try.");
+		recordFailed = true;
+		}
+	    else
+		{
+		tryMsgStr = tryMsg->String;
+		}
+	    }
+
 	/** Record the status. **/
 	pod.String = status;
-	if (UNLIKELY(smtpSetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
 	    recordFailed = true;
+
+	/** Record the try result. **/
+	pod.String = (rval == 0) ? "None" : "Fail";
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_status", DATA_T_STRING, &pod, NULL) != 0))
+	    recordFailed = true;
+	pod.String = tryMsgStr;
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_msg", DATA_T_STRING, &pod, NULL) != 0))
+	    recordFailed = true;
+
+	/** Count the try. **/
+	tryCountAttr = SMTP_ATTR(xhLookup(inf->Attributes, "try_count"));
+	ASSERTMAGIC(tryCountAttr, MGK_SMTP_ATTRIBUTE);
+	pod.Integer = (tryCountAttr != NULL && tryCountAttr->Type == DATA_T_INTEGER) ? tryCountAttr->Value.Integer + 1 : 1;
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "try_count", DATA_T_INTEGER, &pod, NULL) != 0))
+	    recordFailed = true;
+
+	/** Record the try dates, keeping the first one. **/
+	if (UNLIKELY(objCurrentDate(&tryDate) != 0))
+	    {
+	    mssError(0, "SMTP", "Failed to get the current date for the try dates.");
+	    recordFailed = true;
+	    }
+	else
+	    {
+	    pod.DateTime = &tryDate;
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_date", DATA_T_DATETIME, &pod, NULL) != 0))
+		recordFailed = true;
+	    firstTryAttr = SMTP_ATTR(xhLookup(inf->Attributes, "first_try_date"));
+	    ASSERTMAGIC(firstTryAttr, MGK_SMTP_ATTRIBUTE);
+	    if (firstTryAttr == NULL || firstTryAttr->Type != DATA_T_DATETIME
+		|| firstTryAttr->Value.DateTime == NULL || firstTryAttr->Value.DateTime->Value == 0)
+		{
+		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "first_try_date", DATA_T_DATETIME, &pod, NULL) != 0))
+		    recordFailed = true;
+		}
+	    }
 
 	/** Record the expire date. **/
 	if (expireTime >= 0)
@@ -1260,7 +1345,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    else
 		{
 		pod.DateTime = &expireDate;
-		if (UNLIKELY(smtpSetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
+		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
 		    recordFailed = true;
 		}
 	    }
@@ -1268,9 +1353,21 @@ smtp_internal_SendEmail(pSmtpData inf)
 	/** Resolve recording errors, since the email was sent. **/
 	if (UNLIKELY(recordFailed && rval == 0))
 	    {
-	    fprintf(stderr, "Warning: Sent email \"%s\" but could not record the result, so it will not expire.\n", inf->Name);
+	    pXString failMsg = xsNew();
+	    char* failMsgStr;
+	    if (UNLIKELY(tryMsg == NULL || mssStringError(failMsg) != 0))
+		failMsgStr = "- Failed to get error message.";
+	    else
+		failMsgStr = failMsg->String;
+	    fprintf(stderr,
+		"Warning: Sent email \"%s\" but could not record all of the results:\n%s\n",
+		inf->Name, failMsgStr
+	    );
+	    xsFree(failMsg);
 	    mssClearError();
 	    }
+
+	if (tryMsg != NULL) xsFree(tryMsg);
 
 	return rval;
     }
@@ -1555,6 +1652,32 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_DATETIME, POD(&attrDate), 0) != 0))
 	    {
 	    mssError(1, "SMTP", "Unable to write to the default attribute (expire_date).");
+	    goto end;
+	    }
+	nmFree(attrDate, sizeof(DateTime));
+	attrDate = NULL;
+
+	/** Allocate an empty first_try_date, which is set on the first try. **/
+	attrDate = (pDateTime)nmMalloc(sizeof(DateTime));
+	if (UNLIKELY(attrDate == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate a date structure for the default attribute (first_try_date).");
+	    goto end;
+	    }
+	memset(attrDate, 0, sizeof(DateTime));
+
+	/** Create the first_try_date attribute. **/
+	createdStruct = stAddAttr(emailStruct, "first_try_date");
+	if (UNLIKELY(createdStruct == NULL))
+	    {
+	    mssError(1, "SMTP", "Unable to add new attribute (first_try_date) to the email struct.");
+	    goto end;
+	    }
+
+	/** Set the default first_try_date value. **/
+	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_DATETIME, POD(&attrDate), 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Unable to write to the default attribute (first_try_date).");
 	    goto end;
 	    }
 	nmFree(attrDate, sizeof(DateTime));
@@ -2724,11 +2847,11 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** smtpSetAttrValue - sets the value of an attribute.  'val' must
- *** point to an appropriate data type.
+/*** smtp_internal_SetAttrValue - sets the value of an attribute, including
+ *** read-only ones.  'val' must point to an appropriate data type.
  ***/
 int
-smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
+smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
     pSmtpAttribute attr = NULL;
@@ -2768,7 +2891,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	if (!attr)
 	    {
 	    /** Add the attribute if it is not found. **/
-	    if (UNLIKELY(smtpAddAttr(inf, attrname, datatype, val, oxt) != 0))
+	    if (UNLIKELY(smtp_internal_AddAttr(inf, attrname, datatype, val, oxt) != 0))
 		{
 		mssError(0, "SMTP", "Unable to create the requested attribute object.");
 		goto end;
@@ -2952,12 +3075,31 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     }
 
 
-/*** smtpAddAttr - add an attribute to an object.  This doesn't always work
- *** for all object types, and certainly makes no sense for some (like unix
- *** files).
+/*** smtpSetAttrValue - sets the value of an attribute.  'val' must
+ *** point to an appropriate data type.
  ***/
 int
-smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
+    {
+    pSmtpData inf = SMTP(inf_v);
+
+	/** Refuse writes to read-only attributes. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && smtp_internal_IsReadOnly(attrname)))
+	    {
+	    mssError(1, "SMTP", "Failed to set attribute '%s' of \"%s\": it is read-only.", attrname, inf->Name);
+	    return -1;
+	    }
+
+    return smtp_internal_SetAttrValue(inf_v, attrname, datatype, val, oxt);
+    }
+
+
+/*** smtp_internal_AddAttr - add an attribute to an object, including
+ *** read-only ones.
+ ***/
+int
+smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
     pSmtpAttribute attr = NULL;
@@ -3162,6 +3304,27 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	if (emlStruct != NULL) stFreeInf(emlStruct);
 
 	return rval;
+    }
+
+
+/*** smtpAddAttr - add an attribute to an object.  This doesn't always work
+ *** for all object types, and certainly makes no sense for some (like unix
+ *** files).
+ ***/
+int
+smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
+    {
+    pSmtpData inf = SMTP(inf_v);
+
+	/** Refuse to add read-only attributes. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && smtp_internal_IsReadOnly(attrname)))
+	    {
+	    mssError(1, "SMTP", "Failed to add attribute '%s' to \"%s\": it is read-only.", attrname, inf->Name);
+	    return -1;
+	    }
+
+    return smtp_internal_AddAttr(inf_v, attrname, type, val, oxt);
     }
 
 
