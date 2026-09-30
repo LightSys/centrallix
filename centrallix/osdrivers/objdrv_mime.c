@@ -479,8 +479,8 @@ mime_internal_FindAttr(pMimeInfo inf, char* name, char** param_name)
 		*dot = '\0';
 	    attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, name);
 
-	    /** libmime's internal Transfer-Encoding is not a header. **/
-	    if (attr && strcmp(attr->Name, "Transfer-Encoding"))
+	    /** Content-Transfer-Encoding is stored as an integer, so callers handle it separately. **/
+	    if (attr && strcmp(attr->Name, "Content-Transfer-Encoding"))
 		{
 		if (dot)
 		    *param_name = dot + 1;
@@ -627,7 +627,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Handle special attributes. **/
 	if (!strcasecmp(attrname, "Content-Transfer-Encoding"))
 	    {
-	    libmime_GetIntAttr(inf->Header, "Transfer-Encoding", NULL, &int_attr);
+	    libmime_GetIntAttr(inf->Header, "Content-Transfer-Encoding", NULL, &int_attr);
 	    val->String = EncodingStrings[int_attr];
 	    rval = 0;
 	    goto end;
@@ -730,7 +730,7 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	    if (inf->CurrAttr)
 		{
 		attr = (pMimeAttr)inf->CurrAttr->Data;
-		attrName = (strcmp(attr->Name, "Transfer-Encoding")) ? attr->Name : "Content-Transfer-Encoding";
+		attrName = attr->Name;
 		while (attr->Params.nRows && (inf->CurrParam = xhGetNextElement(&attr->Params, inf->CurrParam)))
 		    {
 		    param = (pMimeParam)inf->CurrParam->Data;
@@ -766,7 +766,7 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	    if (!strcasecmp(attr->Name, "Name") || !strcasecmp(attr->Name, "Content-Type"))
 		continue;
 
-	    return (strcmp(attr->Name, "Transfer-Encoding")) ? attr->Name : "Content-Transfer-Encoding";
+	    return attr->Name;
 	    }
     }
 

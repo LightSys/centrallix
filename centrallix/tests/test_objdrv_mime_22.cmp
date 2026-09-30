@@ -7,10 +7,10 @@ Attributes:
                   name: "MimePartTypes.eml" [Hints: ]
             annotation: "" [Hints: ]
      last_modification: NULL [Hints: ]
+  Content-Transfer-Enc: "7bit" [Hints: ]
                Subject: "Parts of different types" [Hints: ]
   Content-Type.boundar: "b1" [Hints: ]
                   From: "tester@example.com" [Hints: ]
-  Content-Transfer-Enc: "7bit" [Hints: ]
 
 Methods:
   (no methods)

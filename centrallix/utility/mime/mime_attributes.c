@@ -49,7 +49,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
     int hasParams;
 
 	/** Keep only the first of a repeated header. **/
-	attr = libmime_GetMimeAttr(this, strcasecmp(name, "Content-Transfer-Encoding") ? name : "Transfer-Encoding");
+	attr = libmime_GetMimeAttr(this, name);
 	if (attr && attr->AttrSeekEnd)
 	    return 0;
 
@@ -84,7 +84,6 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	else if (!strcasecmp(name, "Content-Transfer-Encoding"))
 	    {
 	    libmime_SetTransferEncoding(this, data);
-	    name = "Transfer-Encoding";
 	    }
 	/** Check for integer attributes. **/
 	else if (!strcasecmp(name, "Content-Length"))

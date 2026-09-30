@@ -74,7 +74,7 @@ test(char** tname)
 		plain[p][i] = (unsigned char)(p ? (255 - i % 251) : (i % 251));
 	    hdr[p] = libmime_AllocateHeader();
 	    assert(hdr[p] != NULL); /* header allocated */
-	    assert(libmime_CreateIntAttr(hdr[p], "Transfer-Encoding", NULL, MIME_ENC_BASE64) == 0); /* encoding set */
+	    assert(libmime_CreateIntAttr(hdr[p], "Content-Transfer-Encoding", NULL, MIME_ENC_BASE64) == 0); /* encoding set */
 	    hdr[p]->MsgSeekStart = file.Len;
 	    file_add_base64(&file, plain[p], PART_LEN);
 	    hdr[p]->MsgSeekEnd = file.Len;

@@ -90,7 +90,7 @@ test(char** tname)
 	    }
 	hdr = libmime_AllocateHeader();
 	assert(hdr != NULL); /* header allocated */
-	assert(libmime_CreateIntAttr(hdr, "Transfer-Encoding", NULL, MIME_ENC_BASE64) == 0); /* encoding set */
+	assert(libmime_CreateIntAttr(hdr, "Content-Transfer-Encoding", NULL, MIME_ENC_BASE64) == 0); /* encoding set */
 	hdr->MsgSeekStart = 0;
 	hdr->MsgSeekEnd = file.Len;
 	memset(&mdat, 0, sizeof(MimeData));

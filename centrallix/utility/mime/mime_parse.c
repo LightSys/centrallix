@@ -82,7 +82,7 @@ libmime_ParseHeader(pLxSession lex, pMimeHeader msg, long start, long end)
     libmime_CreateStringAttr(msg, "Content-Type", NULL, "text/plain", 0);
     libmime_CreateIntAttr(msg, "Content-Type", "ContentMainType", MIME_TYPE_TEXT);
     libmime_CreateStringAttr(msg, "Content-Type", "ContentSubType", "plain", 0);
-    libmime_CreateIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_7BIT);
+    libmime_CreateIntAttr(msg, "Content-Transfer-Encoding", NULL, MIME_ENC_7BIT);
     msg->MsgSeekStart = 0;
     msg->MsgSeekEnd = 0;
 
@@ -254,17 +254,17 @@ int
 libmime_SetTransferEncoding(pMimeHeader msg, char *buf)
     {
 	if (!strlen(buf) || !strcasecmp(buf, "7bit"))
-	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_7BIT);
+	    libmime_SetIntAttr(msg, "Content-Transfer-Encoding", NULL, MIME_ENC_7BIT);
 	else if (!strcasecmp(buf, "8bit"))
-	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_8BIT);
+	    libmime_SetIntAttr(msg, "Content-Transfer-Encoding", NULL, MIME_ENC_8BIT);
 	else if (!strcasecmp(buf, "base64"))
-	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_BASE64);
+	    libmime_SetIntAttr(msg, "Content-Transfer-Encoding", NULL, MIME_ENC_BASE64);
 	else if (!strcasecmp(buf, "quoted-printable"))
-	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_QP);
+	    libmime_SetIntAttr(msg, "Content-Transfer-Encoding", NULL, MIME_ENC_QP);
 	else if (!strcasecmp(buf, "binary"))
-	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_BINARY);
+	    libmime_SetIntAttr(msg, "Content-Transfer-Encoding", NULL, MIME_ENC_BINARY);
 	else
-	    libmime_SetIntAttr(msg, "Transfer-Encoding", NULL, MIME_ENC_7BIT);
+	    libmime_SetIntAttr(msg, "Content-Transfer-Encoding", NULL, MIME_ENC_7BIT);
 
     return 0;
     }
@@ -598,7 +598,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
     int tlen, tsize, tremoved;  /* these are used for getting a purified b64 chunk */
     int transfer_encoding;
 
-    libmime_GetIntAttr(msg, "Transfer-Encoding", NULL, &transfer_encoding);
+    libmime_GetIntAttr(msg, "Content-Transfer-Encoding", NULL, &transfer_encoding);
     switch (transfer_encoding)
 	{
 	/** 7BIT AND 8BIT ENCODING **/
