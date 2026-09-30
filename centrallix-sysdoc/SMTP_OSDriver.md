@@ -54,14 +54,14 @@
 
 
 ## I Introduction
-The SMTP OS Driver provides the capability for Centrallix to send emails using the Object System.  An SMTP OS directory structure consists of a root node containing information universal to all sent emails and of multiple child objects, which are emails that can be sent by the driver.
+The SMTP OS Driver provides the capability for the Centrallix Object System to send emails with `sendmail`.  An SMTP object's directory structure consists of a root node containing information universal to all sent emails and of multiple emails as child objects.
 
 
 
 ## II Usage
-In order to use the SMTP driver, the root node must first have appropriate attributes (see [Node Attributes](#node-attributes) below).  `spool_dir` is the most important attribute, as it defines where child email objects are stored.  `expire_time`, `content_has_headers`, and `local_host_name` also affect how emails are created and sent.
+In order to use the SMTP driver, the root node must first have all required [Node Attributes](#node-attributes).  Of these,  `spool_dir` is the most important attribute, and the optional  `expire_time`, `content_has_headers`, and `local_host_name` attributes may also be helpful for defining how emails are created and sent.
 
-Email objects may be created as children of the root SMTP node and, when created, will contain this basic email header:
+Email objects are created as children of the root SMTP node and, when created, will contain this basic email header:
 
 | Header       | Value
 | ------------ | -----
@@ -70,13 +70,13 @@ Email objects may be created as children of the root SMTP node and, when created
 | Subject      | (blank)
 | MIME-Version | `1.0`
 
-Further modification of the email object will be accomplished through the MIME driver.
+Further modification of the email object should be accomplished through the MIME driver.
 
 - ⚠️ **Warning**: Before an email can be sent, the `envelope_from` attribute must be set.  Otherwise, the sent email will be registered as from the user running Centrallix.  As this is normally blocked by most email servers, this will cause the email to fail to send.
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-When an email is ready to send, the `is_ready` attribute should be set to 1.  This will cause the SMTP driver to begin a sendmail process to send the email with the appropriate parameters.
+To send an email, set the `is_ready` attribute to 1.  This will cause the SMTP driver to begin a `sendmail` process to send the email with the appropriate parameters and headers.
 
 
 
@@ -85,17 +85,15 @@ The SMTP driver does not implement the entire OS driver interface.  Its function
 
 
 ### A. Initialization
-Aside from initializing globals, the SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
+The SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
 
-The globals initialized are mainly used for default attributes when constructing new root nodes or email objects.
-
-- ⚠️ **Warning**: Currently, the global values are never deinitialized, so multiple initialization calls may cause a memory leak.  This could be fixed with a magic number check or a simple flag to note that the globals have been initialized.
+- ⚠️ **Warning**: The driver expects to only be openned once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
 
 
 ### B. Opening and Closing Objects
 As far as it has been tested, the SMTP driver conforms to the standards required by the Object System for opening and closing.
 
-- 📖 **Note**: One of the opening flags will not function in the SMTP driver.  The `OBJ_O_TRUNC` flag has not been implemented.
+- 📖 **Note**:   The `OBJ_O_TRUNC` flag has not been implementedor tested.
 
 Internally, the SMTP driver opens objects as follows:
 
@@ -115,11 +113,11 @@ The `Close()` routine simply cleans up the structures used to store the SMTP obj
 
 
 ### C. Creating and Deleting Objects
-Both the root node and an email object for the SMTP driver may be created using `smtpCreate()`.  The root node is handled directly by an internal create function while emails are handled through `smtpOpen()`.
+Both the root node and an email object for the SMTP driver may be created using `smtpCreate()`.  (The root node is handled directly by an internal create function while emails are handled through `smtpOpen()`.)
 
-`OBJ_O_AUTONAME` is supported for email object creation.  The name generated is of the form `xxxxxxxx-xxxxxxxx.eml`, where each x is a hex digit of 8 random bytes.  If a file with that name already exists, the driver generates a new name, giving up after 100 attempts.
+`OBJ_O_AUTONAME` is supported for email object creation.  Generated names use the form `xxxxxxxx-xxxxxxxx.eml`, where each x is a hex digit of 8 random bytes.  If a file with that name already exists, the driver generates a new name (with up to 100 attempts).
 
-Deleting will fail on the root node of the SMTP directory because the root node is also the node object.  Instead, the driver before the SMTP driver should be called upon to delete this object.
+Deleting will fail on the root node of the SMTP directory because the root node is also the node object.  Instead, this driver's parent (usually the file system driver, `objdrv_ux.c`) should be called to delete this object.
 
 
 ### D. Reading and Writing Object Content
@@ -131,7 +129,7 @@ Encoding and decoding of emails is performed by the MIME driver.
 ### E. Querying for Child Objects
 The only query-able SMTP object is the root node.  The email objects may be query-able; however, this functionality will be provided by the MIME driver.
 
-When the root node is queried, it opens the spool directory.  Each subsequent `smtpQueryFetch()` returns the next email object in the spool directory.  This means that if two root nodes share the same spool directory, they will share children emails.  Any changes made to the children of one such root node will change the children of the other root node because the children are actually the same objects.  (Though the OSML may create a second object because of the OSML pathname difference.)
+When the root node is queried, it opens the spool directory.  Each subsequent `smtpQueryFetch()` returns the next email object in the spool directory.  This means that, if two root nodes share the same spool directory, they will also share children (which are emails).  Any changes made to the children of one such root node will change the children of the other root node because the children are the same objects (although the OSML may create a second object because of the OSML pathname difference).
 
 
 ### F. Managing Object Attributes
@@ -142,19 +140,20 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 #### Node Attributes
 | Attribute           | Description
 | ------------------- | -----------
-| send_method         | Not yet implemented.  Specifies how emails are to be sent.  The SMTP driver currently supports only the sendmail utility for sending emails.  As a result, this attribute is useless.
-| server              | Not yet implemented.  The DNS name or IP address of the server to use when sending via direct-to-MTA SMTP.  Not used by sendmail.
-| port                | Not yet implemented.  The TCP port to use on the remote server when sending via direct-to-MTA SMTP.  Not used by sendmail.
+| *send_method*\*     | Specifies how emails are to be sent.  The SMTP driver currently supports only the sendmail utility for sending emails.  As a result, this attribute is useless.
+| *server*\*          | The DNS name or IP address of the server to use when sending via direct-to-MTA SMTP.  Not used by sendmail.
+| *port*\*            | The TCP port to use on the remote server when sending via direct-to-MTA SMTP.  Not used by sendmail.
 | spool_dir           | The file path of the spool directory that will be used for storing messages that have not yet been sent.  This should be a location that supports the storage of arbitrary files.
-| log_dir             | Not yet implemented.  The OSML directory in which to place log messages about the success or failure of transmitting email messages.  This should be a location that supports the log attributes listed below.
-| log_date_attr       | Not yet implemented.  The attribute name in which to place the date that the log message was created.
-| log_msgid_attr      | Not yet implemented.  The attribute name in which to place the Message-ID of the email message being referenced by the log message.
-| log_info_attr       | Not yet implemented.  The attribute name in which to place the content of the log message itself.
-| ratelimit_time      | Not yet implemented.  The minimum number of seconds between each email sent.  This can be a floating-point value and so can be fractional (such as 0.5 to send at most two emails per second).  This defaults to 1 second (60 emails per minute).  Since it is not relevant to sendmail, it is not functional.
-| domlimit_time       | Not yet implemented.  The minimum number of seconds between each email sent to recipients at a given domain name.  This defaults to 5 seconds (20 emails per minute).
+| *log_dir*\*         | The OSML directory in which to place log messages about the success or failure of transmitting email messages.  This should be a location that supports the log attributes listed below.
+| *log_date_attr*\*   | The attribute name in which to place the date that the log message was created.
+| *log_msgid_attr*\*  | The attribute name in which to place the Message-ID of the email message being referenced by the log message.
+| *log_info_attr*\*   | The attribute name in which to place the content of the log message itself.
+| *ratelimit_time*\*  | The minimum number of seconds between each email sent.  This can be a floating-point value and so can be fractional (such as 0.5 to send at most two emails per second).  This defaults to 1 second (60 emails per minute).  Since it is not relevant to sendmail, it is not functional.
+| *domlimit_time*\*   | The minimum number of seconds between each email sent to recipients at a given domain name.  This defaults to 5 seconds (20 emails per minute).
 | expire_time         | The number of seconds to keep a sent or failed email (default 3 days).  Negative values keep it forever.
 | content_has_headers | Whether the content written to an email begins with its own headers (default 1).  When 0, the driver adds a blank line after the headers it writes when sending, so the whole content is treated as the body.
 | local_host_name     | The host name used in generated Message-IDs (default: this machine's host name).
+\**Not implemented.*
 
 #### Email Attributes
 | Attribute           | Description
@@ -166,14 +165,15 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | tag                 | An arbitrary label (not necessarily unique) used to find this email in later queries.
 | status              | The status of the email: Draft until `is_ready` is set to 1, then Sent or Error.
 | is_ready            | Either 0 (default) to indicate that the email is not ready to be sent or set to 1 to indicate that the email is ready for the SMTP driver to send.  When this attribute is set to 1, the SMTP driver immediately spawns a sendmail process to send the email.  Setting the attribute to 1 again will cause another process to be sent.  The current implementation is, as such, naive.
-| first_try_date      | Not yet implemented.  The date/time of the first attempt to send this email.
-| try_until_date      | Not yet implemented.  The latest that the driver will attempt to send this email.
-| try_count           | Not yet implemented.  The number of times that the system has attempted to transmit the message.
+| *first_try_date*\*  | The date/time of the first attempt to send this email.
+| *try_until_date*\*  | The latest that the driver will attempt to send this email.
+| *try_count*\*       | The number of times that the system has attempted to transmit the message.
 | expire_date         | When a sent or failed email expires, set to `expire_time` seconds after sending.  01 Jan 1900 means never, and drafts never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.
-| last_try_date       | Not yet implemented.  The date/time of the most recent attempt to send this email.
-| last_try_status     | Not yet implemented.  The status of the last attempt to send this email (None, TempFail, Fail).
-| last_try_msg        | Not yet implemented.  The message from the last attempt to send; this could be the message the remote SMTP server provided in response to the attempt to send this email.
+| *last_try_date*\*   | The date/time of the most recent attempt to send this email.
+| *last_try_status*\* | The status of the last attempt to send this email (None, TempFail, Fail).
+| *last_try_msg*\*    | The message from the last attempt to send; this could be the message the remote SMTP server provided in response to the attempt to send this email.
+\**Not implemented.*
 
 
 ### G. Managing Object Methods
-The SMTP driver does not support adding methods.
+The SMTP driver does not support getting, calling, or adding methods.
