@@ -1362,6 +1362,8 @@ smtp_internal_CreateEmail(pSmtpData inf)
     unsigned char email_id[8];
     char local_host_name[128] = "localhost.localdomain";
 
+    bool emailCreated = false;
+    bool structCreated = false;
     int prefix_len;
     int rval = -1;
 
@@ -1442,6 +1444,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    mssErrorErrno(1, "SMTP", "Failed to create a new email file (%s).", inf->EmailPath.String);
 	    goto end;
 	    }
+	emailCreated = true;
 
 	/** Construct the email struct file path. **/
 	if (UNLIKELY(xsCopy(&inf->EmailStructPath, inf->EmailPath.String, -1) != 0))
@@ -1583,6 +1586,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    mssErrorErrno(1, "SMTP", "Unable to create the email struct file (%s).", inf->EmailStructPath.String);
 	    goto end;
 	    }
+	structCreated = true;
 
 	/** Write the struct file. **/
 	if (UNLIKELY(stGenerateMsg(emailStructFile, emailStruct, 0) != 0))
@@ -1618,6 +1622,21 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (LIKELY(emailStructFile != NULL)) fdClose(emailStructFile, 0);
 	if (UNLIKELY(attrDate != NULL)) nmFree(attrDate, sizeof(DateTime));
 	if (LIKELY(emailStruct != NULL)) stFreeInf(emailStruct);
+
+	/** Remove the files this call created if it failed. **/
+	if (UNLIKELY(rval != 0))
+	    {
+	    if (emailCreated && remove(inf->EmailPath.String) != 0)
+		fprintf(stderr,
+		    "Warning: Failed to remove partial email file (%s): %s.\n",
+		    inf->EmailPath.String, strerror(errno)
+		);
+	    if (structCreated && remove(inf->EmailStructPath.String) != 0)
+		fprintf(stderr,
+		    "Warning: Failed to remove partial email struct file (%s): %s.\n",
+		    inf->EmailStructPath.String, strerror(errno)
+		);
+	    }
 
 	return rval;
     }
