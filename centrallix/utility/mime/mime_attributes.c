@@ -841,6 +841,7 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	newVec[i] = nmSysStrdup(data);
 	if (!newVec[i])
 	    {
+	    nmFree(newVec, newVecSize);
 	    return -1;
 	    }
 
@@ -903,6 +904,8 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	    newVec[i+j] = nmSysStrdup((char*)xaGetItem(dataList, j));
 	    if (!newVec[i+j])
 		{
+		while (j-- > 0) nmSysFree(newVec[i+j]);
+		nmFree(newVec, newVecSize);
 		return -1;
 		}
 	    }
