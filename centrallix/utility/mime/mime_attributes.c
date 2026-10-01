@@ -800,7 +800,7 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
     {
     pTObjData ptod = NULL;
     pStringVec stringVec;
-    char** tempVec = NULL;
+    char** newVec = NULL;
     int i;
 
 	/** Get the old attribute/parameter ptod. **/
@@ -822,29 +822,31 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	stringVec = ptod->Data.StringVec;
 
 	/** Allocate a new string array. **/
-	tempVec = (char**)nmMalloc(sizeof(char*)*(stringVec->nStrings+1));
-	if (!tempVec)
+	const size_t oldVecSize = stringVec->nStrings * sizeof(char*);
+	const size_t newVecSize = oldVecSize + (1 * sizeof(char*));
+	newVec = (char**)nmMalloc(newVecSize);
+	if (!newVec)
 	    {
 	    return -1;
 	    }
-	memset(tempVec, 0, sizeof(char*)*(stringVec->nStrings+1));
+	memset(newVec, 0, newVecSize);
 
 	/** Copy the previous contents to the new vector. **/
 	for (i = 0; i < stringVec->nStrings; i++)
 	    {
-	    tempVec[i] = stringVec->Strings[i];
+	    newVec[i] = stringVec->Strings[i];
 	    }
 
 	/** Append the new data to the string vector. **/
-	tempVec[i] = nmSysStrdup(data);
-	if (!tempVec[i])
+	newVec[i] = nmSysStrdup(data);
+	if (!newVec[i])
 	    {
 	    return -1;
 	    }
 
 	/** Replace the old vector. **/
-	nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
-	stringVec->Strings = tempVec;
+	nmFree(stringVec->Strings, oldVecSize);
+	stringVec->Strings = newVec;
 	stringVec->nStrings++;
 
     return 0;
@@ -858,7 +860,7 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
     {
     pTObjData ptod = NULL;
     pStringVec stringVec;
-    char** tempVec;
+    char** newVec;
     int i, j;
 
 	/** Get the old attribute/parameter ptod. **/
@@ -880,32 +882,34 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	stringVec = ptod->Data.StringVec;
 
 	/** Allocate a new string vector. **/
-	tempVec = (char**)nmMalloc(sizeof(char*)*(stringVec->nStrings + dataList->nItems));
-	if (!tempVec)
+	const size_t oldVecSize = stringVec->nStrings * sizeof(char*);
+	const size_t newVecSize = oldVecSize + (dataList->nItems * sizeof(char*));
+	newVec = (char**)nmMalloc(newVecSize);
+	if (!newVec)
 	    {
 	    return -1;
 	    }
-	memset(tempVec, 0, sizeof(char*)*(stringVec->nStrings + dataList->nItems));
+	memset(newVec, 0, newVecSize);
 
 	/** Copy the old string vector to the new one. **/
 	for(i = 0; i < stringVec->nStrings; i++)
 	    {
-	    tempVec[i] = stringVec->Strings[i];
+	    newVec[i] = stringVec->Strings[i];
 	    }
 
 	/** Append the contents of the XArray data list. **/
 	for(j = 0; j < dataList->nItems; j++)
 	    {
-	    tempVec[i+j] = nmSysStrdup((char*)xaGetItem(dataList, j));
-	    if (!tempVec[i+j])
+	    newVec[i+j] = nmSysStrdup((char*)xaGetItem(dataList, j));
+	    if (!newVec[i+j])
 		{
 		return -1;
 		}
 	    }
 
 	/** Replace the old string vector with the new one. **/
-	nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
-	stringVec->Strings = tempVec;
+	nmFree(stringVec->Strings, oldVecSize);
+	stringVec->Strings = newVec;
 	stringVec->nStrings += dataList->nItems;
 
     return 0;
