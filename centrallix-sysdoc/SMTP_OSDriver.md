@@ -67,7 +67,9 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  This will cause the SMTP driver to begin a `sendmail` process to send the email with the appropriate parameters and headers.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time a Pending email is opened, the driver checks the results Postfix logged in `/var/log/maillog` and sets `status` to Sent or Error once Postfix finishes.  An email that is still Pending 6 days after `last_try_date` becomes Error.
+
+Sent means the next mail server accepted the email for every recipient.  If Postfix uses a relay host, that server is the relay, so failures after the relay are not tracked.
 
 
 
@@ -77,6 +79,8 @@ The SMTP driver does not implement the entire OS driver interface.  Its function
 
 ### A. Initialization
 The SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
+
+The driver also opens `/var/log/maillog` as root and reads the results of emails already handed to Postfix, so Centrallix must run as root.
 
 > ⚠️ **Warning**: The driver expects to only be openned once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
 
@@ -99,6 +103,7 @@ Internally, the SMTP driver opens objects as follows:
         1.  Attempt to open the email file.
         2.  Create the email object (a struct and a MIME file) with default attributes.
         3.  Open the email struct file and fill out the attribute array.
+        4.  If the email is Pending, update its send status.
 
 The `Close()` routine simply cleans up the structures used to store the SMTP object's attributes after opening as per normal ObjectSystem close.
 
@@ -165,11 +170,11 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | header_user_agent            | The `User-Agent` header (default `Centrallix/<version>`).
 | header_mime_version          | The `MIME-Version` header.
 | tag                          | An arbitrary label (not necessarily unique) used to find this email in later queries.
-| status                       | The status of the email: Draft until `is_ready` is set to 1, then Sent or Error.  Read-only.
-| is_ready                     | Either 0 (default) to indicate that the email is not ready to be sent or set to 1 to indicate that the email is ready for the SMTP driver to send.  When this attribute is set to 1, the SMTP driver immediately spawns a sendmail process to send the email.  Setting the attribute to 1 again will cause another process to be sent.  The current implementation is, as such, naive.
+| status                       | The status of the email: Draft until `is_ready` is set to 1, Pending until Postfix finishes, then Sent or Error.  Read-only.
+| is_ready                     | Set to 1 to send the email (default 0).  Setting it to 1 again after the email is Sent or Error sends it again.  Fails while the email is Pending.
 | first_try_date               | The date/time of the first attempt to send this email (01 Jan 1900 until then).  Read-only.
 | try_count                    | The number of attempts to send this email.  Read-only.
-| expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after sending.  01 Jan 1900 means never, and drafts never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.  Read-only.
+| expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after it becomes Sent or Error.  01 Jan 1900 means never, and Draft and Pending emails never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.  Read-only.
 | last_try_date                | The date/time of the most recent attempt to send this email (01 Jan 1900 until then).  Read-only.
 | last_try_status              | The result of the most recent attempt to send this email: None (not tried, or no failures), TempFail (a temporary failure, which Postfix retries while the email is Pending), or Fail.  Read-only.
 | last_try_msg                 | The failure details of the most recent attempt to send this email, such as sendmail's output or the remote server's reply for each recipient that was not sent the email.  Empty if there are no failures.  Read-only.
