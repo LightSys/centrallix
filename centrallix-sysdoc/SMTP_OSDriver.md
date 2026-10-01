@@ -50,6 +50,7 @@
     - [E. Querying for Child Objects](#e-querying-for-child-objects)
     - [F. Managing Object Attributes](#f-managing-object-attributes)
     - [G. Managing Object Methods](#g-managing-object-methods)
+  - [IV Limitations](#iv-limitations)
 
 
 
@@ -67,9 +68,9 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time a Pending email is opened, the driver checks the results Postfix logged in `/var/log/maillog` and sets `status` to Sent or Error once Postfix finishes.  An email that is still Pending 6 days after `last_try_date` becomes Error.  Keep Postfix's `maximal_queue_lifetime` (5 days by default) under 6 days, or an email Postfix is still retrying becomes Error.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time a Pending email is opened, the driver checks the results Postfix logged in `/var/log/maillog` and sets `status` to Sent or Error once Postfix finishes.  An email that is still Pending 6 days after `last_try_date` becomes Error.
 
-Sent means the next mail server accepted the email for every recipient.  If Postfix uses a relay host, that server is the relay, so failures after the relay are not tracked.
+Sent means the next mail server accepted the email for every recipient.
 
 
 
@@ -192,3 +193,19 @@ When the email is sent, `message_id` and each non-empty `header_*` attribute are
 
 ### G. Managing Object Methods
 The SMTP driver does not support getting, calling, or adding methods.
+
+
+
+## IV Limitations
+- The driver keeps the results it reads from the mail log for 7 days, and after a restart it only rereads the current log.  A Pending email that is not opened or queried before its results are dropped becomes Error with an unknown send status, even if it was sent, so check Pending emails regularly.
+- Keep Postfix's `maximal_queue_lifetime` (5 days by default) under 6 days, or an email Postfix is still retrying becomes Error with an unknown send status.
+- If Postfix uses a relay host, Sent means the relay accepted the email, so failures after the relay are not tracked.
+- A deferred email cannot be resent or cancelled until Postfix gives up on it (`maximal_queue_lifetime`), because setting `is_ready` fails while the email is Pending.
+- The driver only supports Postfix: it runs `/usr/sbin/sendmail` and reads Postfix's log format.
+- Centrallix must run as root to read the mail log (see [Initialization](#a-initialization)).
+- `spool_dir` must be an absolute path, because Centrallix runs from `/`.
+- When an email is opened by its path (instead of by querying the SMTP node), the MIME driver handles it and passes the SMTP attributes through to this driver.  They can be read and set by name, but they do not appear in attribute listings such as `select *`.
+- Rarely, a status is wrong:
+    - Results added to the Postfix logs while they are rotated can be missed, so the email becomes Error with an unknown send status.
+    - If sendmail queues the email but is killed by the 60 second timeout, the email becomes Error even though Postfix may send it, and sending it again sends a duplicate.
+- Sending an email again reuses its Message-ID, and some mail services (such as Gmail) drop a message whose Message-ID they have already received.
