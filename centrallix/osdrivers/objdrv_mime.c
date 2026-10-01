@@ -98,6 +98,10 @@ typedef struct
 
 #define MIME(x) ((pMimeInfo)(x))
 
+/** Forward declarations for functions that need them. **/
+int mimeClose(void* inf_v, pObjTrxTree* oxt);
+int libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags);
+
 /* ***********************************************************************
 ** API FUNCTIONS                                                        **
 ** **********************************************************************/
