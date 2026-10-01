@@ -2320,6 +2320,7 @@ smtp_internal_UpdateStatus(pSmtpData inf)
     DateTime now;
     ObjData pod;
     char* sep = " ";
+    bool timedOut = false;
     int result;
     int printed;
     int code;
@@ -2373,7 +2374,7 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 		goto end;
 	    }
 
-	/** Check the recipient results. **/
+	/** Count the recipient results. **/
 	if (msg != NULL)
 	    {
 	    for (i = 0; i < msg->Rcpts.nItems; i++)
@@ -2386,38 +2387,9 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 		}
 	    nTotal = (msg->RcptCount > msg->Rcpts.nItems) ? msg->RcptCount : msg->Rcpts.nItems;
 
-	    /** Describe the recipients that were not sent the email. **/
-	    if (nBounced > 0 || nDeferred > 0)
-		{
-		if (UNLIKELY(xsPrintf(&tryMsg, "Sent to %d of %d recipients.", nSent, nTotal) < 0))
-		    {
-		    mssError(1, "SMTP", "Failed to describe the recipients of Message-ID <%s>.", msg->MessageID);
-		    goto end;
-		    }
-		for (i = 0; i < msg->Rcpts.nItems; i++)
-		    {
-		    rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
-		    if (rcpt->Status == SMTP_RCPT_SENT)
-			continue;
-		    if (UNLIKELY(xsConcatPrintf(&tryMsg, "%s%s: %s", sep, rcpt->Address, rcpt->Reply) < 0))
-			{
-			mssError(1, "SMTP", "Failed to describe recipient <%s>.", rcpt->Address);
-			goto end;
-			}
-		    sep = "; ";
-		    }
-		}
-
 	    /** Postfix is done when every recipient is sent or bounced, or it gives up. **/
 	    if (msg->Expired || (msg->RcptCount > 0 && nSent + nBounced >= msg->RcptCount))
-		{
 		status = (nBounced == 0 && nDeferred == 0 && !msg->Expired) ? "Sent" : "Error";
-		tryStatus = (strcmp(status, "Sent") == 0) ? "None" : "Fail";
-		}
-	    else if (nDeferred > 0)
-		{
-		tryStatus = "TempFail";
-		}
 	    }
 
 	/** Give up on an email with no result in time. **/
@@ -2435,7 +2407,7 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 	    if (now.Value >= cutoff.Value)
 		{
 		status = "Error";
-		tryStatus = "Fail";
+		timedOut = true;
 		if (UNLIKELY(xsPrintf(&tryMsg,
 		    "Send status unknown %d days after the last try.",
 		    SMTP_PENDING_TIMEOUT / (24 * 60 * 60)
@@ -2445,6 +2417,48 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 		    goto end;
 		    }
 		}
+	    }
+
+	/** Describe the latest result of each recipient not sent the email. **/
+	if (msg != NULL && (nBounced > 0 || nDeferred > 0))
+	    {
+	    if (UNLIKELY(xsConcatPrintf(&tryMsg,
+		"%sSent to %d of %d recipients.",
+		(timedOut) ? " " : "", nSent, nTotal
+	    ) < 0))
+		{
+		mssError(1, "SMTP", "Failed to describe the recipients of Message-ID <%s>.", msg->MessageID);
+		goto end;
+		}
+	    for (i = 0; i < msg->Rcpts.nItems; i++)
+		{
+		rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
+		if (rcpt->Status == SMTP_RCPT_SENT)
+		    continue;
+		if (UNLIKELY(xsConcatPrintf(&tryMsg, "%s%s: %s: %s",
+		    sep, rcpt->Address,
+		    (rcpt->Status == SMTP_RCPT_BOUNCED) ? "bounced" : (msg->Expired ? "expired" : "deferred"),
+		    rcpt->Reply
+		) < 0))
+		    {
+		    mssError(1, "SMTP", "Failed to describe recipient <%s>.", rcpt->Address);
+		    goto end;
+		    }
+		sep = "; ";
+		}
+	    }
+
+	/** Fail once a recipient fails for good, even while Pending. **/
+	if (msg != NULL || timedOut)
+	    {
+	    if (status != NULL && strcmp(status, "Sent") == 0)
+		tryStatus = "None";
+	    else if (status != NULL || nBounced > 0)
+		tryStatus = "Fail";
+	    else if (nDeferred > 0)
+		tryStatus = "TempFail";
+	    else
+		tryStatus = "None";
 	    }
 
 	/** Record the try result, if it changed. **/

@@ -1,4 +1,4 @@
 Attribute [name]:   string   "Bounced.eml" 
 Attribute [status]:   string   "Error" 
 Attribute [last_try_status]:   string   "Fail" 
-Attribute [last_try_msg]:   string   "Sent to 1 of 2 recipients. b@bounce.test: 550 5.1.1 User unknown" 
+Attribute [last_try_msg]:   string   "Sent to 1 of 2 recipients. b@bounce.test: bounced: 550 5.1.1 User unknown" 

@@ -183,8 +183,8 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | try_count                    | The number of attempts to send this email.  Read-only.
 | expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after it becomes Sent or Error.  01 Jan 1900 means never, and Draft and Pending emails never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.  Read-only.
 | last_try_date                | The date/time of the most recent attempt to send this email (01 Jan 1900 until then).  Read-only.
-| last_try_status              | The result of the most recent attempt to send this email: None (not tried, or no failures), TempFail (a temporary failure, which Postfix retries while the email is Pending), or Fail.  Read-only.
-| last_try_msg                 | The failure details of the most recent attempt to send this email, such as sendmail's output or the remote server's reply for each recipient that was not sent the email.  Empty if there are no failures.  Read-only.
+| last_try_status              | The result of the most recent attempt to send this email: None (not tried, or no failures), TempFail (a temporary failure, which Postfix retries while the email is Pending), or Fail (a permanent failure, set as soon as any recipient fails, even while the email is Pending).  Read-only.
+| last_try_msg                 | The failure details of the most recent attempt to send this email: sendmail's output, or how many recipients were sent the email followed by the latest result (bounced, deferred, or expired) and server reply of each recipient that was not, such as `Sent to 1 of 2 recipients. b@example.com: bounced: 550 5.1.1 User unknown`.  Updated as Postfix reports results.  Empty if there are no failures.  Read-only.
 
 When the email is sent, `message_id` and each non-empty `header_*` attribute are written as headers, replacing any header of the same name in the content.
 
