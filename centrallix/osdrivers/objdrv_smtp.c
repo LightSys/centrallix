@@ -80,6 +80,9 @@
 /** Bytes in the status line at the start of a sendmail result file. **/
 #define SMTP_RESULT_HEADER_LEN	16
 
+/** Bytes of sendmail output kept in last_try_msg. **/
+#define SMTP_TRY_MSG_MAX	1024
+
 /** The log where Postfix records the results of sending emails. **/
 #define SMTP_LOG_PATH	"/var/log/maillog"
 
@@ -1281,6 +1284,25 @@ smtp_internal_InitGlobals()
     }
 
 
+/*** smtp_internal_GetString - get the value of a string attribute.
+ ***
+ *** @param attributes The attributes to search.
+ *** @param name The attribute name.
+ *** @returns The value, or NULL if the attribute is missing or not a string.
+ ***/
+char*
+smtp_internal_GetString(pXHashTable attributes, char* name)
+    {
+    pSmtpAttribute attr = SMTP_ATTR(xhLookup(attributes, name));
+
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
+	if (attr == NULL || attr->Type != DATA_T_STRING)
+	    return NULL;
+
+    return attr->Value.String;
+    }
+
+
 /*** smtp_internal_IsEmail - Returns 1 if the filename is an email.
  ***/
 bool
@@ -2029,6 +2051,7 @@ smtp_internal_SendEmail(pSmtpData inf)
     pSmtpAttribute envTo = NULL;
     pSmtpAttribute tryCountAttr = NULL;
     pSmtpAttribute firstTryAttr = NULL;
+    char* messageId = NULL;
     DateTime noExpireDate;
     DateTime tryDate;
     pXString tryMsg = NULL;
@@ -2049,6 +2072,11 @@ smtp_internal_SendEmail(pSmtpData inf)
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
 	    goto end;
+
+	/** Drop the mail log results from earlier tries. **/
+	messageId = smtp_internal_GetString(inf->Attributes, "message_id");
+	if (messageId != NULL)
+	    xhRemove(&SMTP_INF.LogByMessageID, messageId);
 
 	/** Get the to and from. **/
 	envFrom = SMTP_ATTR(xhLookup(inf->Attributes, "envelope_from"));
@@ -2138,6 +2166,285 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    mssWarnError("Handed email \"%s\" to sendmail but failed to record all of the results.", inf->Name);
 
 	if (tryMsg != NULL) xsFree(tryMsg);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_ReadResult - read the result file that the sendmail
+ *** supervisor writes once sendmail finishes.
+ ***
+ *** @param resultPath The path of the result file.
+ *** @param header Set to the status line without its padding, such as
+ ***   "exit 0".  Must hold SMTP_RESULT_HEADER_LEN + 1 bytes.
+ *** @param output Set to the start of sendmail's output, on one line.
+ *** @returns 1 if the result was read, 0 if sendmail has not finished, or -1
+ ***   on failure.
+ ***/
+int
+smtp_internal_ReadResult(char* resultPath, char* header, pXString output)
+    {
+    char buf[SMTP_RESULT_HEADER_LEN + SMTP_TRY_MSG_MAX];
+    int fd = -1;
+    int len = 0;
+    int n;
+    int i;
+    int rval = -1;
+
+	/** Open the result file. **/
+	fd = open(resultPath, O_RDONLY);
+	if (fd < 0)
+	    {
+	    if (errno == ENOENT)
+		rval = 0; /* Sendmail has not finished. */
+	    else
+		mssErrorErrno(1, "SMTP", "Failed to open sendmail result file (%s).", resultPath);
+	    goto end;
+	    }
+
+	/** Read the result file. **/
+	while (len < (int)sizeof(buf))
+	    {
+	    n = read(fd, buf + len, sizeof(buf) - len);
+	    if (UNLIKELY(n < 0))
+		{
+		mssErrorErrno(1, "SMTP", "Failed to read sendmail result file (%s).", resultPath);
+		goto end;
+		}
+	    if (n == 0)
+		break;
+	    len += n;
+	    }
+	if (UNLIKELY(len < SMTP_RESULT_HEADER_LEN))
+	    {
+	    mssError(1, "SMTP",
+		"Failed to read sendmail result file (%s): it has only %d bytes.",
+		resultPath, len
+	    );
+	    goto end;
+	    }
+
+	/** Get the status line. **/
+	memcpy(header, buf, SMTP_RESULT_HEADER_LEN);
+	header[SMTP_RESULT_HEADER_LEN] = '\0';
+	for (i = SMTP_RESULT_HEADER_LEN - 1; i >= 0 && (header[i] == ' ' || header[i] == '\n'); i--)
+	    header[i] = '\0';
+
+	/** Get the output on one line. **/
+	for (i = SMTP_RESULT_HEADER_LEN; i < len; i++)
+	    if (buf[i] == '\n' || buf[i] == '\r' || buf[i] == '\t')
+		buf[i] = ' ';
+	while (len > SMTP_RESULT_HEADER_LEN && buf[len - 1] == ' ')
+	    len--;
+	if (UNLIKELY(xsCopy(output, buf + SMTP_RESULT_HEADER_LEN, len - SMTP_RESULT_HEADER_LEN) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to copy the output in sendmail result file (%s).", resultPath);
+	    goto end;
+	    }
+
+	/** Success. **/
+	rval = 1;
+
+    end:
+	if (fd >= 0) close(fd);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_UpdateStatus - update a Pending email from the result of
+ *** handing it to sendmail and the results Postfix logged.  It becomes Sent
+ *** or Error once Postfix finishes, or Error if there is still no result
+ *** SMTP_PENDING_TIMEOUT seconds after last_try_date.
+ ***
+ *** @returns 0 on success (including no change), or -1 on failure.
+ ***/
+int
+smtp_internal_UpdateStatus(pSmtpData inf)
+    {
+    char header[SMTP_RESULT_HEADER_LEN + 1];
+    XString output;
+    XString tryMsg;
+    bool initialized = false;
+    char* status = NULL; /* The final status, or NULL while Pending. */
+    char* tryStatus = NULL; /* The new last_try_status, or NULL to keep it. */
+    char* messageId;
+    char* current;
+    pSmtpLogMsg msg = NULL;
+    pSmtpLogRcpt rcpt;
+    pSmtpAttribute lastTryAttr;
+    DateTime cutoff;
+    DateTime now;
+    ObjData pod;
+    char* sep = " ";
+    int result;
+    int printed;
+    int code;
+    int nSent = 0;
+    int nBounced = 0;
+    int nDeferred = 0;
+    int nTotal;
+    int i;
+    int rval = -1;
+
+	/** Initialize send status strings. **/
+	if (UNLIKELY(xsInit(&output) != 0 || xsInit(&tryMsg) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the send status strings.");
+	    goto end;
+	    }
+	initialized = true;
+
+	/** Check whether the hand-off to sendmail failed. **/
+	result = smtp_internal_ReadResult(inf->ResultPath.String, header, &output);
+	if (UNLIKELY(result < 0))
+	    goto end;
+	if (result == 1 && strcmp(header, "exit 0") != 0)
+	    {
+	    status = "Error";
+	    tryStatus = "Fail";
+	    if (sscanf(header, "exit %d", &code) == 1)
+		{
+		if (code == 75) tryStatus = "TempFail"; /* EX_TEMPFAIL */
+		printed = xsPrintf(&tryMsg, "Sendmail exited with status %d", code);
+		}
+	    else if (sscanf(header, "signal %d", &code) == 1)
+		printed = xsPrintf(&tryMsg, "Sendmail was killed by signal %d", code);
+	    else if (strcmp(header, "timeout") == 0)
+		printed = xsPrintf(&tryMsg, "Sendmail was killed after %d seconds", SMTP_SENDMAIL_TIMEOUT);
+	    else if (strcmp(header, "error") == 0)
+		printed = xsPrintf(&tryMsg, "Failed to run sendmail");
+	    else
+		printed = xsPrintf(&tryMsg, "Unknown sendmail result \"%s\"", header);
+	    if (UNLIKELY(printed < 0
+		|| (output.Length > 0 && xsConcatPrintf(&tryMsg, ": %s", output.String) < 0)
+		|| xsConcatenate(&tryMsg, ".", 1) < 0
+	    ))  {
+		mssError(1, "SMTP", "Failed to describe the sendmail result \"%s\".", header);
+		goto end;
+		}
+	    }
+
+	/** Find what Postfix logged, once sendmail has the email. **/
+	else if (result == 1)
+	    {
+	    messageId = smtp_internal_GetString(inf->Attributes, "message_id");
+	    if (messageId != NULL && UNLIKELY(smtp_internal_LookupLog(messageId, &msg) != 0))
+		goto end;
+	    }
+
+	/** Check the recipient results. **/
+	if (msg != NULL)
+	    {
+	    for (i = 0; i < msg->Rcpts.nItems; i++)
+		{
+		rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
+		ASSERTMAGIC(rcpt, MGK_SMTP_LOG_RCPT);
+		if (rcpt->Status == SMTP_RCPT_SENT) nSent++;
+		else if (rcpt->Status == SMTP_RCPT_BOUNCED) nBounced++;
+		else nDeferred++;
+		}
+	    nTotal = (msg->RcptCount > msg->Rcpts.nItems) ? msg->RcptCount : msg->Rcpts.nItems;
+
+	    /** Describe the recipients that were not sent the email. **/
+	    if (nBounced > 0 || nDeferred > 0)
+		{
+		if (UNLIKELY(xsPrintf(&tryMsg, "Sent to %d of %d recipients.", nSent, nTotal) < 0))
+		    {
+		    mssError(1, "SMTP", "Failed to describe the recipients of Message-ID <%s>.", msg->MessageID);
+		    goto end;
+		    }
+		for (i = 0; i < msg->Rcpts.nItems; i++)
+		    {
+		    rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
+		    if (rcpt->Status == SMTP_RCPT_SENT)
+			continue;
+		    if (UNLIKELY(xsConcatPrintf(&tryMsg, "%s%s: %s", sep, rcpt->Address, rcpt->Reply) < 0))
+			{
+			mssError(1, "SMTP", "Failed to describe recipient <%s>.", rcpt->Address);
+			goto end;
+			}
+		    sep = "; ";
+		    }
+		}
+
+	    /** Postfix is done when every recipient is sent or bounced, or it gives up. **/
+	    if (msg->Expired || (msg->RcptCount > 0 && nSent + nBounced >= msg->RcptCount))
+		{
+		status = (nBounced == 0 && nDeferred == 0 && !msg->Expired) ? "Sent" : "Error";
+		tryStatus = (strcmp(status, "Sent") == 0) ? "None" : "Fail";
+		}
+	    else if (nDeferred > 0)
+		{
+		tryStatus = "TempFail";
+		}
+	    }
+
+	/** Give up on an email with no result in time. **/
+	lastTryAttr = SMTP_ATTR(xhLookup(inf->Attributes, "last_try_date"));
+	ASSERTMAGIC(lastTryAttr, MGK_SMTP_ATTRIBUTE);
+	if (status == NULL && lastTryAttr != NULL && lastTryAttr->Type == DATA_T_DATETIME
+	    && lastTryAttr->Value.DateTime != NULL && lastTryAttr->Value.DateTime->Value != 0)
+	    {
+	    cutoff = *lastTryAttr->Value.DateTime;
+	    if (UNLIKELY(objDateAdd(&cutoff, SMTP_PENDING_TIMEOUT, 0, 0, 0, 0, 0) != 0 || objCurrentDate(&now) != 0))
+		{
+		mssError(0, "SMTP", "Failed to check whether the send status timed out.");
+		goto end;
+		}
+	    if (now.Value >= cutoff.Value)
+		{
+		status = "Error";
+		tryStatus = "Fail";
+		if (UNLIKELY(xsPrintf(&tryMsg,
+		    "Send status unknown %d days after the last try.",
+		    SMTP_PENDING_TIMEOUT / (24 * 60 * 60)
+		) < 0))
+		    {
+		    mssError(1, "SMTP", "Failed to describe the send status timeout.");
+		    goto end;
+		    }
+		}
+	    }
+
+	/** Record the try result, if it changed. **/
+	if (tryStatus != NULL)
+	    {
+	    current = smtp_internal_GetString(inf->Attributes, "last_try_status");
+	    if (current == NULL || strcmp(current, tryStatus) != 0)
+		{
+		pod.String = tryStatus;
+		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_status", DATA_T_STRING, &pod, NULL) != 0))
+		    goto end;
+		}
+	    current = smtp_internal_GetString(inf->Attributes, "last_try_msg");
+	    if (current == NULL || strcmp(current, tryMsg.String) != 0)
+		{
+		pod.String = tryMsg.String;
+		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_msg", DATA_T_STRING, &pod, NULL) != 0))
+		    goto end;
+		}
+	    }
+
+	/** Record the final status last, so a failure leaves the email Pending. **/
+	if (status != NULL)
+	    {
+	    if (UNLIKELY(smtp_internal_SetExpireDate(inf) != 0))
+		goto end;
+	    pod.String = status;
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
+		goto end;
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (LIKELY(initialized))
+	    {
+	    xsDeInit(&output);
+	    xsDeInit(&tryMsg);
+	    }
 
 	return rval;
     }
@@ -2736,6 +3043,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     pFile fd = NULL;
     pFile emailStructureFile = NULL;
     pStructInf emailStructure = NULL;
+    char* status = NULL;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -2899,6 +3207,11 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    mssError(0, "SMTP", "Failed to load email attributes.");
 	    goto end;
 	    }
+
+	/** Update the send status of a Pending email. **/
+	status = smtp_internal_GetString(inf->Attributes, "status");
+	if (status != NULL && strcmp(status, "Pending") == 0 && smtp_internal_UpdateStatus(inf) != 0)
+	    mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
 
 	/** Success. **/
 	rval = 0;
@@ -3735,7 +4048,8 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 
 
 /*** smtp_internal_SetAttrValue - sets the value of an attribute, including
- *** read-only ones.  'val' must point to an appropriate data type.
+ *** read-only attributes and emails opened read-only.  'val' must point to
+ *** an appropriate data type.
  ***/
 int
 smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
@@ -3768,13 +4082,6 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
-
-	/** Refuse writes to a read-only email. **/
-	if (UNLIKELY(inf->Type == SMTP_T_EML && (inf->Obj->Mode & O_ACCMODE) == O_RDONLY))
-	    {
-	    mssError(1, "SMTP", "Email was opened read-only.");
-	    goto end;
-	    }
 
 	/** Get the requested attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -3988,8 +4295,17 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     {
     pSmtpData inf = SMTP(inf_v);
 
-	/** Refuse writes to read-only attributes. **/
+	/** Refuse writes to read-only emails and attributes. **/
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && inf->Obj != NULL
+	    && (inf->Obj->Mode & O_ACCMODE) == O_RDONLY))
+	    {
+	    mssError(1, "SMTP",
+		"Failed to set attribute '%s' of \"%s\": the email was opened read-only.",
+		attrname, inf->Name
+	    );
+	    return -1;
+	    }
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && smtp_internal_IsReadOnly(attrname)))
 	    {
 	    mssError(1, "SMTP",
@@ -4003,10 +4319,8 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") == 0
 	    && datatype == DATA_T_INTEGER && val != NULL && val->Integer == 1))
 	    {
-	    pSmtpAttribute statusAttr = SMTP_ATTR(xhLookup(inf->Attributes, "status"));
-	    ASSERTMAGIC(statusAttr, MGK_SMTP_ATTRIBUTE);
-	    if (statusAttr != NULL && statusAttr->Type == DATA_T_STRING
-		&& statusAttr->Value.String != NULL && strcmp(statusAttr->Value.String, "Pending") == 0)
+	    char* status = smtp_internal_GetString(inf->Attributes, "status");
+	    if (status != NULL && strcmp(status, "Pending") == 0)
 		{
 		mssError(1, "SMTP",
 		    "Failed to send \"%s\": it is already Pending.",
@@ -4021,7 +4335,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 
 /*** smtp_internal_AddAttr - add an attribute to an object, including
- *** read-only ones.
+ *** read-only attributes and emails opened read-only.
  ***/
 int
 smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
@@ -4052,13 +4366,6 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
-
-	/** Refuse writes to a read-only email. **/
-	if (UNLIKELY(inf->Type == SMTP_T_EML && (inf->Obj->Mode & O_ACCMODE) == O_RDONLY))
-	    {
-	    mssError(1, "SMTP", "Email was opened read-only.");
-	    goto end;
-	    }
 
 	/** Initialize the new attribute. **/
 	attr = nmMalloc(sizeof(SmtpAttribute));
@@ -4265,8 +4572,17 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
 
-	/** Refuse to add read-only attributes. **/
+	/** Refuse to add attributes to read-only emails, or read-only attributes. **/
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && inf->Obj != NULL
+	    && (inf->Obj->Mode & O_ACCMODE) == O_RDONLY))
+	    {
+	    mssError(1, "SMTP",
+		"Failed to add attribute '%s' to \"%s\": the email was opened read-only.",
+		attrname, inf->Name
+	    );
+	    return -1;
+	    }
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && smtp_internal_IsReadOnly(attrname)))
 	    {
 	    mssError(1, "SMTP",
