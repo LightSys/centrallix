@@ -1410,31 +1410,43 @@ smtp_internal_IsExpired(char* structPath, pDateTime now)
     }
 
 
-/*** smtp_internal_RemoveResult - delete the sendmail result file of an
- *** email, and any partial one.  Missing files are not an error.
+/*** smtp_internal_RemoveEmail - delete the files of an email: the email,
+ *** its struct, and its sendmail result, including a partial one.  Missing
+ *** files are not an error.
  ***
- *** @param resultPath The path of the result file.
+ *** @param emailPath The path of the email file.
+ *** @param structPath The path of the email struct file.
+ *** @param resultPath The path of the sendmail result file.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_RemoveResult(char* resultPath)
+smtp_internal_RemoveEmail(char* emailPath, char* structPath, char* resultPath)
     {
     char tmpPath[PATH_MAX];
+    int i;
 
-	if (UNLIKELY(remove(resultPath) != 0 && errno != ENOENT))
-	    {
-	    mssErrorErrno(1, "SMTP", "Failed to delete sendmail result file (%s).", resultPath);
-	    return -1;
-	    }
+	/** Build the partial result path. **/
 	if (UNLIKELY(snprintf(tmpPath, sizeof(tmpPath), "%s.tmp", resultPath) >= (int)sizeof(tmpPath)))
 	    {
 	    mssError(1, "SMTP", "Failed to build partial sendmail result path: \"%s.tmp\" is too long.", resultPath);
 	    return -1;
 	    }
-	if (UNLIKELY(remove(tmpPath) != 0 && errno != ENOENT))
+
+	/** Delete the files, email first. **/
+	char* paths[] =
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to delete partial sendmail result file (%s).", tmpPath);
-	    return -1;
+	    emailPath,
+	    structPath,
+	    resultPath,
+	    tmpPath,
+	    };
+	for (i = 0; i < (int)(sizeof(paths) / sizeof(paths[0])); i++)
+	    {
+	    if (UNLIKELY(remove(paths[i]) != 0 && errno != ENOENT))
+		{
+		mssErrorErrno(1, "SMTP", "Failed to delete email file (%s).", paths[i]);
+		return -1;
+		}
 	    }
 
     return 0;
@@ -1564,27 +1576,8 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    if (expired != 1) continue;
 
 	    /** Delete the expired email. **/
-	    if (UNLIKELY(remove(emailPath) != 0))
-		{
-		fprintf(stderr,
-		    "Warning: Failed to delete expired email \"%s\": %s, skipping.\n",
-		    emailPath, strerror(errno)
-		);
-		continue;
-		}
-	    if (UNLIKELY(remove(structPath) != 0))
-		{
-		fprintf(stderr,
-		    "Warning: Failed to delete expired email struct \"%s\": %s, skipping.\n",
-		    structPath, strerror(errno)
-		);
-		continue;
-		}
-	    if (UNLIKELY(smtp_internal_RemoveResult(resultPath) != 0))
-		{
-		mssWarnError("Failed to delete the sendmail result of expired email \"%s\", skipping.", emailPath);
-		continue;
-		}
+	    if (UNLIKELY(smtp_internal_RemoveEmail(emailPath, structPath, resultPath) != 0))
+		mssWarnError("Failed to delete expired email \"%s\", skipping.", emailPath);
 	    }
 
 	/** Success. **/
@@ -3535,28 +3528,12 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 	else if (inf->Type == SMTP_T_EML)
 	    {
-	    /** Delete the email file. **/
-	    if (UNLIKELY(remove(inf->EmailPath.String) != 0))
-		{
-		mssErrorErrno(1, "SMTP",
-		    "Failed to delete the email file (%s).",
-		    inf->EmailPath.String
-		);
-		goto end;
-		}
-
-	    /** Delete the email struct. **/
-	    if (UNLIKELY(remove(inf->EmailStructPath.String) != 0))
-		{
-		mssErrorErrno(1, "SMTP",
-		    "Failed to delete the email struct file (%s).",
-		    inf->EmailStructPath.String
-		);
-		goto end;
-		}
-
-	    /** Delete the sendmail result. **/
-	    if (UNLIKELY(smtp_internal_RemoveResult(inf->ResultPath.String) != 0))
+	    /** Delete the email's files. **/
+	    if (UNLIKELY(smtp_internal_RemoveEmail(
+		inf->EmailPath.String,
+		inf->EmailStructPath.String,
+		inf->ResultPath.String
+	    ) != 0))
 		goto end;
 	    }
 	else
