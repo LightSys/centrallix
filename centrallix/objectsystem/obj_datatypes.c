@@ -128,34 +128,6 @@ char* obj_default_money_fmt = "$0.00";
  ***/
 char* obj_default_null_fmt = "NULL";
 
-
-/*** Encoding Constants 
- ***   Lists out names accepted by the object system for each of the 
- ***   Supported Encodings defined in datatypes.h
- ***/
-
-typedef struct _ENN
-    {
-    int Id;
-    const char** Names;
-    int Size;
-    }
-    EncodingNames, pEncodingNames;
-
-const char* obj_ascii_names[] =	{"ascii"};
-const char* obj_latin_1_names[] = {"latin1", "latin-1", "ISO 8859-1", "ISO-8859-1","EIC 8859-1", "EIC-8859-1", "ISO/IEC 8859-1"};
-const char* obj_utf_8_names[] = {"utf8", "utf-8", "unicode"};
-const char* obj_cp1252_names[] = {"cp1252", "windows-1252", "windows1252"};
-const char* obj_vanco_names[] = {"vanco"};
-
-EncodingNames obj_encoding_names[] = {
-	{.Id = ENCODING_ASCII,		.Names = obj_ascii_names,	.Size = sizeof(obj_ascii_names)/sizeof(char*)},
-	{.Id = ENCODING_LATIN_1,	.Names = obj_latin_1_names,	.Size = sizeof(obj_latin_1_names)/sizeof(char*)},
-	{.Id = ENCODING_UTF_8,		.Names = obj_utf_8_names,	.Size = sizeof(obj_utf_8_names)/sizeof(char*)},
-	{.Id = ENCODING_CP_1252,	.Names = obj_cp1252_names,	.Size = sizeof(obj_cp1252_names)/sizeof(char*)},
-	{.Id = ENCODING_VANCO_UTF8,	.Names = obj_vanco_names,	.Size = sizeof(obj_vanco_names)/sizeof(char*)}
-};
-
 /** Should maybe replace current type parsing in the presentation hints. **/
 /*** Parse the given string into a datatype, ignoring case.
  *** Names returned by objTypeToStr() are also accepted.
