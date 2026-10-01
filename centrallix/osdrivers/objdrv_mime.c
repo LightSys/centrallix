@@ -82,6 +82,7 @@ typedef struct
     char*	ParamAttrName; /* "<header>.<param>" name from GetNextAttr, valid until its next call */
     int		InternalSeek;
     int		InternalType;
+    int		SmtpEmail; /* Opened on an SMTP email, so its attributes pass through */
     }
     MimeInfo, *pMimeInfo;
 
@@ -150,6 +151,10 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     inf->Mask = mask;
     inf->InternalSeek = 0;
     inf->InternalType = MIME_INTERNAL_MESSAGE;
+
+    /** Note whether the message is an SMTP email. **/
+    if (objGetAttrValue(obj->Prev, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "system/smtp-message"))
+	inf->SmtpEmail = 1;
 
     lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
     if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
@@ -489,6 +494,33 @@ mime_internal_FindAttr(pMimeInfo inf, char* name, char** param_name)
     }
 
 
+/*** mime_internal_IsLowerAttr - check whether an attribute belongs to the
+ *** object below the message, for example: the envelope, and the attributes
+ *** of an SMTP email, which the SMTP driver handles.
+ ***
+ *** @returns 1 if it does, or 0 if the attribute belongs to the message.
+ ***/
+int
+mime_internal_IsLowerAttr(pMimeInfo inf, char* attrname)
+    {
+    static char* smtpAttrs[] = { "status", "is_ready", "tag", "message_id", "try_count",
+	"first_try_date", "last_try_date", "last_try_status", "last_try_msg", "expire_date" };
+    int i;
+
+	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
+	    return 1;
+	if (!inf->SmtpEmail)
+	    return 0;
+	if (!strncmp(attrname, "header_", 7))
+	    return 1;
+	for (i = 0; i < (int)(sizeof(smtpAttrs) / sizeof(smtpAttrs[0])); i++)
+	    if (!strcmp(attrname, smtpAttrs[i]))
+		return 1;
+
+    return 0;
+    }
+
+
 /***
  ***  mimeGetAttrType
  ***
@@ -506,7 +538,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     int rval = -1;
 
 	/** For certain attributes, we defer to obj->Prev **/
-	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
+	if (mime_internal_IsLowerAttr(inf, attrname))
 	    {
 	    rval = objGetAttrType(inf->Obj->Prev, attrname);
 	    goto end;
@@ -585,7 +617,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
     int rval = -1;
 
 	/** For certain attributes, we defer to obj->Prev **/
-	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
+	if (mime_internal_IsLowerAttr(inf, attrname))
 	    {
 	    rval = objGetAttrValue(inf->Obj->Prev, attrname, datatype, val);
 	    goto end;
@@ -797,6 +829,12 @@ mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 int
 mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
+    pMimeInfo inf = MIME(inf_v);
+
+	/** Pass writes of the lower object's attributes to it. **/
+	if (mime_internal_IsLowerAttr(inf, attrname))
+	    return objSetAttrValue(inf->Obj->Prev, attrname, datatype, val);
+
     mssError(1, "MIME", "The MIME driver does not support setting attributes.");
     return -1;
     }
