@@ -1594,7 +1594,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    {
 	    pXString failMsg = xsNew();
 	    char* failMsgStr;
-	    if (UNLIKELY(tryMsg == NULL || mssStringError(failMsg) != 0))
+	    if (UNLIKELY(failMsg == NULL || mssStringError(failMsg) != 0))
 		failMsgStr = "- Failed to get error message.";
 	    else
 		failMsgStr = failMsg->String;
@@ -1602,7 +1602,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 		"Warning: Handed email \"%s\" to sendmail but could not record all of the results:\n%s\n",
 		inf->Name, failMsgStr
 	    );
-	    xsFree(failMsg);
+	    if (LIKELY(failMsg != NULL)) xsFree(failMsg);
 	    mssClearError();
 	    }
 
