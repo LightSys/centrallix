@@ -1410,6 +1410,37 @@ smtp_internal_IsExpired(char* structPath, pDateTime now)
     }
 
 
+/*** smtp_internal_RemoveResult - delete the sendmail result file of an
+ *** email, and any partial one.  Missing files are not an error.
+ ***
+ *** @param resultPath The path of the result file.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_RemoveResult(char* resultPath)
+    {
+    char tmpPath[PATH_MAX];
+
+	if (UNLIKELY(remove(resultPath) != 0 && errno != ENOENT))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to delete sendmail result file (%s).", resultPath);
+	    return -1;
+	    }
+	if (UNLIKELY(snprintf(tmpPath, sizeof(tmpPath), "%s.tmp", resultPath) >= (int)sizeof(tmpPath)))
+	    {
+	    mssError(1, "SMTP", "Failed to build partial sendmail result path: \"%s.tmp\" is too long.", resultPath);
+	    return -1;
+	    }
+	if (UNLIKELY(remove(tmpPath) != 0 && errno != ENOENT))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to delete partial sendmail result file (%s).", tmpPath);
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
 /*** smtp_internal_SweepSpool - Deletes expired emails from a spool
  *** directory, at most once per SMTP_SWEEP_INTERVAL.  Callers continue
  *** without the sweep, so it resolves its own errors with a warning.
@@ -1424,6 +1455,7 @@ smtp_internal_SweepSpool(char* spoolDir)
     struct dirent* entry = NULL;
     char emailPath[PATH_MAX];
     char structPath[PATH_MAX];
+    char resultPath[PATH_MAX];
     DateTime now;
     time_t curTime = time(NULL);
     int nameLen;
@@ -1489,7 +1521,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    goto end;
 	    }
 
-	/** Delete each expired email with its struct file. **/
+	/** Delete each expired email with its struct and result files. **/
 	while (1)
 	    {
 	    /** Get the next file. **/
@@ -1513,6 +1545,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    nameLen = strlen(entry->d_name) - 4;
 	    if (UNLIKELY(snprintf(emailPath, sizeof(emailPath), "%s/%s", spoolDir, entry->d_name) >= (int)sizeof(emailPath)
 		|| snprintf(structPath, sizeof(structPath), "%s/%.*s.struct", spoolDir, nameLen, entry->d_name) >= (int)sizeof(structPath)
+		|| snprintf(resultPath, sizeof(resultPath), "%s/%.*s.result", spoolDir, nameLen, entry->d_name) >= (int)sizeof(resultPath)
 	    ))  {
 		fprintf(stderr,
 		    "Warning: Path of email \"%s\" in \"%s\" is too long to sweep, skipping.\n",
@@ -1545,6 +1578,11 @@ smtp_internal_SweepSpool(char* spoolDir)
 		    "Warning: Failed to delete expired email struct \"%s\": %s, skipping.\n",
 		    structPath, strerror(errno)
 		);
+		continue;
+		}
+	    if (UNLIKELY(smtp_internal_RemoveResult(resultPath) != 0))
+		{
+		mssWarnError("Failed to delete the sendmail result of expired email \"%s\", skipping.", emailPath);
 		continue;
 		}
 	    }
@@ -3516,6 +3554,10 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 		);
 		goto end;
 		}
+
+	    /** Delete the sendmail result. **/
+	    if (UNLIKELY(smtp_internal_RemoveResult(inf->ResultPath.String) != 0))
+		goto end;
 	    }
 	else
 	    {
