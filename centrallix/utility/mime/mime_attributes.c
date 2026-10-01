@@ -122,7 +122,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	attr = libmime_GetMimeAttr(this, name);
 	if (!attr)
 	    {
-	    mssError(0, "MIME", "Could not store header \"%s\".", name);
+	    mssError(0, "MIME", "Failed to store header \"%s\".", name);
 	    return -1;
 	    }
 	attr->ValueSeekStart = seekStart;
@@ -195,7 +195,7 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 	emailAddr = (pEmailAddr)nmMalloc(sizeof(EmailAddr));
 	if (!emailAddr)
 	    {
-	    mssError(1, "MIME", "Failed to allocate the email address structure");
+	    mssError(1, "MIME", "Failed to allocate the email address of header \"%s\".", name);
 	    return -1;
 	    }
 
@@ -304,7 +304,7 @@ libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data)
 	pPtod = libmime_CreateAttrParam(this, attr, param);
 	if (!pPtod)
 	    {
-	    mssError(0, "MIME", "Could not create integer attribute.");
+	    mssError(0, "MIME", "Failed to create integer attribute \"%s\".", attr);
 	    return -1;
 	    }
 
@@ -326,7 +326,7 @@ libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, 
 	pPtod = libmime_CreateAttrParam(this, attr, param);
 	if (!pPtod)
 	    {
-	    mssError(0, "MIME", "Could not create string attribute.");
+	    mssError(0, "MIME", "Failed to create string attribute \"%s\".", attr);
 	    return -1;
 	    }
 
@@ -348,7 +348,7 @@ libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param)
 	attrVec = (pStringVec)nmMalloc(sizeof(StringVec));
 	if (!attrVec)
 	    {
-	    mssError(0, "MIME", "Could not create string array attribute.");
+	    mssError(0, "MIME", "Failed to create string array attribute \"%s\".", attr);
 	    return -1;
 	    }
 	memset(attrVec, 0, sizeof(StringVec));
@@ -371,7 +371,7 @@ libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int da
 	pPtod = libmime_CreateAttrParam(this, attr, param);
 	if (!pPtod)
 	    {
-	    mssError(0, "MIME", "Could not create generic attribute.");
+	    mssError(0, "MIME", "Failed to create generic attribute \"%s\".", attr);
 	    return -1;
 	    }
 
@@ -393,7 +393,7 @@ libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param)
 	array = (pXArray)nmMalloc(sizeof(XArray));
 	if (!array)
 	    {
-	    mssError(0, "MIME", "Could not create array attribute.");
+	    mssError(0, "MIME", "Failed to create array attribute \"%s\".", attr);
 	    return -1;
 	    }
 	memset(array, 0, sizeof(XArray));
@@ -421,7 +421,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
 	    if (!attr)
 		{
-		mssError(1, "MIME", "Could not allocate a new attribute");
+		mssError(1, "MIME", "Failed to allocate attribute \"%s\".", attrName);
 		return NULL;
 		}
 	    memset(attr, 0, sizeof(MimeAttr));
@@ -430,7 +430,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    attr->Name = nmSysStrdup(attrName);
 	    if (!attr->Name)
 		{
-		mssError(1, "MIME", "Could not allocate the name of attribute \"%s\".", attrName);
+		mssError(1, "MIME", "Failed to allocate the name of attribute \"%s\".", attrName);
 		nmFree(attr, sizeof(MimeAttr));
 		return NULL;
 		}
@@ -438,7 +438,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    /** Add the Mime attribute to the attributes array. **/
 	    if (libmime_xhAdd(&this->Attrs, attrName, (char*)attr) == -1)
 		{
-		mssError(1, "MIME", "Attribute or parameter already exists.");
+		mssError(1, "MIME", "Attribute \"%s\" already exists.", attrName);
 		nmSysFree(attr->Name);
 		nmFree(attr, sizeof(MimeAttr));
 		return NULL;
@@ -454,7 +454,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    attr = (pMimeAttr)libmime_xhLookup(&this->Attrs, attrName);
 	    if (!attr)
 		{
-		mssError(1, "MIME", "Could not find the given attribute (%s)", attrName);
+		mssError(1, "MIME", "Failed to find attribute \"%s\".", attrName);
 		return NULL;
 		}
 
@@ -462,7 +462,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    param = (pMimeParam)nmMalloc(sizeof(MimeParam));
 	    if (!param)
 		{
-		mssError(1, "MIME", "Could not allocate a new parameter");
+		mssError(1, "MIME", "Failed to allocate parameter \"%s\" of \"%s\".", paramName, attrName);
 		return NULL;
 		}
 	    memset(param, 0, sizeof(MimeParam));
@@ -471,7 +471,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 	    param->Name = nmSysStrdup(paramName);
 	    if (!param->Name)
 		{
-		mssError(1, "MIME", "Could not allocate the name of parameter \"%s\".", paramName);
+		mssError(1, "MIME", "Failed to allocate the name of parameter \"%s\".", paramName);
 		nmFree(param, sizeof(MimeParam));
 		return NULL;
 		}
@@ -695,12 +695,12 @@ libmime_SetIntAttr(pMimeHeader this, char* attr, char* param, int data)
 	/** Get the old ptod. **/
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 
-	/** If our pointer to our other pointer is NULL or our pointer is NULL: create the attr/param. **/
+	/** If the attr/param does not exist, create it. **/
 	if (!ptod)
 	    {
 	    if (libmime_CreateIntAttr(this, attr, param, data))
 		{
-		mssError(0, "MIME", "Unable to create integer attribute");
+		mssError(0, "MIME", "Failed to create integer attribute \"%s\".", attr);
 		return -1;
 		}
 	    return 0;
@@ -737,7 +737,7 @@ libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int
 	    {
 	    if (libmime_CreateStringAttr(this, attr, param, data, flags))
 		{
-		mssError(0, "MIME", "Unable to create string attribute");
+		mssError(0, "MIME", "Failed to create string attribute \"%s\".", attr);
 		return -1;
 		}
 	    return 0;
@@ -768,7 +768,7 @@ libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datat
 	    {
 	    if (libmime_CreateAttr(this, attr, param, data, datatype))
 		{
-		mssError(0, "MIME", "Unable to create attribute");
+		mssError(0, "MIME", "Failed to create attribute \"%s\".", attr);
 		return -1;
 		}
 	    return 0;

@@ -548,7 +548,7 @@ mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	local_attrname = nmSysStrdup(attrname);
 	if (!local_attrname)
 	    {
-	    mssError(1, "MIME", "Could not allocate a copy of attribute name \"%s\".", attrname);
+	    mssError(1, "MIME", "Failed to allocate a copy of attribute name \"%s\".", attrname);
 	    goto end;
 	    }
 
@@ -640,7 +640,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	local_attrname = nmSysStrdup(attrname);
 	if (!local_attrname)
 	    {
-	    mssError(1, "MIME", "Could not allocate a copy of attribute name \"%s\".", attrname);
+	    mssError(1, "MIME", "Failed to allocate a copy of attribute name \"%s\".", attrname);
 	    goto end;
 	    }
 
@@ -781,7 +781,7 @@ mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
 		    if (!inf->ParamAttrName)
 			{
 			mssError(1, "MIME",
-			    "Could not allocate the name of parameter \"%s\" of \"%s\".",
+			    "Failed to allocate the name of parameter \"%s\" of \"%s\".",
 			    param->Name, attrName
 			);
 			return NULL;
