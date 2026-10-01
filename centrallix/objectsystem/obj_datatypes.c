@@ -218,6 +218,33 @@ objTypeToStr(const int type)
     return obj_type_names[type];
     }
 
+/*** Encoding Constants 
+ ***   Lists out names accepted by the object system for each of the 
+ ***   Supported Encodings defined in datatypes.h
+ ***/
+
+typedef struct _ENN
+    {
+    int Id;
+    const char** Names;
+    int Size;
+    }
+    EncodingNames, *pEncodingNames;
+
+const char* obj_ascii_names[] =	{"ascii"};
+const char* obj_latin_1_names[] = {"latin1", "latin-1", "ISO 8859-1", "ISO-8859-1","EIC 8859-1", "EIC-8859-1", "ISO/IEC 8859-1"};
+const char* obj_utf_8_names[] = {"utf8", "utf-8", "unicode"};
+const char* obj_cp1252_names[] = {"cp1252", "windows-1252", "windows1252"};
+const char* obj_vanco_names[] = {"vanco"};
+
+EncodingNames obj_encoding_names[] = {
+	{.Id = ENCODING_ASCII,		.Names = obj_ascii_names,	.Size = sizeof(obj_ascii_names)/sizeof(char*)},
+	{.Id = ENCODING_LATIN_1,	.Names = obj_latin_1_names,	.Size = sizeof(obj_latin_1_names)/sizeof(char*)},
+	{.Id = ENCODING_UTF_8,		.Names = obj_utf_8_names,	.Size = sizeof(obj_utf_8_names)/sizeof(char*)},
+	{.Id = ENCODING_CP_1252,	.Names = obj_cp1252_names,	.Size = sizeof(obj_cp1252_names)/sizeof(char*)},
+	{.Id = ENCODING_VANCO_UTF8,	.Names = obj_vanco_names,	.Size = sizeof(obj_vanco_names)/sizeof(char*)}
+};
+
 
 /*** obj_internal_ParseDateLang - looks up a list of language internationalization
  *** strings inside the date format.  WARNING - modifies the "srcptr" data in
@@ -2707,11 +2734,12 @@ int
 objStringToEncoding(char* code_str)
     {
     int num_lists = sizeof(obj_encoding_names)/sizeof(EncodingNames);
-
-	for(int i = 0 ; i < num_lists ; i++)
+	int i;
+	for(i = 0 ; i < num_lists ; i++)
 	    {
 	    int list_len = obj_encoding_names[i].Size;
-	    for(int j = 0 ; j < list_len ; j++)
+	    int j;
+	    for(j = 0 ; j < list_len ; j++)
 		{
 		if(strcasecmp(obj_encoding_names[i].Names[j], code_str) == 0)
 		    {
@@ -2723,13 +2751,14 @@ objStringToEncoding(char* code_str)
     return ENCODING_INVALID;
     }
 
-/*** objUnwrapUTF8 - extract the code point from UTF-8 encoding
+/*** objUnwrapUTF8 - extract the code point from UTF-8 encoding. Standard UTF-8 encoding rules 
+ ***   are enforced. 
  ***   @warning If the code point is larger than 0xFF, it will be spread across multiple bytes. 
  ***   @param src The string to be converted
- ***   @param src_len the length of the data coming in
+ ***   @param src_len the length of the data coming in.
  ***   @param dest a pointer to redirect to the generated output. The initial pointer will be overwritten, 
- ***      and the output is allocated with nmSysMalloc
- ***   @param dest_len a pointer to where the final output length should be stored. The inital values is ignored
+ ***      and the output is allocated with nmSysMalloc. The pointer will be `malloc(0)` if src_len was 0
+ ***   @param dest_len a pointer to where the final output length should be stored. The inital value is ignored
  ***   @returns 0 success or -1 on failure
  ***/
 int
@@ -2738,7 +2767,16 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
     size_t buf_len = 0; /* keep track of what the final buffer length should be */
     int state = 0;
     unsigned char buf_char = 0; /* used to store code point from multi-byte characters */
-    char* buf = nmSysMalloc(src_len);
+    char* buf = NULL;
+	/** shortcut if the data is empty **/
+	if(src_len == 0)
+	    {
+	    *dest = nmSysMalloc(0);
+	    *dest_len = 0;
+	    return 0;
+	    }
+	
+	buf = nmSysMalloc(src_len);
 	if(buf == NULL)
 	    {
 	    mssError(1, "OBJ", "Out of memory");
@@ -2746,14 +2784,28 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 	    }
 
 	/** unwraping UTF-8 always makes the result the same length or shorter **/
-	for(int i = 0 ; i < src_len ; i++ )
+	size_t i;
+	for(i = 0 ; i < src_len ; i++ )
 	    {
 	    unsigned char cur = src[i];
+	    /** get a lookahead so headers can check for overlong code **/
+	    unsigned char peek = (i+1 < src_len)? src[i+1] : 0xFFu; /** 0xFF is not a valid UTF-8 byte **/
 	    switch(state)
 		{
 		case 0: /* Start a new character. Identify first byte */
 		    if(LIKELY(cur <= '\x7F'))  /* basic ascii */
 			{
+			/*** Single Byte Characters
+			 *** The bits are taken as is. For consistency with other
+			 *** comments, I have numbered it backwards. Think of a1 
+			 *** as bit a sub 1, and a lone 1 or 0 as always being that value
+			 ***  0 a6 a5 a4 a3 a2 a1 a0
+			 *** -->
+			 ***  0 a6 a5 a4 a3 a2 a1 a0
+			 ***
+			 *** range: 00 - 7F
+			 ***/
+
 			/** write directly **/
 			buf[buf_len++] = cur;
 
@@ -2761,12 +2813,30 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else if (UNLIKELY(cur <= 0xBFu)) /* continuation byte - error */
 			{
-			mssError(1, "OBJ", "Error: continuation byte %d found without corresponding header.", (int)cur);
+			mssError(1, "OBJ", "Error: continuation byte %02hhX found without corresponding header at index %zu.", cur, i);
 			goto error;
 			}
 		    else if (cur <= 0xDFu) /* header for a 2 byte character */
 			{
-			/** Write the first 3 bits from the header as a byte if its not NULL **/
+			/*** 2 Bytes Characters
+			 *** Numbered backwards for consistency:
+			 *** header:  1  1  0 b4 b3 b2 b1 b0
+			 *** cont 1:  1  0 a5 a4 a3 a2 a1 a0
+			 *** -->
+			 *** out 1:   0  0  0  0  0 b4 b3 b2
+			 *** out 2:  b1 b0 a5 a4 a3 a2 a1 a0
+			 ***
+			 *** range: 00 80 - 07 FF
+			 ***/
+			
+			/** check for overlong form **/
+			if(cur < 0xC2u)
+			    {
+			    mssError(1, "OBJ", "Error: overlong encoding found at 2 bit header %02hhX at index %zu.", cur, i);
+			    goto error;
+			    }
+
+			/** Write the first 3 bits from the header as a byte **/
 			char temp_char = (0b00011100u & cur) >> 2;
 			if(temp_char != '\0') buf[buf_len++] = temp_char;
 			
@@ -2778,14 +2848,66 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else if (cur <= 0xEFu) /* header for a 3 byte character */
 			{
+			/*** 3 Bytes Characters
+			 *** Numbered backwards for consistency:
+			 *** header:  1  1  1  0 c3 c2 c1 c0
+			 *** cont 2:  1  0 b5 b4 b3 b2 b1 b0
+			 *** cont 1:  1  0 a5 a4 a3 a2 a1 a0
+			 *** -->
+			 *** out 1:  c3 c2 c1 c0 b5 b4 b3 b2
+			 *** out 2:  b1 b0 a5 a4 a3 a2 a1 a0
+			 ***
+			 *** range: 08 00 - FF FF
+			 ***/
+
+			/** check for overlong form **/
+			if(cur == 0xE0u && peek < 0xA0u)
+			    {
+			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
+			    goto error;
+			    }
+			/** check for surogate bytes */
+			if(cur == 0xEDu && peek >= 0xA0U)
+			    {
+			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible surrogate starting with %02hhX %02hhX at index %zu.", cur, peek, i);
+			    goto error;
+			    }
+			
 			/** store the 4 bits from the header as the start of next byte **/
 			buf_char = (0b00001111u & cur) << 4;
 
 			/** expect 2 continuation bytes **/
 			state = 2;
 			}
-		    else if (cur <= 0xF7u) /* header for a 4 byte character */
+		    else if (cur <= 0xF4u) /* header for a 4 byte character */
 			{
+			/*** 4 Bytes Characters
+			 *** Numbered backwards for consistency:
+			 *** header:  1  1  1  1  0 d2 d1 d0
+			 *** cont 3:  1  0 c5 c4 c3 c2 c1 c0
+			 *** cont 2:  1  0 b5 b4 b3 b2 b1 b0
+			 *** cont 1:  1  0 a5 a4 a3 a2 a1 a0
+			 *** -->
+			 *** out 1:  0  0  0  d2 d1 d0 c5 c4
+			 *** out 2:  c3 c2 c1 c0 b5 b4 b3 b2
+			 *** out 3:  b1 b0 a5 a4 a3 a2 a1 a0
+			 ***
+			 *** range: 01 00 00 - 10 FF FF (max unicode value)
+			 ***/
+
+			/** check for overlong form **/
+			if(cur == 0xF0u && peek < 0x90u)
+			    {
+			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
+			    goto error;
+			    }
+			/** check for an oversied value **/
+			if(cur == 0xF4 && peek >= 0x90 && peek != 0xFFu)
+			    {
+			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible out of range encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
+			    goto error;
+			    }
+
 			/** store the 3 bits from the header, leaving room for 2 more bits */
 			buf_char = (0b00000111u & cur) << 2; 
 
@@ -2794,14 +2916,16 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else /* too large for a valid header - error */
 			{
-			mssError(1, "OBJ", "Error: byte %d too large to be a UTF-8 header.", (int)cur);
+			mssError(1, "OBJ", "Error: byte %02hhX too large to be a UTF-8 header at index %zu.", cur, i);
 			goto error;
 			}
 		    break;
+
 		case 3: /* continuation byte, 3 remaining */
+		    /** continuation 3:  1  0 c5 c4 c3 c2 c1 c0 **/
 		    if((cur & 0b11000000u) != 0b10000000u)
 			{
-			mssError(1, "OBJ", "Error: expected continuation byte, found %d instead.", (int)cur);
+			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
 			}
 		    /** write first 2 bits alongside stored bits **/
@@ -2813,13 +2937,15 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** expect 2 more continuation bytes **/
 		    state = 2;
 		    break;
+
 		case 2: /* continuation byte, 2 remaining */
+		    /** continuation 2:  1  0 b5 b4 b3 b2 b1 b0 **/
 		    if((cur & 0b11000000u) != 0b10000000u)
 			{
-			mssError(1, "OBJ", "Error: expected continuation byte, found %d instead.", (int)cur);
+			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
 			}
-		    
+
 		    /** write first 4 bits alongside stored**/
 		    buf[buf_len++] = buf_char | ((0b00111100u & cur) >> 2);
 		    
@@ -2829,10 +2955,12 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** expect one more continuation byte **/
 		    state = 1;
 		    break;
+
 		case 1: /* continuation byte, 1 remaining */
+		    /** continuation 1:  1  0 a5 a4 a3 a2 a1 a0 **/
 		    if((cur & 0b11000000u) != 0b10000000u)
 			{
-			mssError(1, "OBJ", "Error: expected continuation byte, found %d instead.", (int)cur);
+			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
 			}
 		    
@@ -2850,13 +2978,14 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 
 	if(state != 0)
 	    {
-	    mssError(1, "OBJ", "Error: truncated multibyte character found in string.");
+	    mssError(1, "OBJ", "Error: truncated multibyte character found at end of string.");
 	    goto error;
 	    }
 
-	    /** reallocate the final buffer to size, and assign output pointer and size **/
-	    *dest = nmSysRealloc(buf, buf_len);
-	    *dest_len = buf_len;
+	/** reallocate the final buffer to size, and assign output pointer and size **/
+	*dest = nmSysRealloc(buf, buf_len);
+	*dest_len = buf_len;
+
 	return 0;
     error: 
 	if(buf != NULL) nmSysFree(buf);
