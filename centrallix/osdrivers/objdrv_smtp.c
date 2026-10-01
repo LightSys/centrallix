@@ -4357,15 +4357,24 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return -1;
 	    }
 
-	/** Refuse to send an email that is already Pending. **/
+	/** Refuse to send an email that is already Pending or cannot be tracked. **/
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") == 0
 	    && datatype == DATA_T_INTEGER && val != NULL && val->Integer == 1))
 	    {
 	    char* status = smtp_internal_GetString(inf->Attributes, "status");
+	    char* messageId = smtp_internal_GetString(inf->Attributes, "message_id");
 	    if (status != NULL && strcmp(status, "Pending") == 0)
 		{
 		mssError(1, "SMTP",
 		    "Failed to send \"%s\": it is already Pending.",
+		    inf->Name
+		);
+		return -1;
+		}
+	    if (messageId == NULL || messageId[0] == '\0')
+		{
+		mssError(1, "SMTP",
+		    "Failed to send \"%s\": it has no message_id, so its send status cannot be tracked.",
 		    inf->Name
 		);
 		return -1;

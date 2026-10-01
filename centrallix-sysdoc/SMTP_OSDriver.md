@@ -162,7 +162,7 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | Attribute                    | Description
 | ---------------------------- | -----------
 | name                         | A unique identifier for this email.  Generally is the same as the Message-ID, but with `.eml` or `.msg` appended to the end, for clarity.
-| message_id                   | The Message-ID of the email message being created.
+| message_id                   | The Message-ID of the email message being created.  The driver tracks the send status by it, so sending fails if it is empty.
 | envelope_from                | The envelope From address of the email (return-path).  Because of the way the SMTP driver currently uses sendmail, this attribute determines the outgoing From address received by the foreign email server.  If this is not set correctly, then the email will be from the user currently running Centrallix.  This will generally be blocked by most email receiving servers.
 | envelope_to                  | The envelope recipient (or recipient list) of the email.
 | header_date                  | The `Date` header, as a datetime.  Defaults to the time the email is sent.
@@ -178,7 +178,7 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | header_mime_version          | The `MIME-Version` header.
 | tag                          | An arbitrary label (not necessarily unique) used to find this email in later queries.
 | status                       | The status of the email: Draft until `is_ready` is set to 1, Pending until Postfix finishes, then Sent or Error.  Read-only.
-| is_ready                     | Set to 1 to send the email (default 0).  Setting it to 1 again after the email is Sent or Error sends it again.  Fails while the email is Pending.
+| is_ready                     | Set to 1 to send the email (default 0).  Setting it to 1 again after the email is Sent or Error sends it again.  Fails while the email is Pending or if `message_id` is empty.
 | first_try_date               | The date/time of the first attempt to send this email (01 Jan 1900 until then).  Read-only.
 | try_count                    | The number of attempts to send this email.  Read-only.
 | expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after it becomes Sent or Error.  01 Jan 1900 means never, and Draft and Pending emails never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.  Read-only.
