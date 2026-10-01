@@ -133,7 +133,7 @@ function form_cb_focus_notify(control)
 	{
 	if (htr_boolean(wgtrGetServerProperty(this,'allow_modify',1)))
 	    return this.ChangeMode('Modify', 'Focus');
-	else if (htr_boolean(wgtrGetServerProperty(this,'allow_new')))
+	else if (htr_boolean(wgtrGetServerProperty(this,'allow_new',1)))
 	    return this.ChangeMode('New', 'Focus');
 	else if (htr_boolean(wgtrGetServerProperty(this,'allow_query',1)))
 	    return this.ChangeMode('Query', 'Focus');
@@ -142,7 +142,7 @@ function form_cb_focus_notify(control)
 	}
     if(this.mode=='NoData')
 	{
-	if (htr_boolean(wgtrGetServerProperty(this,'allow_new')))
+	if (htr_boolean(wgtrGetServerProperty(this,'allow_new',1)))
 	    return this.ChangeMode('New', 'Focus');
 	else if (htr_boolean(wgtrGetServerProperty(this,'allow_query',1)))
 	    return this.ChangeMode('Query', 'Focus');
@@ -853,9 +853,9 @@ function form_change_mode(newmode, reason)
 	return false;
     else if (newmode == 'Query' && !htr_boolean(wgtrGetServerProperty(this,'allow_query',1)))
 	return false;
-    else if (newmode == 'New' && !htr_boolean(wgtrGetServerProperty(this,'allow_new')))
+    else if (newmode == 'New' && !htr_boolean(wgtrGetServerProperty(this,'allow_new',1)))
 	return false;
-    else if (newmode == 'NoData' && !htr_boolean(wgtrGetServerProperty(this,'allow_nodata')))
+    else if (newmode == 'NoData' && !htr_boolean(wgtrGetServerProperty(this,'allow_nodata',1)))
 	return false;
 
     if (newmode == this.mode && newmode != 'Query' && newmode != 'New' && newmode != 'Modify') return true;
@@ -891,7 +891,7 @@ function form_change_mode(newmode, reason)
     // Control button behavior
     this.is_discardable = (newmode == 'Query' || newmode == 'New' || newmode == 'Modify');
     this.is_editable = (newmode == 'View') && htr_boolean(wgtrGetServerProperty(this,'allow_modify',1));
-    this.is_newable = (newmode == 'View' || newmode == 'NoData') && htr_boolean(wgtrGetServerProperty(this,'allow_new'));
+    this.is_newable = (newmode == 'View' || newmode == 'NoData') && htr_boolean(wgtrGetServerProperty(this,'allow_new',1));
     this.is_queryable = (newmode == 'View' || newmode == 'NoData') && htr_boolean(wgtrGetServerProperty(this,'allow_query',1));
     this.is_queryexecutable = (newmode == 'Query');
     this.is_multienter = (this.is_multienter && (newmode == 'New'));
@@ -1249,9 +1249,9 @@ function form_action_save_success(completion)
 	this.ifcProbe(ifAction).Invoke("View", {});
     else if (htr_boolean(wgtrGetServerProperty(this,'allow_modify',1)) && this.mode == 'Modify')
 	this.ifcProbe(ifAction).Invoke("Modify", {});
-    else if (htr_boolean(wgtrGetServerProperty(this,'allow_nodata')))
+    else if (htr_boolean(wgtrGetServerProperty(this,'allow_nodata',1)))
 	this.ChangeMode('NoData','Save');
-    else if (htr_boolean(wgtrGetServerProperty(this,'allow_new')) && this.mode == 'New')
+    else if (htr_boolean(wgtrGetServerProperty(this,'allow_new',1)) && this.mode == 'New')
     	this.ifcProbe(ifAction).Invoke("New", {});
     for(var i in this.elements)
 	this.elements[i]._form_IsChanged=false;
