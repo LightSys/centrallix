@@ -120,6 +120,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     char *nodeName;
     char *ptr;
     int i, foundMatch = 0;
+    int outerTypeRval;
     char nullbuf[1];
 
     /** Allocate and initialize the MIME structure **/
@@ -157,7 +158,10 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     inf->InternalType = MIME_INTERNAL_MESSAGE;
 
     /** Note whether the message is an SMTP email. **/
-    if (objGetAttrValue(obj->Prev, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "system/smtp-message"))
+    outerTypeRval = objGetAttrValue(obj->Prev, "outer_type", DATA_T_STRING, POD(&ptr));
+    if (outerTypeRval < 0)
+	mssWarnError("Failed to get the type of \"%s\", so its SMTP attributes will not pass through.", objFilePath(obj->Prev));
+    else if (outerTypeRval == 0 && !strcmp(ptr, "system/smtp-message"))
 	inf->SmtpEmail = 1;
 
     lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
