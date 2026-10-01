@@ -1424,37 +1424,18 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     }
 
 
-/*** smtp_internal_SendEmail - fire off the email message, then set its
- *** status, its expire_date (expire_time seconds from now), and the
- *** try_count, *_try_date, and last_try_* attributes of this try.
- *** A negative expire_time keeps the email indefinitely.
- *** @returns 0 if the email was sent, or -1 if it was not.
+/*** smtp_internal_SetExpireDate - set the expire_date of an email that
+ *** became Sent or Error to expire_time seconds from now.  A negative
+ *** expire_time keeps the email indefinitely.
+ *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_SendEmail(pSmtpData inf)
+smtp_internal_SetExpireDate(pSmtpData inf)
     {
-    pSmtpAttribute envFrom = NULL;
-    pSmtpAttribute envTo = NULL;
     pSmtpAttribute expireTimeAttr = NULL;
-    pSmtpAttribute tryCountAttr = NULL;
-    pSmtpAttribute firstTryAttr = NULL;
     int expireTime = SMTP_DEFAULT_EXPIRE_TIME;
     DateTime expireDate;
-    DateTime tryDate;
-    pXString tryMsg = NULL;
-    char* tryMsgStr = "";
     ObjData pod;
-    char* status = "Error";
-    bool recordFailed = false;
-    int rval = -1;
-
-	/** Edge cases. **/
-	if (UNLIKELY(inf == NULL))
-	    {
-	    mssError(1, "SMTP", "Failed to send NULL smtp object.");
-	    return -1; /* Skip error handler, which expects a valid object. */
-	    }
-	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Get the expire time. **/
 	expireTimeAttr = SMTP_ATTR(xhLookup(inf->RootAttributes, "expire_time"));
@@ -1471,6 +1452,55 @@ smtp_internal_SendEmail(pSmtpData inf)
 		}
 	    expireTime = expireTimeAttr->Value.Integer;
 	    }
+	if (expireTime < 0)
+	    return 0; /* It never expires. */
+
+	/** Calculate and record the expire date. **/
+	if (UNLIKELY(objCurrentDate(&expireDate) != 0 || objDateAdd(&expireDate, expireTime, 0, 0, 0, 0, 0) != 0))
+	    {
+	    mssError(0, "SMTP",
+		"Failed to calculate the expire date (%d seconds from now).",
+		expireTime
+	    );
+	    return -1;
+	    }
+	pod.DateTime = &expireDate;
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** smtp_internal_SendEmail - hand the email message to sendmail, then set
+ *** its status (Pending, or Error if the hand-off failed) and the try_count,
+ *** *_try_date, and last_try_* attributes of this try.  A Pending email
+ *** never expires, so its expire_date is cleared.
+ *** @returns 0 if the email was handed off, or -1 if it was not.
+ ***/
+int
+smtp_internal_SendEmail(pSmtpData inf)
+    {
+    pSmtpAttribute envFrom = NULL;
+    pSmtpAttribute envTo = NULL;
+    pSmtpAttribute tryCountAttr = NULL;
+    pSmtpAttribute firstTryAttr = NULL;
+    DateTime noExpireDate;
+    DateTime tryDate;
+    pXString tryMsg = NULL;
+    char* tryMsgStr = "";
+    ObjData pod;
+    char* status = "Error";
+    bool recordFailed = false;
+    int rval = -1;
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to send NULL smtp object.");
+	    return -1; /* Skip error handler, which expects a valid object. */
+	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
@@ -1488,7 +1518,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    }
 
 	/** Success. **/
-	status = "Sent";
+	status = "Pending";
 	rval = 0;
 
     end:
@@ -1548,26 +1578,18 @@ smtp_internal_SendEmail(pSmtpData inf)
 		}
 	    }
 
-	/** Record the expire date. **/
-	if (expireTime >= 0)
+	/** Record no expire date. (Pending emails don't expire.) **/
+	if (rval == 0)
 	    {
-	    if (UNLIKELY(objCurrentDate(&expireDate) != 0 || objDateAdd(&expireDate, expireTime, 0, 0, 0, 0, 0) != 0))
-		{
-		mssError(0, "SMTP",
-		    "Failed to calculate the expire date (%d seconds from now).",
-		    expireTime
-		);
+	    memset(&noExpireDate, 0, sizeof(DateTime));
+	    pod.DateTime = &noExpireDate;
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
 		recordFailed = true;
-		}
-	    else
-		{
-		pod.DateTime = &expireDate;
-		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
-		    recordFailed = true;
-		}
 	    }
+	else if (UNLIKELY(smtp_internal_SetExpireDate(inf) != 0))
+	    recordFailed = true;
 
-	/** Resolve recording errors, since the email was sent. **/
+	/** Resolve recording errors, since the email was handed off. **/
 	if (UNLIKELY(recordFailed && rval == 0))
 	    {
 	    pXString failMsg = xsNew();
@@ -1577,7 +1599,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    else
 		failMsgStr = failMsg->String;
 	    fprintf(stderr,
-		"Warning: Sent email \"%s\" but could not record all of the results:\n%s\n",
+		"Warning: Handed email \"%s\" to sendmail but could not record all of the results:\n%s\n",
 		inf->Name, failMsgStr
 	    );
 	    xsFree(failMsg);
@@ -3444,6 +3466,23 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		attrname, inf->Name
 	    );
 	    return -1;
+	    }
+
+	/** Refuse to send an email that is already Pending. **/
+	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") == 0
+	    && datatype == DATA_T_INTEGER && val != NULL && val->Integer == 1))
+	    {
+	    pSmtpAttribute statusAttr = SMTP_ATTR(xhLookup(inf->Attributes, "status"));
+	    ASSERTMAGIC(statusAttr, MGK_SMTP_ATTRIBUTE);
+	    if (statusAttr != NULL && statusAttr->Type == DATA_T_STRING
+		&& statusAttr->Value.String != NULL && strcmp(statusAttr->Value.String, "Pending") == 0)
+		{
+		mssError(1, "SMTP",
+		    "Failed to send \"%s\": it is already Pending.",
+		    inf->Name
+		);
+		return -1;
+		}
 	    }
 
     return smtp_internal_SetAttrValue(inf_v, attrname, datatype, val, oxt);
