@@ -1,0 +1,4 @@
+##NAME Expired in the queue
+##UNDO /tests/smtp/Expired/Expired.struct
+
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/Expired.smtp

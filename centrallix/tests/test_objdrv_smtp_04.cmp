@@ -1,0 +1,4 @@
+Attribute [name]:   string   "Expired.eml" 
+Attribute [status]:   string   "Error" 
+Attribute [last_try_status]:   string   "Fail" 
+Attribute [last_try_msg]:   string   "Sent to 0 of 1 recipients. d@defer.test: connect to mx.defer.test[192.0.2.3]:25: Connection timed out" 

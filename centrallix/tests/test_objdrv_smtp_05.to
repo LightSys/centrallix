@@ -1,0 +1,4 @@
+##NAME Resent with the same Message-ID
+##UNDO /tests/smtp/Resent/Resent.struct
+
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/Resent.smtp

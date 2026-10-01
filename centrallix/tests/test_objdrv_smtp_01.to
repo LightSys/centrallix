@@ -1,0 +1,4 @@
+##NAME Bounced recipient
+##UNDO /tests/smtp/Bounced/Bounced.struct
+
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/Bounced.smtp

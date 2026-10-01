@@ -1,0 +1,34 @@
+Oct  1 12:00:00 testhost postfix/smtpd[100]: NOQUEUE: reject: RCPT from unknown[192.0.2.1]: 554 5.7.1 <x@sent.test>: Relay access denied; from=<x@sent.test> to=<x@sent.test> proto=ESMTP helo=<test>
+Oct  1 12:00:01 testhost postfix/pickup[101]: 1A0000000001: uid=1000 from=<devel@localhost>
+Oct  1 12:00:01 testhost postfix/cleanup[102]: 1A0000000001: message-id=<sent@smtp.test>
+Oct  1 12:00:01 testhost postfix/qmgr[103]: 1A0000000001: from=<devel@localhost>, size=100, nrcpt=1 (queue active)
+Oct  1 12:00:01 testhost opendkim[104]: 1A0000000001: to=<a@sent.test>, status=bounced (not from Postfix)
+Oct  1 12:00:02 testhost postfix/smtp[105]: 1A0000000001: to=<a@sent.test>, relay=mx.sent.test[192.0.2.2]:25, delay=1, delays=0/0/0.5/0.5, dsn=2.0.0, status=sent (250 Mail accepted for delivery.)
+Oct  1 12:00:02 testhost postfix/qmgr[103]: 1A0000000001: removed
+Oct  1 12:00:03 testhost postfix/cleanup[102]: 1A0000000002: message-id=<bounced@smtp.test>
+Oct  1 12:00:03 testhost postfix/qmgr[103]: 1A0000000002: from=<devel@localhost>, size=100, nrcpt=2 (queue active)
+Oct  1 12:00:04 testhost postfix/smtp[105]: 1A0000000002: to=<a@sent.test>, relay=mx.sent.test[192.0.2.2]:25, delay=1, delays=0/0/0.5/0.5, dsn=2.0.0, status=sent (250 Mail accepted for delivery.)
+Oct  1 12:00:04 testhost postfix/error[106]: 1A0000000002: to=<b@bounce.test>, relay=none, delay=1, delays=0/0/0/1, dsn=5.1.1, status=bounced (550 5.1.1 User unknown)
+Oct  1 12:00:04 testhost postfix/qmgr[103]: 1A0000000002: removed
+Oct  1 12:00:05 testhost postfix/cleanup[102]: 1A0000000003: message-id=<deferred@smtp.test>
+Oct  1 12:00:05 testhost postfix/qmgr[103]: 1A0000000003: from=<devel@localhost>, size=100, nrcpt=1 (queue active)
+Oct  1 12:00:06 testhost postfix/retry[107]: 1A0000000003: to=<c@defer.test>, relay=none, delay=1, delays=0/0/0/1, dsn=4.4.1, status=deferred (connect to mx.defer.test[192.0.2.3]:25: Connection timed out)
+Oct  1 12:00:07 testhost postfix/cleanup[102]: 1A0000000004: message-id=<deferredsent@smtp.test>
+Oct  1 12:00:07 testhost postfix/qmgr[103]: 1A0000000004: from=<devel@localhost>, size=100, nrcpt=1 (queue active)
+Oct  1 12:00:08 testhost postfix/smtp[105]: 1A0000000004: to=<a@sent.test>, relay=none, delay=1, delays=0/0/1/0, dsn=4.4.1, status=deferred (connect to mx.sent.test[192.0.2.2]:25: Connection timed out)
+Oct  1 12:05:08 testhost postfix/qmgr[103]: 1A0000000004: from=<devel@localhost>, size=100, nrcpt=1 (queue active)
+Oct  1 12:05:09 testhost postfix/smtp[105]: 1A0000000004: to=<a@sent.test>, relay=mx.sent.test[192.0.2.2]:25, delay=302, delays=301/0/0.5/0.5, dsn=2.0.0, status=sent (250 Mail accepted for delivery.)
+Oct  1 12:05:09 testhost postfix/qmgr[103]: 1A0000000004: removed
+Oct  1 12:00:09 testhost postfix/cleanup[102]: 1A0000000005: message-id=<expired@smtp.test>
+Oct  1 12:00:09 testhost postfix/qmgr[103]: 1A0000000005: from=<devel@localhost>, size=100, nrcpt=1 (queue active)
+Oct  1 12:00:10 testhost postfix/retry[107]: 1A0000000005: to=<d@defer.test>, relay=none, delay=1, delays=0/0/0/1, dsn=4.4.1, status=deferred (connect to mx.defer.test[192.0.2.3]:25: Connection timed out)
+Oct  6 12:00:10 testhost postfix/qmgr[103]: 1A0000000005: from=<devel@localhost>, status=expired, returned to sender
+Oct  6 12:00:10 testhost postfix/qmgr[103]: 1A0000000005: removed
+Oct  1 12:00:11 testhost postfix/cleanup[102]: 1A0000000006: message-id=<resent@smtp.test>
+Oct  1 12:00:11 testhost postfix/qmgr[103]: 1A0000000006: from=<devel@localhost>, size=100, nrcpt=1 (queue active)
+Oct  1 12:00:12 testhost postfix/error[106]: 1A0000000006: to=<b@bounce.test>, relay=none, delay=1, delays=0/0/0/1, dsn=5.1.1, status=bounced (550 5.1.1 User unknown)
+Oct  1 12:00:12 testhost postfix/qmgr[103]: 1A0000000006: removed
+Oct  1 12:00:13 testhost postfix/cleanup[102]: 1A0000000007: message-id=<resent@smtp.test>
+Oct  1 12:00:13 testhost postfix/qmgr[103]: 1A0000000007: from=<devel@localhost>, size=100, nrcpt=1 (queue active)
+Oct  1 12:00:14 testhost postfix/smtp[105]: 1A0000000007: to=<a@sent.test>, relay=mx.sent.test[192.0.2.2]:25, delay=1, delays=0/0/0.5/0.5, dsn=2.0.0, status=sent (250 Mail accepted for delivery.)
+Oct  1 12:00:14 testhost postfix/qmgr[103]: 1A0000000007: removed
