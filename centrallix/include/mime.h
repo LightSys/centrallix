@@ -85,7 +85,7 @@ typedef struct
 
 /** Structure to store arbitrary Mime attributes
  ** Stores default param inside itself and points
- ** to an xarray of any extra params.
+ ** to a hash table of any extra params.
  **/
 typedef struct
     {
@@ -173,12 +173,9 @@ int libmime_xhDeInit(pXHashTable this, int (*free_fn)());
 
 /** mime_attributes.c **/
 int libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd, int nameOffset);
-int libmime_ParseIntAttr(pMimeHeader this, char* name, char* data);
-int libmime_ParseStringAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseEmailListAttr(pMimeHeader this, char* name, char* data);
 int libmime_ParseCsvAttr(pMimeHeader this, char* name, char* data);
-int libmime_ParseParameterListAttr(pMimeAttr attr, char* data);
 
 int libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data);
 int libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags);

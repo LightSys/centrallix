@@ -209,7 +209,7 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 	/** Create the email attribute. **/
 	if (libmime_CreateStringAttr(this, name, NULL, emailAddr->AddressLine, 0) < 0)
 	    {
-	    nmFree(emailAddr, sizeof(EmailAddr));
+	    libmime_FreeAddress(emailAddr);
 	    return -1;
 	    }
 
@@ -218,7 +218,7 @@ libmime_ParseEmailAttr(pMimeHeader this, char* name, char* data)
 		libmime_GetArrayAttr(this, name, "Struct", &array) < 0 ||
 		xaAddItem(array, emailAddr) < 0)
 	    {
-	    nmFree(emailAddr, sizeof(EmailAddr));
+	    libmime_FreeAddress(emailAddr);
 	    return -1;
 	    }
 
@@ -354,7 +354,11 @@ libmime_CreateStringArrayAttr(pMimeHeader this, char* attr, char* param)
 	memset(attrVec, 0, sizeof(StringVec));
 
 	/** Create the attribute with the allocated StringVec. **/
-	libmime_CreateAttr(this, attr, param, attrVec, DATA_T_STRINGVEC);
+	if (libmime_CreateAttr(this, attr, param, attrVec, DATA_T_STRINGVEC) < 0)
+	    {
+	    nmFree(attrVec, sizeof(StringVec));
+	    return -1;
+	    }
 
     return 0;
     }
@@ -400,7 +404,12 @@ libmime_CreateArrayAttr(pMimeHeader this, char* attr, char* param)
 	xaInit(array, 4);
 
 	/** Create an attribute containing the generic array. **/
-	libmime_CreateAttr(this, attr, param, array, DATA_T_ARRAY);
+	if (libmime_CreateAttr(this, attr, param, array, DATA_T_ARRAY) < 0)
+	    {
+	    xaDeInit(array);
+	    nmFree(array, sizeof(XArray));
+	    return -1;
+	    }
 
     return 0;
     }
@@ -805,7 +814,7 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	    if (!ptod)
 		{
 		mssError(0, "MIME", "Failed to create the string array attribute");
-		return 0;
+		return -1;
 		}
 	    }
 
@@ -863,7 +872,7 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	    if (!ptod)
 		{
 		mssError(0, "MIME", "Failed to create the string array attribute");
-		return 0;
+		return -1;
 		}
 	    }
 
@@ -917,12 +926,12 @@ libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data)
 	/** If the attribute/parameter wasn't found, create it. **/
 	if (!ptod)
 	    {
-	    libmime_CreateStringArrayAttr(this, attr, param);
+	    libmime_CreateArrayAttr(this, attr, param);
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    if (!ptod)
 		{
 		mssError(0, "MIME", "Failed to create the array attribute");
-		return 0;
+		return -1;
 		}
 	    }
 
@@ -956,7 +965,7 @@ libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataL
 	    if (!ptod)
 		{
 		mssError(0, "MIME", "Failed to create the array attribute");
-		return 0;
+		return -1;
 		}
 	    }
 
@@ -1024,9 +1033,9 @@ libmime_ClearParam(char* param_c, void* arg)
  *** attribute/parameter ptod.
  *** NOTE: This function assumes a few things about how attributes are
  *** allocated:
- ***     - StingVec attributes contain arrays of nmSysStrdup/nmSysMalloc
+ ***     - StringVec attributes contain arrays of nmSysStrdup/nmSysMalloc
  ***       strings which should be freed.
- ***     - Array type attributes contain an XArray of pEmailAttr stucts
+ ***     - Array type attributes contain an XArray of pEmailAddr structs
  ***       which should be freed.
  ***/
 int

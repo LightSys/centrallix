@@ -289,7 +289,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
     int i;
     ptrdiff_t len;
 
-	/** Get the disp main type and subtype **/
+	/** Get the content main type and subtype **/
 	if (!(ptr=strtok_r(buf, "; ", &buf))) return 0;
 
 	/** Store the raw content type string. **/
@@ -361,7 +361,7 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
 	    return 0;
 	    }
 
-	/** If neither is found, use the default name. **/
+	/** If none is found, use the default name. **/
 	libmime_SetStringAttr(msg, "Name", NULL, defaultName, -1);
 
     return 0;
@@ -369,7 +369,7 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
 
 /***
  ***  int
- ***  libmime_ParseHeaderElement(char* buf, char* hdr);
+ ***  libmime_ParseHeaderElement(char* buf, char* hdr, int hdrsize, long* attrSeekStart, long* nameOffset);
  ***     Parameters:
  ***         (char*) buf            A string of characters with no CRLF's in it.  This
  ***                                string should represent the whole header, including any
@@ -377,7 +377,7 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
  ***                                be modified to contain the main part of the header.
  ***         (char*) hdr            This string will be overwritten with a string that
  ***                                is the name of the header element (To, From, Sender...)
- ***         (int*)  attrSeekStart  Pointer to an integer indicating the seek offset
+ ***         (long*) attrSeekStart  Pointer to a long indicating the seek offset
  ***                                to the beginning of the attribute value.
  ***     Returns:
  ***         This function returns 0 on success, and -1 on failure.  It modifies
@@ -550,7 +550,11 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
 		if (l_pos != 0)
 		    {
 		    l_msg = libmime_AllocateHeader();
-		    if (!l_msg) return -1;
+		    if (!l_msg)
+			{
+			xsDeInit(&xsbuf);
+			return -1;
+			}
 
 		    libmime_ParseHeader(lex, l_msg, l_pos+s, p_count);
 		    xaAddItem(&msg->Parts, l_msg);

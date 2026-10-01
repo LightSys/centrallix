@@ -59,7 +59,7 @@ The SMTP OS Driver provides the capability for the Centrallix Object System to s
 
 
 ## II Usage
-In order to use the SMTP driver, the root node must first have all required [node attributes](#node-attributes).  Of these,  `spool_dir` is the most important attribute, and the optional  `expire_time`, `content_has_headers`, and `local_host_name` attributes may also be helpful for defining how emails are created and sent.
+In order to use the SMTP driver, the root node must first have all required [node attributes](#node-attributes).  Of these, `spool_dir` is the most important attribute, and the optional `expire_time`, `content_has_headers`, and `local_host_name` attributes may also be helpful for defining how emails are created and sent.
 
 Email objects are created as children of the root SMTP node and, when created, contain no content or headers.  Further modification of the email object should be accomplished through the MIME driver, however, this is not currently supported so the SMTP driver provides several [email node attributes](#email-attributes) for setting certain, important headers (e.g. `To`, `From`, etc.).
 
@@ -89,20 +89,20 @@ smtp "system/config"
     }
 ```
 
-> ⚠️ **Warning**: The driver expects to only be openned once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
+> ⚠️ **Warning**: The driver expects to only be opened once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
 
 
 ### B. Opening and Closing Objects
 As far as it has been tested, the SMTP driver conforms to the standards required by the Object System for opening and closing.
 
-> 📖 **Note**:   The `OBJ_O_TRUNC` flag has not been implementedor tested.
+> 📖 **Note**:   The `OBJ_O_TRUNC` flag has not been implemented or tested.
 
 Internally, the SMTP driver opens objects as follows:
 
 1.  Determine if the object is a root node or an email object.
 2.  Open the root node and initialize any other properties held in common between the root node and email objects using the `smtp_internal_OpenGeneral()` function:
     1.  Attempt to open the root node.
-    2.  Create the root node if opening fails, the `O_CREATE` flag is set, and the root node is the last element in the path.
+    2.  Create the root node if opening fails, the `O_CREAT` flag is set, and the root node is the last element in the path.
     3.  Initialize the attribute arrays.
 3.  Use the root node/email object specific internal open function to initialize the different attributes needed by the respective object types.
     - `smtp_internal_OpenRoot()`: Does nothing, but is present in case extra functionality is needed.
@@ -156,6 +156,7 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | expire_time         | The number of seconds to keep a sent or failed email (default 3 days).  Negative values keep it forever.
 | content_has_headers | Whether the content written to an email begins with its own headers (default 1).  When 0, the driver adds a blank line after the headers it writes when sending, so the whole content is treated as the body.
 | local_host_name     | The host name used in generated Message-IDs (default: this machine's host name).
+
 \**Not implemented.*
 
 #### Email Attributes

@@ -218,7 +218,7 @@ int smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjDa
  *** "sendmail compatibility interface".
  ***
  *** This function also spawns a detached supervisor process that waits for
- *** sendmail and writes the result to resultPath; starting with a status line
+ *** sendmail and writes the result to resultPath, starting with a status line
  *** ("exit N", "signal N", "timeout", or "error") padded with spaces to
  *** SMTP_RESULT_HEADER_LEN bytes, then the output of sendmail.
  ***/
@@ -1753,6 +1753,7 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, 
 		xhRemove(attributes, attr->Name);
 		goto error;
 		}
+	    attr = NULL; /* Owned by the hash table. */
 	    }
 
 	return 0;
@@ -3300,7 +3301,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    }
 	ASSERTMAGIC(obj, MGK_OBJECT);
 
-	/** Allocate driver struct. */
+	/** Allocate driver struct. **/
 	inf = nmMalloc(sizeof(SmtpData));
 	if (UNLIKELY(inf == NULL))
 	    {
@@ -3376,7 +3377,7 @@ smtp_internal_Close(pSmtpData inf)
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 	obj = inf->Obj; /* Save obj for error messages. */
 
-	/** Check if the object is the root node. **/
+	/** Free the attribute names. **/
 	if (inf->AttributeNames)
 	    {
 	    if (UNLIKELY(xaFree(inf->AttributeNames) != 0))
@@ -3881,7 +3882,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
     pSmtpData inf = NULL;
     pSmtpAttribute attr = NULL;
 
-	/** If the attribute does not exist, return no type. **/
+	/** Edge cases. **/
 	if (!inf_v)
 	    {
 	    return -1;
@@ -4003,7 +4004,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return 0;
 	    }
 
-	/** Get the type of the stored attribute. **/
+	/** Get the value of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
 	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
 	if (attr)
@@ -4718,7 +4719,7 @@ smtpInitialize()
 	if (UNLIKELY(smtp_internal_InitGlobals() != 0))
 	    goto error;
 
-	/** Setup the structure **/
+	/** Set up the structure **/
 	strcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver");
 	drv->Capabilities = 0;
 	if (UNLIKELY(xaInit(&(drv->RootContentTypes),1) != 0
@@ -4728,7 +4729,7 @@ smtpInitialize()
 	    goto error;
 	    }
 
-	/** Setup the function references. **/
+	/** Set up the function references. **/
 	drv->Open = smtpOpen;
 	drv->Close = smtpClose;
 	drv->Create = smtpCreate;

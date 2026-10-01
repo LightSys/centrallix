@@ -162,7 +162,7 @@ libmime_StringFirstCaseCmp(char *s1, char *s2)
     }
 
 /***
- ***  libmime_PrintAddrList
+ ***  libmime_PrintAddressList
  ***/
 int
 libmime_PrintAddressList(pXArray xary, int level)
