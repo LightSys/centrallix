@@ -83,8 +83,8 @@
 /** Bytes of sendmail output kept in last_try_msg. **/
 #define SMTP_TRY_MSG_MAX	1024
 
-/** The log where Postfix records the results of sending emails. **/
-#define SMTP_LOG_PATH	"/var/log/maillog"
+/** The default log where Postfix records the results of sending emails. **/
+#define SMTP_DEFAULT_LOG_PATH	"/var/log/maillog"
 
 /** Seconds an email may stay Pending before it becomes Error (6 days). **/
 #define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60)
@@ -194,6 +194,7 @@ struct
     XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
     XHashTable		Spools;				/* Hash of spool_dir to pSmtpSpool */
+    char		LogPath[PATH_MAX];		/* Path of the mail log */
     FILE*		Log;				/* The mail log, or NULL if not open */
     dev_t		LogDev;				/* Device of the open mail log */
     ino_t		LogIno;				/* Inode of the open mail log */
@@ -1029,11 +1030,11 @@ smtp_internal_OpenLog(void)
 	    {
 	    mssErrorErrno(1, "SMTP",
 		"Failed to become root to open the mail log \"%s\". (Centrallix is not running as root.)",
-		SMTP_LOG_PATH
+		SMTP_INF.LogPath
 	    );
 	    goto end;
 	    }
-	fd = open(SMTP_LOG_PATH, O_RDONLY);
+	fd = open(SMTP_INF.LogPath, O_RDONLY);
 	openErrno = errno;
 	if (UNLIKELY(uid != 0 && seteuid(uid) != 0))
 	    {
@@ -1046,20 +1047,20 @@ smtp_internal_OpenLog(void)
 	if (UNLIKELY(fd < 0))
 	    {
 	    errno = openErrno;
-	    mssErrorErrno(1, "SMTP", "Failed to open the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to open the mail log \"%s\".", SMTP_INF.LogPath);
 	    goto end;
 	    }
 
 	/** Remember this log file, to detect rotation. **/
 	if (UNLIKELY(fstat(fd, &st) != 0))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_INF.LogPath);
 	    goto end;
 	    }
 	SMTP_INF.Log = fdopen(fd, "r");
 	if (UNLIKELY(SMTP_INF.Log == NULL))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_INF.LogPath);
 	    goto end;
 	    }
 	fd = -1; /* Closed with SMTP_INF.Log. */
@@ -1097,7 +1098,7 @@ smtp_internal_ReadLogLines(time_t now)
 		{
 		if (UNLIKELY(fseeko(SMTP_INF.Log, -len, SEEK_CUR) != 0))
 		    {
-		    mssErrorErrno(1, "SMTP", "Failed to rewind a partial line in the mail log \"%s\".", SMTP_LOG_PATH);
+		    mssErrorErrno(1, "SMTP", "Failed to rewind a partial line in the mail log \"%s\".", SMTP_INF.LogPath);
 		    goto end;
 		    }
 		break;
@@ -1108,7 +1109,7 @@ smtp_internal_ReadLogLines(time_t now)
 	    }
 	if (UNLIKELY(ferror(SMTP_INF.Log)))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_INF.LogPath);
 	    goto end;
 	    }
 
@@ -1155,11 +1156,11 @@ smtp_internal_ReadLog(void)
 	    {
 	    if (UNLIKELY(smtp_internal_ReadLogLines(now) != 0))
 		return -1;
-	    if (stat(SMTP_LOG_PATH, &st) != 0)
+	    if (stat(SMTP_INF.LogPath, &st) != 0)
 		{
 		if (errno == ENOENT)
 		    return 0; /* Mid-rotation, so read the new log next time. */
-		mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_LOG_PATH);
+		mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_INF.LogPath);
 		return -1;
 		}
 	    if (st.st_dev == SMTP_INF.LogDev && st.st_ino == SMTP_INF.LogIno)
@@ -1209,6 +1210,7 @@ int
 smtp_internal_InitGlobals()
     {
     char local_host_name[HOST_NAME_MAX];
+    char* logPath;
 
 	/** Initialize the global attributes. **/
 	if (UNLIKELY(xaInit(&SMTP_INF.DefaultRootAttributes, 16) != 0
@@ -1271,6 +1273,15 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "try_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_status",	DATA_T_STRING,	0,	"None") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_msg",		DATA_T_STRING,	0,	"") < 0)) goto error;
+
+	/** Get the mail log path. **/
+	if (stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "smtp"), "mail_log"), NULL, &logPath, 0) != 0)
+	    logPath = SMTP_DEFAULT_LOG_PATH;
+	if (UNLIKELY(strtcpy(SMTP_INF.LogPath, logPath, sizeof(SMTP_INF.LogPath)) < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to set the mail log path: \"%s\" is too long.", logPath);
+	    goto error;
+	    }
 
 	/** Read the results of emails already handed to Postfix. **/
 	if (UNLIKELY(smtp_internal_ReadLog() != 0))

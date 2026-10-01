@@ -80,7 +80,14 @@ The SMTP driver does not implement the entire OS driver interface.  Its function
 ### A. Initialization
 The SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
 
-The driver also opens `/var/log/maillog` as root and reads the results of emails already handed to Postfix, so Centrallix must run as root.
+The driver also opens `/var/log/maillog` as root and reads the results of emails already handed to Postfix, so Centrallix must run as root.  To read a different log, set `mail_log` in an `smtp` block of `centrallix.conf`:
+
+```
+smtp "system/config"
+    {
+    mail_log = "/var/log/maillog";
+    }
+```
 
 > ⚠️ **Warning**: The driver expects to only be openned once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
 
