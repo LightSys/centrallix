@@ -898,6 +898,7 @@ smtp_internal_SetLogRcpt(pSmtpLogMsg msg, char* address, int status, char* reply
  ***   message-id=<id>                          (a new queued email)
  ***   from=<addr>, size=N, nrcpt=N ...         (its recipient count)
  ***   from=<addr>, status=expired, ...         (Postfix gave up)
+ ***   from=<addr>, status=force-expired, ...   (an admin made it give up)
  ***   to=<addr>, ..., status=<status> (reply)  (a recipient result)
  ***
  *** @param line The line, without a newline.  Modified to end the values.
@@ -968,7 +969,7 @@ smtp_internal_ParseLogLine(char* line, time_t now)
 		msg->RcptCount = atoi(value + 8);
 
 	    /** Detect Postfix giving up. **/
-	    else if (strstr(message, ", status=expired") != NULL)
+	    else if (strstr(message, ", status=expired,") != NULL || strstr(message, ", status=force-expired,") != NULL)
 		msg->Expired = true;
 
 	    return 0;
