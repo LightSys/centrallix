@@ -295,7 +295,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	/** Remove the result of any earlier send. **/
 	if (UNLIKELY(unlink(resultPath) != 0 && errno != ENOENT))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not remove old sendmail result file (%s).", resultPath);
+	    mssErrorErrno(1, "SMTP", "Failed to remove old sendmail result file (%s).", resultPath);
 	    goto end;
 	    }
 
@@ -308,7 +308,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	resultFd = open(tmpPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (UNLIKELY(resultFd < 0))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not create sendmail result file (%s).", tmpPath);
+	    mssErrorErrno(1, "SMTP", "Failed to create sendmail result file (%s).", tmpPath);
 	    goto end;
 	    }
 	tmpCreated = true;
@@ -317,7 +317,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	snprintf(header, sizeof(header), "%-*s\n", SMTP_RESULT_HEADER_LEN - 1, "");
 	if (UNLIKELY(write(resultFd, header, SMTP_RESULT_HEADER_LEN) != SMTP_RESULT_HEADER_LEN))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not write to sendmail result file (%s).", tmpPath);
+	    mssErrorErrno(1, "SMTP", "Failed to write to sendmail result file (%s).", tmpPath);
 	    goto end;
 	    }
 
@@ -357,7 +357,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    if (UNLIKELY(fd < 0))
 		{
 		fprintf(stderr,
-		    "SMTP: Could not open email file (%s) for sendmail. (%s)\n",
+		    "SMTP: Failed to open email file (%s) for sendmail. (%s)\n",
 		    emailPath, strerror(errno)
 		);
 		_exit(EXIT_FAILURE);
@@ -367,7 +367,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    if (UNLIKELY(dup2(fd, 0) < 0))
 		{
 		fprintf(stderr,
-		    "SMTP: Could not redirect email file (%s) to stdin for sendmail. (%s)\n",
+		    "SMTP: Failed to redirect email file (%s) to stdin for sendmail. (%s)\n",
 		    emailPath, strerror(errno)
 		);
 		_exit(EXIT_FAILURE);
@@ -404,7 +404,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 		    {
 		    if (UNLIKELY(dup2(resultFd, 1) < 0 || dup2(resultFd, 2) < 0))
 			{
-			dprintf(resultFd, "SMTP: Could not redirect sendmail output. (%s)\n", strerror(errno));
+			dprintf(resultFd, "SMTP: Failed to redirect sendmail output. (%s)\n", strerror(errno));
 			_exit(EXIT_FAILURE);
 			}
 		    close(resultFd);
@@ -463,7 +463,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 		    || rename(tmpPath, resultPath) != 0 /* Publish. */
 		))  {
 		    fprintf(stderr,
-			"SMTP: Could not write sendmail result file (%s). (%s)\n",
+			"SMTP: Failed to write sendmail result file (%s). (%s)\n",
 			resultPath, strerror(errno)
 		    );
 		    _exit(EXIT_FAILURE);
@@ -579,7 +579,7 @@ smtp_internal_NewAttributes()
 	attributes = (pXHashTable)nmMalloc(sizeof(XHashTable));
 	if (UNLIKELY(attributes == NULL))
 	    {
-	    mssError(1, "SMTP", "Could not create attributes hash table.");
+	    mssError(1, "SMTP", "Failed to create attributes hash table.");
 	    return NULL;
 	    }
 	memset(attributes, 0, sizeof(XHashTable));
@@ -1025,7 +1025,7 @@ smtp_internal_OpenLog(void)
 	if (UNLIKELY(uid != 0 && seteuid(0) != 0))
 	    {
 	    mssErrorErrno(1, "SMTP",
-		"Could not become root to open the mail log \"%s\". (Centrallix is not running as root.)",
+		"Failed to become root to open the mail log \"%s\". (Centrallix is not running as root.)",
 		SMTP_LOG_PATH
 	    );
 	    goto end;
@@ -1035,7 +1035,7 @@ smtp_internal_OpenLog(void)
 	if (UNLIKELY(uid != 0 && seteuid(uid) != 0))
 	    {
 	    fprintf(stderr,
-		"SMTP: Could not switch back to uid %d after opening the mail log (%s); aborting.\n",
+		"SMTP: Failed to switch back to uid %d after opening the mail log (%s); aborting.\n",
 		(int)uid, strerror(errno)
 	    );
 	    abort(); /* Never keep running as root. */
@@ -1043,20 +1043,20 @@ smtp_internal_OpenLog(void)
 	if (UNLIKELY(fd < 0))
 	    {
 	    errno = openErrno;
-	    mssErrorErrno(1, "SMTP", "Could not open the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to open the mail log \"%s\".", SMTP_LOG_PATH);
 	    goto end;
 	    }
 
 	/** Remember this log file, to detect rotation. **/
 	if (UNLIKELY(fstat(fd, &st) != 0))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not check the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_LOG_PATH);
 	    goto end;
 	    }
 	SMTP_INF.Log = fdopen(fd, "r");
 	if (UNLIKELY(SMTP_INF.Log == NULL))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not read the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_LOG_PATH);
 	    goto end;
 	    }
 	fd = -1; /* Closed with SMTP_INF.Log. */
@@ -1094,7 +1094,7 @@ smtp_internal_ReadLogLines(time_t now)
 		{
 		if (UNLIKELY(fseeko(SMTP_INF.Log, -len, SEEK_CUR) != 0))
 		    {
-		    mssErrorErrno(1, "SMTP", "Could not rewind a partial line in the mail log \"%s\".", SMTP_LOG_PATH);
+		    mssErrorErrno(1, "SMTP", "Failed to rewind a partial line in the mail log \"%s\".", SMTP_LOG_PATH);
 		    goto end;
 		    }
 		break;
@@ -1105,7 +1105,7 @@ smtp_internal_ReadLogLines(time_t now)
 	    }
 	if (UNLIKELY(ferror(SMTP_INF.Log)))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not read the mail log \"%s\".", SMTP_LOG_PATH);
+	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_LOG_PATH);
 	    goto end;
 	    }
 
@@ -1156,7 +1156,7 @@ smtp_internal_ReadLog(void)
 		{
 		if (errno == ENOENT)
 		    return 0; /* Mid-rotation, so read the new log next time. */
-		mssErrorErrno(1, "SMTP", "Could not check the mail log \"%s\".", SMTP_LOG_PATH);
+		mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_LOG_PATH);
 		return -1;
 		}
 	    if (st.st_dev == SMTP_INF.LogDev && st.st_ino == SMTP_INF.LogIno)
@@ -1188,7 +1188,7 @@ smtp_internal_LookupLog(char* messageId, pSmtpLogMsg* msg)
 	*msg = NULL;
 	if (UNLIKELY(smtp_internal_ReadLog() != 0))
 	    {
-	    mssError(0, "SMTP", "Could not check the mail log for Message-ID <%s>.", messageId);
+	    mssError(0, "SMTP", "Failed to check the mail log for Message-ID <%s>.", messageId);
 	    return -1;
 	    }
 	*msg = (pSmtpLogMsg)xhLookup(&SMTP_INF.LogByMessageID, messageId);
@@ -1341,7 +1341,7 @@ smtp_internal_IsExpired(char* structPath, pDateTime now)
 	    {
 	    if (errno != ENOENT)
 		{
-		mssErrorErrno(1, "SMTP", "Could not open email struct file \"%s\".", structPath);
+		mssErrorErrno(1, "SMTP", "Failed to open email struct file \"%s\".", structPath);
 		goto end;
 		}
 	    rval = 0; /* No struct yet. */
@@ -1350,7 +1350,7 @@ smtp_internal_IsExpired(char* structPath, pDateTime now)
 	emailStruct = stParseMsg(structFile, 0);
 	if (UNLIKELY(emailStruct == NULL))
 	    {
-	    mssError(0, "SMTP", "Could not parse email struct file \"%s\".", structPath);
+	    mssError(0, "SMTP", "Failed to parse email struct file \"%s\".", structPath);
 	    goto end;
 	    }
 
@@ -1417,7 +1417,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    if (UNLIKELY(newSpool == NULL))
 		{
 		mssError(1, "SMTP",
-		    "Could not allocate sweep state for spool directory \"%s\".",
+		    "Failed to allocate sweep state for spool directory \"%s\".",
 		    spoolDir
 		);
 		goto end;
@@ -1454,14 +1454,14 @@ smtp_internal_SweepSpool(char* spoolDir)
 	/** Open the spool directory. **/
 	if (UNLIKELY(objCurrentDate(&now) != 0))
 	    {
-	    mssError(1, "SMTP", "Could not get the current date to sweep \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to get the current date to sweep \"%s\".", spoolDir);
 	    goto end;
 	    }
 	dir = opendir(spoolDir);
 	if (UNLIKELY(dir == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP",
-		"Could not open spool directory \"%s\" to sweep it.",
+		"Failed to open spool directory \"%s\" to sweep it.",
 		spoolDir
 	    );
 	    goto end;
@@ -1477,7 +1477,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 		{
 		if (UNLIKELY(errno != 0))
 		    {
-		    mssErrorErrno(1, "SMTP", "Could not read spool directory \"%s\".", spoolDir);
+		    mssErrorErrno(1, "SMTP", "Failed to read spool directory \"%s\".", spoolDir);
 		    goto end;
 		    }
 		break; /* No more files. */
@@ -1512,7 +1512,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    if (UNLIKELY(remove(emailPath) != 0))
 		{
 		fprintf(stderr,
-		    "Warning: Could not delete expired email \"%s\": %s, skipping.\n",
+		    "Warning: Failed to delete expired email \"%s\": %s, skipping.\n",
 		    emailPath, strerror(errno)
 		);
 		continue;
@@ -1520,7 +1520,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    if (UNLIKELY(remove(structPath) != 0))
 		{
 		fprintf(stderr,
-		    "Warning: Could not delete expired email struct \"%s\": %s, skipping.\n",
+		    "Warning: Failed to delete expired email struct \"%s\": %s, skipping.\n",
 		    structPath, strerror(errno)
 		);
 		continue;
@@ -1593,7 +1593,7 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, 
 	    attr = nmMalloc(sizeof(SmtpAttribute));
 	    if (UNLIKELY(attr == NULL))
 		{
-		mssError(1,"SMTP","Could not create new attribute object.");
+		mssError(1,"SMTP","Failed to create new attribute object.");
 		goto error;
 		}
 	    memset(attr, 0, sizeof(SmtpAttribute));
@@ -1846,7 +1846,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	emailFile = fdOpen(inf->EmailPath.String, O_RDWR, inf->Mask);
 	if (UNLIKELY(emailFile == NULL))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not open email file (%s).", inf->EmailPath.String);
+	    mssErrorErrno(1, "SMTP", "Failed to open email file (%s).", inf->EmailPath.String);
 	    goto end;
 	    }
 	content = xsNew();
@@ -2057,7 +2057,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	/** Send it using sendmail. **/
 	if (UNLIKELY(smtp_internal_SpawnSendmail(inf->EmailPath.String, inf->ResultPath.String, envFrom, envTo) < 0))
 	    {
-	    mssError(0, "SMTP", "Could not send the mail.");
+	    mssError(0, "SMTP", "Failed to send the mail.");
 	    goto end;
 	    }
 
@@ -2135,7 +2135,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 
 	/** Resolve recording errors, since the email was handed off. **/
 	if (UNLIKELY(recordFailed && rval == 0))
-	    mssWarnError("Handed email \"%s\" to sendmail but could not record all of the results.", inf->Name);
+	    mssWarnError("Handed email \"%s\" to sendmail but failed to record all of the results.", inf->Name);
 
 	if (tryMsg != NULL) xsFree(tryMsg);
 
@@ -2159,7 +2159,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	node = snNewNode(obj, "system/smtp");
 	if (UNLIKELY(node == NULL))
 	    {
-	    mssError(0, "SMTP", "Could not create new node object");
+	    mssError(0, "SMTP", "Failed to create new node object");
 	    goto end;
 	    }
 	ASSERTMAGIC(node, MGK_STNODE);
@@ -2180,14 +2180,14 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	    currentParam = stAddAttr(node->Data, currentAttr->Name);
 	    if (UNLIKELY(currentParam == NULL))
 		{
-		mssError(0, "SMTP", "Could not add attribute value %s", currentAttr->Name);
+		mssError(0, "SMTP", "Failed to add attribute value %s", currentAttr->Name);
 		goto end;
 		}
 
 	    /** Set the attribute to its default value. **/
 	    if (UNLIKELY(stSetAttrValue(currentParam, currentAttr->Type, &currentAttr->Value, 0) != 0))
 		{
-		mssError(1, "SMTP", "Could not set attribute value %s", currentAttr->Name);
+		mssError(1, "SMTP", "Failed to set attribute value %s", currentAttr->Name);
 		goto end;
 		}
 	    }
@@ -2195,7 +2195,7 @@ smtp_internal_CreateRootNode(pObject obj, int mask)
 	/** Write the root node structure file. **/
 	if (UNLIKELY(snWriteNode(obj, node) < 0))
 	    {
-	    mssError(0, "SMTP", "Could not write the root node structure file.");
+	    mssError(0, "SMTP", "Failed to write the root node structure file.");
 	    goto end;
 	    }
 
@@ -2356,7 +2356,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	emailStruct = stCreateStruct(inf->Name, "system/structure");
 	if (UNLIKELY(emailStruct == NULL))
 	    {
-	    mssError(0, "SMTP", "Could not create new email struct.");
+	    mssError(0, "SMTP", "Failed to create new email struct.");
 	    goto end;
 	    }
 	if (UNLIKELY(stSetVersion(emailStruct, 2) != 0))
@@ -2632,7 +2632,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	    node = smtp_internal_CreateRootNode(inf->Obj, inf->Mask);
 	    if (UNLIKELY(node == NULL))
 		{
-		mssError(0,"SMTP", "Could not create new node object");
+		mssError(0,"SMTP", "Failed to create new node object");
 		goto error;
 		}
 	    }
@@ -2649,7 +2649,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	    ASSERTMAGIC(inf->Obj->Prev, MGK_OBJECT);
 	    char* node_path = obj_internal_PathPart(inf->Obj->Prev->Pathname, 0, inf->Obj->Prev->SubPtr + inf->Obj->Prev->SubCnt - 1);
 	    mssError(0, "SMTP",
-		"Could not open structure file: %s.",
+		"Failed to open structure file: %s.",
 		(node_path != NULL) ? node_path : "unknown path"
 	    );
 	    goto error;
@@ -2673,7 +2673,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	inf->AttributeNames = xaNew(16);
 	if (UNLIKELY(inf->AttributeNames == NULL))
 	    {
-	    mssError(1,"SMTP","Could not create attribute names array.");
+	    mssError(1,"SMTP","Failed to create attribute names array.");
 	    goto error;
 	    }
 
@@ -2815,7 +2815,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 		{
 		/** File does not exist, and creation not requested **/
 		mssErrorErrno(1, "SMTP",
-		    "Could not open email file: \"%s\".",
+		    "Failed to open email file: \"%s\".",
 		    inf->EmailPath.String
 		);
 		goto end;
@@ -2867,7 +2867,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    inf->ContentFile = fdOpen(inf->EmailPath.String, open_mode, inf->Mask);
 	if (UNLIKELY(inf->ContentFile == NULL))
 	    {
-	    mssErrorErrno(1, "SMTP", "Could not open email file (%s).", inf->EmailPath.String);
+	    mssErrorErrno(1, "SMTP", "Failed to open email file (%s).", inf->EmailPath.String);
 	    goto end;
 	    }
 
@@ -2876,7 +2876,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	if (UNLIKELY(emailStructureFile == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP",
-		"Could not open email structure file: \"%s\".",
+		"Failed to open email structure file: \"%s\".",
 		inf->EmailStructPath.String
 	    );
 	    goto end;
@@ -2887,7 +2887,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	if (UNLIKELY(emailStructure == NULL))
 	    {
 	    mssError(0, "SMTP",
-		"Could not parse the email structure file: %s.",
+		"Failed to parse the email structure file: %s.",
 		inf->EmailStructPath.String
 	    );
 	    goto end;
@@ -2896,7 +2896,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	/** Get the structure's attributes **/
 	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf->Attributes, inf->AttributeNames) != 0))
 	    {
-	    mssError(0, "SMTP", "Could not load email attributes.");
+	    mssError(0, "SMTP", "Failed to load email attributes.");
 	    goto end;
 	    }
 
@@ -2937,7 +2937,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	inf = nmMalloc(sizeof(SmtpData));
 	if (UNLIKELY(inf == NULL))
 	    {
-	    mssError(1, "SMTP", "Could not allocate SmtpData object.");
+	    mssError(1, "SMTP", "Failed to allocate SmtpData object.");
 	    goto error;
 	    }
 	memset(inf, 0, sizeof(SmtpData));
@@ -2976,7 +2976,7 @@ smtpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	else
 	    {
 	    mssError(1, "SMTP",
-		"Could not open \"%s\": expected an email file (.eml or .msg).",
+		"Failed to open \"%s\": expected an email file (.eml or .msg).",
 		internalPath
 	    );
 	    goto error;
@@ -3137,7 +3137,7 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    {
 	    char* path = objResetPathname(obj);
 	    mssError(1, "SMTP",
-		"Could not create \"%s\": expected an email file (.eml or .msg).",
+		"Failed to create \"%s\": expected an email file (.eml or .msg).",
 		(path != NULL) ? path : "unknown path"
 	    );
 	    goto error;
@@ -3188,7 +3188,7 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	    if (UNLIKELY(remove(inf->EmailPath.String) != 0))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Could not delete the email file (%s).",
+		    "Failed to delete the email file (%s).",
 		    inf->EmailPath.String
 		);
 		goto end;
@@ -3198,7 +3198,7 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	    if (UNLIKELY(remove(inf->EmailStructPath.String) != 0))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Could not delete the email struct file (%s).",
+		    "Failed to delete the email struct file (%s).",
 		    inf->EmailStructPath.String
 		);
 		goto end;
@@ -3206,7 +3206,7 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 	else
 	    {
-	    mssError(1, "SMTP", "Could not delete indicated object (unknown type %d).", inf->Type);
+	    mssError(1, "SMTP", "Failed to delete indicated object (unknown type %d).", inf->Type);
 	    goto end;
 	    }
 
@@ -3358,7 +3358,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    if (UNLIKELY(qy->Directory == NULL))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Could not open spool directory (%s) for query",
+		    "Failed to open spool directory (%s) for query",
 		    spoolPath
 		);
 		goto error;
@@ -3889,7 +3889,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    if (UNLIKELY(emlStructFileRead == NULL))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Could not open email structure file (%s).",
+		    "Failed to open email structure file (%s).",
 		    inf->EmailStructPath.String
 		);
 		goto end;
@@ -3900,7 +3900,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    if (UNLIKELY(emlStruct == NULL))
 		{
 		mssError(0, "SMTP",
-		    "Could not parse the email structure file: %s.",
+		    "Failed to parse the email structure file: %s.",
 		    inf->EmailStructPath.String
 		);
 		goto end;
@@ -3931,7 +3931,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    if (UNLIKELY(emlStructFileWrite == NULL))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Could not open email structure file (%s) for writing.",
+		    "Failed to open email structure file (%s) for writing.",
 		    inf->EmailStructPath.String
 		);
 		goto end;
@@ -4064,7 +4064,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	attr = nmMalloc(sizeof(SmtpAttribute));
 	if (UNLIKELY(attr == NULL))
 	    {
-	    mssError(1,"SMTP","Could not create new attribute object.");
+	    mssError(1,"SMTP","Failed to create new attribute object.");
 	    goto end;
 	    }
 	memset(attr, 0, sizeof(SmtpAttribute));
@@ -4175,7 +4175,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    if (UNLIKELY(emlStructFileRead == NULL))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Could not open email structure file (%s).",
+		    "Failed to open email structure file (%s).",
 		    inf->EmailStructPath.String
 		);
 		goto end;
@@ -4186,7 +4186,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    if (UNLIKELY(emlStruct == NULL))
 		{
 		mssError(0, "SMTP",
-		    "Could not parse the email structure file: %s.",
+		    "Failed to parse the email structure file: %s.",
 		    inf->EmailStructPath.String
 		);
 		goto end;
@@ -4197,7 +4197,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    if (UNLIKELY(createdStruct == NULL))
 		{
 		mssError(1, "SMTP",
-		    "Could not add attribute '%s' to the email struct.",
+		    "Failed to add attribute '%s' to the email struct.",
 		    attr->Name
 		);
 		goto end;
@@ -4219,7 +4219,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    if (UNLIKELY(emlStructFileWrite == NULL))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Could not open email structure file (%s) for writing.",
+		    "Failed to open email structure file (%s) for writing.",
 		    inf->EmailStructPath.String
 		);
 		goto end;
