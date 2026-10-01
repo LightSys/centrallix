@@ -1342,6 +1342,7 @@ smtp_internal_IsReadOnly(char* attrname)
 	"last_try_date",
 	"last_try_status",
 	"last_try_msg",
+	"message_id",
 	};
     const int n_readOnly = sizeof(readOnly) / sizeof(readOnly[0]);
     int i;
