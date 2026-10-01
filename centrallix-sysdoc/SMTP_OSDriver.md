@@ -67,7 +67,7 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time a Pending email is opened, the driver checks the results Postfix logged in `/var/log/maillog` and sets `status` to Sent or Error once Postfix finishes.  An email that is still Pending 6 days after `last_try_date` becomes Error.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time a Pending email is opened, the driver checks the results Postfix logged in `/var/log/maillog` and sets `status` to Sent or Error once Postfix finishes.  An email that is still Pending 6 days after `last_try_date` becomes Error.  Keep Postfix's `maximal_queue_lifetime` (5 days by default) under 6 days, or an email Postfix is still retrying becomes Error.
 
 Sent means the next mail server accepted the email for every recipient.  If Postfix uses a relay host, that server is the relay, so failures after the relay are not tracked.
 
