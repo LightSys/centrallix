@@ -85,5 +85,7 @@ typedef struct
 #define	MGK_SMTP_DATA		0x12340e28	/* objdrv_smtp.c::SmtpData */
 #define	MGK_SMTP_QUERY_DATA	0x12340e37	/* objdrv_smtp.c::SmtpQueryData */
 #define	MGK_SMTP_SPOOL		0x12340e46	/* objdrv_smtp.c::SmtpSpool */
+#define	MGK_SMTP_LOG_MSG	0x12340e55	/* objdrv_smtp.c::SmtpLogMsg */
+#define	MGK_SMTP_LOG_RCPT	0x12340e64	/* objdrv_smtp.c::SmtpLogRcpt */
 
 #endif /* not defined _MAGIC_H */

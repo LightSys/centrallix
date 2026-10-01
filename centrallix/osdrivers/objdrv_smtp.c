@@ -45,6 +45,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -78,6 +79,23 @@
 
 /** Bytes in the status line at the start of a sendmail result file. **/
 #define SMTP_RESULT_HEADER_LEN	16
+
+/** The log where Postfix records the results of sending emails. **/
+#define SMTP_LOG_PATH	"/var/log/maillog"
+
+/** Seconds an email may stay Pending before it becomes Error (6 days). **/
+#define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60)
+
+/** Seconds to keep results read from the mail log (pending timeout + 1 day). **/
+#define SMTP_LOG_KEEP_TIME	(SMTP_PENDING_TIMEOUT + 24 * 60 * 60)
+
+/** Bytes for a Postfix queue ID, including the null terminator. **/
+#define SMTP_QUEUE_ID_SIZE	32
+
+/** Recipient results read from the mail log. **/
+#define SMTP_RCPT_SENT		0
+#define SMTP_RCPT_DEFERRED	1
+#define SMTP_RCPT_BOUNCED	2
 
 /*** Structure to store attribute information. ***/
 typedef struct
@@ -141,12 +159,45 @@ typedef struct
     SmtpSpool, *pSmtpSpool;
 
 
+/*** Structure to store the mail log result for one recipient. ***/
+typedef struct
+    {
+    Magic_t	Magic;
+    char*	Address;
+    int		Status; /* SMTP_RCPT_xxx */
+    char*	Reply;
+    }
+    SmtpLogRcpt, *pSmtpLogRcpt;
+
+
+/*** Structure to store what the mail log says about one queued email. ***/
+typedef struct _SLM
+    {
+    Magic_t		Magic;
+    char		QueueID[SMTP_QUEUE_ID_SIZE];
+    char*		MessageID;
+    int			RcptCount; /* From nrcpt, or 0 until it is logged. */
+    XArray		Rcpts; /* XArray of pSmtpLogRcpt. */
+    bool		Expired; /* Postfix gave up and returned the email. */
+    time_t		ReadTime;
+    struct _SLM*	Next; /* The next newer record. */
+    }
+    SmtpLogMsg, *pSmtpLogMsg;
+
+
 /*** Global data structure for the SMTP module. ***/
 struct
     {
     XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
     XHashTable		Spools;				/* Hash of spool_dir to pSmtpSpool */
+    FILE*		Log;				/* The mail log, or NULL if not open */
+    dev_t		LogDev;				/* Device of the open mail log */
+    ino_t		LogIno;				/* Inode of the open mail log */
+    XHashTable		LogByQueueID;			/* Hash of Postfix queue ID to pSmtpLogMsg */
+    XHashTable		LogByMessageID;			/* Hash of Message-ID to newest pSmtpLogMsg */
+    pSmtpLogMsg		LogOldest;			/* Oldest record, pruned first */
+    pSmtpLogMsg		LogNewest;			/* Newest record, appended to */
     }
     SMTP_INF;
 
@@ -654,6 +705,499 @@ smtp_internal_AddDefault(pXArray defaults, char* name, int type, int intVal, cha
     }
 
 
+/*** smtp_internal_FreeLogMsg - free a record read from the mail log.
+ ***/
+void
+smtp_internal_FreeLogMsg(pSmtpLogMsg msg)
+    {
+    pSmtpLogRcpt rcpt;
+    int i;
+
+	ASSERTMAGIC(msg, MGK_SMTP_LOG_MSG);
+	for (i = 0; i < msg->Rcpts.nItems; i++)
+	    {
+	    rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
+	    ASSERTMAGIC(rcpt, MGK_SMTP_LOG_RCPT);
+	    if (rcpt->Address != NULL) nmSysFree(rcpt->Address);
+	    if (rcpt->Reply != NULL) nmSysFree(rcpt->Reply);
+	    nmFree(rcpt, sizeof(SmtpLogRcpt));
+	    }
+	xaDeInit(&msg->Rcpts);
+	if (msg->MessageID != NULL) nmSysFree(msg->MessageID);
+	nmFree(msg, sizeof(SmtpLogMsg));
+
+    return;
+    }
+
+
+/*** smtp_internal_AddLogMsg - start a record for an email Postfix queued,
+ *** replacing older records with the same queue ID or Message-ID.
+ ***
+ *** @param queueId The Postfix queue ID.
+ *** @param messageId The Message-ID, without angle brackets.
+ *** @param now The current time.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_AddLogMsg(char* queueId, char* messageId, time_t now)
+    {
+    pSmtpLogMsg msg = NULL;
+    bool inQueueTable = false;
+    int rval = -1;
+
+	/** Create the record. **/
+	msg = nmMalloc(sizeof(SmtpLogMsg));
+	if (UNLIKELY(msg == NULL))
+	    {
+	    mssError(1, "SMTP", "nmMalloc(%zu) failed.", sizeof(SmtpLogMsg));
+	    goto end;
+	    }
+	memset(msg, 0, sizeof(SmtpLogMsg));
+	SETMAGIC(msg, MGK_SMTP_LOG_MSG);
+	if (UNLIKELY(xaInit(&msg->Rcpts, 4) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the recipients of a mail log record.");
+	    goto end;
+	    }
+	strtcpy(msg->QueueID, queueId, sizeof(msg->QueueID));
+	msg->MessageID = nmSysStrdup(messageId);
+	if (UNLIKELY(msg->MessageID == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to copy Message-ID <%s>.", messageId);
+	    goto end;
+	    }
+	msg->ReadTime = now;
+
+	/** Index it, replacing older records. **/
+	xhRemove(&SMTP_INF.LogByQueueID, msg->QueueID);
+	if (UNLIKELY(xhAdd(&SMTP_INF.LogByQueueID, msg->QueueID, (char*)msg) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to index mail log record for queue ID %s.", msg->QueueID);
+	    goto end;
+	    }
+	inQueueTable = true;
+	xhRemove(&SMTP_INF.LogByMessageID, msg->MessageID);
+	if (UNLIKELY(xhAdd(&SMTP_INF.LogByMessageID, msg->MessageID, (char*)msg) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to index mail log record for Message-ID <%s>.", msg->MessageID);
+	    goto end;
+	    }
+
+	/** Append it to the list. **/
+	if (SMTP_INF.LogNewest != NULL)
+	    SMTP_INF.LogNewest->Next = msg;
+	else
+	    SMTP_INF.LogOldest = msg;
+	SMTP_INF.LogNewest = msg;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(rval != 0 && msg != NULL))
+	    {
+	    if (inQueueTable) xhRemove(&SMTP_INF.LogByQueueID, msg->QueueID);
+	    smtp_internal_FreeLogMsg(msg);
+	    }
+
+	return rval;
+    }
+
+
+/*** smtp_internal_SetLogRcpt - record the latest result for one recipient
+ *** of a queued email.
+ ***
+ *** @param msg The record of the email.
+ *** @param address The recipient address.
+ *** @param status The result (SMTP_RCPT_xxx).
+ *** @param reply The reply or reason Postfix logged.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_SetLogRcpt(pSmtpLogMsg msg, char* address, int status, char* reply)
+    {
+    pSmtpLogRcpt rcpt = NULL;
+    pSmtpLogRcpt newRcpt = NULL;
+    char* newReply = NULL;
+    int i;
+    int rval = -1;
+
+	/** Copy the reply. **/
+	newReply = nmSysStrdup(reply);
+	if (UNLIKELY(newReply == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to copy reply \"%s\".", reply);
+	    goto end;
+	    }
+
+	/** Find the recipient. **/
+	for (i = 0; i < msg->Rcpts.nItems; i++)
+	    {
+	    rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
+	    ASSERTMAGIC(rcpt, MGK_SMTP_LOG_RCPT);
+	    if (strcmp(rcpt->Address, address) == 0)
+		break;
+	    rcpt = NULL;
+	    }
+
+	/** Recipient not found: add it. **/
+	if (rcpt == NULL)
+	    {
+	    newRcpt = nmMalloc(sizeof(SmtpLogRcpt));
+	    if (UNLIKELY(newRcpt == NULL))
+		{
+		mssError(1, "SMTP", "Failed to allocate %zu bytes for a mail log recipient.", sizeof(SmtpLogRcpt));
+		goto end;
+		}
+	    memset(newRcpt, 0, sizeof(SmtpLogRcpt));
+	    SETMAGIC(newRcpt, MGK_SMTP_LOG_RCPT);
+	    newRcpt->Address = nmSysStrdup(address);
+	    if (UNLIKELY(newRcpt->Address == NULL))
+		{
+		mssError(1, "SMTP", "Failed to copy recipient address <%s>.", address);
+		goto end;
+		}
+	    if (UNLIKELY(xaAddItem(&msg->Rcpts, newRcpt) < 0))
+		{
+		mssError(1, "SMTP", "Failed to add recipient to the mail log record for queue ID %s.", msg->QueueID);
+		goto end;
+		}
+	    rcpt = newRcpt;
+	    newRcpt = NULL;
+	    }
+
+	/** Record the result. **/
+	if (rcpt->Reply != NULL) nmSysFree(rcpt->Reply);
+	rcpt->Reply = newReply;
+	newReply = NULL;
+	rcpt->Status = status;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(newReply != NULL)) nmSysFree(newReply);
+	if (UNLIKELY(newRcpt != NULL))
+	    {
+	    if (newRcpt->Address != NULL) nmSysFree(newRcpt->Address);
+	    nmFree(newRcpt, sizeof(SmtpLogRcpt));
+	    }
+
+	return rval;
+    }
+
+
+/*** smtp_internal_ParseLogLine - record the result in one line of the mail
+ *** log, if it has one.  Lines look like this:
+ ***   <date> <host> postfix/<program>[<pid>]: <queue ID>: <message>
+ *** where the messages used are:
+ ***   message-id=<id>                          (a new queued email)
+ ***   from=<addr>, size=N, nrcpt=N ...         (its recipient count)
+ ***   from=<addr>, status=expired, ...         (Postfix gave up)
+ ***   to=<addr>, ..., status=<status> (reply)  (a recipient result)
+ ***
+ *** @param line The line, without a newline.  Modified to end the values.
+ *** @param now The current time.
+ *** @returns 0 on success (including lines with no result), or -1 on failure.
+ ***/
+int
+smtp_internal_ParseLogLine(char* line, time_t now)
+    {
+    static const char queueIdChars[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    char* program;
+    char* message;
+    char* queueId;
+    int queueIdLen;
+    pSmtpLogMsg msg;
+    char* value;
+    int valueLen;
+    char* address;
+    char* reply;
+    int replyLen;
+    int status;
+
+	/** Find the message, and skip lines not logged by Postfix. **/
+	message = strstr(line, "]: ");
+	if (message == NULL)
+	    return 0;
+	program = message;
+	while (program > line && *program != '[') program--;
+	while (program > line && program[-1] != ' ') program--;
+	if (strncmp(program, "postfix", 7) != 0)
+	    return 0;
+	message += 3; /* Consume the "]: ". */
+
+	/** Get the queue ID. **/
+	queueIdLen = strspn(message, queueIdChars);
+	if (queueIdLen == 0 || queueIdLen >= SMTP_QUEUE_ID_SIZE || strncmp(message + queueIdLen, ": ", 2) != 0)
+	    return 0;
+	queueId = message;
+	queueId[queueIdLen] = '\0';
+	message += queueIdLen + 2;
+
+	/** Detect a new queued email. **/
+	if (strncmp(message, "message-id=", 11) == 0)
+	    {
+	    value = message + 11;
+	    valueLen = strlen(value);
+	    if (valueLen >= 2 && value[0] == '<' && value[valueLen - 1] == '>')
+		{
+		value[valueLen - 1] = '\0';
+		value++;
+		}
+	    if (*value == '\0')
+		return 0;
+	    return smtp_internal_AddLogMsg(queueId, value, now);
+	    }
+
+	/** Other lines update a queued email. **/
+	msg = (pSmtpLogMsg)xhLookup(&SMTP_INF.LogByQueueID, queueId);
+	if (msg == NULL)
+	    return 0;
+	ASSERTMAGIC(msg, MGK_SMTP_LOG_MSG);
+
+	/** Detect a recipient count, or Postfix giving up. **/
+	if (strncmp(message, "from=<", 6) == 0)
+	    {
+	    /** Detect recipient count. **/
+	    if ((value = strstr(message, ", nrcpt=")) != NULL)
+		msg->RcptCount = atoi(value + 8);
+
+	    /** Detect Postfix giving up. **/
+	    else if (strstr(message, ", status=expired") != NULL)
+		msg->Expired = true;
+
+	    return 0;
+	    }
+
+	/** Detect a recipient result. **/
+	if (strncmp(message, "to=<", 4) == 0)
+	    {
+	    address = message + 4;
+	    value = strchr(address, '>');
+	    if (value == NULL)
+		return 0;
+	    *value = '\0';
+	    value = strstr(value + 1, ", status="); /* Search after the address. */
+	    if (value == NULL)
+		return 0;
+	    value += 9;
+	    valueLen = strcspn(value, " ");
+	    if (valueLen == 4 && strncmp(value, "sent", 4) == 0)
+		status = SMTP_RCPT_SENT;
+	    else if (valueLen == 8 && strncmp(value, "deferred", 8) == 0)
+		status = SMTP_RCPT_DEFERRED;
+	    else if (valueLen == 7 && strncmp(value, "bounced", 7) == 0)
+		status = SMTP_RCPT_BOUNCED;
+	    else
+		return 0;
+
+	    /** Get the reply, without its parentheses. **/
+	    reply = value + valueLen;
+	    if (strncmp(reply, " (", 2) == 0)
+		reply += 2;
+	    replyLen = strlen(reply);
+	    if (replyLen > 0 && reply[replyLen - 1] == ')')
+		reply[replyLen - 1] = '\0';
+
+	    return smtp_internal_SetLogRcpt(msg, address, status, reply);
+	    }
+
+    return 0;
+    }
+
+
+/*** smtp_internal_OpenLog - open the mail log as root, since only root can
+ *** read it.
+ ***
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_OpenLog(void)
+    {
+    uid_t uid = geteuid();
+    struct stat st;
+    int fd = -1;
+    int openErrno;
+    int rval = -1;
+
+	/** Open the log as root. **/
+	if (UNLIKELY(uid != 0 && seteuid(0) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP",
+		"Could not become root to open the mail log \"%s\". (Centrallix is not running as root.)",
+		SMTP_LOG_PATH
+	    );
+	    goto end;
+	    }
+	fd = open(SMTP_LOG_PATH, O_RDONLY);
+	openErrno = errno;
+	if (UNLIKELY(uid != 0 && seteuid(uid) != 0))
+	    {
+	    fprintf(stderr,
+		"SMTP: Could not switch back to uid %d after opening the mail log (%s); aborting.\n",
+		(int)uid, strerror(errno)
+	    );
+	    abort(); /* Never keep running as root. */
+	    }
+	if (UNLIKELY(fd < 0))
+	    {
+	    errno = openErrno;
+	    mssErrorErrno(1, "SMTP", "Could not open the mail log \"%s\".", SMTP_LOG_PATH);
+	    goto end;
+	    }
+
+	/** Remember this log file, to detect rotation. **/
+	if (UNLIKELY(fstat(fd, &st) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not check the mail log \"%s\".", SMTP_LOG_PATH);
+	    goto end;
+	    }
+	SMTP_INF.Log = fdopen(fd, "r");
+	if (UNLIKELY(SMTP_INF.Log == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not read the mail log \"%s\".", SMTP_LOG_PATH);
+	    goto end;
+	    }
+	fd = -1; /* Closed with SMTP_INF.Log. */
+	SMTP_INF.LogDev = st.st_dev;
+	SMTP_INF.LogIno = st.st_ino;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(fd >= 0)) close(fd);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_ReadLogLines - parse the complete lines added to the open
+ *** mail log since the last read.
+ ***
+ *** @param now The current time.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_ReadLogLines(time_t now)
+    {
+    char* line = NULL;
+    size_t lineSize = 0;
+    ssize_t len;
+    int rval = -1;
+
+	while ((len = getline(&line, &lineSize, SMTP_INF.Log)) > 0)
+	    {
+	    /** Leave a partial line until the rest is written. **/
+	    if (line[len - 1] != '\n')
+		{
+		if (UNLIKELY(fseeko(SMTP_INF.Log, -len, SEEK_CUR) != 0))
+		    {
+		    mssErrorErrno(1, "SMTP", "Could not rewind a partial line in the mail log \"%s\".", SMTP_LOG_PATH);
+		    goto end;
+		    }
+		break;
+		}
+	    line[len - 1] = '\0';
+	    if (UNLIKELY(smtp_internal_ParseLogLine(line, now) != 0))
+		goto end;
+	    }
+	if (UNLIKELY(ferror(SMTP_INF.Log)))
+	    {
+	    mssErrorErrno(1, "SMTP", "Could not read the mail log \"%s\".", SMTP_LOG_PATH);
+	    goto end;
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	clearerr(SMTP_INF.Log); /* Allow reading lines written later. */
+	if (LIKELY(line != NULL)) free(line);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_ReadLog - read the lines added to the mail log since the
+ *** last read, reopening it if it was rotated or is not open, and forget
+ *** results too old for any Pending email to need.
+ ***
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_ReadLog(void)
+    {
+    time_t now = time(NULL);
+    pSmtpLogMsg msg;
+    struct stat st;
+
+	/** Drop old results. **/
+	while (SMTP_INF.LogOldest != NULL && now - SMTP_INF.LogOldest->ReadTime > SMTP_LOG_KEEP_TIME)
+	    {
+	    msg = SMTP_INF.LogOldest;
+	    SMTP_INF.LogOldest = msg->Next;
+	    if (SMTP_INF.LogOldest == NULL)
+		SMTP_INF.LogNewest = NULL;
+	    if ((pSmtpLogMsg)xhLookup(&SMTP_INF.LogByQueueID, msg->QueueID) == msg)
+		xhRemove(&SMTP_INF.LogByQueueID, msg->QueueID);
+	    if ((pSmtpLogMsg)xhLookup(&SMTP_INF.LogByMessageID, msg->MessageID) == msg)
+		xhRemove(&SMTP_INF.LogByMessageID, msg->MessageID);
+	    smtp_internal_FreeLogMsg(msg);
+	    }
+
+	/** Read the rest of the open log, then close it if it was rotated. **/
+	if (SMTP_INF.Log != NULL)
+	    {
+	    if (UNLIKELY(smtp_internal_ReadLogLines(now) != 0))
+		return -1;
+	    if (stat(SMTP_LOG_PATH, &st) != 0)
+		{
+		if (errno == ENOENT)
+		    return 0; /* Mid-rotation, so read the new log next time. */
+		mssErrorErrno(1, "SMTP", "Could not check the mail log \"%s\".", SMTP_LOG_PATH);
+		return -1;
+		}
+	    if (st.st_dev == SMTP_INF.LogDev && st.st_ino == SMTP_INF.LogIno)
+		return 0;
+	    fclose(SMTP_INF.Log);
+	    SMTP_INF.Log = NULL;
+	    }
+
+	/** Open the current log and read it. **/
+	if (UNLIKELY(smtp_internal_OpenLog() != 0))
+	    return -1;
+	if (UNLIKELY(smtp_internal_ReadLogLines(now) != 0))
+	    return -1;
+
+    return 0;
+    }
+
+
+/*** smtp_internal_LookupLog - get what the mail log says about an email,
+ *** after reading any new lines.
+ ***
+ *** @param messageId The Message-ID of the email, without angle brackets.
+ *** @param msg Set to the newest record for messageId, or NULL if none.
+ *** @returns 0 on success, or -1 if the mail log could not be read.
+ ***/
+int
+smtp_internal_LookupLog(char* messageId, pSmtpLogMsg* msg)
+    {
+	*msg = NULL;
+	if (UNLIKELY(smtp_internal_ReadLog() != 0))
+	    {
+	    mssError(0, "SMTP", "Could not check the mail log for Message-ID <%s>.", messageId);
+	    return -1;
+	    }
+	*msg = (pSmtpLogMsg)xhLookup(&SMTP_INF.LogByMessageID, messageId);
+	ASSERTMAGIC(*msg, MGK_SMTP_LOG_MSG);
+
+    return 0;
+    }
+
+
 /*** smtp_internal_InitGlobals - Initializes global information for the SMTP
  *** driver.
  *** Returns 0 on success and -1 on failure.
@@ -673,6 +1217,12 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(xhInit(&SMTP_INF.Spools, 17, 0) != 0))
 	    {
 	    mssError(1, "SMTP", "Failed to initialize the spool directory table.");
+	    goto error;
+	    }
+	if (UNLIKELY(xhInit(&SMTP_INF.LogByQueueID, 1021, 0) != 0
+	    || xhInit(&SMTP_INF.LogByMessageID, 1021, 0) != 0
+	))   {
+	    mssError(1, "SMTP", "Failed to initialize the mail log tables.");
 	    goto error;
 	    }
 
@@ -718,6 +1268,23 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "try_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_status",	DATA_T_STRING,	0,	"None") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_msg",		DATA_T_STRING,	0,	"") < 0)) goto error;
+
+	/** Read the results of emails already handed to Postfix. **/
+	if (UNLIKELY(smtp_internal_ReadLog() != 0))
+	    {
+	    pXString failMsg = xsNew();
+	    char* failMsgStr;
+	    if (UNLIKELY(failMsg == NULL || mssStringError(failMsg) != 0))
+		failMsgStr = "- Failed to get error message.";
+	    else
+		failMsgStr = failMsg->String;
+	    fprintf(stderr,
+		"Warning: Could not read the mail log, so Pending emails cannot be checked until it can be read:\n%s\n",
+		failMsgStr
+	    );
+	    if (failMsg != NULL) xsFree(failMsg);
+	    mssClearError();
+	    }
 
 	return 0;
 
@@ -3859,6 +4426,8 @@ smtpInitialize()
 	nmRegister(sizeof(SmtpData), "SmtpData");
 	nmRegister(sizeof(SmtpQueryData), "SmtpQueryData");
 	nmRegister(sizeof(SmtpSpool), "SmtpSpool");
+	nmRegister(sizeof(SmtpLogMsg), "SmtpLogMsg");
+	nmRegister(sizeof(SmtpLogRcpt), "SmtpLogRcpt");
 
 	/** Register the driver **/
 	if (UNLIKELY(objRegisterDriver(drv) < 0))
