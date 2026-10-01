@@ -2347,10 +2347,7 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 	    status = "Error";
 	    tryStatus = "Fail";
 	    if (sscanf(header, "exit %d", &code) == 1)
-		{
-		if (code == 75) tryStatus = "TempFail"; /* EX_TEMPFAIL */
 		printed = xsPrintf(&tryMsg, "Sendmail exited with status %d", code);
-		}
 	    else if (sscanf(header, "signal %d", &code) == 1)
 		printed = xsPrintf(&tryMsg, "Sendmail was killed by signal %d", code);
 	    else if (strcmp(header, "timeout") == 0)
