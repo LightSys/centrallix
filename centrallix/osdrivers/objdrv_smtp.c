@@ -2327,7 +2327,7 @@ smtp_internal_UpdateStatus(pSmtpData inf)
     int nSent = 0;
     int nBounced = 0;
     int nDeferred = 0;
-    int nTotal;
+    int nTotal = 0;
     int i;
     int rval = -1;
 
