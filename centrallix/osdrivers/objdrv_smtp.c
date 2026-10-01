@@ -1423,6 +1423,44 @@ smtp_internal_IsExpired(char* structPath, pDateTime now)
     }
 
 
+/*** smtp_internal_IsPending - Checks whether the struct file of an email
+ *** says it is Pending, since another open of the email may have sent it.
+ *** @param structPath The path of the email's struct file.
+ *** @returns 1 if Pending, 0 if not, or -1 if the struct is unreadable.
+ ***/
+int
+smtp_internal_IsPending(char* structPath)
+    {
+    pFile structFile = NULL;
+    pStructInf emailStruct = NULL;
+    char* status = NULL;
+    int rval = -1;
+
+	/** Parse the struct file. **/
+	structFile = fdOpen(structPath, O_RDONLY, 0);
+	if (UNLIKELY(structFile == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to open email struct file \"%s\".", structPath);
+	    goto end;
+	    }
+	emailStruct = stParseMsg(structFile, 0);
+	if (UNLIKELY(emailStruct == NULL))
+	    {
+	    mssError(0, "SMTP", "Failed to parse email struct file \"%s\".", structPath);
+	    goto end;
+	    }
+
+	/** Success. **/
+	rval = (stAttrValue(stLookup(emailStruct, "status"), NULL, &status, 0) == 0 && strcmp(status, "Pending") == 0) ? 1 : 0;
+
+    end:
+	if (LIKELY(structFile != NULL)) fdClose(structFile, 0);
+	if (LIKELY(emailStruct != NULL)) stFreeInf(emailStruct);
+
+	return rval;
+    }
+
+
 /*** smtp_internal_RemoveEmail - delete the files of an email: the email,
  *** its struct, and its sendmail result, including a partial one.  Missing
  *** files are not an error.
@@ -2083,10 +2121,11 @@ smtp_internal_SetExpireDate(pSmtpData inf)
     }
 
 
-/*** smtp_internal_SendEmail - hand the email message to sendmail, then set
- *** its status (Pending, or Error if the hand-off failed) and the try_count,
- *** *_try_date, and last_try_* attributes of this try.  A Pending email
- *** never expires, so its expire_date is cleared.
+/*** smtp_internal_SendEmail - mark the email Pending and hand it to
+ *** sendmail, then record the try_count, *_try_date, and last_try_*
+ *** attributes of this try, and Error if the hand-off failed.  Refuses an
+ *** email that is already Pending.  A Pending email never expires, so its
+ *** expire_date is cleared.
  *** @returns 0 if the email was handed off, or -1 if it was not.
  ***/
 int
@@ -2104,6 +2143,7 @@ smtp_internal_SendEmail(pSmtpData inf)
     ObjData pod;
     char* status = "Error";
     bool recordFailed = false;
+    int pending;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -2113,6 +2153,22 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
+	/** Refuse to send an email that is already Pending, even from another open. **/
+	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
+	if (UNLIKELY(pending != 0))
+	    {
+	    if (pending > 0)
+		mssError(1, "SMTP", "Failed to send \"%s\": it is already Pending.", inf->Name);
+	    else
+		mssError(0, "SMTP", "Failed to check whether \"%s\" is already Pending.", inf->Name);
+	    return -1; /* Skip error handler, which records a failed try. */
+	    }
+
+	/** Mark the email Pending before handing it off, so other sends refuse it. **/
+	pod.String = "Pending";
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
+	    goto end;
 
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
@@ -4359,20 +4415,11 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return -1;
 	    }
 
-	/** Refuse to send an email that is already Pending or cannot be tracked. **/
+	/** Refuse to send an email that cannot be tracked. **/
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") == 0
 	    && datatype == DATA_T_INTEGER && val != NULL && val->Integer == 1))
 	    {
-	    char* status = smtp_internal_GetString(inf->Attributes, "status");
 	    char* messageId = smtp_internal_GetString(inf->Attributes, "message_id");
-	    if (status != NULL && strcmp(status, "Pending") == 0)
-		{
-		mssError(1, "SMTP",
-		    "Failed to send \"%s\": it is already Pending.",
-		    inf->Name
-		);
-		return -1;
-		}
 	    if (messageId == NULL || messageId[0] == '\0')
 		{
 		mssError(1, "SMTP",
