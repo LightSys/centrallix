@@ -1271,20 +1271,7 @@ smtp_internal_InitGlobals()
 
 	/** Read the results of emails already handed to Postfix. **/
 	if (UNLIKELY(smtp_internal_ReadLog() != 0))
-	    {
-	    pXString failMsg = xsNew();
-	    char* failMsgStr;
-	    if (UNLIKELY(failMsg == NULL || mssStringError(failMsg) != 0))
-		failMsgStr = "- Failed to get error message.";
-	    else
-		failMsgStr = failMsg->String;
-	    fprintf(stderr,
-		"Warning: Could not read the mail log, so Pending emails cannot be checked until it can be read:\n%s\n",
-		failMsgStr
-	    );
-	    if (failMsg != NULL) xsFree(failMsg);
-	    mssClearError();
-	    }
+	    mssWarnError("Failed to read the mail log, so Pending emails cannot be checked.");
 
 	return 0;
 
@@ -1516,11 +1503,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    expired = smtp_internal_IsExpired(structPath, &now);
 	    if (UNLIKELY(expired < 0))
 		{
-		fprintf(stderr,
-		    "Warning: Could not check whether email \"%s\" expired, skipping.\n",
-		    emailPath
-		);
-		mssClearError();
+		mssWarnError("Failed to check whether email \"%s\" expired, skipping.", emailPath);
 		continue;
 		}
 	    if (expired != 1) continue;
@@ -1557,13 +1540,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 
 	/** Resolve sweep errors. **/
 	if (UNLIKELY(!successful))
-	    {
-	    fprintf(stderr,
-		"Warning: Failed to sweep spool directory \"%s\"; continuing.\n",
-		spoolDir
-	    );
-	    mssClearError();
-	    }
+	    mssWarnError("Failed to sweep spool directory \"%s\"; continuing.", spoolDir);
     }
 
 
@@ -2158,20 +2135,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 
 	/** Resolve recording errors, since the email was handed off. **/
 	if (UNLIKELY(recordFailed && rval == 0))
-	    {
-	    pXString failMsg = xsNew();
-	    char* failMsgStr;
-	    if (UNLIKELY(failMsg == NULL || mssStringError(failMsg) != 0))
-		failMsgStr = "- Failed to get error message.";
-	    else
-		failMsgStr = failMsg->String;
-	    fprintf(stderr,
-		"Warning: Handed email \"%s\" to sendmail but could not record all of the results:\n%s\n",
-		inf->Name, failMsgStr
-	    );
-	    if (LIKELY(failMsg != NULL)) xsFree(failMsg);
-	    mssClearError();
-	    }
+	    mssWarnError("Handed email \"%s\" to sendmail but could not record all of the results.", inf->Name);
 
 	if (tryMsg != NULL) xsFree(tryMsg);
 

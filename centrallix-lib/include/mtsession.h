@@ -85,6 +85,11 @@ int mssError(int clr, char* module, char* message, ...);
 int mssErrorErrno(int clr, char* module, char* message, ...);
 int mssClearError();
 int mssPrintError(pFile fd);
+void mssWarnError(char* message, ...)
+    #ifdef __GNUC__
+    __attribute__ ((format(printf, 1, 2)))
+    #endif
+;
 int mssStringError(pXString str);
 int mssUserError(pXString str);
 
