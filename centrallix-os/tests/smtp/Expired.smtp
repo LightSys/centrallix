@@ -1,0 +1,6 @@
+$Version=2$
+Expired "system/smtp"
+    {
+    spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/Expired";
+    expire_time = -1;
+    }

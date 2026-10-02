@@ -55,6 +55,7 @@
 | qyt     | OSDriver - QueryTree
 | root    | Pseudo-OSDriver - Rootnode driver
 | rpt     | OSDriver - report generator
+| smtp    | OSDriver - SMTP (Simple Mail Transfer Protocol)
 | sn      | StructureFile Node management
 | st      | StructureFile parser/generator/management
 | stx     | OSDriver - plain structure file

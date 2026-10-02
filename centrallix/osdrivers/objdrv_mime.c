@@ -22,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -59,18 +59,30 @@
 
 /*** GLOBALS ***/
 
+/*** Parsed message tree, shared by an open message and the parts fetched from it. ***/
+typedef struct
+    {
+    pMimeHeader	Root;
+    int		LinkCnt;
+    }
+    MimeTree, *pMimeTree;
+
 /*** Structure used by this driver internally. ***/
-typedef struct 
+typedef struct
     {
     pObject	Obj;
     int		Mask;
     char	Pathname[256];
     char*	AttrValue; /* GetAttrValue has to return a refence to memory that won't be free()ed */
     pMimeHeader	Header;
+    pMimeTree	Tree;
     pMimeData	MimeDat;
-    int		NextAttr;
+    pXHashEntry	CurrAttr;
+    pXHashEntry	CurrParam;
+    char*	ParamAttrName; /* "<header>.<param>" name from GetNextAttr, valid until its next call */
     int		InternalSeek;
     int		InternalType;
+    int		SmtpEmail; /* Opened on an SMTP email, so its attributes pass through */
     }
     MimeInfo, *pMimeInfo;
 
@@ -86,161 +98,242 @@ typedef struct
 
 #define MIME(x) ((pMimeInfo)(x))
 
+/** Forward declarations for functions that need them. **/
+int mimeClose(void* inf_v, pObjTrxTree* oxt);
+
 /* ***********************************************************************
 ** API FUNCTIONS                                                        **
 ** **********************************************************************/
 
-/*
-**  mimeOpen
-*/
+/***
+ ***  mimeOpen
+ ***/
 void*
 mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    pLxSession lex;
+    pLxSession lex = NULL;
     pMimeInfo inf;
     pMimeHeader msg;
-    pMimeHeader tmp;
+    pMimeHeader phdr;
     char *node_path;
-    char *buffer;
+    char *nodeName;
     char *ptr;
-    int i,size;
-
-    if (MIME_DEBUG) fprintf(stderr, "\n");
-    if (MIME_DEBUG) fprintf(stderr, "MIME: mimeOpen called with \"%s\" content type.  Parsing as such.\n", systype->Name);
-    if (MIME_DEBUG) fprintf(stderr, "objdrv_mime.c was offered: (%i,%i,%i) %s\n",obj->SubPtr,
-	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
+    int i, foundMatch = 0;
+    int outerTypeRval;
+    char nullbuf[1];
 
     /** Allocate and initialize the MIME structure **/
     inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
-    if (!inf) return NULL;
-    msg = (pMimeHeader)nmMalloc(sizeof(MimeHeader));
+    if (!inf) goto error;
     memset(inf,0,sizeof(MimeInfo));
-    memset(msg,0,sizeof(MimeHeader));
+
+    msg = libmime_AllocateHeader();
+    if (!msg) goto error;
+
+    /** Share the parsed tree with any parts fetched from this message. **/
+    inf->Tree = (pMimeTree)nmMalloc(sizeof(MimeTree));
+    if (!inf->Tree)
+	{
+	libmime_DeallocateHeader(msg);
+	goto error;
+	}
+    inf->Tree->Root = msg;
+    inf->Tree->LinkCnt = 1;
+
     /** Set object parameters **/
     inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
+    if (!inf->MimeDat) goto error;
     memset(inf->MimeDat,0,sizeof(MimeData));
+
     inf->MimeDat->Parent = obj->Prev;
     inf->MimeDat->ReadFn = objRead;
     inf->MimeDat->WriteFn = objWrite;
-    inf->MimeDat->Buffer[0] = 0;
-    inf->MimeDat->EncBuffer[0] = 0;
+    inf->MimeDat->DecodedBuffer[0] = 0;
+    inf->MimeDat->EncodedBuffer[0] = 0;
     inf->Header = msg;
     inf->Obj = obj;
     inf->Mask = mask;
     inf->InternalSeek = 0;
     inf->InternalType = MIME_INTERNAL_MESSAGE;
-    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD);
+
+    /** Note whether the message is an SMTP email. **/
+    outerTypeRval = objGetAttrValue(obj->Prev, "outer_type", DATA_T_STRING, POD(&ptr));
+    if (outerTypeRval < 0)
+	mssWarnError("Failed to get the type of \"%s\", so its SMTP attributes will not pass through.", objFilePath(obj->Prev));
+    else if (outerTypeRval == 0 && !strcmp(ptr, "system/smtp-message"))
+	inf->SmtpEmail = 1;
+
+    lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
     if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
 	{
-	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message header in mimeOpen().\n");
-	mlxCloseSession(lex);
-	return NULL;
+	mssError(0, "MIME", "Failed to parse the header of \"%s\".", objFilePath(obj->Prev));
+	goto error;
 	}
     if (libmime_ParseMultipartBody(lex, msg, msg->MsgSeekStart, msg->MsgSeekEnd) < 0)
 	{
-	if (MIME_DEBUG) fprintf(stderr, "MIME: There was an error parsing message entity in mimeOpen().\n");
-	mlxCloseSession(lex);
-	return NULL;
-	}
-    if (MIME_DEBUG)
-	{
-	fprintf(stderr, "\n-----------------------------------------------------------------\n");
-	for (i=0; i < xaCount(&msg->Parts); i++)
-	    {
-	    tmp = (pMimeHeader)xaGetItem(&msg->Parts, i);
-	    fprintf(stderr,"--[PART: s(%10d),e(%10d)]----------------------------\n", (int)tmp->MsgSeekStart, (int)tmp->MsgSeekEnd);
-	    buffer = (char*)nmMalloc(1024);
-	    size = libmime_PartRead(inf->MimeDat, tmp, buffer, 1023, 0, FD_U_SEEK);
-	    buffer[size] = 0;
-	    printf("--%d--%s--\n", size,buffer);
-	    nmFree(buffer, 1024);
-	    }
-	fprintf(stderr, "-----------------------------------------------------------------\n\n");
+	mssError(0, "MIME", "Failed to parse the body of \"%s\".", objFilePath(obj->Prev));
+	goto error;
 	}
     mlxCloseSession(lex);
+    lex = NULL;
 
-    /** assume we're only going to handle one level **/
-    obj->SubCnt=1;
-    if (obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
+    /** Name the root node after its file. **/
+    node_path = obj_internal_PathPart(obj->Pathname, obj->SubPtr - 1, 1);
+    if (libmime_SetStringAttr(msg, "Name", NULL, node_path, 0))
 	{
-	int i;
+	mssError(0, "MIME", "Failed to set the name of \"%s\".", node_path);
+	goto error;
+	}
 
-	/* at least one more element of path to worry about */
+    /** Claim one path element, plus one per nested part matched below. **/
+    obj->SubCnt=1;
+
+    /** While we have a multipart message and there are more elements in the path,
+     ** go through all elements and see if we have another multipart element.
+     ** If so, repeat the search.
+     **/
+    while (obj->Pathname->nElements >= obj->SubPtr+obj->SubCnt)
+	{
+	/** assume we don't have a match **/
+	foundMatch = 0;
+
+	/** at least one more element of path to worry about **/
 	ptr = obj_internal_PathPart(obj->Pathname, obj->SubPtr+obj->SubCnt-1, 1);
-	//fprintf(stderr, "path: %s\n", ptr);
 	for (i=0; i < xaCount(&(inf->Header->Parts)); i++)
 	    {
-	    pMimeHeader phdr;
-
 	    phdr = xaGetItem(&(inf->Header->Parts), i);
-	    if (!strcmp(phdr->Filename, ptr))
+	    if (!libmime_GetStringAttr(phdr, "Name", NULL, &nodeName) && !strcmp(nodeName, ptr))
 		{
-		/** FIXME FIXME FIXME FIXME
-		 **  Memory lost, where did it go?  Nobody knows, and nobody can find out
-		 ** FIXME FIXME FIXME FIXME
-		 **/
 		inf->Header = phdr;
 		inf->InternalType = MIME_INTERNAL_MESSAGE;
+		obj->SubCnt++;
+		foundMatch = 1;
 		break;
 		}
 	    }
+	/** Break if there is no matching subpart **/
+	if (!foundMatch) break;
 	}
 
-    if(MIME_DEBUG) printf("objdrv_mime.c is taking: (%i,%i,%i) %s\n",obj->SubPtr,
-	    obj->SubCnt,obj->Pathname->nElements,obj_internal_PathPart(obj->Pathname,0,0));
+    /** If dealing with the base mime file, check to see if it has been initialized (aka 'created'). **/
+    if(objRead(obj->Prev, nullbuf, 1, 0, OBJ_U_SEEK) > 0 &&
+	    obj->Pathname->nElements == obj->SubPtr)
+	{
+	foundMatch = 1;
+	}
+
+    /** If CREAT, EXCL, and a match, error. **/
+    if ((inf->Obj->Mode & O_CREAT) &&
+	(inf->Obj->Mode & O_EXCL) &&
+	(foundMatch))
+	{
+	/** Exclusive create is satisfied with a pre-filled root node. **/
+	if (obj->Pathname->nElements != obj->SubPtr)
+	    {
+	    mssError(1, "MIME",
+		"Mime object exists but create and exclusive flags are set. Cannot create mime object."
+	    );
+	    goto error;
+	    }
+	}
+
+    /** No match, error. **/
+    if (!foundMatch)
+	{
+	if (inf->Obj->Mode & O_CREAT)
+	    mssError(1, "MIME", "The MIME driver does not support creating objects.");
+	else
+	    mssError(1, "MIME", "Mime object not found.");
+	goto error;
+	}
+
     return (void*)inf;
+
+    error:
+
+	if (lex)
+	    {
+	    mlxCloseSession(lex);
+	    }
+
+	if (inf)
+	    {
+	    mimeClose(inf, NULL);
+	    }
+	return NULL;
     }
 
 
-/*
-**  mimeClose
-*/
+/***
+ ***  mimeClose
+ ***/
 int
 mimeClose(void* inf_v, pObjTrxTree* oxt)
     {
     pMimeInfo inf = MIME(inf_v);
 
     /** free any memory used to return an attribute **/
-    if(inf->AttrValue)
+    if (inf->AttrValue)
 	{
 	nmSysFree(inf->AttrValue);
 	inf->AttrValue=NULL;
 	}
+    if (inf->ParamAttrName)
+	{
+	nmSysFree(inf->ParamAttrName);
+	inf->ParamAttrName = NULL;
+	}
 
-    /** probably needs to be more done here, but I have _no_ clue what's going on :) -- JDR **/
-    libmime_Cleanup(inf->Header);
-    nmFree(inf,sizeof(MimeInfo));
+    if (inf->MimeDat)
+	{
+	nmFree(inf->MimeDat, sizeof(MimeData));
+	}
+
+    /** Reduce the link count and free the tree once nothing links to it. **/
+    if (inf->Tree && --inf->Tree->LinkCnt == 0)
+	{
+	libmime_DeallocateHeader(inf->Tree->Root);
+	nmFree(inf->Tree, sizeof(MimeTree));
+	}
+
+    if (inf)
+	{
+	nmFree(inf,sizeof(MimeInfo));
+	}
     return 0;
     }
 
 
-/*
-**  mimeCreate
-*/
+/***
+ ***  mimeCreate
+ ***/
 int
 mimeCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
     {
-    return 0;
+    mssError(1, "MIME", "The MIME driver does not support creating objects.");
+    return -1;
     }
 
 
-/*
-**  mimeDelete
-*/
+/***
+ ***  mimeDelete
+ ***/
 int
 mimeDelete(pObject obj, pObjTrxTree* oxt)
     {
-    return 0;
+    mssError(1, "MIME", "The MIME driver does not support deleting objects.");
+    return -1;
     }
 
 
-/*
-**  mimeRead
-*/
+/***
+ ***  mimeRead
+ ***/
 int
 mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     int size;
+    int main_type;
     pMimeInfo inf = (pMimeInfo)inf_v;
 
     /** Check recursion **/
@@ -250,7 +343,7 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	return -1;
 	}
 
-    if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART)
+    if (!libmime_GetIntAttr(inf->Header, "Content-Type", "ContentMainType", &main_type) && main_type == MIME_TYPE_MULTIPART)
 	{
 	return -1;
 	}
@@ -258,28 +351,32 @@ mimeRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	{
 	if (!offset && !inf->InternalSeek)
 	    inf->InternalSeek = 0;
-	else if (offset)
+	else if (offset || (flags & FD_U_SEEK))
 	    inf->InternalSeek = offset;
-	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, 0);
+	size = libmime_PartRead(inf->MimeDat, inf->Header, buffer, maxcnt, inf->InternalSeek, FD_U_SEEK);
+	if (size < 0)
+	    return size;
 	inf->InternalSeek += size;
-	return size;
 	}
+
+    return size;
     }
 
 
-/*
-**  mimeWrite
-*/
+/***
+ ***  mimeWrite
+ ***/
 int
 mimeWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
-    return 0;
+    mssError(1, "MIME", "The MIME driver does not support writing content.");
+    return -1;
     }
 
 
-/*
-**  mimeOpenQuery
-*/
+/***
+ ***  mimeOpenQuery
+ ***/
 void*
 mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
@@ -303,13 +400,13 @@ mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeQueryFetch
-*/
+/***
+ ***  mimeQueryFetch
+ ***/
 void*
 mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
-    pMimeInfo inf;
+    pMimeInfo inf = NULL;
     pMimeQuery qy;
 
     qy = (pMimeQuery)qy_v;
@@ -323,9 +420,14 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     obj->SubCnt = qy->Data->Obj->SubCnt;
 
     inf = (pMimeInfo)nmMalloc(sizeof(MimeInfo));
-    if (!inf) return NULL;
+    if (!inf) goto error;
     memset(inf,0,sizeof(MimeInfo));
-    inf->MimeDat = qy->Data->MimeDat;
+
+    inf->MimeDat = (pMimeData)nmMalloc(sizeof(MimeData));
+    if (!inf->MimeDat) goto error;
+    memset(inf->MimeDat, 0, sizeof(MimeData));
+
+    memcpy(inf->MimeDat, qy->Data->MimeDat, sizeof(MimeData));
     inf->Obj = obj;
     inf->Mask = mode;
     inf->Header = NULL;
@@ -333,15 +435,25 @@ mimeQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     inf->InternalType = MIME_INTERNAL_MESSAGE;
 
     inf->Header = xaGetItem(&(qy->Data->Header->Parts), qy->ItemCnt);
+    inf->Tree = qy->Data->Tree;
+    inf->Tree->LinkCnt++;
     qy->ItemCnt++;
 
     return (void*)inf;
+
+    error:
+	if (inf)
+	    {
+	    mimeClose(inf, NULL);
+	    }
+
+	return NULL;
     }
 
 
-/*
-**  mimeQueryClose
-*/
+/***
+ ***  mimeQueryClose
+ ***/
 int
 mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
     {
@@ -350,151 +462,400 @@ mimeQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
-/*
-**  mimeGetAttrType
-*/
-int
-mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
+/*** mime_internal_FindAttr() - find the header that name refers to, where name
+ *** may end in ".<param>".  Tries the whole name first, then each dot from the
+ *** left as the separator, so header names that contain dots are found too.
+ *** Returns the header, or NULL if there is none.  On success, name is cut down
+ *** to the header's name, and *param_name points at the parameter name (NULL
+ *** when name is the header itself).
+ ***/
+pMimeAttr
+mime_internal_FindAttr(pMimeInfo inf, char* name, char** param_name)
     {
+    pMimeAttr attr;
+    char* dot = NULL;
 
-    if (!strcmp(attrname, "name")) return DATA_T_STRING;
-    if (!strcmp(attrname, "content_type")) return DATA_T_STRING;
-    if (!strcmp(attrname, "annotation")) return DATA_T_STRING;
-    if (!strcmp(attrname, "inner_type")) return DATA_T_STRING;
-    if (!strcmp(attrname, "outer_type")) return DATA_T_STRING;
-    if (!strcmp(attrname, "subject")) return DATA_T_STRING;
-    if (!strcmp(attrname, "charset")) return DATA_T_STRING;
-    if (!strcmp(attrname, "transfer_encoding")) return DATA_T_STRING;
-    if (!strcmp(attrname, "mime_version")) return DATA_T_STRING;
+	*param_name = NULL;
+	do  {
+	    if (dot)
+		*dot = '\0';
+	    attr = (pMimeAttr)libmime_xhLookup(&inf->Header->Attrs, name);
 
-    return -1;
+	    /** Content-Transfer-Encoding is stored as an integer, so callers handle it separately. **/
+	    if (attr && strcmp(attr->Name, "Content-Transfer-Encoding"))
+		{
+		if (dot)
+		    *param_name = dot + 1;
+		return attr;
+		}
+	    if (dot)
+		*dot = '.';
+	    } while ((dot = strchr(dot ? dot + 1 : name, '.')));
+
+    return NULL;
     }
 
 
-/*
-**  mimeGetAttrValue
-*/
+/*** mime_internal_IsLowerAttr - check whether an attribute belongs to the
+ *** object below the message, for example: the envelope, and the attributes
+ *** of an SMTP email, which the SMTP driver handles.
+ ***
+ *** @returns 1 if it does, or 0 if the attribute belongs to the message.
+ ***/
+int
+mime_internal_IsLowerAttr(pMimeInfo inf, char* attrname)
+    {
+    static char* smtpAttrs[] = { "status", "is_ready", "tag", "message_id", "try_count",
+	"first_try_date", "last_try_date", "last_try_status", "last_try_msg", "expire_date" };
+    int i;
+
+	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
+	    return 1;
+	if (!inf->SmtpEmail)
+	    return 0;
+	if (!strncmp(attrname, "header_", 7))
+	    return 1;
+	for (i = 0; i < (int)(sizeof(smtpAttrs) / sizeof(smtpAttrs[0])); i++)
+	    if (!strcmp(attrname, smtpAttrs[i]))
+		return 1;
+
+    return 0;
+    }
+
+
+/***
+ ***  mimeGetAttrType
+ ***
+ ***  NOTE: If you want to query a parameter of an attribute,
+ ***  use the syntax: <attr_name>.<param_name>
+ ***/
+int
+mimeGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
+    {
+    pMimeInfo inf = MIME(inf_v);
+    pMimeAttr attr = NULL;
+    pMimeParam param = NULL;
+    char *local_attrname = NULL;
+    char *attrName = NULL, *paramName = NULL;
+    int rval = -1;
+
+	/** For certain attributes, we defer to obj->Prev **/
+	if (mime_internal_IsLowerAttr(inf, attrname))
+	    {
+	    rval = objGetAttrType(inf->Obj->Prev, attrname);
+	    goto end;
+	    }
+
+	/** Create a local copy of the attrname parameter so we can modify it. **/
+	local_attrname = nmSysStrdup(attrname);
+	if (!local_attrname)
+	    {
+	    mssError(1, "MIME", "Failed to allocate a copy of attribute name \"%s\".", attrname);
+	    goto end;
+	    }
+
+	/** Handle special attributes in the attribute list. **/
+	if (!strcasecmp(local_attrname, "Content-Transfer-Encoding"))
+	    {
+	    rval = DATA_T_STRING;
+	    goto end;
+	    }
+
+	/** Get the indicated attribute. **/
+	attr = mime_internal_FindAttr(inf, local_attrname, &paramName);
+	attrName = local_attrname;
+	if (!attr)
+	    {
+	    rval = DATA_T_STRING;
+	    }
+	else
+	    {
+	    /** If no parameter was specified, return data about the attribute. **/
+	    if (!paramName)
+		{
+		rval = attr->Ptod->DataType;
+		}
+	    else
+		{
+		/** Get the indicated parameter. **/
+		param = libmime_GetMimeParam(inf->Header, attrName, paramName);
+		if (!param)
+		    {
+		    rval = DATA_T_STRING;
+		    }
+		else
+		    {
+		    rval = param->Ptod->DataType;
+		    }
+		}
+	    }
+
+    end:
+	if (local_attrname)
+	    {
+	    nmSysFree(local_attrname);
+	    }
+
+	return rval;
+    }
+
+
+/***
+ ***  mimeGetAttrValue
+ ***
+ ***  NOTE: If you want to query a parameter of an attribute,
+ ***  use the syntax: <attr_name>.<param_name>
+ ***/
 int
 mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree* oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    char tmp[32];
+    pMimeAttr attr = NULL;
+    pMimeParam param = NULL;
+    int int_attr = 0;
+    int expected_datatype;
+    char *local_attrname = NULL;
+    char *attrName = NULL, *paramName = NULL;
+    int rval = -1;
 
-    if (inf->AttrValue)
-	{
-	nmSysFree(inf->AttrValue);
-	inf->AttrValue = NULL;
-	}
-    if (!strcmp(attrname, "inner_type"))
-	{
-	return mimeGetAttrValue(inf_v, "content_type", DATA_T_STRING, val, oxt);
-	}
-    if (!strcmp(attrname, "annotation"))
-	{
-	val->String = "";
-	return 0;
-	}
-    if (!strcmp(attrname, "name"))
-	{
-	val->String = inf->Header->Filename;
-	return 0;
-	}
-    if (!strcmp(attrname, "outer_type"))
-	{
-	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
-	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
-	val->String = inf->AttrValue;
-	return 0;
-	}
-    if (!strcmp(attrname, "content_type"))
-	{
-	/** malloc an arbitrary value -- we won't know the real value until the snprintf **/
-	inf->AttrValue = (char*)nmSysMalloc(128);
-	snprintf(inf->AttrValue, 128, "%s/%s", TypeStrings[inf->Header->ContentMainType-1], inf->Header->ContentSubType);
-	val->String = inf->AttrValue;
-	return 0;
-	}
-    if (!strcmp(attrname, "subject"))
-	{
-	val->String = inf->Header->Subject;
-	return 0;
-	}
-    if (!strcmp(attrname, "charset"))
-	{
-	val->String = inf->Header->Charset;
-	return 0;
-	}
-    if (!strcmp(attrname, "transfer_encoding"))
-	{
-	val->String = EncodingStrings[inf->Header->TransferEncoding-1];
-	return 0;
-	}
-    if (!strcmp(attrname, "mime_version"))
-	{
-	val->String = inf->Header->MIMEVersion;
-	return 0;
-	}
+	/** For certain attributes, we defer to obj->Prev **/
+	if (mime_internal_IsLowerAttr(inf, attrname))
+	    {
+	    rval = objGetAttrValue(inf->Obj->Prev, attrname, datatype, val);
+	    goto end;
+	    }
 
-    return -1;
+	/** Type check. **/
+	expected_datatype = mimeGetAttrType(inf_v, attrname, oxt);
+	if (expected_datatype < 0)
+	    goto end;
+	if (datatype != expected_datatype)
+	    {
+	    mssError(1, "MIME",
+		"Type mismatch: Accessing attribute ['%s' : %s] as type %s.",
+		attrname, objTypeToStr(expected_datatype), objTypeToStr(datatype)
+	    );
+	    goto end;
+	    }
+
+	/** Create a local copy of the attrname parameter so we can modify it. **/
+	local_attrname = nmSysStrdup(attrname);
+	if (!local_attrname)
+	    {
+	    mssError(1, "MIME", "Failed to allocate a copy of attribute name \"%s\".", attrname);
+	    goto end;
+	    }
+
+	/** Deallocate the previous result if necessary. **/
+	if (inf->AttrValue)
+	    {
+	    nmSysFree(inf->AttrValue);
+	    inf->AttrValue = NULL;
+	    }
+
+	/** Handle special attributes. **/
+	if (!strcasecmp(attrname, "Content-Transfer-Encoding"))
+	    {
+	    libmime_GetIntAttr(inf->Header, "Content-Transfer-Encoding", NULL, &int_attr);
+	    val->String = EncodingStrings[int_attr];
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Get the indicated attribute. **/
+	attr = mime_internal_FindAttr(inf, local_attrname, &paramName);
+	attrName = local_attrname;
+	if (!attr)
+	    {
+	    if (!strcmp(attrName, "annotation"))
+		{
+		val->String = "";
+		rval = 0;
+		}
+	    else if (!strcmp(attrName, "name"))
+		{
+		rval = libmime_GetStringAttr(inf->Header, "Name", NULL, &val->String);
+		}
+	    else if (!strcmp(attrName, "outer_type"))
+		{
+		/** The message itself is rfc822; each part is its own content type. **/
+		if (inf->Header == inf->Tree->Root)
+		    {
+		    val->String = "message/rfc822";
+		    rval = 0;
+		    }
+		else
+		    {
+		    rval = libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
+		    }
+		}
+	    else if (!strcmp(attrName, "content_type") || !strcmp(attrName, "inner_type"))
+		{
+		rval = libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
+		}
+	    else
+		{
+		/** A missing header defaults to null. **/
+		rval = 1;
+		}
+	    goto end;
+	    }
+
+	/** If no parameter was specified, return the attribute. **/
+	if (!paramName)
+	    {
+	    /** Return the data stored in the attribute. **/
+	    if (objCopyData(&(attr->Ptod->Data), val, datatype) != 0)
+		{
+		mssError(1, "MIME",
+		    "Failed to copy attribute '%s' of type %s.",
+		    attrname, objTypeToStr(datatype)
+		);
+		goto end;
+		}
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Get the indicated parameter. **/
+	param = libmime_GetMimeParam(inf->Header, attrName, paramName);
+	if (!param)
+	    {
+	    /** A missing parameter defaults to null. **/
+	    rval = 1;
+	    goto end;
+	    }
+
+	/** Return the data stored in the parameter. **/
+	if (objCopyData(&(param->Ptod->Data), val, datatype) != 0)
+	    {
+	    mssError(1, "MIME",
+		"Failed to copy attribute '%s' of type %s.",
+		attrname, objTypeToStr(datatype)
+	    );
+	    goto end;
+	    }
+	rval = 0;
+
+    end:
+	if (local_attrname)
+	    {
+	    nmSysFree(local_attrname);
+	    }
+
+	return rval;
     }
 
 
-/*
-**  mimeGetNextAttr
-*/
+/***
+ ***  mimeGetNextAttr
+ ***/
 char*
 mimeGetNextAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    switch (inf->NextAttr++)
-	{
-	case 0: return "content_type";
-	case 1: return "subject";
-	case 2: return "charset";
-	case 3: return "transfer_encoding";
-	case 4: return "mime_version";
-	}
-    return NULL;
+    pMimeAttr attr;
+    pMimeParam param;
+    char* attrName;
+    int len;
+
+	while (1)
+	    {
+	    /** List the current header's parameters as "<header>.<param>". **/
+	    if (inf->CurrAttr)
+		{
+		attr = (pMimeAttr)inf->CurrAttr->Data;
+		attrName = attr->Name;
+		while (attr->Params.nRows && (inf->CurrParam = xhGetNextElement(&attr->Params, inf->CurrParam)))
+		    {
+		    param = (pMimeParam)inf->CurrParam->Data;
+
+		    /** Skip parameters the parser derives from the header. **/
+		    if (!strcmp(param->Name, "ContentMainType") || !strcmp(param->Name, "ContentSubType") ||
+			    !strcmp(param->Name, "List") || !strcmp(param->Name, "Struct"))
+			continue;
+
+		    /** Build the name, which lasts until the next call. **/
+		    if (inf->ParamAttrName)
+			nmSysFree(inf->ParamAttrName);
+		    len = strlen(attrName) + strlen(param->Name) + 2;
+		    inf->ParamAttrName = (char*)nmSysMalloc(len);
+		    if (!inf->ParamAttrName)
+			{
+			mssError(1, "MIME",
+			    "Failed to allocate the name of parameter \"%s\" of \"%s\".",
+			    param->Name, attrName
+			);
+			return NULL;
+			}
+		    snprintf(inf->ParamAttrName, len, "%s.%s", attrName, param->Name);
+		    return inf->ParamAttrName;
+		    }
+		}
+
+	    /** Move to the next header. **/
+	    inf->CurrAttr = xhGetNextElement(&inf->Header->Attrs, inf->CurrAttr);
+	    inf->CurrParam = NULL;
+	    if (!inf->CurrAttr)
+		return NULL;
+	    attr = (pMimeAttr)inf->CurrAttr->Data;
+
+	    /** Name and Content-Type are system attributes, so only Content-Type's parameters are listed. **/
+	    if (!strcasecmp(attr->Name, "Name") || !strcasecmp(attr->Name, "Content-Type"))
+		continue;
+
+	    return attr->Name;
+	    }
     }
 
 
-/*
-**  mimeGetFirstAttr
-*/
+/***
+ ***  mimeGetFirstAttr
+ ***/
 char*
 mimeGetFirstAttr(void* inf_v, pObjTrxTree oxt)
     {
     pMimeInfo inf = MIME(inf_v);
-    inf->NextAttr=0;
-    return mimeGetNextAttr(inf,oxt);
-    return NULL;
+
+	/** Set up to get the first element in the attribute list. **/
+	inf->CurrAttr = NULL;
+	inf->CurrParam = NULL;
+
+    return mimeGetNextAttr(inf_v, oxt);
     }
 
 
-/*
-**  mimeSetAttrValue
-*/
+/***
+ ***  mimeSetAttrValue
+ ***/
 int
 mimeSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
+    pMimeInfo inf = MIME(inf_v);
+
+	/** Pass writes of the lower object's attributes to it. **/
+	if (mime_internal_IsLowerAttr(inf, attrname))
+	    return objSetAttrValue(inf->Obj->Prev, attrname, datatype, val);
+
+    mssError(1, "MIME", "The MIME driver does not support setting attributes.");
     return -1;
     }
 
 
-/*
-**  mimeAddAttr
-*/
+/***
+ ***  mimeAddAttr
+ ***/
 int
-mimeAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree oxt)
+mimeAddAttr(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
+    mssError(1, "MIME", "The MIME driver does not support adding attributes.");
     return -1;
     }
 
 
-/*
-**  mimeOpenAttr
-*/
+/***
+ ***  mimeOpenAttr
+ ***/
 void*
 mimeOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     {
@@ -502,9 +863,9 @@ mimeOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeGetFirstMethod
-*/
+/***
+ ***  mimeGetFirstMethod
+ ***/
 char*
 mimeGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     {
@@ -512,9 +873,9 @@ mimeGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeGetNextMethod
-*/
+/***
+ ***  mimeGetNextMethod
+ ***/
 char*
 mimeGetNextMethod(void* inf_v, pObjTrxTree oxt)
     {
@@ -522,26 +883,28 @@ mimeGetNextMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*
-**  mimeExecuteMethod
-*/
+/***
+ ***  mimeExecuteMethod
+ ***/
 int
 mimeExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     return -1;
     }
 
-/*** mimeInfo - Return the capabilities of the object
+/***
+ *** mimeInfo - Return the capabilities of the object
  ***/
 int
 mimeInfo(void* inf_v, pObjectInfo info)
     {
     pMimeInfo inf = MIME(inf_v);
-	
+    int main_type;
+
 	info->Flags |= ( OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK );
-	if (inf->Header->ContentMainType == MIME_TYPE_MULTIPART)
+	if (!libmime_GetIntAttr(inf->Header, "Content-Type", "ContentMainType", &main_type) && main_type == MIME_TYPE_MULTIPART)
 	    {
-	    info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN | 
+	    info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
 		OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT );
 	    info->nSubobjects = xaCount(&(inf->Header->Parts));
 	    }
@@ -550,14 +913,14 @@ mimeInfo(void* inf_v, pObjectInfo info)
 	    info->Flags |= ( OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_CAN_HAVE_CONTENT |
 		OBJ_INFO_F_HAS_CONTENT );
 	    }
-	    
+
 	return 0;
     }
 
 
-/*
-**  mimeInitialize
-*/
+/***
+ ***  mimeInitialize
+ ***/
 int
 mimeInitialize()
     {
@@ -597,6 +960,8 @@ mimeInitialize()
     xaAddItem(&(drv->RootContentTypes), "multipart/mixed");
     xaAddItem(&(drv->RootContentTypes), "multipart/alternative");
     xaAddItem(&(drv->RootContentTypes), "multipart/form-data");
+    xaAddItem(&(drv->RootContentTypes), "multipart/parallel");
+    xaAddItem(&(drv->RootContentTypes), "multipart/digest");
 
     if (objRegisterDriver(drv) < 0) return -1;
 

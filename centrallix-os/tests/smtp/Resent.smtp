@@ -1,0 +1,6 @@
+$Version=2$
+Resent "system/smtp"
+    {
+    spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/Resent";
+    expire_time = -1;
+    }

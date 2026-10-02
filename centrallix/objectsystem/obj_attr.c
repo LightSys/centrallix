@@ -511,17 +511,35 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		{
 		/** String value **/
 		if (!val)
+		    {
 		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    }
 		else
+		    {
 		    rval = this->Driver->Write(this->Data, val->String, strlen(val->String), 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    if (rval >= 0 && rval < strlen(val->String))
+			{
+			mssError(1, "OSML", "Incomplete write of attribute 'objcontent'");
+			return -1;
+			}
+		    }
 		}
 	    else if (data_type == DATA_T_BINARY)
 		{
 		/** Binary value **/
 		if (!val || !val->Binary.Data)
+		    {
 		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    }
 		else
+		    {
 		    rval = this->Driver->Write(this->Data, val->Binary.Data, val->Binary.Size, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    if (rval >= 0 && rval < val->Binary.Size)
+			{
+			mssError(1, "OSML", "Incomplete write of attribute 'objcontent'");
+			return -1;
+			}
+		    }
 		}
 	    else
 		{

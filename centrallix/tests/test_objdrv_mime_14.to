@@ -1,0 +1,5 @@
+##NAME Parts of a nested multipart
+
+query select :name, :inner_type from /tests/MimePartTypes.eml/attachment3
+query select :name, start = substring(:objcontent, 1, 17) from object /tests/MimePartTypes.eml/attachment3/attachment1.txt
+query select :name from object /tests/MimePartTypes.eml/nosuch.txt

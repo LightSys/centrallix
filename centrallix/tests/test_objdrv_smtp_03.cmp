@@ -1,0 +1,4 @@
+Attribute [name]:   string   "DeferredSent.eml" 
+Attribute [status]:   string   "Sent" 
+Attribute [last_try_status]:   string   "None" 
+Attribute [last_try_msg]:   string   "" 

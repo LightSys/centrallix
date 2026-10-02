@@ -1,0 +1,7 @@
+##NAME Date add test
+query select dateadd('year', 3, convert(datetime, '1/1/1970'))
+query select dateadd('month', 4, convert(datetime, '1/1/1970'))
+query select dateadd('day', 5, convert(datetime, '1/1/1970'))
+query select dateadd('minute', -30, convert(datetime, '1/1/1970'))
+query select dateadd('second', 71, convert(datetime, '1/1/1970'))
+query select dateadd('day', 41, convert(datetime, '12/31/1999 23:59:59'))
