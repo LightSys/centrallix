@@ -1846,24 +1846,16 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, 
     }
 
 
-/*** smtp_internal_ReloadAttributes - reload the attributes of an email if its
- *** struct file has been replaced since they were loaded, after updating the
- *** send status of a Pending email.  Attributes are updated in place, so
- *** attribute names already returned stay valid.
+/*** smtp_internal_ReloadStruct - reload the attributes of an email if its
+ *** struct file has been replaced since they were loaded.  Attributes are
+ *** updated in place, so attribute names already returned stay valid.
  ***
- *** @param inf The email.  Other objects are skipped.
- *** @param readLog Whether to first record the results in the mail log,
- ***   waiting for a read already in progress.  Must be false while locked.
+ *** @param inf The email.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
+smtp_internal_ReloadStruct(pSmtpData inf)
     {
-    pSmtpAttribute spoolDir;
-    pStructInf pendingStruct = NULL;
-    char* status;
-    bool changed;
-    int found;
     struct stat st;
     pFile structFile = NULL;
     pStructInf emailStruct = NULL;
@@ -1877,45 +1869,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
     int i;
     int rval = -1;
 
-	/** Skip other objects. **/
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
-	if (inf->Type != SMTP_T_EML)
-	    return 0;
-
-	/** Record the results Postfix logged since the last read. **/
-	if (readLog)
-	    {
-	    spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
-	    ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
-	    if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
-		{
-		mssError(1, "SMTP", "Failed to read the mail log for \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
-		goto end;
-		}
-	    if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
-		mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
-	    }
-
-	/** Update the send status of a Pending email from its sendmail result and the timeout. **/
-	status = smtp_internal_GetString(inf->Attributes, "status");
-	if (status != NULL && strcmp(status, "Pending") == 0)
-	    {
-	    smtp_internal_Lock();
-	    found = smtp_internal_ReadStruct(inf->EmailStructPath.String, &pendingStruct);
-	    if (found == 1)
-		{
-		status = smtp_internal_StructString(pendingStruct, "status");
-		if (status != NULL && strcmp(status, "Pending") == 0 && UNLIKELY(
-		    smtp_internal_RefreshStatus(pendingStruct, inf->ResultPath.String, false, inf->RootAttributes, &changed) != 0
-		    || (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, pendingStruct) != 0)
-		))  {
-		    found = -1;
-		    }
-		}
-	    smtp_internal_Unlock();
-	    if (UNLIKELY(found < 0))
-		mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
-	    }
 
 	/** Skip an unchanged struct. **/
 	if (stat(inf->EmailStructPath.String, &st) != 0)
@@ -2023,7 +1977,87 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 	if (attributes != NULL) smtp_internal_FreeAttributes(attributes);
 	if (emailStruct != NULL) stFreeInf(emailStruct);
 	if (structFile != NULL) fdClose(structFile, 0);
-	if (pendingStruct != NULL) stFreeInf(pendingStruct);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_ReloadAttributes - bring the attributes of an email up to
+ *** date: record new results from the mail log, reload a replaced struct,
+ *** then update the send status of a Pending email.
+ ***
+ *** @param inf The email.  Other objects are skipped.
+ *** @param readLog Whether to first record the results in the mail log,
+ ***   waiting for a read already in progress.  Must be false while locked.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
+    {
+    pSmtpAttribute spoolDir;
+    pStructInf emailStruct = NULL;
+    char* status;
+    bool changed = false;
+    int found;
+    int rval = -1;
+
+	/** Skip other objects. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (inf->Type != SMTP_T_EML)
+	    return 0;
+
+	/** Update the struct with results from the Postfix logs. **/
+	if (readLog)
+	    {
+	    spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
+	    ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
+	    if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
+		{
+		mssError(1, "SMTP", "Failed to read the mail log for \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
+		goto end;
+		}
+	    if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
+		mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	    }
+
+	/** Reload a replaced struct. **/
+	if (UNLIKELY(smtp_internal_ReloadStruct(inf) != 0))
+	    goto end;
+
+	/** If the email isn't Pending, we're done. **/
+	status = smtp_internal_GetString(inf->Attributes, "status");
+	if (status == NULL || strcmp(status, "Pending") != 0)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** For Pending emails, update the send status from the sendmail result/timeout. **/
+	smtp_internal_Lock();
+	found = smtp_internal_ReadStruct(inf->EmailStructPath.String, &emailStruct);
+	if (found == 1)
+	    {
+	    status = smtp_internal_StructString(emailStruct, "status");
+	    if (status != NULL && strcmp(status, "Pending") == 0 && UNLIKELY(
+		smtp_internal_RefreshStatus(emailStruct, inf->ResultPath.String, false, inf->RootAttributes, &changed) != 0
+		|| (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, emailStruct) != 0)
+	    ))  {
+		found = -1;
+		}
+	    }
+	smtp_internal_Unlock();
+	if (UNLIKELY(found < 0))
+	    mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
+
+	/** Load the updated status. **/
+	if (found == 1 && changed && UNLIKELY(smtp_internal_ReloadStruct(inf) != 0))
+	    goto end;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (emailStruct != NULL) stFreeInf(emailStruct);
 
 	return rval;
     }
