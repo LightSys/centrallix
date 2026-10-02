@@ -801,7 +801,9 @@ smtp_internal_ReadStruct(char* path, pStructInf* emailStruct)
     }
 
 
-/*** smtp_internal_WriteStruct - write an email struct file.
+/*** smtp_internal_WriteStruct - replace an existing email struct file.  The
+ *** struct is written to "<path>.tmp", which is then renamed over the old
+ *** file, so a crash leaves either the old struct or the new one.
  ***
  *** @param path The path of the struct file.
  *** @param emailStruct The struct to write.
@@ -810,26 +812,67 @@ smtp_internal_ReadStruct(char* path, pStructInf* emailStruct)
 int
 smtp_internal_WriteStruct(char* path, pStructInf emailStruct)
     {
-    pFile structFile;
+    char tmpPath[PATH_MAX];
+    struct stat st;
+    pFile structFile = NULL;
+    bool tmpCreated = false;
     int rval = -1;
 
-	structFile = fdOpen(path, O_WRONLY | O_TRUNC, 0);
-	if (UNLIKELY(structFile == NULL))
+	/** Build the temporary path. **/
+	if (UNLIKELY(snprintf(tmpPath, sizeof(tmpPath), "%s.tmp", path) >= (int)sizeof(tmpPath)))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to open email struct file \"%s\" for writing.", path);
-	    return -1;
-	    }
-	if (UNLIKELY(stGenerateMsg(structFile, emailStruct, 0) != 0))
-	    mssError(1, "SMTP", "Failed to write email struct file \"%s\".", path);
-	else
-	    rval = 0;
-	if (UNLIKELY(fdClose(structFile, 0) != 0 && rval == 0))
-	    {
-	    mssErrorErrno(1, "SMTP", "Failed to close email struct file \"%s\".", path);
-	    rval = -1;
+	    mssError(1, "SMTP", "Failed to build the temporary path of email struct file: \"%s.tmp\" is too long.", path);
+	    goto end;
 	    }
 
-    return rval;
+	/** Get the permissions of the old file. **/
+	if (UNLIKELY(stat(path, &st) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to check email struct file \"%s\".", path);
+	    goto end;
+	    }
+
+	/** Write the new struct. **/
+	structFile = fdOpen(tmpPath, O_WRONLY | O_CREAT | O_TRUNC, st.st_mode & 07777);
+	if (UNLIKELY(structFile == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to create email struct file \"%s\".", tmpPath);
+	    goto end;
+	    }
+	tmpCreated = true;
+	if (UNLIKELY(stGenerateMsg(structFile, emailStruct, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to write email struct file \"%s\".", tmpPath);
+	    goto end;
+	    }
+	if (UNLIKELY(fdClose(structFile, 0) != 0))
+	    {
+	    structFile = NULL;
+	    mssErrorErrno(1, "SMTP", "Failed to close email struct file \"%s\".", tmpPath);
+	    goto end;
+	    }
+	structFile = NULL;
+
+	/** Replace the old struct. **/
+	if (UNLIKELY(rename(tmpPath, path) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to replace email struct file \"%s\".", path);
+	    goto end;
+	    }
+	tmpCreated = false;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(structFile != NULL)) fdClose(structFile, 0);
+	if (UNLIKELY(tmpCreated && remove(tmpPath) != 0))
+	    fprintf(stderr,
+		"Warning: Failed to remove partial email struct file (%s): %s.\n",
+		tmpPath, strerror(errno)
+	    );
+
+	return rval;
     }
 
 
@@ -1433,7 +1476,7 @@ smtp_internal_IsPending(char* structPath)
 
 
 /*** smtp_internal_RemoveEmail - delete the files of an email: the email,
- *** its struct, and its sendmail result, including a partial one.  Missing
+ *** its struct, and its sendmail result, including partial ones.  Missing
  *** files are not an error.
  ***
  *** @param emailPath The path of the email file.
@@ -1445,12 +1488,18 @@ int
 smtp_internal_RemoveEmail(char* emailPath, char* structPath, char* resultPath)
     {
     char tmpPath[PATH_MAX];
+    char structTmpPath[PATH_MAX];
     int i;
 
-	/** Build the partial result path. **/
+	/** Build the partial file paths. **/
 	if (UNLIKELY(snprintf(tmpPath, sizeof(tmpPath), "%s.tmp", resultPath) >= (int)sizeof(tmpPath)))
 	    {
 	    mssError(1, "SMTP", "Failed to build partial sendmail result path: \"%s.tmp\" is too long.", resultPath);
+	    return -1;
+	    }
+	if (UNLIKELY(snprintf(structTmpPath, sizeof(structTmpPath), "%s.tmp", structPath) >= (int)sizeof(structTmpPath)))
+	    {
+	    mssError(1, "SMTP", "Failed to build partial email struct path: \"%s.tmp\" is too long.", structPath);
 	    return -1;
 	    }
 
@@ -1459,6 +1508,7 @@ smtp_internal_RemoveEmail(char* emailPath, char* structPath, char* resultPath)
 	    {
 	    emailPath,
 	    structPath,
+	    structTmpPath,
 	    resultPath,
 	    tmpPath,
 	    };
@@ -5073,7 +5123,6 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
     pStructInf attrStruct = NULL;
 
     pFile emlStructFileRead = NULL;
-    pFile emlStructFileWrite = NULL;
     pStructInf emlStruct = NULL;
 
     int rval = -1;
@@ -5245,34 +5294,13 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 		emlStructFileRead = NULL;
 		}
 
-	    /** Open a fd with trunc to get rid of the old stuff. **/
-	    emlStructFileWrite = fdOpen(inf->EmailStructPath.String, O_WRONLY | O_TRUNC, inf->Mask);
-	    if (UNLIKELY(emlStructFileWrite == NULL))
-		{
-		mssErrorErrno(1, "SMTP",
-		    "Failed to open email structure file (%s) for writing.",
-		    inf->EmailStructPath.String
-		);
-		goto end;
-		}
-
 	    /** Write changes to the email struct file. **/
-	    if (UNLIKELY(stGenerateMsg(emlStructFileWrite, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) != 0))
-		{
-		mssError(1, "SMTP",
-		    "Unable to write the attribute to the email struct file: %s.",
-		    inf->EmailStructPath.String
-		);
+	    if (UNLIKELY(smtp_internal_WriteStruct(inf->EmailStructPath.String, emlStruct) != 0))
 		goto end;
-		}
 
 	    /** If the email is ready to send, send it. **/
 	    if (strcmp(attrname, "is_ready") == 0 && val->Integer == 1)
 		{
-		/** Flush the struct file so sending can update it. **/
-		fdClose(emlStructFileWrite, 0);
-		emlStructFileWrite = NULL;
-
 		if (UNLIKELY(smtp_internal_SendEmail(inf) < 0))
 		    {
 		    goto end;
@@ -5292,7 +5320,6 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 
 	/** Free appropriate memory and close appropriate files. **/
 	if (UNLIKELY(emlStructFileRead != NULL)) fdClose(emlStructFileRead, 0);
-	if (emlStructFileWrite != NULL) fdClose(emlStructFileWrite, 0);
 	if (emlStruct != NULL) stFreeInf(emlStruct);
 
 	return rval;
@@ -5358,7 +5385,6 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
     pStructInf createdStruct = NULL;
     pSnNode rootNode = NULL;
     pFile emlStructFileRead = NULL;
-    pFile emlStructFileWrite = NULL;
     pStructInf emlStruct = NULL;
     int rval = -1;
 
@@ -5533,26 +5559,9 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    fdClose(emlStructFileRead, 0);
 	    emlStructFileRead = NULL;
 
-	    /** Open a fd with trunc to get rid of the old stuff. **/
-	    emlStructFileWrite = fdOpen(inf->EmailStructPath.String, O_WRONLY | O_TRUNC, inf->Mask);
-	    if (UNLIKELY(emlStructFileWrite == NULL))
-		{
-		mssErrorErrno(1, "SMTP",
-		    "Failed to open email structure file (%s) for writing.",
-		    inf->EmailStructPath.String
-		);
-		goto end;
-		}
-
 	    /** Write changes to the email struct file. **/
-	    if (UNLIKELY(stGenerateMsg(emlStructFileWrite, emlStruct, O_WRONLY | O_TRUNC | O_CREAT) < 0))
-		{
-		mssError(1, "SMTP",
-		    "Unable to write the updated email struct file: %s.",
-		    inf->EmailStructPath.String
-		);
+	    if (UNLIKELY(smtp_internal_WriteStruct(inf->EmailStructPath.String, emlStruct) != 0))
 		goto end;
-		}
 	    }
 
 	/** Success. **/
@@ -5568,7 +5577,6 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	/** Free appropriate memory and close appropriate files. **/
 	if (UNLIKELY(unstoredAttr != NULL)) smtp_internal_ClearAttribute((char*)unstoredAttr, NULL);
 	if (emlStructFileRead != NULL) fdClose(emlStructFileRead, 0);
-	if (emlStructFileWrite != NULL) fdClose(emlStructFileWrite, 0);
 	if (emlStruct != NULL) stFreeInf(emlStruct);
 
 	return rval;
