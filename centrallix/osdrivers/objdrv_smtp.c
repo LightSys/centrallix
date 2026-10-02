@@ -94,8 +94,8 @@
  ***/
 #define SMTP_CURSOR_FILE	".mail_log_cursor"
 
-/** Mail log lines to read before letting other threads run. **/
-#define SMTP_LOG_YIELD_LINES	256
+/** Bytes of the mail log to read before letting other threads run. **/
+#define SMTP_LOG_READ_SIZE	(64 * 1024)
 
 /** Bytes for a Postfix queue ID, including the null terminator. **/
 #define SMTP_QUEUE_ID_SIZE	32
@@ -2820,11 +2820,11 @@ smtp_internal_ParseLogLine(char* line, pSmtpLogLine parsed)
  *** @param path The path of the mail log.
  *** @returns The open log, or NULL on failure.
  ***/
-FILE*
+pFile
 smtp_internal_OpenLog(char* path)
     {
     uid_t uid = geteuid();
-    FILE* log = NULL;
+    pFile log = NULL;
     int fd = -1;
     int openErrno;
 
@@ -2854,8 +2854,8 @@ smtp_internal_OpenLog(char* path)
 	    goto end;
 	    }
 
-	/** Read it with stdio. **/
-	log = fdopen(fd, "r");
+	/** Read it through MTask. **/
+	log = fdOpenFD(fd, O_RDONLY);
 	if (UNLIKELY(log == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", path);
@@ -3416,8 +3416,8 @@ smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
 
 /*** smtp_internal_ReadLogLines - keep copies of the complete lines of a
  *** mail log after an offset that are about the Pending emails of a spool
- *** directory, letting other threads run every SMTP_LOG_YIELD_LINES lines.
- *** Changes neither the indexes nor any email.
+ *** directory, letting other threads run after each read of up to
+ *** SMTP_LOG_READ_SIZE bytes.  Changes neither the indexes nor any email.
  ***
  *** @param spool The spool directory.
  *** @param batch The lines kept so far.
@@ -3428,81 +3428,117 @@ smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, FILE* log, char* path, off_t* offset)
+smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, pFile log, char* path, off_t* offset)
     {
     SmtpLogLine parsed;
+    XString pending; /* Bytes read after the last complete line. */
     XString work;
+    bool pendingInitialized = false;
     bool workInitialized = false;
-    char* line = NULL;
+    char* buf = NULL;
+    char* line;
+    char* newline;
     char* copy = NULL;
-    size_t lineSize = 0;
-    ssize_t len;
+    int lineLen;
+    int start;
+    int n;
     bool keep;
-    int nLines = 0;
     int rval = -1;
 
-	/** Start at the offset. **/
+	/** Initialize read buffers. **/
+	buf = nmSysMalloc(SMTP_LOG_READ_SIZE);
+	if (UNLIKELY(buf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate %d bytes to read the mail log.", SMTP_LOG_READ_SIZE);
+	    goto end;
+	    }
+	if (UNLIKELY(xsInit(&pending) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the mail log line buffer.");
+	    goto end;
+	    }
+	pendingInitialized = true;
 	if (UNLIKELY(xsInit(&work) != 0))
 	    {
 	    mssError(1, "SMTP", "Failed to initialize the mail log line buffer.");
 	    goto end;
 	    }
 	workInitialized = true;
-	if (UNLIKELY(fseeko(log, *offset, SEEK_SET) != 0))
+
+	/** Start at the offset. **/
+	if (UNLIKELY(lseek(fdFD(log), *offset, SEEK_SET) == (off_t)-1))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to seek to offset %lld in the mail log \"%s\".", (long long)*offset, path);
 	    goto end;
 	    }
 
-	/** Read each complete line. **/
-	while ((len = getline(&line, &lineSize, log)) > 0)
+	/** Read the log a chunk at a time. **/
+	while ((n = fdRead(log, buf, SMTP_LOG_READ_SIZE, 0, 0)) > 0)
 	    {
-	    if (line[len - 1] != '\n')
-		break; /* Leave a partial line until the rest is written. */
-	    line[len - 1] = '\0';
-
-	    /** Parse a copy, since parsing changes the line. **/
-	    if (UNLIKELY(xsCopy(&work, line, len - 1) != 0))
+	    if (UNLIKELY(xsConcatenate(&pending, buf, n) < 0))
 		{
-		mssError(1, "SMTP", "Failed to copy a %zd byte line of the mail log \"%s\".", len, path);
+		mssError(1, "SMTP", "Failed to store %d bytes of the mail log \"%s\".", n, path);
 		goto end;
 		}
-	    smtp_internal_ParseLogLine(work.String, &parsed);
 
-	    /** Keep the lines about Pending emails, including the queue IDs they claim. **/
-	    if (parsed.Kind == SMTP_LINE_NONE)
-		keep = false;
-	    else if (parsed.Kind == SMTP_LINE_QUEUED)
-		keep = (xhLookup(&spool->ByMessageID, parsed.MessageID) != NULL);
-	    else
-		keep = (xhLookup(&spool->ByQueueID, parsed.QueueID) != NULL || xhLookup(&batch->QueueIDs, parsed.QueueID) != NULL);
-	    if (keep)
+	    /** Handle each complete line. **/
+	    start = 0;
+	    while ((newline = memchr(pending.String + start, '\n', pending.Length - start)) != NULL)
 		{
-		copy = nmSysStrdup(line);
-		if (UNLIKELY(copy == NULL || xaAddItem(&batch->Lines, copy) < 0))
+		line = pending.String + start;
+		lineLen = newline - line;
+		*newline = '\0';
+
+		/** Parse a copy, since parsing changes the line. **/
+		if (UNLIKELY(xsCopy(&work, line, lineLen) != 0))
 		    {
-		    mssError(1, "SMTP", "Failed to keep a line of the mail log \"%s\": %s", path, line);
+		    mssError(1, "SMTP", "Failed to copy a %d byte line of the mail log \"%s\".", lineLen, path);
 		    goto end;
 		    }
-		copy = NULL;
-		}
-	    if (keep && parsed.Kind == SMTP_LINE_QUEUED && xhLookup(&batch->QueueIDs, parsed.QueueID) == NULL)
-		{
-		copy = nmSysStrdup(parsed.QueueID);
-		if (UNLIKELY(copy == NULL || xhAdd(&batch->QueueIDs, copy, copy) != 0))
+		smtp_internal_ParseLogLine(work.String, &parsed);
+
+		/** Keep the lines about Pending emails, including the queue IDs they claim. **/
+		if (parsed.Kind == SMTP_LINE_NONE)
+		    keep = false;
+		else if (parsed.Kind == SMTP_LINE_QUEUED)
+		    keep = (xhLookup(&spool->ByMessageID, parsed.MessageID) != NULL);
+		else
+		    keep = (xhLookup(&spool->ByQueueID, parsed.QueueID) != NULL || xhLookup(&batch->QueueIDs, parsed.QueueID) != NULL);
+		if (keep)
 		    {
-		    mssError(1, "SMTP", "Failed to track queue ID %s from the mail log \"%s\".", parsed.QueueID, path);
-		    goto end;
+		    copy = nmSysStrdup(line);
+		    if (UNLIKELY(copy == NULL || xaAddItem(&batch->Lines, copy) < 0))
+			{
+			mssError(1, "SMTP", "Failed to keep a line of the mail log \"%s\": %s", path, line);
+			goto end;
+			}
+		    copy = NULL;
 		    }
-		copy = NULL;
+		if (keep && parsed.Kind == SMTP_LINE_QUEUED && xhLookup(&batch->QueueIDs, parsed.QueueID) == NULL)
+		    {
+		    copy = nmSysStrdup(parsed.QueueID);
+		    if (UNLIKELY(copy == NULL || xhAdd(&batch->QueueIDs, copy, copy) != 0))
+			{
+			mssError(1, "SMTP", "Failed to track queue ID %s from the mail log \"%s\".", parsed.QueueID, path);
+			goto end;
+			}
+		    copy = NULL;
+		    }
+		*offset += lineLen + 1;
+		start += lineLen + 1;
 		}
-	    *offset += len;
+
+	    /** Keep the partial line until the rest is read. **/
+	    if (start > 0 && UNLIKELY(xsSubst(&pending, 0, start, "", 0) < 0))
+		{
+		mssError(1, "SMTP", "Failed to drop %d bytes of read lines of the mail log \"%s\".", start, path);
+		goto end;
+		}
 
 	    /** Let other threads run. **/
-	    if (++nLines % SMTP_LOG_YIELD_LINES == 0)
-		thYield();
+	    thYield();
 	    }
-	if (UNLIKELY(ferror(log)))
+	if (UNLIKELY(n < 0))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", path);
 	    goto end;
@@ -3513,7 +3549,8 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, FILE* log, cha
 
     end:
 	if (UNLIKELY(copy != NULL)) nmSysFree(copy);
-	if (LIKELY(line != NULL)) free(line);
+	if (LIKELY(buf != NULL)) nmSysFree(buf);
+	if (LIKELY(pendingInitialized)) xsDeInit(&pending);
 	if (LIKELY(workInitialized)) xsDeInit(&work);
 
 	return rval;
@@ -3546,8 +3583,8 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wai
     char* status;
     char* queueId;
     struct stat st;
-    FILE* log = NULL;
-    FILE* rotatedLog = NULL;
+    pFile log = NULL;
+    pFile rotatedLog = NULL;
     off_t offset;
     off_t rotatedOffset;
     bool sameLog;
@@ -3609,7 +3646,7 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wai
 	log = smtp_internal_OpenLog(SMTP_INF.LogPath);
 	if (UNLIKELY(log == NULL))
 	    goto end;
-	if (UNLIKELY(fstat(fileno(log), &st) != 0))
+	if (UNLIKELY(fstat(fdFD(log), &st) != 0))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_INF.LogPath);
 	    goto end;
@@ -3706,8 +3743,8 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wai
 	    smtp_internal_UnloadSpool(spool);
 	if (locked) smtp_internal_Unlock();
 
-	if (log != NULL) fclose(log);
-	if (rotatedLog != NULL) fclose(rotatedLog);
+	if (log != NULL) fdClose(log, 0);
+	if (rotatedLog != NULL) fdClose(rotatedLog, 0);
 	if (batchInitialized) smtp_internal_FreeLogBatch(&batch);
 
 	/** End the read, waking the threads waiting for it. **/
