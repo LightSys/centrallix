@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -34,27 +34,60 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "obj.h"
 #include "mime.h"
 
-/*  libmime_Cleanup
-**
-**  Deallocates all memory used for the mime message
-*/
-void
-libmime_Cleanup(pMimeHeader msg)
+/*** libmime_AllocateHeader
+ ***
+ *** Allocates all memory used for the mime header
+ ***/
+pMimeHeader
+libmime_AllocateHeader()
     {
-    // FIXME FIXME
-    // Do cleanup stuff.. memory leaking now!
+    pMimeHeader msg;
+
+	msg = nmMalloc(sizeof(MimeHeader));
+	if (!msg) return NULL;
+	memset(msg, 0, sizeof(MimeHeader));
+
+	xaInit(&msg->Parts, 8);
+	xhInit(&msg->Attrs, 17, 0);
+
+    return msg;
+    }
+
+/*** libmime_Cleanup_Header
+ ***
+ *** Deallocates all memory used for the mime header
+ ***/
+void
+libmime_DeallocateHeader(pMimeHeader msg)
+    {
+    int i;
+
+	for (i = 0; i < msg->Parts.nItems; i++)
+	    {
+	    libmime_DeallocateHeader(msg->Parts.Items[i]);
+	    }
+	xaDeInit(&msg->Parts);
+
+	if (msg->Sender) nmFree(msg->Sender, sizeof(EmailAddr));
+
+	/** Clear the attributes. **/
+	libmime_xhDeInit(&msg->Attrs, libmime_ClearAttr);
+
+	nmFree(msg, sizeof(MimeHeader));
+
     return;
     }
 
-/*  libmime_StringLTrim
-**
-**  Trims whitespace off the left side of a string.
-*/
+/***  libmime_StringLTrim
+ ***
+ ***  Trims whitespace off the left side of a string.
+ ***/
 int
 libmime_StringLTrim(char *str)
     {
@@ -65,16 +98,15 @@ libmime_StringLTrim(char *str)
 		 str[i] == '\n' ||
 		 str[i] == '\t' ||
 		 str[i] == ' '); i++);
-    memmove(str, str+i, strlen(str)-i);
-    str[strlen(str)-i] = '\0';
+    memmove(str, str+i, strlen(str)+1-i);
 
     return 0;
     }
 
-/*  libmime_StringRTrim
-**
-**  Trims whitespace off the right side of a string.
-*/
+/***  libmime_StringRTrim
+ ***
+ ***  Trims whitespace off the right side of a string.
+ ***/
 int
 libmime_StringRTrim(char *str)
     {
@@ -90,10 +122,10 @@ libmime_StringRTrim(char *str)
     return 0;
     }
 
-/*  libmime_StringTrim
-**
-**  Trims whitespace off both sides of a string.
-*/
+/***  libmime_StringTrim
+ ***
+ ***  Trims whitespace off both sides of a string.
+ ***/
 int
 libmime_StringTrim(char *str)
     {
@@ -103,11 +135,11 @@ libmime_StringTrim(char *str)
     return 0;
     }
 
-/*  libmime_StringFirstCaseCmp
-**
-**  Checks if the first part of the given string matches the second string.
-**  This function is case insensitive.
-*/
+/***  libmime_StringFirstCaseCmp
+ ***
+ ***  Checks if the first part of the given string matches the second string.
+ ***  This function is case insensitive.
+ ***/
 int
 libmime_StringFirstCaseCmp(char *s1, char *s2)
     {
@@ -129,9 +161,9 @@ libmime_StringFirstCaseCmp(char *s1, char *s2)
     return 0;
     }
 
-/*
-**  libmime_PrintAddrList
-*/
+/***
+ ***  libmime_PrintAddrList
+ ***/
 int
 libmime_PrintAddressList(pXArray xary, int level)
     {
@@ -162,10 +194,34 @@ libmime_PrintAddressList(pXArray xary, int level)
     return 0;
     }
 
-/*  libmime_StringUnquote
-**
-**  Internal function used to unquote strings if they are quoted.
-*/
+/*** libmime_FreeAddress - Frees an email address, including the members of a
+ *** group address.
+ ***
+ *** @param addr The address to free.
+ ***/
+void
+libmime_FreeAddress(pEmailAddr addr)
+    {
+    int i;
+
+	/** Free the group's members. **/
+	if (addr->Group)
+	    {
+	    for (i = 0; i < xaCount(addr->Group); i++)
+		libmime_FreeAddress((pEmailAddr)xaGetItem(addr->Group, i));
+	    xaDeInit(addr->Group);
+	    nmFree(addr->Group, sizeof(XArray));
+	    }
+
+	nmFree(addr, sizeof(EmailAddr));
+
+    return;
+    }
+
+/***  libmime_StringUnquote
+ ***
+ ***  Internal function used to unquote strings if they are quoted.
+ ***/
 char*
 libmime_StringUnquote(char *str)
     {
@@ -189,41 +245,39 @@ libmime_StringUnquote(char *str)
     return str;
     }
 
-/*  libmime_B64Purify
-**
-**  Removes all characters from a Base64 string that are not part
-**  of the Base64 alphabet.
-*/
+/***  libmime_B64Purify
+ ***
+ ***  Removes all characters from a Base64 string that are not part
+ ***  of the Base64 alphabet.
+ ***/
 int
 libmime_B64Purify(char *string)
     {
-    char *wrk, *tmp;
-    static char allowset[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    char *wrk;
+    static char allowset[66] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     int rem=0;
+    int n;
 
     for (wrk = string; *wrk;)
 	{
-	if (strchr(allowset, *wrk) != NULL)
-	    wrk++;
+	n = strspn(wrk, allowset);
+	if (n)
+	    wrk += n;
 	else
 	    {
-	    char ch = *wrk;
-	    for (tmp = wrk; tmp;)
-		{
-		memmove(tmp, tmp+1, strlen(tmp+1)+1);
-		tmp = strchr(tmp, ch);
-		rem++;
-		}
+	    n = strcspn(wrk, allowset);
+	    memmove(wrk, wrk+n, strlen(wrk+n)+1);
+	    rem += n;
 	    }
 	}
     return rem;
     }
 
-/*  libmime_ContentExtension
-**
-**  Modifies the first parameter to contain the three leter extension
-**  that is associated with the given content type and subtype.
-*/
+/***  libmime_ContentExtension
+ ***
+ ***  Modifies the first parameter to contain the three leter extension
+ ***  that is associated with the given content type and subtype.
+ ***/
 int
 libmime_ContentExtension(char *str, int type, char *subtype)
     {
@@ -278,22 +332,170 @@ libmime_ContentExtension(char *str, int type, char *subtype)
     return 1;
     }
 
-/*
-**  libmime_StringToLower
-**
-**  Converts a string to lower case
-*/
+/***
+ ***  libmime_StringToLower
+ ***
+ ***  Converts a string to lower case
+ ***/
 int
 libmime_StringToLower(char *str)
     {
-    char *ptr;
+    char *ptr = str;
 
-    ptr = str;
-    while (*ptr != 0)
+    while (*ptr)
 	{
-	//fprintf(stderr, "CH: %c\n", *ptr);
 	*ptr = tolower(*ptr);
 	ptr++;
 	}
-    return 1;
+
+    return 0;
+    }
+
+/*** libmime_xhLookup - Wraps the xhLookup function in order to preserve
+ *** consistency since MIME is case insensitive.
+ ***
+ *** NOTE: Any other string sanitization for hash keys may be performed here.
+ ***/
+void*
+libmime_xhLookup(pXHashTable this, char* key)
+    {
+    void* rval;
+    char* buf;
+
+	buf = nmSysStrdup(key);
+	if (!buf)
+	    return NULL;
+
+	libmime_StringToLower(buf);
+
+	rval = xhLookup(this, buf);
+	nmSysFree(buf);
+
+    return rval;
+    }
+
+/*** libmime_xhAdd - Wraps the xhAdd function in order to preserve
+ *** consistency since MIME is case insensitive.
+ ***
+ *** NOTE: Any other string sanitization for hash keys may be performed here.
+ ***/
+int
+libmime_xhAdd(pXHashTable this, char* key, char* data)
+    {
+    int rval;
+    char* buf;
+
+	buf = nmSysStrdup(key);
+	if (!buf)
+	    return -1;
+
+	libmime_StringToLower(buf);
+
+	rval = xhAdd(this, buf, data);
+	if (rval < 0)
+	    nmSysFree(buf);
+
+    return rval;
+    }
+
+/*** libmime_xhDeInit - Frees the keys, entries, and data of a hash table
+ *** filled by libmime_xhAdd(), then deinitializes it.
+ ***
+ *** @param this The hash table.
+ *** @param free_fn Called on each entry's data, as with xhClear().
+ *** @returns 0.
+ ***/
+int
+libmime_xhDeInit(pXHashTable this, int (*free_fn)())
+    {
+    pXHashEntry entry, next;
+
+	/** Free the keys, finding each next entry while its key is still valid. **/
+	for (entry = xhGetNextElement(this, NULL); entry != NULL; entry = next)
+	    {
+	    next = xhGetNextElement(this, entry);
+	    nmSysFree(entry->Key);
+	    }
+
+	xhClear(this, free_fn, NULL);
+	xhDeInit(this);
+
+    return 0;
+    }
+
+/*** libmime_SaveTemporaryFile - Write the temp file.
+ ***/
+int
+libmime_SaveTemporaryFile(pFile fd, pObject obj, int truncSeek)
+    {
+    pPathname path = NULL;
+    char buf[MIME_BUFSIZE+1];
+    int rcnt, cnt, wcnt;
+
+	/** Allocate our local path. **/
+	path = (pPathname)nmMalloc(sizeof(Pathname));
+	if (!path)
+	    {
+	    mssError(1, "MIME", "Could not allocate the pathname.");
+	    goto error;
+	    }
+	memset(path, 0, sizeof(Pathname));
+
+	/** Copy the object's path into our local path. **/
+	obj_internal_CopyPath(path, obj->Pathname);
+
+	/** Get the path. **/
+	if (!obj_internal_PathPart(path, 0, obj->SubPtr))
+	    {
+	    mssError(1, "MIME", "Could not copy pathname.");
+	    goto error;
+	    }
+
+	/** Copy the file. **/
+	memset(buf, 0, MIME_BUFSIZE + 1);
+	fdRead(fd, NULL, 0, truncSeek, FD_U_SEEK);
+	objWrite(obj->Prev, 0, 0, truncSeek, OBJ_U_SEEK | OBJ_U_TRUNCATE);
+	while ((rcnt = fdRead(fd, buf, MIME_BUFSIZE, 0, 0)) > 0)
+	    {
+	    wcnt = 0;
+	    while(wcnt < rcnt)
+		{
+		cnt = objWrite(obj->Prev, buf+wcnt, rcnt-wcnt, 0, OBJ_U_TRUNCATE);
+		if (cnt <= 0)
+		    goto error;
+		wcnt += cnt;
+		}
+	    }
+
+	/** Deallocate the pathname. **/
+	nmFree(path, sizeof(Pathname));
+
+    return 0;
+
+    error:
+	if (path) nmFree(path, sizeof(Pathname));
+
+	return -1;
+    }
+
+/***
+ *** libmime_internal_MakeARandomFilename - Append on random chars to name.
+ ***/
+int
+libmime_internal_MakeARandomFilename(char* name, int len)
+    {
+
+	cxssGenerateHexKey(name + strlen(name), len);
+
+    return 0;
+    }
+
+
+/*** libmime_DumpMessage - print debugging output for the entire message
+ *** structure.
+ ***/
+int
+libmime_DumpMessage(pMimeHeader msg)
+    {
+    return 0;
     }

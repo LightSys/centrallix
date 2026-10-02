@@ -368,6 +368,7 @@ typedef struct _OF
 #define	OBJ_F_METAONLY		16	/* user opened '?' object */
 #define OBJ_F_UNMANAGED		32	/* don't auto-close on session closure */
 #define OBJ_F_TEMPORARY		64	/* created by objCreateTempObject() */
+#define OBJ_F_NOCASCADE		128	/* OSML should not attempt to layer another driver */
 
 
 /** temporary collection indexes **/
@@ -698,6 +699,8 @@ int objGetQueryIdentityPath(pObjQuery this, char* buf, int maxlen);
 /** objectsystem content functions **/
 int objRead(pObject this, char* buffer, int maxcnt, int offset, int flags);
 int objWrite(pObject this, char* buffer, int cnt, int offset, int flags);
+int objTransfer(void* src, int (*src_read)(), void* dst, int (*dst_write)(), int max_xfer);
+int objSeek(pObject this, int offset);
 
 /** objectsystem attribute functions **/
 int objGetAttrType(pObject this, char* attrname);
@@ -758,6 +761,7 @@ int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 /** objectsystem datatype functions **/
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
 double objDataToDouble(int data_type, void* data_ptr);
+int objDataToBoolean(int data_type, void* data_ptr, int default_value);
 int objDataToInteger(int data_type, void* data_ptr, char* format);
 int objDataToBoolean(int data_type, void* data_ptr, int default_value);
 int objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format);
@@ -775,6 +779,9 @@ int objDataFromStringAlloc(pObjData pod, int type, char* str);
 char* objFormatMoneyTmp(pMoneyType m, char* format);
 char* objFormatDateTmp(pDateTime dt, char* format);
 int objCurrentDate(pDateTime dt);
+int objDateDiffPart(pDateTime dt1, pDateTime dt2, char* diff_type);
+int obj_internal_DateModAdd(int v1, int v2, int mod, int* overflow);
+int objDateAddPart(pDateTime dt, int add_val, char* add_type);
 int objBuildBinaryImage(char* buf, int buflen, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
 int objBuildBinaryImageXString(pXString str, void* /* pExpression* */ fields, int n_fields, void* /* pParamObjects */ objlist, int asciz);
 int objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, int diff_mo, int diff_yr);

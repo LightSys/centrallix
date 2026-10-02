@@ -419,8 +419,15 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	if (!used_expr)
 	    rval = this->Driver->GetAttrValue(this->Data, attrname, data_type, val, &(this->Session->Trx));
 
-    	/** Inner/content type, and OSML has a better idea than driver? **/
-	if ((!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && rval==0 && this->Type)
+    	/** Inner/content type, and OSML has a better idea than driver?  We only use
+	 ** the OSML's type IF:
+	 ** 
+	 ** - the OSML has a type assigned here;
+	 ** - this is not a node object (SubCnt > 1), because on a node object the
+	 **   OSML's type might relate to the container, not the content;
+	 ** - the OSML's type is a more specific kind of the driver's type.
+	 **/
+	if ((!strcmp(attrname,"inner_type") || !strcmp(attrname,"content_type")) && rval==0 && this->Type && this->SubCnt > 1)
 	    {
 	    if (objIsRelatedType(this->Type->Name, val->String) > 0)
 	        {
@@ -511,17 +518,35 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		{
 		/** String value **/
 		if (!val)
+		    {
 		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    }
 		else
+		    {
 		    rval = this->Driver->Write(this->Data, val->String, strlen(val->String), 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    if (rval >= 0 && rval < strlen(val->String))
+			{
+			mssError(1, "OSML", "Incomplete write of attribute 'objcontent'");
+			return -1;
+			}
+		    }
 		}
 	    else if (data_type == DATA_T_BINARY)
 		{
 		/** Binary value **/
 		if (!val || !val->Binary.Data)
+		    {
 		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    }
 		else
+		    {
 		    rval = this->Driver->Write(this->Data, val->Binary.Data, val->Binary.Size, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    if (rval >= 0 && rval < val->Binary.Size)
+			{
+			mssError(1, "OSML", "Incomplete write of attribute 'objcontent'");
+			return -1;
+			}
+		    }
 		}
 	    else
 		{
