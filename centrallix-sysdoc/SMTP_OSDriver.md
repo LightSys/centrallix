@@ -201,7 +201,7 @@ The SMTP driver does not support getting, calling, or adding methods.
 ## IV Limitations
 - Running more than one Centrallix process on the same spool directory is undefined behavior.
 - After the mail log rotates, the driver finds the rest of the old log by its inode (such as `maillog-20261001`).  If logrotate compresses the old log as it rotates it (`compress` without `delaycompress`), or deletes it before an email in the spool is opened again, the results logged there after the last read are missed, so those emails become Error with an unknown send status.
-- Reading a large part of the mail log at once, such as on the first read, blocks Centrallix until it finishes.
+- While a spool directory reads a large part of the mail log, such as on its first read, opening its emails shows the statuses from before the read, and sending one waits for the read to finish.
 - An open email does not update if new results are detected after it was opened.
 - Keep Postfix's `maximal_queue_lifetime` (5 days by default) under 6 days, or an email Postfix is still retrying becomes Error with an unknown send status.
 - If Postfix uses a relay host, Sent means the relay accepted the email, so failures after the relay are not tracked.

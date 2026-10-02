@@ -94,6 +94,9 @@
  ***/
 #define SMTP_CURSOR_FILE	".mail_log_cursor"
 
+/** Mail log lines to read before letting other threads run. **/
+#define SMTP_LOG_YIELD_LINES	256
+
 /** Bytes for a Postfix queue ID, including the null terminator. **/
 #define SMTP_QUEUE_ID_SIZE	32
 
@@ -177,6 +180,9 @@ typedef struct
     off_t	LogOffset;	/* Position of the cursor in its file. */
     XHashTable	ByMessageID;	/* Hash (Message-ID -> pSmtpIndexEntry): For Pending emails without a queue ID. */
     XHashTable	ByQueueID;	/* Hash (Postfix Queue ID -> pSmtpIndexEntry): For Pending emails with a queue ID. */
+    bool	Reading;	/* A read of the mail log is in progress. */
+    int		nWaiting;	/* Threads waiting for that read to finish. */
+    pSemaphore	ReadDone;	/* Posted once for each waiting thread when the read finishes. */
     }
     SmtpSpool, *pSmtpSpool;
 
@@ -203,11 +209,13 @@ typedef struct
     SmtpLogEmail, *pSmtpLogEmail;
 
 
-/*** Structure to hold the emails updated by one read of the mail log. ***/
+/*** Structure to hold the lines and emails of one read of the mail log. ***/
 typedef struct
     {
-    XHashTable	ByName;	/* Hash of email file name to pSmtpLogEmail. */
-    XArray	Emails;	/* XArray of pSmtpLogEmail, in the order they were read. */
+    XArray	Lines;		/* XArray of copies of the lines about Pending emails. */
+    XHashTable	QueueIDs;	/* Hash of queue ID to its copy, for queue IDs claimed by those lines. */
+    XHashTable	ByName;		/* Hash of email file name to pSmtpLogEmail. */
+    XArray	Emails;		/* XArray of pSmtpLogEmail, in the order they were read. */
     }
     SmtpLogBatch, *pSmtpLogBatch;
 
@@ -243,7 +251,7 @@ struct
 
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
-int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes);
+int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wait);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
 int smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
 int smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
@@ -749,7 +757,7 @@ smtp_internal_AddDefault(pXArray defaults, char* name, int type, int intVal, cha
  *** smtp_internal_Unlock().  File I/O lets other threads run, so this keeps
  *** them from changing a struct or the mail log cursor while the current
  *** thread reads and writes it.  Calls may nest.  Never sleep or wait for
- *** another process while locked.
+ *** another thread or process while locked.
  ***/
 void
 smtp_internal_Lock(void)
@@ -1234,6 +1242,12 @@ smtp_internal_GetSpool(char* spoolDir)
 	    goto error;
 	    }
 	queueIdsInitialized = true;
+	spool->ReadDone = syCreateSem(0, 0);
+	if (UNLIKELY(spool->ReadDone == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to create the mail log read semaphore of spool directory \"%s\".", spoolDir);
+	    goto error;
+	    }
 	if (UNLIKELY(xhAdd(&SMTP_INF.Spools, spool->Path, (char*)spool) != 0))
 	    {
 	    mssError(1, "SMTP", "Failed to add spool directory to hashtable: \"%s\".", spoolDir);
@@ -1247,6 +1261,7 @@ smtp_internal_GetSpool(char* spoolDir)
 	    {
 	    if (messageIdsInitialized) xhDeInit(&spool->ByMessageID);
 	    if (queueIdsInitialized) xhDeInit(&spool->ByQueueID);
+	    if (spool->ReadDone != NULL) syDestroySem(spool->ReadDone, 0);
 	    if (spool->Path != NULL) nmSysFree(spool->Path);
 	    nmFree(spool, sizeof(SmtpSpool));
 	    }
@@ -2203,6 +2218,12 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
 
+	/*** Read the mail log first, so any lines from earlier tries are not
+	 *** discovered later and applied to this one after we've cleared it.
+	 ***/
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
+	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+
 	/** Keep other threads out until this try is recorded. **/
 	smtp_internal_Lock();
 	locked = true;
@@ -2218,10 +2239,6 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    smtp_internal_Unlock();
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
-
-	/** Read the mail log first, so its lines about earlier tries are not applied to this one. **/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Mark the email Pending before handing it off, so other sends refuse it. **/
 	pod.String = "Pending";
@@ -3144,10 +3161,63 @@ smtp_internal_SaveCursor(pSmtpSpool spool)
     }
 
 
-/*** smtp_internal_FreeLogBatch - free the emails read for one read of the
- *** mail log.
+/*** smtp_internal_FreeString - free a string.  Matches the free function
+ *** signature of xhClear().
+ ***
+ *** @param str The string.
+ *** @param unused Unused.
+ *** @returns 0.
+ ***/
+int
+smtp_internal_FreeString(char* str, void* unused)
+    {
+	nmSysFree(str);
+
+    return 0;
+    }
+
+
+/*** smtp_internal_InitLogBatch - initialize the lines and emails of one read
+ *** of the mail log.
  ***
  *** @param batch The batch.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_InitLogBatch(pSmtpLogBatch batch)
+    {
+    bool linesInitialized = false;
+    bool queueIdsInitialized = false;
+    bool namesInitialized = false;
+
+	if (UNLIKELY(xaInit(&batch->Lines, 16) != 0))
+	    goto error;
+	linesInitialized = true;
+	if (UNLIKELY(xhInit(&batch->QueueIDs, 257, 0) != 0))
+	    goto error;
+	queueIdsInitialized = true;
+	if (UNLIKELY(xhInit(&batch->ByName, 257, 0) != 0))
+	    goto error;
+	namesInitialized = true;
+	if (UNLIKELY(xaInit(&batch->Emails, 16) != 0))
+	    goto error;
+
+	return 0;
+
+    error:
+	mssError(1, "SMTP", "Failed to initialize the mail log updates.");
+	if (linesInitialized) xaDeInit(&batch->Lines);
+	if (queueIdsInitialized) xhDeInit(&batch->QueueIDs);
+	if (namesInitialized) xhDeInit(&batch->ByName);
+
+	return -1;
+    }
+
+
+/*** smtp_internal_FreeLogBatch - free the lines and emails of one read of
+ *** the mail log.
+ ***
+ *** @param batch The batch, initialized by smtp_internal_InitLogBatch().
  ***/
 void
 smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
@@ -3155,6 +3225,11 @@ smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
     pSmtpLogEmail email;
     int i;
 
+	for (i = 0; i < batch->Lines.nItems; i++)
+	    nmSysFree((char*)batch->Lines.Items[i]);
+	xaDeInit(&batch->Lines);
+	xhClear(&batch->QueueIDs, smtp_internal_FreeString, NULL);
+	xhDeInit(&batch->QueueIDs);
 	for (i = 0; i < batch->Emails.nItems; i++)
 	    {
 	    email = (pSmtpLogEmail)batch->Emails.Items[i];
@@ -3339,11 +3414,13 @@ smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
     }
 
 
-/*** smtp_internal_ReadLogLines - record the results in the complete lines
- *** of a mail log after an offset.
+/*** smtp_internal_ReadLogLines - keep copies of the complete lines of a
+ *** mail log after an offset that are about the Pending emails of a spool
+ *** directory, letting other threads run every SMTP_LOG_YIELD_LINES lines.
+ *** Changes neither the indexes nor any email.
  ***
  *** @param spool The spool directory.
- *** @param batch The emails updated so far.
+ *** @param batch The lines kept so far.
  *** @param log The open mail log.
  *** @param path The path of the mail log.
  *** @param offset The offset to start at.  Set to the end of the last
@@ -3353,12 +3430,24 @@ smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
 int
 smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, FILE* log, char* path, off_t* offset)
     {
+    SmtpLogLine parsed;
+    XString work;
+    bool workInitialized = false;
     char* line = NULL;
+    char* copy = NULL;
     size_t lineSize = 0;
     ssize_t len;
+    bool keep;
+    int nLines = 0;
     int rval = -1;
 
 	/** Start at the offset. **/
+	if (UNLIKELY(xsInit(&work) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the mail log line buffer.");
+	    goto end;
+	    }
+	workInitialized = true;
 	if (UNLIKELY(fseeko(log, *offset, SEEK_SET) != 0))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to seek to offset %lld in the mail log \"%s\".", (long long)*offset, path);
@@ -3371,9 +3460,47 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, FILE* log, cha
 	    if (line[len - 1] != '\n')
 		break; /* Leave a partial line until the rest is written. */
 	    line[len - 1] = '\0';
-	    if (UNLIKELY(smtp_internal_ApplyLogLine(spool, batch, line) != 0))
+
+	    /** Parse a copy, since parsing changes the line. **/
+	    if (UNLIKELY(xsCopy(&work, line, len - 1) != 0))
+		{
+		mssError(1, "SMTP", "Failed to copy a %zd byte line of the mail log \"%s\".", len, path);
 		goto end;
+		}
+	    smtp_internal_ParseLogLine(work.String, &parsed);
+
+	    /** Keep the lines about Pending emails, including the queue IDs they claim. **/
+	    if (parsed.Kind == SMTP_LINE_NONE)
+		keep = false;
+	    else if (parsed.Kind == SMTP_LINE_QUEUED)
+		keep = (xhLookup(&spool->ByMessageID, parsed.MessageID) != NULL);
+	    else
+		keep = (xhLookup(&spool->ByQueueID, parsed.QueueID) != NULL || xhLookup(&batch->QueueIDs, parsed.QueueID) != NULL);
+	    if (keep)
+		{
+		copy = nmSysStrdup(line);
+		if (UNLIKELY(copy == NULL || xaAddItem(&batch->Lines, copy) < 0))
+		    {
+		    mssError(1, "SMTP", "Failed to keep a line of the mail log \"%s\": %s", path, line);
+		    goto end;
+		    }
+		copy = NULL;
+		}
+	    if (keep && parsed.Kind == SMTP_LINE_QUEUED && xhLookup(&batch->QueueIDs, parsed.QueueID) == NULL)
+		{
+		copy = nmSysStrdup(parsed.QueueID);
+		if (UNLIKELY(copy == NULL || xhAdd(&batch->QueueIDs, copy, copy) != 0))
+		    {
+		    mssError(1, "SMTP", "Failed to track queue ID %s from the mail log \"%s\".", parsed.QueueID, path);
+		    goto end;
+		    }
+		copy = NULL;
+		}
 	    *offset += len;
+
+	    /** Let other threads run. **/
+	    if (++nLines % SMTP_LOG_YIELD_LINES == 0)
+		thYield();
 	    }
 	if (UNLIKELY(ferror(log)))
 	    {
@@ -3385,7 +3512,9 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, FILE* log, cha
 	rval = 0;
 
     end:
+	if (UNLIKELY(copy != NULL)) nmSysFree(copy);
 	if (LIKELY(line != NULL)) free(line);
+	if (LIKELY(workInitialized)) xsDeInit(&work);
 
 	return rval;
     }
@@ -3393,19 +3522,23 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, FILE* log, cha
 
 /*** smtp_internal_UpdateFromLog - record the results in the lines added to the
  *** mail log since a spool directory last read it in the structs of its
- *** Pending emails, then save where it stopped.
+ *** Pending emails, then save where it stopped.  The log is read without
+ *** the lock, keeping only the lines about Pending emails, then the lock is
+ *** held while those lines are recorded.  Only one read of a spool runs at
+ *** a time.  Must not be called while locked.
  ***
  *** @param spoolDir The spool directory.
  *** @param rootAttributes The attributes of the SMTP node.
+ *** @param wait Whether to wait for a read of the spool already in progress,
+ ***   then read.  Otherwise the call skips reading and returns 0.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
+smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wait)
     {
     pSmtpSpool spool = NULL;
     SmtpLogBatch batch;
-    bool namesInitialized = false;
-    bool emailsInitialized = false;
+    bool batchInitialized = false;
     pSmtpLogEmail email;
     char rotatedPath[PATH_MAX];
     char structPath[PATH_MAX];
@@ -3419,18 +3552,39 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
     off_t rotatedOffset;
     bool sameLog;
     bool changed;
+    bool locked = false;
+    bool applied = false;
     bool written = false;
     int found;
     int i;
     int rval = -1;
 
-	/** Keep other threads out until the read is done. **/
-	smtp_internal_Lock();
-
-	/** Load the spool directory. **/
+	/** Edge cases. **/
+	if (UNLIKELY(SMTP_INF.LockDepth > 0))
+	    {
+	    mssError(1, "SMTP", "Failed to read the mail log for \"%s\": called while locked.", spoolDir);
+	    return -1; /* Skip error handler, which ends a read in progress. */
+	    }
 	spool = smtp_internal_GetSpool(spoolDir);
 	if (UNLIKELY(spool == NULL))
-	    goto end;
+	    return -1; /* Skip error handler, which ends a read in progress. */
+
+	/** Wait for, or skip, a read already in progress. **/
+	while (spool->Reading)
+	    {
+	    if (!wait)
+		return 0;
+	    spool->nWaiting++;
+	    if (UNLIKELY(syGetSem(spool->ReadDone, 1, 0) != 0))
+		{
+		spool->nWaiting--;
+		mssError(1, "SMTP", "Failed to wait for the mail log read of \"%s\".", spoolDir);
+		return -1; /* Skip error handler, which ends a read in progress. */
+		}
+	    }
+	spool->Reading = true;
+
+	/** Load the spool directory. **/
 	if (!spool->Loaded && UNLIKELY(smtp_internal_LoadSpool(spool) != 0))
 	    goto end;
 
@@ -3463,18 +3617,9 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	sameLog = (spool->HasCursor && st.st_dev == spool->LogDev && st.st_ino == spool->LogIno);
 
 	/** Initialize the batch. **/
-	if (UNLIKELY(xhInit(&batch.ByName, 257, 0) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to initialize the mail log updates.");
+	if (UNLIKELY(smtp_internal_InitLogBatch(&batch) != 0))
 	    goto end;
-	    }
-	namesInitialized = true;
-	if (UNLIKELY(xaInit(&batch.Emails, 16) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to initialize the mail log updates.");
-	    goto end;
-	    }
-	emailsInitialized = true;
+	batchInitialized = true;
 
 	/** Finish the rotated log the cursor is in. **/
 	if (spool->HasCursor && !sameLog)
@@ -3505,6 +3650,18 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	offset = (sameLog && st.st_size >= spool->LogOffset) ? spool->LogOffset : 0;
 	if (UNLIKELY(smtp_internal_ReadLogLines(spool, &batch, log, SMTP_INF.LogPath, &offset) != 0))
 	    goto end;
+
+	/** Keep other threads out while the lines are recorded. **/
+	smtp_internal_Lock();
+	locked = true;
+
+	/** Record each line in its email. **/
+	applied = true;
+	for (i = 0; i < batch.Lines.nItems; i++)
+	    {
+	    if (UNLIKELY(smtp_internal_ApplyLogLine(spool, &batch, (char*)batch.Lines.Items[i]) != 0))
+		goto end;
+	    }
 
 	/** Write the updated emails. **/
 	for (i = 0; i < batch.Emails.nItems; i++)
@@ -3544,17 +3701,23 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	rval = 0;
 
     end:
-	/** Reload the indexes from the structs, unless they were written. **/
-	if (UNLIKELY(rval != 0 && spool != NULL && !written))
+	/** Reload the indexes from the structs if recording failed partway. **/
+	if (UNLIKELY(rval != 0 && applied && !written))
 	    smtp_internal_UnloadSpool(spool);
+	if (locked) smtp_internal_Unlock();
 
 	if (log != NULL) fclose(log);
 	if (rotatedLog != NULL) fclose(rotatedLog);
-	if (emailsInitialized)
-	    smtp_internal_FreeLogBatch(&batch);
-	else if (namesInitialized)
-	    xhDeInit(&batch.ByName);
-	smtp_internal_Unlock();
+	if (batchInitialized) smtp_internal_FreeLogBatch(&batch);
+
+	/** End the read, waking the threads waiting for it. **/
+	spool->Reading = false;
+	if (spool->nWaiting > 0)
+	    {
+	    if (UNLIKELY(syPostSem(spool->ReadDone, spool->nWaiting, 0) != 0))
+		fprintf(stderr, "Warning: Failed to wake %d threads waiting for the mail log read of \"%s\".\n", spool->nWaiting, spoolDir);
+	    spool->nWaiting = 0;
+	    }
 
 	return rval;
     }
@@ -4291,8 +4454,8 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
-	/** Record the results Postfix logged since the last read. **/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
+	/** Record the results Postfix logged since the last read, unless another thread is. **/
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, false) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Keep other threads out until the struct is updated. **/
