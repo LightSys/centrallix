@@ -5644,7 +5644,7 @@ rpt_internal_Generator(void* v)
 	/** Close the slave side and exit. **/
 	if (prtCloseSession(ps) < 0)
 	    {
-	    mssError(1,"RPT","Could not generate the report");
+	    mssError(1,"RPT","Failed to generate the report");
 	    inf->Flags |= RPT_F_ERROR;
 	    }
 	fdClose(inf->SlaveFD,0);

@@ -403,7 +403,7 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	    memcpy(context->Boundary, PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX, sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) - 1);
 	    if (cxssGenerateHexKey(context->Boundary + sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) - 1, PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN) < 0)
 		{
-		mssError(1, "PRT", "Could not generate a MIME boundary for the email report.");
+		mssError(1, "PRT", "Failed to generate a MIME boundary for the email report.");
 		goto reject;
 		}
 
