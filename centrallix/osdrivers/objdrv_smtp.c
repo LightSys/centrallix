@@ -89,8 +89,10 @@
 /** Seconds an email may stay Pending before it becomes Error (6 days). **/
 #define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60)
 
-/** Seconds to keep results read from the mail log (pending timeout + 1 day). **/
-#define SMTP_LOG_KEEP_TIME	(SMTP_PENDING_TIMEOUT + 24 * 60 * 60)
+/*** The name of the file in each spool directory that records how much of the
+ *** mail log has been read and processed.
+ ***/
+#define SMTP_CURSOR_FILE	".mail_log_cursor"
 
 /** Bytes for a Postfix queue ID, including the null terminator. **/
 #define SMTP_QUEUE_ID_SIZE	32
@@ -99,6 +101,16 @@
 #define SMTP_RCPT_SENT		0
 #define SMTP_RCPT_DEFERRED	1
 #define SMTP_RCPT_BOUNCED	2
+
+/** The group type of a recipient result in an email struct. **/
+#define SMTP_RCPT_TYPE		"system/smtp-recipient"
+
+/** Kinds of mail log lines. **/
+#define SMTP_LINE_NONE		0	/* No result. */
+#define SMTP_LINE_QUEUED	1	/* message-id=<id> */
+#define SMTP_LINE_RCPT_COUNT	2	/* from=<addr>, size=N, nrcpt=N */
+#define SMTP_LINE_EXPIRED	3	/* from=<addr>, status=expired */
+#define SMTP_LINE_RCPT		4	/* to=<addr>, ..., status=<status> (reply) */
 
 /*** Structure to store attribute information. ***/
 typedef struct
@@ -152,40 +164,69 @@ typedef struct
 #define SMTP_QY(x) ((pSmtpQueryData)(x))
 
 
-/*** Structure to track sweeps of a spool directory. ***/
+/*** Structure to track a spool directory. ***/
 typedef struct
     {
     Magic_t	Magic;
     char*	Path;
     time_t	LastSweep;
+    bool	Loaded;		/* Log position and indexes below are in memory. */
+    bool	HasCursor;	/* A log position is known from a prior read. */
+    dev_t	LogDev;		/* Device of the file that the cursor points into. */
+    ino_t	LogIno;		/* Inode of the file that the cursor points into. */
+    off_t	LogOffset;	/* Position of the cursor in its file. */
+    XHashTable	ByMessageID;	/* Hash (Message-ID -> pSmtpIndexEntry): For Pending emails without a queue ID. */
+    XHashTable	ByQueueID;	/* Hash (Postfix Queue ID -> pSmtpIndexEntry): For Pending emails with a queue ID. */
     }
     SmtpSpool, *pSmtpSpool;
 
 
-/*** Structure to store the mail log result for one recipient. ***/
+/*** Structure to find a Pending email in a spool directory. ***/
 typedef struct
     {
     Magic_t	Magic;
-    char*	Address;
-    int		Status; /* SMTP_RCPT_xxx */
-    char*	Reply;
+    char*	Key;	/* The Message-ID or queue ID. */
+    char*	Name;	/* The email file name. */
     }
-    SmtpLogRcpt, *pSmtpLogRcpt;
+    SmtpIndexEntry, *pSmtpIndexEntry;
 
 
-/*** Structure to store what the mail log says about one queued email. ***/
-typedef struct _SLM
+/*** Structure to hold an email updated from the mail log until it is written. ***/
+typedef struct
     {
-    Magic_t		Magic;
-    char		QueueID[SMTP_QUEUE_ID_SIZE];
-    char*		MessageID;
-    int			RcptCount; /* From nrcpt, or 0 until it is logged. */
-    XArray		Rcpts; /* XArray of pSmtpLogRcpt. */
-    bool		Expired; /* Postfix gave up and returned the email. */
-    time_t		ReadTime;
-    struct _SLM*	Next; /* The next newer record. */
+    Magic_t	Magic;
+    char*	Name;		/* The email file name. */
+    pStructInf	Struct;		/* The parsed struct file. */
+    bool	Changed;	/* A mail log line updated the struct. */
+    bool	Expired;	/* Postfix gave up and returned the email. */
     }
-    SmtpLogMsg, *pSmtpLogMsg;
+    SmtpLogEmail, *pSmtpLogEmail;
+
+
+/*** Structure to hold the emails updated by one read of the mail log. ***/
+typedef struct
+    {
+    XHashTable	ByName;	/* Hash of email file name to pSmtpLogEmail. */
+    XArray	Emails;	/* XArray of pSmtpLogEmail, in the order they were read. */
+    }
+    SmtpLogBatch, *pSmtpLogBatch;
+
+
+/*** Structure for the parts of one mail log line. ***/
+typedef struct
+    {
+    int		Kind;		/* SMTP_LINE_xxx */
+    char*	QueueID;
+    char*	MessageID;	/* SMTP_LINE_QUEUED, without angle brackets. */
+    int		RcptCount;	/* SMTP_LINE_RCPT_COUNT */
+    char*	Address;	/* SMTP_LINE_RCPT */
+    int		Status;		/* SMTP_LINE_RCPT, as SMTP_RCPT_xxx (see below). */
+    char*	Reply;		/* SMTP_LINE_RCPT, without parentheses. */
+    }
+    SmtpLogLine, *pSmtpLogLine;
+
+/** Recipient results as stored in an email struct, indexed by SMTP_RCPT_xxx. **/
+static char* smtp_rcpt_status_names[] = { "sent", "deferred", "bounced" };
 
 
 /*** Global data structure for the SMTP module. ***/
@@ -195,19 +236,13 @@ struct
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
     XHashTable		Spools;				/* Hash of spool_dir to pSmtpSpool */
     char		LogPath[PATH_MAX];		/* Path of the mail log */
-    FILE*		Log;				/* The mail log, or NULL if not open */
-    dev_t		LogDev;				/* Device of the open mail log */
-    ino_t		LogIno;				/* Inode of the open mail log */
-    XHashTable		LogByQueueID;			/* Hash of Postfix queue ID to pSmtpLogMsg */
-    XHashTable		LogByMessageID;			/* Hash of Message-ID to newest pSmtpLogMsg */
-    pSmtpLogMsg		LogOldest;			/* Oldest record, pruned first */
-    pSmtpLogMsg		LogNewest;			/* Newest record, appended to */
     }
     SMTP_INF;
 
 
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
+int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
 int smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
 int smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
@@ -709,408 +744,342 @@ smtp_internal_AddDefault(pXArray defaults, char* name, int type, int intVal, cha
     }
 
 
-/*** smtp_internal_FreeLogMsg - free a record read from the mail log.
+/*** smtp_internal_SpoolPath - build the path of a file of an email in a
+ *** spool directory, by replacing the extension of the email name.
+ ***
+ *** @param path Set to the path.  Must hold PATH_MAX bytes.
+ *** @param spoolDir The spool directory.
+ *** @param name The email file name, such as "x.eml".
+ *** @param ext The extension of the file, such as ".struct".
+ *** @returns 0 on success, or -1 if the path is too long.
  ***/
-void
-smtp_internal_FreeLogMsg(pSmtpLogMsg msg)
+int
+smtp_internal_SpoolPath(char* path, char* spoolDir, char* name, char* ext)
     {
-    pSmtpLogRcpt rcpt;
-    int i;
+    int nameLen = strlen(name) - 4; /* Without ".eml" or ".msg". */
 
-	ASSERTMAGIC(msg, MGK_SMTP_LOG_MSG);
-	for (i = 0; i < msg->Rcpts.nItems; i++)
+	if (UNLIKELY(nameLen < 0 || snprintf(path, PATH_MAX, "%s/%.*s%s", spoolDir, nameLen, name, ext) >= PATH_MAX))
 	    {
-	    rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
-	    ASSERTMAGIC(rcpt, MGK_SMTP_LOG_RCPT);
-	    if (rcpt->Address != NULL) nmSysFree(rcpt->Address);
-	    if (rcpt->Reply != NULL) nmSysFree(rcpt->Reply);
-	    nmFree(rcpt, sizeof(SmtpLogRcpt));
+	    mssError(1, "SMTP", "Failed to build the %s path of email \"%s\" in \"%s\".", ext, name, spoolDir);
+	    return -1;
 	    }
-	xaDeInit(&msg->Rcpts);
-	if (msg->MessageID != NULL) nmSysFree(msg->MessageID);
-	nmFree(msg, sizeof(SmtpLogMsg));
 
-    return;
+    return 0;
     }
 
 
-/*** smtp_internal_AddLogMsg - start a record for an email Postfix queued,
- *** replacing older records with the same queue ID or Message-ID.
+/*** smtp_internal_ReadStruct - parse an email struct file.
  ***
- *** @param queueId The Postfix queue ID.
- *** @param messageId The Message-ID, without angle brackets.
- *** @param now The current time.
+ *** @param path The path of the struct file.
+ *** @param emailStruct Set to the parsed struct, which the caller frees, or
+ ***   NULL if there is none.
+ *** @returns 1 on success, 0 if the file does not exist, or -1 on failure.
+ ***/
+int
+smtp_internal_ReadStruct(char* path, pStructInf* emailStruct)
+    {
+    pFile structFile;
+
+	*emailStruct = NULL;
+	structFile = fdOpen(path, O_RDONLY, 0);
+	if (structFile == NULL)
+	    {
+	    if (errno == ENOENT)
+		return 0;
+	    mssErrorErrno(1, "SMTP", "Failed to open email struct file \"%s\".", path);
+	    return -1;
+	    }
+	*emailStruct = stParseMsg(structFile, 0);
+	fdClose(structFile, 0);
+	if (UNLIKELY(*emailStruct == NULL))
+	    {
+	    mssError(0, "SMTP", "Failed to parse email struct file \"%s\".", path);
+	    return -1;
+	    }
+
+    return 1;
+    }
+
+
+/*** smtp_internal_WriteStruct - write an email struct file.
+ ***
+ *** @param path The path of the struct file.
+ *** @param emailStruct The struct to write.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_AddLogMsg(char* queueId, char* messageId, time_t now)
+smtp_internal_WriteStruct(char* path, pStructInf emailStruct)
     {
-    pSmtpLogMsg msg = NULL;
-    bool inQueueTable = false;
+    pFile structFile;
     int rval = -1;
 
-	/** Create the record. **/
-	msg = nmMalloc(sizeof(SmtpLogMsg));
-	if (UNLIKELY(msg == NULL))
+	structFile = fdOpen(path, O_WRONLY | O_TRUNC, 0);
+	if (UNLIKELY(structFile == NULL))
 	    {
-	    mssError(1, "SMTP", "nmMalloc(%zu) failed.", sizeof(SmtpLogMsg));
-	    goto end;
+	    mssErrorErrno(1, "SMTP", "Failed to open email struct file \"%s\" for writing.", path);
+	    return -1;
 	    }
-	memset(msg, 0, sizeof(SmtpLogMsg));
-	SETMAGIC(msg, MGK_SMTP_LOG_MSG);
-	if (UNLIKELY(xaInit(&msg->Rcpts, 4) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to initialize the recipients of a mail log record.");
-	    goto end;
-	    }
-	strtcpy(msg->QueueID, queueId, sizeof(msg->QueueID));
-	msg->MessageID = nmSysStrdup(messageId);
-	if (UNLIKELY(msg->MessageID == NULL))
-	    {
-	    mssError(1, "SMTP", "Failed to copy Message-ID <%s>.", messageId);
-	    goto end;
-	    }
-	msg->ReadTime = now;
-
-	/** Index it, replacing older records. **/
-	xhRemove(&SMTP_INF.LogByQueueID, msg->QueueID);
-	if (UNLIKELY(xhAdd(&SMTP_INF.LogByQueueID, msg->QueueID, (char*)msg) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to index mail log record for queue ID %s.", msg->QueueID);
-	    goto end;
-	    }
-	inQueueTable = true;
-	xhRemove(&SMTP_INF.LogByMessageID, msg->MessageID);
-	if (UNLIKELY(xhAdd(&SMTP_INF.LogByMessageID, msg->MessageID, (char*)msg) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to index mail log record for Message-ID <%s>.", msg->MessageID);
-	    goto end;
-	    }
-
-	/** Append it to the list. **/
-	if (SMTP_INF.LogNewest != NULL)
-	    SMTP_INF.LogNewest->Next = msg;
+	if (UNLIKELY(stGenerateMsg(structFile, emailStruct, 0) != 0))
+	    mssError(1, "SMTP", "Failed to write email struct file \"%s\".", path);
 	else
-	    SMTP_INF.LogOldest = msg;
-	SMTP_INF.LogNewest = msg;
-
-	/** Success. **/
-	rval = 0;
-
-    end:
-	if (UNLIKELY(rval != 0 && msg != NULL))
+	    rval = 0;
+	if (UNLIKELY(fdClose(structFile, 0) != 0 && rval == 0))
 	    {
-	    if (inQueueTable) xhRemove(&SMTP_INF.LogByQueueID, msg->QueueID);
-	    smtp_internal_FreeLogMsg(msg);
+	    mssErrorErrno(1, "SMTP", "Failed to close email struct file \"%s\".", path);
+	    rval = -1;
 	    }
 
-	return rval;
+    return rval;
     }
 
 
-/*** smtp_internal_SetLogRcpt - record the latest result for one recipient
- *** of a queued email.
+/*** smtp_internal_StructString - get a string attribute of a struct.
  ***
- *** @param msg The record of the email.
+ *** @param inf The struct.
+ *** @param name The attribute name.
+ *** @returns The value, or NULL if the attribute is missing or not a string.
+ ***/
+char*
+smtp_internal_StructString(pStructInf inf, char* name)
+    {
+    char* value = NULL;
+
+	if (stAttrValue(stLookup(inf, name), NULL, &value, 0) != 0)
+	    return NULL;
+
+    return value;
+    }
+
+
+/*** smtp_internal_StructInteger - get an integer attribute of a struct.
+ ***
+ *** @param inf The struct.
+ *** @param name The attribute name.
+ *** @returns The value, or 0 if the attribute is missing or not an integer.
+ ***/
+int
+smtp_internal_StructInteger(pStructInf inf, char* name)
+    {
+    int value = 0;
+
+	if (stAttrValue(stLookup(inf, name), &value, NULL, 0) != 0)
+	    return 0;
+
+    return value;
+    }
+
+
+/*** smtp_internal_StructSet - set an attribute of a struct, adding it if
+ *** it is missing.
+ ***
+ *** @param inf The struct.
+ *** @param name The attribute name.
+ *** @param type The type of the value (DATA_T_xxx).
+ *** @param val The value.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_StructSet(pStructInf inf, char* name, int type, pObjData val)
+    {
+    pStructInf attr = stLookup(inf, name);
+
+	if (attr == NULL)
+	    attr = stAddAttr(inf, name);
+	if (UNLIKELY(attr == NULL || stSetAttrValue(attr, type, val, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to set attribute '%s' in an email struct.", name);
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** smtp_internal_IsRcpt - check whether part of an email struct is a
+ *** recipient result.
+ ***
+ *** @param inf The part of the struct.
+ *** @returns true if it is a recipient result, false otherwise.
+ ***/
+bool
+smtp_internal_IsRcpt(pStructInf inf)
+    {
+    return stStructType(inf) == ST_T_SUBGROUP
+	&& inf->UsrType != NULL
+	&& strcmp(inf->UsrType, SMTP_RCPT_TYPE) == 0;
+    }
+
+
+/*** smtp_internal_SetRcpt - record the latest result for one recipient in
+ *** an email struct.
+ ***
+ *** @param emailStruct The email struct.
  *** @param address The recipient address.
  *** @param status The result (SMTP_RCPT_xxx).
  *** @param reply The reply or reason Postfix logged.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_SetLogRcpt(pSmtpLogMsg msg, char* address, int status, char* reply)
+smtp_internal_SetRcpt(pStructInf emailStruct, char* address, int status, char* reply)
     {
-    pSmtpLogRcpt rcpt = NULL;
-    pSmtpLogRcpt newRcpt = NULL;
-    char* newReply = NULL;
+    pStructInf rcpt = NULL;
+    pStructInf part;
+    char* rcptAddress;
+    char name[32];
+    ObjData pod;
+    int nRcpts = 0;
     int i;
-    int rval = -1;
-
-	/** Copy the reply. **/
-	newReply = nmSysStrdup(reply);
-	if (UNLIKELY(newReply == NULL))
-	    {
-	    mssError(1, "SMTP", "Failed to copy reply \"%s\".", reply);
-	    goto end;
-	    }
 
 	/** Find the recipient. **/
-	for (i = 0; i < msg->Rcpts.nItems; i++)
+	for (i = 0; i < emailStruct->nSubInf; i++)
 	    {
-	    rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
-	    ASSERTMAGIC(rcpt, MGK_SMTP_LOG_RCPT);
-	    if (strcmp(rcpt->Address, address) == 0)
+	    part = emailStruct->SubInf[i];
+	    if (!smtp_internal_IsRcpt(part))
+		continue;
+	    nRcpts++;
+	    rcptAddress = smtp_internal_StructString(part, "address");
+	    if (rcptAddress != NULL && strcmp(rcptAddress, address) == 0)
+		{
+		rcpt = part;
 		break;
-	    rcpt = NULL;
+		}
 	    }
 
 	/** Recipient not found: add it. **/
 	if (rcpt == NULL)
 	    {
-	    newRcpt = nmMalloc(sizeof(SmtpLogRcpt));
-	    if (UNLIKELY(newRcpt == NULL))
+	    snprintf(name, sizeof(name), "rcpt_%d", nRcpts + 1);
+	    rcpt = stAddGroup(emailStruct, name, SMTP_RCPT_TYPE);
+	    if (UNLIKELY(rcpt == NULL))
 		{
-		mssError(1, "SMTP", "Failed to allocate %zu bytes for a mail log recipient.", sizeof(SmtpLogRcpt));
-		goto end;
+		mssError(1, "SMTP", "Failed to add recipient <%s> to an email struct.", address);
+		return -1;
 		}
-	    memset(newRcpt, 0, sizeof(SmtpLogRcpt));
-	    SETMAGIC(newRcpt, MGK_SMTP_LOG_RCPT);
-	    newRcpt->Address = nmSysStrdup(address);
-	    if (UNLIKELY(newRcpt->Address == NULL))
-		{
-		mssError(1, "SMTP", "Failed to copy recipient address <%s>.", address);
-		goto end;
-		}
-	    if (UNLIKELY(xaAddItem(&msg->Rcpts, newRcpt) < 0))
-		{
-		mssError(1, "SMTP", "Failed to add recipient to the mail log record for queue ID %s.", msg->QueueID);
-		goto end;
-		}
-	    rcpt = newRcpt;
-	    newRcpt = NULL;
+	    pod.String = address;
+	    if (UNLIKELY(smtp_internal_StructSet(rcpt, "address", DATA_T_STRING, &pod) != 0))
+		return -1;
 	    }
 
 	/** Record the result. **/
-	if (rcpt->Reply != NULL) nmSysFree(rcpt->Reply);
-	rcpt->Reply = newReply;
-	newReply = NULL;
-	rcpt->Status = status;
-
-	/** Success. **/
-	rval = 0;
-
-    end:
-	if (UNLIKELY(newReply != NULL)) nmSysFree(newReply);
-	if (UNLIKELY(newRcpt != NULL))
-	    {
-	    if (newRcpt->Address != NULL) nmSysFree(newRcpt->Address);
-	    nmFree(newRcpt, sizeof(SmtpLogRcpt));
-	    }
-
-	return rval;
-    }
-
-
-/*** smtp_internal_ParseLogLine - record the result in one line of the mail
- *** log, if it has one.  Lines look like this:
- ***   <date> <host> postfix/<program>[<pid>]: <queue ID>: <message>
- *** where the messages used are:
- ***   message-id=<id>                          (a new queued email)
- ***   from=<addr>, size=N, nrcpt=N ...         (its recipient count)
- ***   from=<addr>, status=expired, ...         (Postfix gave up)
- ***   from=<addr>, status=force-expired, ...   (an admin made it give up)
- ***   to=<addr>, ..., status=<status> (reply)  (a recipient result)
- ***
- *** @param line The line, without a newline.  Modified to end the values.
- *** @param now The current time.
- *** @returns 0 on success (including lines with no result), or -1 on failure.
- ***/
-int
-smtp_internal_ParseLogLine(char* line, time_t now)
-    {
-    static const char queueIdChars[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    char* program;
-    char* message;
-    char* queueId;
-    int queueIdLen;
-    pSmtpLogMsg msg;
-    char* value;
-    int valueLen;
-    char* address;
-    char* reply;
-    int replyLen;
-    int status;
-
-	/** Find the message, and skip lines not logged by Postfix. **/
-	message = strstr(line, "]: ");
-	if (message == NULL)
-	    return 0;
-	program = message;
-	while (program > line && *program != '[') program--;
-	while (program > line && program[-1] != ' ') program--;
-	if (strncmp(program, "postfix", 7) != 0)
-	    return 0;
-	message += 3; /* Consume the "]: ". */
-
-	/** Get the queue ID. **/
-	queueIdLen = strspn(message, queueIdChars);
-	if (queueIdLen == 0 || queueIdLen >= SMTP_QUEUE_ID_SIZE || strncmp(message + queueIdLen, ": ", 2) != 0)
-	    return 0;
-	queueId = message;
-	queueId[queueIdLen] = '\0';
-	message += queueIdLen + 2;
-
-	/** Detect a new queued email. **/
-	if (strncmp(message, "message-id=", 11) == 0)
-	    {
-	    value = message + 11;
-	    valueLen = strlen(value);
-	    if (valueLen >= 2 && value[0] == '<' && value[valueLen - 1] == '>')
-		{
-		value[valueLen - 1] = '\0';
-		value++;
-		}
-	    if (*value == '\0')
-		return 0;
-	    return smtp_internal_AddLogMsg(queueId, value, now);
-	    }
-
-	/** Other lines update a queued email. **/
-	msg = (pSmtpLogMsg)xhLookup(&SMTP_INF.LogByQueueID, queueId);
-	if (msg == NULL)
-	    return 0;
-	ASSERTMAGIC(msg, MGK_SMTP_LOG_MSG);
-
-	/** Detect a recipient count, or Postfix giving up. **/
-	if (strncmp(message, "from=<", 6) == 0)
-	    {
-	    /** Detect recipient count. **/
-	    if ((value = strstr(message, ", nrcpt=")) != NULL)
-		msg->RcptCount = atoi(value + 8);
-
-	    /** Detect Postfix giving up. **/
-	    else if (strstr(message, ", status=expired,") != NULL || strstr(message, ", status=force-expired,") != NULL)
-		msg->Expired = true;
-
-	    return 0;
-	    }
-
-	/** Detect a recipient result. **/
-	if (strncmp(message, "to=<", 4) == 0)
-	    {
-	    address = message + 4;
-	    value = strchr(address, '>');
-	    if (value == NULL)
-		return 0;
-	    *value = '\0';
-	    value = strstr(value + 1, ", status="); /* Search after the address. */
-	    if (value == NULL)
-		return 0;
-	    value += 9;
-	    valueLen = strcspn(value, " ");
-	    if (valueLen == 4 && strncmp(value, "sent", 4) == 0)
-		status = SMTP_RCPT_SENT;
-	    else if (valueLen == 8 && strncmp(value, "deferred", 8) == 0)
-		status = SMTP_RCPT_DEFERRED;
-	    else if (valueLen == 7 && strncmp(value, "bounced", 7) == 0)
-		status = SMTP_RCPT_BOUNCED;
-	    else
-		return 0;
-
-	    /** Get the reply, without its parentheses. **/
-	    reply = value + valueLen;
-	    if (strncmp(reply, " (", 2) == 0)
-		reply += 2;
-	    replyLen = strlen(reply);
-	    if (replyLen > 0 && reply[replyLen - 1] == ')')
-		reply[replyLen - 1] = '\0';
-
-	    return smtp_internal_SetLogRcpt(msg, address, status, reply);
-	    }
+	pod.String = smtp_rcpt_status_names[status];
+	if (UNLIKELY(smtp_internal_StructSet(rcpt, "status", DATA_T_STRING, &pod) != 0))
+	    return -1;
+	pod.String = reply;
+	if (UNLIKELY(smtp_internal_StructSet(rcpt, "reply", DATA_T_STRING, &pod) != 0))
+	    return -1;
 
     return 0;
     }
 
 
-/*** smtp_internal_OpenLog - open the mail log as root, since only root can
- *** read it.
+/*** smtp_internal_ClearRcpts - remove the recipient results from the
+ *** struct file of an email.
  ***
+ *** @param structPath The path of the struct file.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_OpenLog(void)
+smtp_internal_ClearRcpts(char* structPath)
     {
-    uid_t uid = geteuid();
-    struct stat st;
-    int fd = -1;
-    int openErrno;
+    pStructInf emailStruct = NULL;
+    bool removed = false;
+    int found;
+    int i;
     int rval = -1;
 
-	/** Open the log as root. **/
-	if (UNLIKELY(uid != 0 && seteuid(0) != 0))
-	    {
-	    mssErrorErrno(1, "SMTP",
-		"Failed to become root to open the mail log \"%s\". (Centrallix is not running as root.)",
-		SMTP_INF.LogPath
-	    );
+	/** Read the struct. **/
+	found = smtp_internal_ReadStruct(structPath, &emailStruct);
+	if (UNLIKELY(found == 0))
+	    mssError(1, "SMTP", "Failed to clear the recipient results of missing email struct \"%s\".", structPath);
+	if (UNLIKELY(found != 1))
 	    goto end;
-	    }
-	fd = open(SMTP_INF.LogPath, O_RDONLY);
-	openErrno = errno;
-	if (UNLIKELY(uid != 0 && seteuid(uid) != 0))
+
+	/** Remove the recipient results. **/
+	for (i = emailStruct->nSubInf - 1; i >= 0; i--)
 	    {
-	    fprintf(stderr,
-		"SMTP: Failed to switch back to uid %d after opening the mail log (%s); aborting.\n",
-		(int)uid, strerror(errno)
-	    );
-	    abort(); /* Never keep running as root. */
-	    }
-	if (UNLIKELY(fd < 0))
-	    {
-	    errno = openErrno;
-	    mssErrorErrno(1, "SMTP", "Failed to open the mail log \"%s\".", SMTP_INF.LogPath);
-	    goto end;
+	    if (!smtp_internal_IsRcpt(emailStruct->SubInf[i]))
+		continue;
+	    stRemoveInf(emailStruct->SubInf[i]);
+	    removed = true;
 	    }
 
-	/** Remember this log file, to detect rotation. **/
-	if (UNLIKELY(fstat(fd, &st) != 0))
-	    {
-	    mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_INF.LogPath);
+	/** Write the struct, if it changed. **/
+	if (removed && UNLIKELY(smtp_internal_WriteStruct(structPath, emailStruct) != 0))
 	    goto end;
-	    }
-	SMTP_INF.Log = fdopen(fd, "r");
-	if (UNLIKELY(SMTP_INF.Log == NULL))
-	    {
-	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_INF.LogPath);
-	    goto end;
-	    }
-	fd = -1; /* Closed with SMTP_INF.Log. */
-	SMTP_INF.LogDev = st.st_dev;
-	SMTP_INF.LogIno = st.st_ino;
 
 	/** Success. **/
 	rval = 0;
 
     end:
-	if (UNLIKELY(fd >= 0)) close(fd);
+	if (emailStruct != NULL) stFreeInf(emailStruct);
 
 	return rval;
     }
 
 
-/*** smtp_internal_ReadLogLines - parse the complete lines added to the open
- *** mail log since the last read.
+/*** smtp_internal_FreeIndexEntry - free an entry of a spool directory index.
+ *** Matches the free function signature of xhClear().
  ***
- *** @param now The current time.
+ *** @param entry_c The entry.
+ *** @param unused Unused.
+ *** @returns 0.
+ ***/
+int
+smtp_internal_FreeIndexEntry(char* entry_c, void* unused)
+    {
+    pSmtpIndexEntry entry = (pSmtpIndexEntry)entry_c;
+
+	ASSERTMAGIC(entry, MGK_SMTP_INDEX_ENTRY);
+	if (entry->Key != NULL) nmSysFree(entry->Key);
+	if (entry->Name != NULL) nmSysFree(entry->Name);
+	nmFree(entry, sizeof(SmtpIndexEntry));
+
+    return 0;
+    }
+
+
+/*** smtp_internal_IndexAdd - add a Pending email to an index of a spool
+ *** directory, replacing any entry with the same key.
+ ***
+ *** @param index The index (ByMessageID or ByQueueID).
+ *** @param key The Message-ID or queue ID of the email.
+ *** @param name The email file name.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_ReadLogLines(time_t now)
+smtp_internal_IndexAdd(pXHashTable index, char* key, char* name)
     {
-    char* line = NULL;
-    size_t lineSize = 0;
-    ssize_t len;
+    pSmtpIndexEntry entry = NULL;
+    pSmtpIndexEntry old;
     int rval = -1;
 
-	while ((len = getline(&line, &lineSize, SMTP_INF.Log)) > 0)
+	/** Create the entry. **/
+	entry = nmMalloc(sizeof(SmtpIndexEntry));
+	if (UNLIKELY(entry == NULL))
 	    {
-	    /** Leave a partial line until the rest is written. **/
-	    if (line[len - 1] != '\n')
-		{
-		if (UNLIKELY(fseeko(SMTP_INF.Log, -len, SEEK_CUR) != 0))
-		    {
-		    mssErrorErrno(1, "SMTP", "Failed to rewind a partial line in the mail log \"%s\".", SMTP_INF.LogPath);
-		    goto end;
-		    }
-		break;
-		}
-	    line[len - 1] = '\0';
-	    if (UNLIKELY(smtp_internal_ParseLogLine(line, now) != 0))
-		goto end;
+	    mssError(1, "SMTP", "Failed to allocate %zu bytes to track email \"%s\".", sizeof(SmtpIndexEntry), name);
+	    goto end;
 	    }
-	if (UNLIKELY(ferror(SMTP_INF.Log)))
+	memset(entry, 0, sizeof(SmtpIndexEntry));
+	SETMAGIC(entry, MGK_SMTP_INDEX_ENTRY);
+	entry->Key = nmSysStrdup(key);
+	entry->Name = nmSysStrdup(name);
+	if (UNLIKELY(entry->Key == NULL || entry->Name == NULL))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", SMTP_INF.LogPath);
+	    mssError(1, "SMTP", "Failed to copy key \"%s\" to track email \"%s\".", key, name);
+	    goto end;
+	    }
+
+	/** Replace any old entry. **/
+	old = (pSmtpIndexEntry)xhLookup(index, key);
+	if (old != NULL)
+	    {
+	    xhRemove(index, key);
+	    smtp_internal_FreeIndexEntry((char*)old, NULL);
+	    }
+	if (UNLIKELY(xhAdd(index, entry->Key, (char*)entry) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to index email \"%s\" by \"%s\".", name, key);
 	    goto end;
 	    }
 
@@ -1118,88 +1087,96 @@ smtp_internal_ReadLogLines(time_t now)
 	rval = 0;
 
     end:
-	clearerr(SMTP_INF.Log); /* Allow reading lines written later. */
-	if (LIKELY(line != NULL)) free(line);
+	if (UNLIKELY(rval != 0 && entry != NULL)) smtp_internal_FreeIndexEntry((char*)entry, NULL);
 
 	return rval;
     }
 
 
-/*** smtp_internal_ReadLog - read the lines added to the mail log since the
- *** last read, reopening it if it was rotated or is not open, and forget
- *** results too old for any Pending email to need.
+/*** smtp_internal_IndexRemove - remove an email from an index of a spool
+ *** directory, if it is there.
  ***
- *** @returns 0 on success, or -1 on failure.
+ *** @param index The index (ByMessageID or ByQueueID).
+ *** @param key The Message-ID or queue ID of the email.
  ***/
-int
-smtp_internal_ReadLog(void)
+void
+smtp_internal_IndexRemove(pXHashTable index, char* key)
     {
-    time_t now = time(NULL);
-    pSmtpLogMsg msg;
-    struct stat st;
+    pSmtpIndexEntry entry = (pSmtpIndexEntry)xhLookup(index, key);
 
-	/** Drop old results. **/
-	while (SMTP_INF.LogOldest != NULL && now - SMTP_INF.LogOldest->ReadTime > SMTP_LOG_KEEP_TIME)
-	    {
-	    msg = SMTP_INF.LogOldest;
-	    SMTP_INF.LogOldest = msg->Next;
-	    if (SMTP_INF.LogOldest == NULL)
-		SMTP_INF.LogNewest = NULL;
-	    if ((pSmtpLogMsg)xhLookup(&SMTP_INF.LogByQueueID, msg->QueueID) == msg)
-		xhRemove(&SMTP_INF.LogByQueueID, msg->QueueID);
-	    if ((pSmtpLogMsg)xhLookup(&SMTP_INF.LogByMessageID, msg->MessageID) == msg)
-		xhRemove(&SMTP_INF.LogByMessageID, msg->MessageID);
-	    smtp_internal_FreeLogMsg(msg);
-	    }
+	if (entry == NULL)
+	    return;
+	xhRemove(index, key);
+	smtp_internal_FreeIndexEntry((char*)entry, NULL);
 
-	/** Read the rest of the open log, then close it if it was rotated. **/
-	if (SMTP_INF.Log != NULL)
-	    {
-	    if (UNLIKELY(smtp_internal_ReadLogLines(now) != 0))
-		return -1;
-	    if (stat(SMTP_INF.LogPath, &st) != 0)
-		{
-		if (errno == ENOENT)
-		    return 0; /* Mid-rotation, so read the new log next time. */
-		mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_INF.LogPath);
-		return -1;
-		}
-	    if (st.st_dev == SMTP_INF.LogDev && st.st_ino == SMTP_INF.LogIno)
-		return 0;
-	    fclose(SMTP_INF.Log);
-	    SMTP_INF.Log = NULL;
-	    }
-
-	/** Open the current log and read it. **/
-	if (UNLIKELY(smtp_internal_OpenLog() != 0))
-	    return -1;
-	if (UNLIKELY(smtp_internal_ReadLogLines(now) != 0))
-	    return -1;
-
-    return 0;
+    return;
     }
 
 
-/*** smtp_internal_LookupLog - get what the mail log says about an email,
- *** after reading any new lines.
+/*** smtp_internal_GetSpool - get the tracking data of a spool directory,
+ *** creating it the first time.
  ***
- *** @param messageId The Message-ID of the email, without angle brackets.
- *** @param msg Set to the newest record for messageId, or NULL if none.
- *** @returns 0 on success, or -1 if the mail log could not be read.
+ *** @param spoolDir The spool directory.
+ *** @returns The spool, or NULL on failure.
  ***/
-int
-smtp_internal_LookupLog(char* messageId, pSmtpLogMsg* msg)
+pSmtpSpool
+smtp_internal_GetSpool(char* spoolDir)
     {
-	*msg = NULL;
-	if (UNLIKELY(smtp_internal_ReadLog() != 0))
-	    {
-	    mssError(0, "SMTP", "Failed to check the mail log for Message-ID <%s>.", messageId);
-	    return -1;
-	    }
-	*msg = (pSmtpLogMsg)xhLookup(&SMTP_INF.LogByMessageID, messageId);
-	ASSERTMAGIC(*msg, MGK_SMTP_LOG_MSG);
+    pSmtpSpool spool = NULL;
+    bool messageIdsInitialized = false;
+    bool queueIdsInitialized = false;
 
-    return 0;
+	/** Find the spool. **/
+	spool = (pSmtpSpool)xhLookup(&SMTP_INF.Spools, spoolDir);
+	ASSERTMAGIC(spool, MGK_SMTP_SPOOL);
+	if (spool != NULL)
+	    return spool;
+
+	/** Not found: create it. **/
+	spool = nmMalloc(sizeof(SmtpSpool));
+	if (UNLIKELY(spool == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate tracking data for spool directory \"%s\".", spoolDir);
+	    goto error;
+	    }
+	memset(spool, 0, sizeof(SmtpSpool));
+	SETMAGIC(spool, MGK_SMTP_SPOOL);
+	spool->Path = nmSysStrdup(spoolDir);
+	if (UNLIKELY(spool->Path == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to set spool directory path: \"%s\".", spoolDir);
+	    goto error;
+	    }
+	if (UNLIKELY(xhInit(&spool->ByMessageID, 257, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the Message-ID index of spool directory \"%s\".", spoolDir);
+	    goto error;
+	    }
+	messageIdsInitialized = true;
+	if (UNLIKELY(xhInit(&spool->ByQueueID, 257, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the queue ID index of spool directory \"%s\".", spoolDir);
+	    goto error;
+	    }
+	queueIdsInitialized = true;
+	if (UNLIKELY(xhAdd(&SMTP_INF.Spools, spool->Path, (char*)spool) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to add spool directory to hashtable: \"%s\".", spoolDir);
+	    goto error;
+	    }
+
+	return spool;
+
+    error:
+	if (spool != NULL)
+	    {
+	    if (messageIdsInitialized) xhDeInit(&spool->ByMessageID);
+	    if (queueIdsInitialized) xhDeInit(&spool->ByQueueID);
+	    if (spool->Path != NULL) nmSysFree(spool->Path);
+	    nmFree(spool, sizeof(SmtpSpool));
+	    }
+
+	return NULL;
     }
 
 
@@ -1223,12 +1200,6 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(xhInit(&SMTP_INF.Spools, 17, 0) != 0))
 	    {
 	    mssError(1, "SMTP", "Failed to initialize the spool directory table.");
-	    goto error;
-	    }
-	if (UNLIKELY(xhInit(&SMTP_INF.LogByQueueID, 1021, 0) != 0
-	    || xhInit(&SMTP_INF.LogByMessageID, 1021, 0) != 0
-	))   {
-	    mssError(1, "SMTP", "Failed to initialize the mail log tables.");
 	    goto error;
 	    }
 
@@ -1274,6 +1245,8 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "try_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_status",	DATA_T_STRING,	0,	"None") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_msg",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "queue_id",		DATA_T_STRING,	0,	"") < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "rcpt_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 
 	/** Get the mail log path. **/
 	if (stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "smtp"), "mail_log"), NULL, &logPath, 0) != 0)
@@ -1283,10 +1256,6 @@ smtp_internal_InitGlobals()
 	    mssError(1, "SMTP", "Failed to set the mail log path: \"%s\" is too long.", logPath);
 	    goto error;
 	    }
-
-	/** Read the results of emails already handed to Postfix. **/
-	if (UNLIKELY(smtp_internal_ReadLog() != 0))
-	    mssWarnError("Failed to read the mail log, so Pending emails cannot be checked.");
 
 	return 0;
 
@@ -1343,6 +1312,8 @@ smtp_internal_IsReadOnly(char* attrname)
 	"last_try_status",
 	"last_try_msg",
 	"message_id",
+	"queue_id",
+	"rcpt_count",
 	};
     const int n_readOnly = sizeof(readOnly) / sizeof(readOnly[0]);
     int i;
@@ -1513,7 +1484,6 @@ void
 smtp_internal_SweepSpool(char* spoolDir)
     {
     pSmtpSpool spool = NULL;
-    pSmtpSpool newSpool = NULL;
     DIR* dir = NULL;
     struct dirent* entry = NULL;
     char emailPath[PATH_MAX];
@@ -1526,38 +1496,9 @@ smtp_internal_SweepSpool(char* spoolDir)
     bool successful = false;
 
 	/** Track each spool directory. **/
-	spool = (pSmtpSpool)xhLookup(&SMTP_INF.Spools, spoolDir);
-	ASSERTMAGIC(spool, MGK_SMTP_SPOOL);
-	if (spool == NULL)
-	    {
-	    newSpool = nmMalloc(sizeof(SmtpSpool));
-	    if (UNLIKELY(newSpool == NULL))
-		{
-		mssError(1, "SMTP",
-		    "Failed to allocate sweep state for spool directory \"%s\".",
-		    spoolDir
-		);
-		goto end;
-		}
-	    memset(newSpool, 0, sizeof(SmtpSpool));
-	    SETMAGIC(newSpool, MGK_SMTP_SPOOL);
-	    newSpool->Path = nmSysStrdup(spoolDir);
-	    if (UNLIKELY(newSpool->Path == NULL))
-		{
-		mssError(1, "SMTP", "Failed to set spool directory path: \"%s\".", spoolDir);
-		goto end;
-		}
-	    if (UNLIKELY(xhAdd(&SMTP_INF.Spools, newSpool->Path, (char*)newSpool) != 0))
-		{
-		mssError(1, "SMTP",
-		    "Failed to add spool directory to hashtable: \"%s\".",
-		    spoolDir
-		);
-		goto end;
-		}
-	    spool = newSpool;
-	    newSpool = NULL;
-	    }
+	spool = smtp_internal_GetSpool(spoolDir);
+	if (UNLIKELY(spool == NULL))
+	    goto end;
 
 	/** Throttle sweeps. **/
 	if (curTime - spool->LastSweep < SMTP_SWEEP_INTERVAL)
@@ -1636,11 +1577,6 @@ smtp_internal_SweepSpool(char* spoolDir)
 
     end:
 	if (dir != NULL) closedir(dir);
-	if (UNLIKELY(newSpool != NULL))
-	    {
-	    if (newSpool->Path != NULL) nmSysFree(newSpool->Path);
-	    nmFree(newSpool, sizeof(SmtpSpool));
-	    }
 
 	/** Resolve sweep errors. **/
 	if (UNLIKELY(!successful))
@@ -1687,6 +1623,8 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, 
 		goto error;
 		}
 	    ASSERTMAGIC(currentAttr, MGK_STRUCTINF);
+	    if (stStructType(currentAttr) == ST_T_SUBGROUP)
+		continue; /* Subgroups, such as recipient results, are not attributes. */
 	    if (UNLIKELY(currentAttr->Value == NULL))
 		{
 		mssError(1, "SMTP", "Struct attribute '%s' has a NULL value.", currentAttr->Name);
@@ -2073,21 +2011,21 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     }
 
 
-/*** smtp_internal_SetExpireDate - set the expire_date of an email that
- *** became Sent or Error to expire_time seconds from now.  A negative
- *** expire_time keeps the email indefinitely.
- *** @returns 0 on success, or -1 on failure.
+/*** smtp_internal_CalcExpireDate - calculate the expire_date of an email
+ *** that becomes Sent or Error now, which is expire_time seconds from now.
+ *** A negative expire_time keeps the email indefinitely.
+ *** @param rootAttributes The attributes of the SMTP node.
+ *** @param expireDate Set to the expire date, if the email expires.
+ *** @returns 1 if the email expires, 0 if it does not, or -1 on failure.
  ***/
 int
-smtp_internal_SetExpireDate(pSmtpData inf)
+smtp_internal_CalcExpireDate(pXHashTable rootAttributes, pDateTime expireDate)
     {
     pSmtpAttribute expireTimeAttr = NULL;
     int expireTime = SMTP_DEFAULT_EXPIRE_TIME;
-    DateTime expireDate;
-    ObjData pod;
 
 	/** Get the expire time. **/
-	expireTimeAttr = SMTP_ATTR(xhLookup(inf->RootAttributes, "expire_time"));
+	expireTimeAttr = SMTP_ATTR(xhLookup(rootAttributes, "expire_time"));
 	ASSERTMAGIC(expireTimeAttr, MGK_SMTP_ATTRIBUTE);
 	if (expireTimeAttr != NULL)
 	    {
@@ -2104,8 +2042,8 @@ smtp_internal_SetExpireDate(pSmtpData inf)
 	if (expireTime < 0)
 	    return 0; /* It never expires. */
 
-	/** Calculate and record the expire date. **/
-	if (UNLIKELY(objCurrentDate(&expireDate) != 0 || objDateAdd(&expireDate, expireTime, 0, 0, 0, 0, 0) != 0))
+	/** Calculate the expire date. **/
+	if (UNLIKELY(objCurrentDate(expireDate) != 0 || objDateAdd(expireDate, expireTime, 0, 0, 0, 0, 0) != 0))
 	    {
 	    mssError(0, "SMTP",
 		"Failed to calculate the expire date (%d seconds from now).",
@@ -2113,6 +2051,26 @@ smtp_internal_SetExpireDate(pSmtpData inf)
 	    );
 	    return -1;
 	    }
+
+    return 1;
+    }
+
+
+/*** smtp_internal_SetExpireDate - set the expire_date of an email that
+ *** became Sent or Error.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_SetExpireDate(pSmtpData inf)
+    {
+    DateTime expireDate;
+    ObjData pod;
+    int expires;
+
+	/** Calculate and record the expire date. **/
+	expires = smtp_internal_CalcExpireDate(inf->RootAttributes, &expireDate);
+	if (expires <= 0)
+	    return expires;
 	pod.DateTime = &expireDate;
 	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
 	    return -1;
@@ -2121,11 +2079,11 @@ smtp_internal_SetExpireDate(pSmtpData inf)
     }
 
 
-/*** smtp_internal_SendEmail - mark the email Pending and hand it to
- *** sendmail, then record the try_count, *_try_date, and last_try_*
- *** attributes of this try, and Error if the hand-off failed.  Refuses an
- *** email that is already Pending.  A Pending email never expires, so its
- *** expire_date is cleared.
+/*** smtp_internal_SendEmail - mark the email Pending, clear the results of
+ *** earlier tries, record the try_count and *_try_date attributes of this
+ *** try, then hand the email to sendmail.  If that fails, the email becomes
+ *** Error.  Refuses an email that is already Pending.  A Pending email never
+ *** expires, so its expire_date is cleared.
  *** @returns 0 if the email was handed off, or -1 if it was not.
  ***/
 int
@@ -2135,13 +2093,14 @@ smtp_internal_SendEmail(pSmtpData inf)
     pSmtpAttribute envTo = NULL;
     pSmtpAttribute tryCountAttr = NULL;
     pSmtpAttribute firstTryAttr = NULL;
+    pSmtpAttribute spoolDir = NULL;
+    pSmtpSpool spool = NULL;
     char* messageId = NULL;
     DateTime noExpireDate;
     DateTime tryDate;
     pXString tryMsg = NULL;
     char* tryMsgStr = "";
     ObjData pod;
-    char* status = "Error";
     bool recordFailed = false;
     int pending;
     int rval = -1;
@@ -2153,6 +2112,13 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
+	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
+	if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
+	    {
+	    mssError(1, "SMTP", "Failed to send \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
+	    return -1; /* Skip error handler, which records a failed try. */
+	    }
 
 	/** Refuse to send an email that is already Pending, even from another open. **/
 	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
@@ -2165,19 +2131,73 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
 
+	/** Read the mail log first, so its lines about earlier tries are not applied to this one. **/
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
+	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+
 	/** Mark the email Pending before handing it off, so other sends refuse it. **/
 	pod.String = "Pending";
 	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
 	    goto end;
 
+	/** Clear the results of earlier tries. **/
+	pod.String = "";
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "queue_id", DATA_T_STRING, &pod, NULL) != 0))
+	    goto end;
+	pod.Integer = 0;
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "rcpt_count", DATA_T_INTEGER, &pod, NULL) != 0))
+	    goto end;
+	if (UNLIKELY(smtp_internal_ClearRcpts(inf->EmailStructPath.String) != 0))
+	    goto end;
+	pod.String = "None";
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_status", DATA_T_STRING, &pod, NULL) != 0))
+	    goto end;
+	pod.String = "";
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_msg", DATA_T_STRING, &pod, NULL) != 0))
+	    goto end;
+
+	/** Record no expire date. (Pending emails don't expire.) **/
+	memset(&noExpireDate, 0, sizeof(DateTime));
+	pod.DateTime = &noExpireDate;
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
+	    goto end;
+
+	/** Count the try. **/
+	tryCountAttr = SMTP_ATTR(xhLookup(inf->Attributes, "try_count"));
+	ASSERTMAGIC(tryCountAttr, MGK_SMTP_ATTRIBUTE);
+	pod.Integer = (tryCountAttr != NULL && tryCountAttr->Type == DATA_T_INTEGER) ? tryCountAttr->Value.Integer + 1 : 1;
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "try_count", DATA_T_INTEGER, &pod, NULL) != 0))
+	    goto end;
+
+	/** Record the try dates, keeping the first one. **/
+	if (UNLIKELY(objCurrentDate(&tryDate) != 0))
+	    {
+	    mssError(0, "SMTP", "Failed to get the current date for the try dates.");
+	    goto end;
+	    }
+	pod.DateTime = &tryDate;
+	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_date", DATA_T_DATETIME, &pod, NULL) != 0))
+	    goto end;
+	firstTryAttr = SMTP_ATTR(xhLookup(inf->Attributes, "first_try_date"));
+	ASSERTMAGIC(firstTryAttr, MGK_SMTP_ATTRIBUTE);
+	if (firstTryAttr == NULL || firstTryAttr->Type != DATA_T_DATETIME
+	    || firstTryAttr->Value.DateTime == NULL || firstTryAttr->Value.DateTime->Value == 0)
+	    {
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "first_try_date", DATA_T_DATETIME, &pod, NULL) != 0))
+		goto end;
+	    }
+
+	/** Track the email by its Message-ID until Postfix queues it. **/
+	messageId = smtp_internal_GetString(inf->Attributes, "message_id");
+	spool = smtp_internal_GetSpool(spoolDir->Value.String);
+	if (UNLIKELY(spool == NULL))
+	    goto end;
+	if (spool->Loaded && messageId != NULL && UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, messageId, inf->Name) != 0))
+	    goto end;
+
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
 	    goto end;
-
-	/** Drop the mail log results from earlier tries. **/
-	messageId = smtp_internal_GetString(inf->Attributes, "message_id");
-	if (messageId != NULL)
-	    xhRemove(&SMTP_INF.LogByMessageID, messageId);
 
 	/** Get the to and from. **/
 	envFrom = SMTP_ATTR(xhLookup(inf->Attributes, "envelope_from"));
@@ -2191,80 +2211,39 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    }
 
 	/** Success. **/
-	status = "Pending";
 	rval = 0;
 
     end:
-	/** Get the errors of a failed try, before recording adds more. **/
+	/** Record a failed try. **/
 	if (UNLIKELY(rval != 0))
 	    {
+	    /** Get the errors of the failed try, before recording adds more. **/
 	    tryMsg = xsNew();
 	    if (UNLIKELY(tryMsg == NULL || mssUserError(tryMsg) != 0))
-		{
 		mssError(0, "SMTP", "Failed to get the error message of the failed try.");
-		recordFailed = true;
-		}
 	    else
-		{
 		tryMsgStr = tryMsg->String;
-		}
-	    }
 
-	/** Record the status. **/
-	pod.String = status;
-	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
-	    recordFailed = true;
-
-	/** Record the try result. **/
-	pod.String = (rval == 0) ? "None" : "Fail";
-	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_status", DATA_T_STRING, &pod, NULL) != 0))
-	    recordFailed = true;
-	pod.String = tryMsgStr;
-	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_msg", DATA_T_STRING, &pod, NULL) != 0))
-	    recordFailed = true;
-
-	/** Count the try. **/
-	tryCountAttr = SMTP_ATTR(xhLookup(inf->Attributes, "try_count"));
-	ASSERTMAGIC(tryCountAttr, MGK_SMTP_ATTRIBUTE);
-	pod.Integer = (tryCountAttr != NULL && tryCountAttr->Type == DATA_T_INTEGER) ? tryCountAttr->Value.Integer + 1 : 1;
-	if (UNLIKELY(smtp_internal_SetAttrValue(inf, "try_count", DATA_T_INTEGER, &pod, NULL) != 0))
-	    recordFailed = true;
-
-	/** Record the try dates, keeping the first one. **/
-	if (UNLIKELY(objCurrentDate(&tryDate) != 0))
-	    {
-	    mssError(0, "SMTP", "Failed to get the current date for the try dates.");
-	    recordFailed = true;
-	    }
-	else
-	    {
-	    pod.DateTime = &tryDate;
-	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_date", DATA_T_DATETIME, &pod, NULL) != 0))
+	    /** Record the failure. **/
+	    pod.String = "Error";
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
 		recordFailed = true;
-	    firstTryAttr = SMTP_ATTR(xhLookup(inf->Attributes, "first_try_date"));
-	    ASSERTMAGIC(firstTryAttr, MGK_SMTP_ATTRIBUTE);
-	    if (firstTryAttr == NULL || firstTryAttr->Type != DATA_T_DATETIME
-		|| firstTryAttr->Value.DateTime == NULL || firstTryAttr->Value.DateTime->Value == 0)
+	    pod.String = "Fail";
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_status", DATA_T_STRING, &pod, NULL) != 0))
+		recordFailed = true;
+	    pod.String = tryMsgStr;
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_msg", DATA_T_STRING, &pod, NULL) != 0))
+		recordFailed = true;
+	    if (UNLIKELY(smtp_internal_SetExpireDate(inf) != 0))
+		recordFailed = true;
+
+	    /** Report a failure to record it, then restore the send error it cleared. **/
+	    if (UNLIKELY(recordFailed))
 		{
-		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "first_try_date", DATA_T_DATETIME, &pod, NULL) != 0))
-		    recordFailed = true;
+		fprintf(stderr, "Warning: Failed to record the failed try of \"%s\"; it may stay Pending.\n", inf->Name);
+		mssError(1, "SMTP", "Failed to send \"%s\": %s", inf->Name, tryMsgStr);
 		}
 	    }
-
-	/** Record no expire date. (Pending emails don't expire.) **/
-	if (rval == 0)
-	    {
-	    memset(&noExpireDate, 0, sizeof(DateTime));
-	    pod.DateTime = &noExpireDate;
-	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "expire_date", DATA_T_DATETIME, &pod, NULL) != 0))
-		recordFailed = true;
-	    }
-	else if (UNLIKELY(smtp_internal_SetExpireDate(inf) != 0))
-	    recordFailed = true;
-
-	/** Resolve recording errors, since the email was handed off. **/
-	if (UNLIKELY(recordFailed && rval == 0))
-	    mssWarnError("Handed email \"%s\" to sendmail but failed to record all of the results.", inf->Name);
 
 	if (tryMsg != NULL) xsFree(tryMsg);
 
@@ -2353,15 +2332,20 @@ smtp_internal_ReadResult(char* resultPath, char* header, pXString output)
     }
 
 
-/*** smtp_internal_UpdateStatus - update a Pending email from the result of
- *** handing it to sendmail and the results Postfix logged.  It becomes Sent
- *** or Error once Postfix finishes, or Error if there is still no result
- *** SMTP_PENDING_TIMEOUT seconds after last_try_date.
+/*** smtp_internal_RefreshStatus - update the struct of a Pending email from
+ *** its sendmail result and the recipient results recorded in it.  It
+ *** becomes Sent or Error once Postfix finishes, or Error if there is still
+ *** no result SMTP_PENDING_TIMEOUT seconds after last_try_date.
  ***
+ *** @param emailStruct The struct of the email, read from its file.
+ *** @param resultPath The path of the sendmail result file.
+ *** @param expired Whether Postfix gave up and returned the email.
+ *** @param rootAttributes The attributes of the SMTP node.
+ *** @param changed Set to whether emailStruct changed. (Optional)
  *** @returns 0 on success (including no change), or -1 on failure.
  ***/
 int
-smtp_internal_UpdateStatus(pSmtpData inf)
+smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed)
     {
     char header[SMTP_RESULT_HEADER_LEN + 1];
     XString output;
@@ -2369,25 +2353,35 @@ smtp_internal_UpdateStatus(pSmtpData inf)
     bool initialized = false;
     char* status = NULL; /* The final status, or NULL while Pending. */
     char* tryStatus = NULL; /* The new last_try_status, or NULL to keep it. */
-    char* messageId;
+    char* queueId;
     char* current;
-    pSmtpLogMsg msg = NULL;
-    pSmtpLogRcpt rcpt;
-    pSmtpAttribute lastTryAttr;
+    char* dateStr;
+    char* rcptStatus;
+    char* rcptAddress;
+    char* rcptReply;
+    pStructInf rcpt;
     DateTime cutoff;
     DateTime now;
+    DateTime expireDate;
     ObjData pod;
     char* sep = " ";
+    bool logged = false;
     bool timedOut = false;
+    int rcptCount = 0;
     int result;
     int printed;
     int code;
+    int expires;
     int nSent = 0;
     int nBounced = 0;
     int nDeferred = 0;
     int nTotal = 0;
     int i;
     int rval = -1;
+
+	/** No changes yet. **/
+	if (changed != NULL)
+	    *changed = false;
 
 	/** Initialize send status strings. **/
 	if (UNLIKELY(xsInit(&output) != 0 || xsInit(&tryMsg) != 0))
@@ -2398,7 +2392,7 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 	initialized = true;
 
 	/** Check whether the hand-off to sendmail failed. **/
-	result = smtp_internal_ReadResult(inf->ResultPath.String, header, &output);
+	result = smtp_internal_ReadResult(resultPath, header, &output);
 	if (UNLIKELY(result < 0))
 	    goto end;
 	if (result == 1 && strcmp(header, "exit 0") != 0)
@@ -2424,82 +2418,91 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 		}
 	    }
 
-	/** Find what Postfix logged, once sendmail has the email. **/
-	else if (result == 1)
+	/** Count the recipient results, once Postfix queued the email. **/
+	queueId = smtp_internal_StructString(emailStruct, "queue_id");
+	if (status == NULL && queueId != NULL && queueId[0] != '\0')
 	    {
-	    messageId = smtp_internal_GetString(inf->Attributes, "message_id");
-	    if (messageId != NULL && UNLIKELY(smtp_internal_LookupLog(messageId, &msg) != 0))
-		goto end;
-	    }
-
-	/** Count the recipient results. **/
-	if (msg != NULL)
-	    {
-	    for (i = 0; i < msg->Rcpts.nItems; i++)
+	    logged = true;
+	    for (i = 0; i < emailStruct->nSubInf; i++)
 		{
-		rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
-		ASSERTMAGIC(rcpt, MGK_SMTP_LOG_RCPT);
-		if (rcpt->Status == SMTP_RCPT_SENT) nSent++;
-		else if (rcpt->Status == SMTP_RCPT_BOUNCED) nBounced++;
+		rcpt = emailStruct->SubInf[i];
+		if (!smtp_internal_IsRcpt(rcpt))
+		    continue;
+		rcptStatus = smtp_internal_StructString(rcpt, "status");
+		if (rcptStatus != NULL && strcmp(rcptStatus, smtp_rcpt_status_names[SMTP_RCPT_SENT]) == 0) nSent++;
+		else if (rcptStatus != NULL && strcmp(rcptStatus, smtp_rcpt_status_names[SMTP_RCPT_BOUNCED]) == 0) nBounced++;
 		else nDeferred++;
 		}
-	    nTotal = (msg->RcptCount > msg->Rcpts.nItems) ? msg->RcptCount : msg->Rcpts.nItems;
+	    rcptCount = smtp_internal_StructInteger(emailStruct, "rcpt_count");
+	    nTotal = (rcptCount > nSent + nBounced + nDeferred) ? rcptCount : nSent + nBounced + nDeferred;
 
 	    /** Postfix is done when every recipient is sent or bounced, or it gives up. **/
-	    if (msg->Expired || (msg->RcptCount > 0 && nSent + nBounced >= msg->RcptCount))
-		status = (nBounced == 0 && nDeferred == 0 && !msg->Expired) ? "Sent" : "Error";
+	    if (expired || (rcptCount > 0 && nSent + nBounced >= rcptCount))
+		status = (nBounced == 0 && nDeferred == 0 && !expired) ? "Sent" : "Error";
 	    }
 
 	/** Give up on an email with no result in time. **/
-	lastTryAttr = SMTP_ATTR(xhLookup(inf->Attributes, "last_try_date"));
-	ASSERTMAGIC(lastTryAttr, MGK_SMTP_ATTRIBUTE);
-	if (status == NULL && lastTryAttr != NULL && lastTryAttr->Type == DATA_T_DATETIME
-	    && lastTryAttr->Value.DateTime != NULL && lastTryAttr->Value.DateTime->Value != 0)
+	dateStr = smtp_internal_StructString(emailStruct, "last_try_date");
+	if (status == NULL && dateStr != NULL)
 	    {
-	    cutoff = *lastTryAttr->Value.DateTime;
-	    if (UNLIKELY(objDateAdd(&cutoff, SMTP_PENDING_TIMEOUT, 0, 0, 0, 0, 0) != 0 || objCurrentDate(&now) != 0))
+	    memset(&cutoff, 0, sizeof(DateTime));
+	    if (UNLIKELY(objDataToDateTime(DATA_T_STRING, dateStr, &cutoff, NULL) != 0))
 		{
-		mssError(0, "SMTP", "Failed to check whether the send status timed out.");
+		mssError(1, "SMTP", "Invalid last_try_date \"%s\".", dateStr);
 		goto end;
 		}
-	    if (now.Value >= cutoff.Value)
+	    if (cutoff.Value != 0)
 		{
-		status = "Error";
-		timedOut = true;
-		if (UNLIKELY(xsPrintf(&tryMsg,
-		    "Send status unknown %d days after the last try.",
-		    SMTP_PENDING_TIMEOUT / (24 * 60 * 60)
-		) < 0))
+		if (UNLIKELY(objDateAdd(&cutoff, SMTP_PENDING_TIMEOUT, 0, 0, 0, 0, 0) != 0 || objCurrentDate(&now) != 0))
 		    {
-		    mssError(1, "SMTP", "Failed to describe the send status timeout.");
+		    mssError(0, "SMTP", "Failed to check whether the send status timed out.");
 		    goto end;
+		    }
+		if (now.Value >= cutoff.Value)
+		    {
+		    status = "Error";
+		    timedOut = true;
+		    if (UNLIKELY(xsPrintf(&tryMsg,
+			"Send status unknown %d days after the last try.",
+			SMTP_PENDING_TIMEOUT / (24 * 60 * 60)
+		    ) < 0))
+			{
+			mssError(1, "SMTP", "Failed to describe the send status timeout.");
+			goto end;
+			}
 		    }
 		}
 	    }
 
 	/** Describe the latest result of each recipient not sent the email. **/
-	if (msg != NULL && (nBounced > 0 || nDeferred > 0))
+	if (logged && (nBounced > 0 || nDeferred > 0))
 	    {
 	    if (UNLIKELY(xsConcatPrintf(&tryMsg,
 		"%sSent to %d of %d recipients.",
 		(timedOut) ? " " : "", nSent, nTotal
 	    ) < 0))
 		{
-		mssError(1, "SMTP", "Failed to describe the recipients of Message-ID <%s>.", msg->MessageID);
+		mssError(1, "SMTP", "Failed to describe the recipients of queue ID %s.", queueId);
 		goto end;
 		}
-	    for (i = 0; i < msg->Rcpts.nItems; i++)
+	    for (i = 0; i < emailStruct->nSubInf; i++)
 		{
-		rcpt = (pSmtpLogRcpt)msg->Rcpts.Items[i];
-		if (rcpt->Status == SMTP_RCPT_SENT)
+		rcpt = emailStruct->SubInf[i];
+		if (!smtp_internal_IsRcpt(rcpt))
 		    continue;
+		rcptStatus = smtp_internal_StructString(rcpt, "status");
+		if (rcptStatus != NULL && strcmp(rcptStatus, smtp_rcpt_status_names[SMTP_RCPT_SENT]) == 0)
+		    continue;
+		rcptAddress = smtp_internal_StructString(rcpt, "address");
+		rcptReply = smtp_internal_StructString(rcpt, "reply");
 		if (UNLIKELY(xsConcatPrintf(&tryMsg, "%s%s: %s: %s",
-		    sep, rcpt->Address,
-		    (rcpt->Status == SMTP_RCPT_BOUNCED) ? "bounced" : (msg->Expired ? "expired" : "deferred"),
-		    rcpt->Reply
+		    sep, (rcptAddress != NULL) ? rcptAddress : "",
+		    (rcptStatus != NULL && strcmp(rcptStatus, smtp_rcpt_status_names[SMTP_RCPT_BOUNCED]) == 0)
+			? "bounced" : (expired ? "expired" : "deferred"),
+		    (rcptReply != NULL) ? rcptReply : ""
 		) < 0))
 		    {
-		    mssError(1, "SMTP", "Failed to describe recipient <%s>.", rcpt->Address);
+		    mssError(1, "SMTP", "Failed to describe a recipient of queue ID %s.", queueId);
 		    goto end;
 		    }
 		sep = "; ";
@@ -2507,7 +2510,7 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 	    }
 
 	/** Fail once a recipient fails for good, even while Pending. **/
-	if (msg != NULL || timedOut)
+	if (logged || timedOut)
 	    {
 	    if (status != NULL && strcmp(status, "Sent") == 0)
 		tryStatus = "None";
@@ -2522,30 +2525,40 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 	/** Record the try result, if it changed. **/
 	if (tryStatus != NULL)
 	    {
-	    current = smtp_internal_GetString(inf->Attributes, "last_try_status");
+	    current = smtp_internal_StructString(emailStruct, "last_try_status");
 	    if (current == NULL || strcmp(current, tryStatus) != 0)
 		{
 		pod.String = tryStatus;
-		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_status", DATA_T_STRING, &pod, NULL) != 0))
+		if (UNLIKELY(smtp_internal_StructSet(emailStruct, "last_try_status", DATA_T_STRING, &pod) != 0))
 		    goto end;
+		if (changed != NULL)
+		    *changed = true;
 		}
-	    current = smtp_internal_GetString(inf->Attributes, "last_try_msg");
+	    current = smtp_internal_StructString(emailStruct, "last_try_msg");
 	    if (current == NULL || strcmp(current, tryMsg.String) != 0)
 		{
 		pod.String = tryMsg.String;
-		if (UNLIKELY(smtp_internal_SetAttrValue(inf, "last_try_msg", DATA_T_STRING, &pod, NULL) != 0))
+		if (UNLIKELY(smtp_internal_StructSet(emailStruct, "last_try_msg", DATA_T_STRING, &pod) != 0))
 		    goto end;
+		if (changed != NULL)
+		    *changed = true;
 		}
 	    }
 
-	/** Record the final status last, so a failure leaves the email Pending. **/
+	/** Record the final status. **/
 	if (status != NULL)
 	    {
-	    if (UNLIKELY(smtp_internal_SetExpireDate(inf) != 0))
+	    expires = smtp_internal_CalcExpireDate(rootAttributes, &expireDate);
+	    if (UNLIKELY(expires < 0))
+		goto end;
+	    pod.DateTime = &expireDate;
+	    if (expires > 0 && UNLIKELY(smtp_internal_StructSet(emailStruct, "expire_date", DATA_T_DATETIME, &pod) != 0))
 		goto end;
 	    pod.String = status;
-	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "status", DATA_T_STRING, &pod, NULL) != 0))
+	    if (UNLIKELY(smtp_internal_StructSet(emailStruct, "status", DATA_T_STRING, &pod) != 0))
 		goto end;
+	    if (changed != NULL)
+		*changed = true;
 	    }
 
 	/** Success. **/
@@ -2557,6 +2570,894 @@ smtp_internal_UpdateStatus(pSmtpData inf)
 	    xsDeInit(&output);
 	    xsDeInit(&tryMsg);
 	    }
+
+	return rval;
+    }
+
+
+/*** smtp_internal_ParseLogLine - find the result in one line of the mail
+ *** log, if it has one.  Lines look like this:
+ ***   <date> <host> postfix/<program>[<pid>]: <queue ID>: <message>
+ *** where the messages used are:
+ ***   message-id=<id>                          (a new queued email)
+ ***   from=<addr>, size=N, nrcpt=N ...         (its recipient count)
+ ***   from=<addr>, status=expired, ...         (Postfix gave up)
+ ***   from=<addr>, status=force-expired, ...   (an admin made it give up)
+ ***   to=<addr>, ..., status=<status> (reply)  (a recipient result)
+ ***
+ *** @param line The line, without a newline.  Modified to end the values.
+ *** @param parsed Set to the parts of the line, which point into it.  Its
+ ***   Kind is SMTP_LINE_NONE if the line has no result.
+ ***/
+void
+smtp_internal_ParseLogLine(char* line, pSmtpLogLine parsed)
+    {
+    static const char queueIdChars[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    char* program;
+    char* message;
+    char* queueId;
+    int queueIdLen;
+    char* value;
+    int valueLen;
+    char* address;
+    char* reply;
+    int replyLen;
+
+	memset(parsed, 0, sizeof(SmtpLogLine));
+	parsed->Kind = SMTP_LINE_NONE;
+
+	/** Find the message, and skip lines not logged by Postfix. **/
+	message = strstr(line, "]: ");
+	if (message == NULL)
+	    return;
+	program = message;
+	while (program > line && *program != '[') program--;
+	while (program > line && program[-1] != ' ') program--;
+	if (strncmp(program, "postfix", 7) != 0)
+	    return;
+	message += 3; /* Consume the "]: ". */
+
+	/** Get the queue ID. **/
+	queueIdLen = strspn(message, queueIdChars);
+	if (queueIdLen == 0 || queueIdLen >= SMTP_QUEUE_ID_SIZE || strncmp(message + queueIdLen, ": ", 2) != 0)
+	    return;
+	queueId = message;
+	queueId[queueIdLen] = '\0';
+	message += queueIdLen + 2;
+
+	/** Detect a new queued email. **/
+	if (strncmp(message, "message-id=", 11) == 0)
+	    {
+	    value = message + 11;
+	    valueLen = strlen(value);
+	    if (valueLen >= 2 && value[0] == '<' && value[valueLen - 1] == '>')
+		{
+		value[valueLen - 1] = '\0';
+		value++;
+		}
+	    if (*value == '\0')
+		return;
+	    parsed->Kind = SMTP_LINE_QUEUED;
+	    parsed->QueueID = queueId;
+	    parsed->MessageID = value;
+	    return;
+	    }
+
+	/** Detect a recipient count, or Postfix giving up. **/
+	if (strncmp(message, "from=<", 6) == 0)
+	    {
+	    /** Detect recipient count. **/
+	    if ((value = strstr(message, ", nrcpt=")) != NULL)
+		{
+		parsed->Kind = SMTP_LINE_RCPT_COUNT;
+		parsed->QueueID = queueId;
+		parsed->RcptCount = atoi(value + 8);
+		}
+
+	    /** Detect Postfix giving up. **/
+	    else if (strstr(message, ", status=expired,") != NULL || strstr(message, ", status=force-expired,") != NULL)
+		{
+		parsed->Kind = SMTP_LINE_EXPIRED;
+		parsed->QueueID = queueId;
+		}
+
+	    return;
+	    }
+
+	/** Detect a recipient result. **/
+	if (strncmp(message, "to=<", 4) == 0)
+	    {
+	    address = message + 4;
+	    value = strchr(address, '>');
+	    if (value == NULL)
+		return;
+	    *value = '\0';
+	    value = strstr(value + 1, ", status="); /* Search after the address. */
+	    if (value == NULL)
+		return;
+	    value += 9;
+	    valueLen = strcspn(value, " ");
+	    if (valueLen == 4 && strncmp(value, "sent", 4) == 0)
+		parsed->Status = SMTP_RCPT_SENT;
+	    else if (valueLen == 8 && strncmp(value, "deferred", 8) == 0)
+		parsed->Status = SMTP_RCPT_DEFERRED;
+	    else if (valueLen == 7 && strncmp(value, "bounced", 7) == 0)
+		parsed->Status = SMTP_RCPT_BOUNCED;
+	    else
+		return;
+
+	    /** Get the reply, without its parentheses. **/
+	    reply = value + valueLen;
+	    if (strncmp(reply, " (", 2) == 0)
+		reply += 2;
+	    replyLen = strlen(reply);
+	    if (replyLen > 0 && reply[replyLen - 1] == ')')
+		reply[replyLen - 1] = '\0';
+
+	    parsed->Kind = SMTP_LINE_RCPT;
+	    parsed->QueueID = queueId;
+	    parsed->Address = address;
+	    parsed->Reply = reply;
+	    }
+
+    return;
+    }
+
+
+/*** smtp_internal_OpenLog - open a mail log as root, since only root can
+ *** read it.
+ ***
+ *** @param path The path of the mail log.
+ *** @returns The open log, or NULL on failure.
+ ***/
+FILE*
+smtp_internal_OpenLog(char* path)
+    {
+    uid_t uid = geteuid();
+    FILE* log = NULL;
+    int fd = -1;
+    int openErrno;
+
+	/** Open the log as root. **/
+	if (UNLIKELY(uid != 0 && seteuid(0) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP",
+		"Failed to become root to open the mail log \"%s\". (Centrallix is not running as root.)",
+		path
+	    );
+	    goto end;
+	    }
+	fd = open(path, O_RDONLY);
+	openErrno = errno;
+	if (UNLIKELY(uid != 0 && seteuid(uid) != 0))
+	    {
+	    fprintf(stderr,
+		"SMTP: Failed to switch back to uid %d after opening the mail log (%s); aborting.\n",
+		(int)uid, strerror(errno)
+	    );
+	    abort(); /* Never keep running as root. */
+	    }
+	if (UNLIKELY(fd < 0))
+	    {
+	    errno = openErrno;
+	    mssErrorErrno(1, "SMTP", "Failed to open the mail log \"%s\".", path);
+	    goto end;
+	    }
+
+	/** Read it with stdio. **/
+	log = fdopen(fd, "r");
+	if (UNLIKELY(log == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", path);
+	    goto end;
+	    }
+	fd = -1; /* Closed with log. */
+
+    end:
+	if (UNLIKELY(fd >= 0)) close(fd);
+
+	return log;
+    }
+
+
+/*** smtp_internal_FindRotatedLog - find the mail log that the cursor of a
+ *** spool directory is in, after it was rotated to a name such as
+ *** maillog-20261001 or maillog.1.
+ ***
+ *** @param spool The spool directory, which has a cursor.
+ *** @param path Set to the path of the rotated log.  Must hold PATH_MAX bytes.
+ *** @returns 1 if it was found, 0 if not, or -1 on failure.
+ ***/
+int
+smtp_internal_FindRotatedLog(pSmtpSpool spool, char* path)
+    {
+    char dirPath[PATH_MAX];
+    char* base;
+    int baseLen;
+    DIR* dir = NULL;
+    struct dirent* entry;
+    struct stat st;
+    int rval = -1;
+
+	/** Split the log path into its directory and base name. **/
+	base = strrchr(SMTP_INF.LogPath, '/');
+	if (base == NULL)
+	    {
+	    strtcpy(dirPath, ".", sizeof(dirPath));
+	    base = SMTP_INF.LogPath;
+	    }
+	else
+	    {
+	    snprintf(dirPath, sizeof(dirPath), "%.*s", (int)(base - SMTP_INF.LogPath), SMTP_INF.LogPath);
+	    if (dirPath[0] == '\0')
+		strtcpy(dirPath, "/", sizeof(dirPath));
+	    base++;
+	    }
+	baseLen = strlen(base);
+
+	/** Open the log directory. **/
+	dir = opendir(dirPath);
+	if (UNLIKELY(dir == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to open mail log directory \"%s\".", dirPath);
+	    goto end;
+	    }
+
+	/** Find the rotated log with the cursor's inode. **/
+	while (1)
+	    {
+	    /** Get the next file. **/
+	    errno = 0;
+	    entry = readdir(dir);
+	    if (entry == NULL)
+		{
+		if (UNLIKELY(errno != 0))
+		    {
+		    mssErrorErrno(1, "SMTP", "Failed to read mail log directory \"%s\".", dirPath);
+		    goto end;
+		    }
+		rval = 0; /* Not found. */
+		goto end;
+		}
+
+	    /** Check files named like a rotated log. **/
+	    if (strncmp(entry->d_name, base, baseLen) != 0 || (entry->d_name[baseLen] != '-' && entry->d_name[baseLen] != '.'))
+		continue;
+	    if (snprintf(path, PATH_MAX, "%s/%s", dirPath, entry->d_name) >= PATH_MAX)
+		continue;
+	    if (stat(path, &st) == 0 && st.st_dev == spool->LogDev && st.st_ino == spool->LogIno)
+		break;
+	    }
+
+	/** Success. **/
+	rval = 1;
+
+    end:
+	if (dir != NULL) closedir(dir);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_UnloadSpool - forget the cursor and indexes of a spool
+ *** directory, so the next read of the mail log loads them from its files.
+ ***
+ *** @param spool The spool directory.
+ ***/
+void
+smtp_internal_UnloadSpool(pSmtpSpool spool)
+    {
+	xhClear(&spool->ByMessageID, smtp_internal_FreeIndexEntry, NULL);
+	xhClear(&spool->ByQueueID, smtp_internal_FreeIndexEntry, NULL);
+	spool->Loaded = false;
+	spool->HasCursor = false;
+
+    return;
+    }
+
+
+/*** smtp_internal_LoadSpool - read the mail log cursor of a spool directory
+ *** and index its Pending emails.
+ ***
+ *** @param spool The spool directory.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_LoadSpool(pSmtpSpool spool)
+    {
+    char path[PATH_MAX];
+    FILE* cursorFile = NULL;
+    unsigned long long dev, ino;
+    long long offset;
+    DIR* dir = NULL;
+    struct dirent* entry;
+    pStructInf emailStruct = NULL;
+    char* status;
+    char* key;
+    int found;
+    int rval = -1;
+
+	/** Read the cursor, which is missing until the mail log is first read. **/
+	if (UNLIKELY(snprintf(path, sizeof(path), "%s/%s", spool->Path, SMTP_CURSOR_FILE) >= (int)sizeof(path)))
+	    {
+	    mssError(1, "SMTP", "Failed to build the mail log cursor path: \"%s/%s\" is too long.", spool->Path, SMTP_CURSOR_FILE);
+	    goto end;
+	    }
+	spool->HasCursor = false;
+	cursorFile = fopen(path, "r");
+	if (cursorFile == NULL)
+	    {
+	    if (UNLIKELY(errno != ENOENT))
+		{
+		mssErrorErrno(1, "SMTP", "Failed to open mail log cursor \"%s\".", path);
+		goto end;
+		}
+	    }
+	else if (fscanf(cursorFile, "%llu %llu %lld", &dev, &ino, &offset) != 3 || offset < 0)
+	    {
+	    fprintf(stderr, "Warning: Ignored invalid mail log cursor \"%s\"; reading the mail log from the start.\n", path);
+	    }
+	else
+	    {
+	    spool->LogDev = (dev_t)dev;
+	    spool->LogIno = (ino_t)ino;
+	    spool->LogOffset = (off_t)offset;
+	    spool->HasCursor = true;
+	    }
+
+	/** Open the spool directory. **/
+	dir = opendir(spool->Path);
+	if (UNLIKELY(dir == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to open spool directory \"%s\" to track its emails.", spool->Path);
+	    goto end;
+	    }
+
+	/** Index each Pending email by its queue ID, or its Message-ID until it has one. **/
+	while (1)
+	    {
+	    /** Get the next file. **/
+	    errno = 0;
+	    entry = readdir(dir);
+	    if (entry == NULL)
+		{
+		if (UNLIKELY(errno != 0))
+		    {
+		    mssErrorErrno(1, "SMTP", "Failed to read spool directory \"%s\".", spool->Path);
+		    goto end;
+		    }
+		break; /* No more files. */
+		}
+
+	    /** Read the struct of each email. **/
+	    if (!smtp_internal_IsEmail(entry->d_name))
+		continue;
+	    if (UNLIKELY(smtp_internal_SpoolPath(path, spool->Path, entry->d_name, ".struct") != 0))
+		{
+		mssWarnError("Failed to track email \"%s\" in \"%s\", skipping.", entry->d_name, spool->Path);
+		continue;
+		}
+	    found = smtp_internal_ReadStruct(path, &emailStruct);
+	    if (UNLIKELY(found < 0))
+		{
+		mssWarnError("Failed to track email \"%s\", skipping.", path);
+		continue;
+		}
+	    if (found == 0)
+		continue; /* No struct yet. */
+
+	    /** Index it if it is Pending. **/
+	    status = smtp_internal_StructString(emailStruct, "status");
+	    if (status != NULL && strcmp(status, "Pending") == 0)
+		{
+		key = smtp_internal_StructString(emailStruct, "queue_id");
+		if (key != NULL && key[0] != '\0')
+		    {
+		    if (UNLIKELY(smtp_internal_IndexAdd(&spool->ByQueueID, key, entry->d_name) != 0))
+			goto end;
+		    }
+		else
+		    {
+		    key = smtp_internal_StructString(emailStruct, "message_id");
+		    if (key != NULL && key[0] != '\0'
+			&& UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, key, entry->d_name) != 0))
+			goto end;
+		    }
+		}
+	    stFreeInf(emailStruct);
+	    emailStruct = NULL;
+	    }
+
+	/** Success. **/
+	spool->Loaded = true;
+	rval = 0;
+
+    end:
+	if (UNLIKELY(rval != 0))
+	    smtp_internal_UnloadSpool(spool);
+
+	if (cursorFile != NULL) fclose(cursorFile);
+	if (dir != NULL) closedir(dir);
+	if (UNLIKELY(emailStruct != NULL)) stFreeInf(emailStruct);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_SaveCursor - record how much of the mail log a spool
+ *** directory has read, so it continues there after a restart.
+ ***
+ *** @param spool The spool directory.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_SaveCursor(pSmtpSpool spool)
+    {
+    char path[PATH_MAX];
+    char tmpPath[PATH_MAX];
+    FILE* cursorFile = NULL;
+    bool tmpCreated = false;
+    int rval = -1;
+
+	/** Build the paths. **/
+	if (UNLIKELY(snprintf(path, sizeof(path), "%s/%s", spool->Path, SMTP_CURSOR_FILE) >= (int)sizeof(path)
+	    || snprintf(tmpPath, sizeof(tmpPath), "%s/%s.tmp", spool->Path, SMTP_CURSOR_FILE) >= (int)sizeof(tmpPath)
+	))  {
+	    mssError(1, "SMTP", "Failed to build the mail log cursor path: \"%s/%s.tmp\" is too long.", spool->Path, SMTP_CURSOR_FILE);
+	    goto end;
+	    }
+
+	/** Write the cursor, then replace the old one. **/
+	cursorFile = fopen(tmpPath, "w");
+	if (UNLIKELY(cursorFile == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to create mail log cursor \"%s\".", tmpPath);
+	    goto end;
+	    }
+	tmpCreated = true;
+	if (UNLIKELY(fprintf(cursorFile, "%llu %llu %lld\n",
+	    (unsigned long long)spool->LogDev, (unsigned long long)spool->LogIno, (long long)spool->LogOffset
+	) < 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to write mail log cursor \"%s\".", tmpPath);
+	    goto end;
+	    }
+	if (UNLIKELY(fclose(cursorFile) != 0))
+	    {
+	    cursorFile = NULL;
+	    mssErrorErrno(1, "SMTP", "Failed to write mail log cursor \"%s\".", tmpPath);
+	    goto end;
+	    }
+	cursorFile = NULL;
+	if (UNLIKELY(rename(tmpPath, path) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to replace mail log cursor \"%s\".", path);
+	    goto end;
+	    }
+	tmpCreated = false;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(cursorFile != NULL)) fclose(cursorFile);
+	if (UNLIKELY(tmpCreated && remove(tmpPath) != 0))
+	    fprintf(stderr,
+		"Warning: Failed to remove partial mail log cursor (%s): %s.\n",
+		tmpPath, strerror(errno)
+	    );
+
+	return rval;
+    }
+
+
+/*** smtp_internal_FreeLogBatch - free the emails read for one read of the
+ *** mail log.
+ ***
+ *** @param batch The batch.
+ ***/
+void
+smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
+    {
+    pSmtpLogEmail email;
+    int i;
+
+	for (i = 0; i < batch->Emails.nItems; i++)
+	    {
+	    email = (pSmtpLogEmail)batch->Emails.Items[i];
+	    ASSERTMAGIC(email, MGK_SMTP_LOG_EMAIL);
+	    if (email->Struct != NULL) stFreeInf(email->Struct);
+	    if (email->Name != NULL) nmSysFree(email->Name);
+	    nmFree(email, sizeof(SmtpLogEmail));
+	    }
+	xhClear(&batch->ByName, NULL, NULL);
+	xhDeInit(&batch->ByName);
+	xaDeInit(&batch->Emails);
+
+    return;
+    }
+
+
+/*** smtp_internal_GetLogEmail - get an email struct from the spool directory
+ *** which includes any updates made from the mail log so far.  The struct is
+ *** read from disk and cached for later calls in the same log read batch.
+ ***
+ *** @param spool The spool directory.
+ *** @param batch The current bach, which holds the cache for the current mail
+ *** 	log read batch.
+ *** @param name The email file name.
+ *** @returns The email, or NULL if it no longer exists or cannot be read.
+ *** 	This function does not fail and resolves failures with a warning.
+ ***/
+pSmtpLogEmail
+smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name)
+    {
+    pSmtpLogEmail email = NULL;
+    char structPath[PATH_MAX];
+    int found;
+
+	/** Find the email in cache. **/
+	email = (pSmtpLogEmail)xhLookup(&batch->ByName, name);
+	ASSERTMAGIC(email, MGK_SMTP_LOG_EMAIL);
+	if (email != NULL)
+	    return email;
+
+	/** Not found: read its struct. **/
+	email = nmMalloc(sizeof(SmtpLogEmail));
+	if (UNLIKELY(email == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate %zu bytes to update email \"%s\".", sizeof(SmtpLogEmail), name);
+	    goto error;
+	    }
+	memset(email, 0, sizeof(SmtpLogEmail));
+	SETMAGIC(email, MGK_SMTP_LOG_EMAIL);
+	email->Name = nmSysStrdup(name);
+	if (UNLIKELY(email->Name == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to copy email name \"%s\".", name);
+	    goto error;
+	    }
+	if (UNLIKELY(smtp_internal_SpoolPath(structPath, spool->Path, name, ".struct") != 0))
+	    goto error;
+	found = smtp_internal_ReadStruct(structPath, &email->Struct);
+	if (UNLIKELY(found < 0))
+	    goto error;
+	if (found == 0)
+	    goto end; /* Deleted. */
+
+	/** Add it to the batch. **/
+	if (UNLIKELY(xaAddItem(&batch->Emails, email) < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to add email \"%s\" to the mail log updates.", name);
+	    goto error;
+	    }
+	if (UNLIKELY(xhAdd(&batch->ByName, email->Name, (char*)email) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to index email \"%s\" in the mail log updates.", name);
+	    xaRemoveItem(&batch->Emails, batch->Emails.nItems - 1);
+	    goto error;
+	    }
+
+	return email;
+
+    error:
+	mssWarnError("Failed to update email \"%s\" in \"%s\" from the mail log, skipping.", name, spool->Path);
+
+    end:
+	if (email != NULL)
+	    {
+	    if (email->Struct != NULL) stFreeInf(email->Struct);
+	    if (email->Name != NULL) nmSysFree(email->Name);
+	    nmFree(email, sizeof(SmtpLogEmail));
+	    }
+
+	return NULL;
+    }
+
+
+/*** smtp_internal_ApplyLogLine - record the result in one line of the mail
+ *** log in the struct of the Pending email it is about, if there is one.
+ ***
+ *** @param spool The spool directory.
+ *** @param batch The emails updated so far.
+ *** @param line The line, without a newline.  Modified to end the values.
+ *** @returns 0 on success (including lines about no email), or -1 on failure.
+ ***/
+int
+smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
+    {
+    SmtpLogLine parsed;
+    pXHashTable index;
+    char* key;
+    pSmtpIndexEntry entry;
+    pSmtpLogEmail email;
+    char* value;
+    ObjData pod;
+
+	/** Find the email the line is about. **/
+	smtp_internal_ParseLogLine(line, &parsed);
+	if (parsed.Kind == SMTP_LINE_NONE)
+	    return 0;
+	index = (parsed.Kind == SMTP_LINE_QUEUED) ? &spool->ByMessageID : &spool->ByQueueID;
+	key = (parsed.Kind == SMTP_LINE_QUEUED) ? parsed.MessageID : parsed.QueueID;
+	entry = (pSmtpIndexEntry)xhLookup(index, key);
+	if (entry == NULL)
+	    return 0;
+	ASSERTMAGIC(entry, MGK_SMTP_INDEX_ENTRY);
+	email = smtp_internal_GetLogEmail(spool, batch, entry->Name);
+
+	/** Stop tracking emails that were deleted or are no longer Pending. **/
+	value = (email != NULL) ? smtp_internal_StructString(email->Struct, "status") : NULL;
+	if (value == NULL || strcmp(value, "Pending") != 0)
+	    {
+	    smtp_internal_IndexRemove(index, key);
+	    return 0;
+	    }
+
+	/** Record the queue ID of a newly queued email. **/
+	value = smtp_internal_StructString(email->Struct, "queue_id");
+	if (parsed.Kind == SMTP_LINE_QUEUED)
+	    {
+	    /** Skip Postfix queuing it again, such as for a .forward file. **/
+	    if (value != NULL && value[0] != '\0')
+		{
+		smtp_internal_IndexRemove(index, key);
+		return 0;
+		}
+
+	    pod.String = parsed.QueueID;
+	    if (UNLIKELY(smtp_internal_StructSet(email->Struct, "queue_id", DATA_T_STRING, &pod) != 0))
+		return -1;
+	    email->Changed = true;
+	    if (UNLIKELY(smtp_internal_IndexAdd(&spool->ByQueueID, parsed.QueueID, email->Name) != 0))
+		return -1;
+	    smtp_internal_IndexRemove(index, key);
+	    return 0;
+	    }
+
+	/** Stop tracking a queue ID the email no longer has. **/
+	if (value == NULL || strcmp(value, parsed.QueueID) != 0)
+	    {
+	    smtp_internal_IndexRemove(index, key);
+	    return 0;
+	    }
+
+	/** Record the result. **/
+	switch (parsed.Kind)
+	    {
+	    case SMTP_LINE_RCPT_COUNT:
+		pod.Integer = parsed.RcptCount;
+		if (UNLIKELY(smtp_internal_StructSet(email->Struct, "rcpt_count", DATA_T_INTEGER, &pod) != 0))
+		    return -1;
+		break;
+
+	    case SMTP_LINE_EXPIRED:
+		email->Expired = true;
+		break;
+
+	    case SMTP_LINE_RCPT:
+		if (UNLIKELY(smtp_internal_SetRcpt(email->Struct, parsed.Address, parsed.Status, parsed.Reply) != 0))
+		    return -1;
+		break;
+	    }
+	email->Changed = true;
+
+    return 0;
+    }
+
+
+/*** smtp_internal_ReadLogLines - record the results in the complete lines
+ *** of a mail log after an offset.
+ ***
+ *** @param spool The spool directory.
+ *** @param batch The emails updated so far.
+ *** @param log The open mail log.
+ *** @param path The path of the mail log.
+ *** @param offset The offset to start at.  Set to the end of the last
+ ***   complete line read.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, FILE* log, char* path, off_t* offset)
+    {
+    char* line = NULL;
+    size_t lineSize = 0;
+    ssize_t len;
+    int rval = -1;
+
+	/** Start at the offset. **/
+	if (UNLIKELY(fseeko(log, *offset, SEEK_SET) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to seek to offset %lld in the mail log \"%s\".", (long long)*offset, path);
+	    goto end;
+	    }
+
+	/** Read each complete line. **/
+	while ((len = getline(&line, &lineSize, log)) > 0)
+	    {
+	    if (line[len - 1] != '\n')
+		break; /* Leave a partial line until the rest is written. */
+	    line[len - 1] = '\0';
+	    if (UNLIKELY(smtp_internal_ApplyLogLine(spool, batch, line) != 0))
+		goto end;
+	    *offset += len;
+	    }
+	if (UNLIKELY(ferror(log)))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to read the mail log \"%s\".", path);
+	    goto end;
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (LIKELY(line != NULL)) free(line);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_UpdateFromLog - record the results in the lines added to the
+ *** mail log since a spool directory last read it in the structs of its
+ *** Pending emails, then save where it stopped.
+ ***
+ *** @param spoolDir The spool directory.
+ *** @param rootAttributes The attributes of the SMTP node.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
+    {
+    pSmtpSpool spool = NULL;
+    SmtpLogBatch batch;
+    bool namesInitialized = false;
+    bool emailsInitialized = false;
+    pSmtpLogEmail email;
+    char rotatedPath[PATH_MAX];
+    char structPath[PATH_MAX];
+    char resultPath[PATH_MAX];
+    char* status;
+    char* queueId;
+    struct stat st;
+    FILE* log = NULL;
+    FILE* rotatedLog = NULL;
+    off_t offset;
+    off_t rotatedOffset;
+    bool sameLog;
+    bool changed;
+    bool written = false;
+    int found;
+    int i;
+    int rval = -1;
+
+	/** Load the spool directory. **/
+	spool = smtp_internal_GetSpool(spoolDir);
+	if (UNLIKELY(spool == NULL))
+	    goto end;
+	if (!spool->Loaded && UNLIKELY(smtp_internal_LoadSpool(spool) != 0))
+	    goto end;
+
+	/** Skip reading a log with nothing new. **/
+	if (stat(SMTP_INF.LogPath, &st) != 0)
+	    {
+	    if (errno == ENOENT)
+		{
+		rval = 0; /* Mid-rotation, so read the new log next time. */
+		goto end;
+		}
+	    mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_INF.LogPath);
+	    goto end;
+	    }
+	if (spool->HasCursor && st.st_dev == spool->LogDev && st.st_ino == spool->LogIno && st.st_size == spool->LogOffset)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Open the current log. **/
+	log = smtp_internal_OpenLog(SMTP_INF.LogPath);
+	if (UNLIKELY(log == NULL))
+	    goto end;
+	if (UNLIKELY(fstat(fileno(log), &st) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to check the mail log \"%s\".", SMTP_INF.LogPath);
+	    goto end;
+	    }
+	sameLog = (spool->HasCursor && st.st_dev == spool->LogDev && st.st_ino == spool->LogIno);
+
+	/** Initialize the batch. **/
+	if (UNLIKELY(xhInit(&batch.ByName, 257, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the mail log updates.");
+	    goto end;
+	    }
+	namesInitialized = true;
+	if (UNLIKELY(xaInit(&batch.Emails, 16) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the mail log updates.");
+	    goto end;
+	    }
+	emailsInitialized = true;
+
+	/** Finish the rotated log the cursor is in. **/
+	if (spool->HasCursor && !sameLog)
+	    {
+	    found = smtp_internal_FindRotatedLog(spool, rotatedPath);
+	    if (UNLIKELY(found < 0))
+		goto end;
+	    if (found == 0)
+		{
+		fprintf(stderr,
+		    "Warning: Failed to find the rotated mail log where \"%s\" stopped reading, "
+		    "so results Postfix logged there after that are missed.\n",
+		    spoolDir
+		);
+		}
+	    else
+		{
+		rotatedLog = smtp_internal_OpenLog(rotatedPath);
+		if (UNLIKELY(rotatedLog == NULL))
+		    goto end;
+		rotatedOffset = spool->LogOffset;
+		if (UNLIKELY(smtp_internal_ReadLogLines(spool, &batch, rotatedLog, rotatedPath, &rotatedOffset) != 0))
+		    goto end;
+		}
+	    }
+
+	/** Read the current log, from the start if it is new or was truncated. **/
+	offset = (sameLog && st.st_size >= spool->LogOffset) ? spool->LogOffset : 0;
+	if (UNLIKELY(smtp_internal_ReadLogLines(spool, &batch, log, SMTP_INF.LogPath, &offset) != 0))
+	    goto end;
+
+	/** Write the updated emails. **/
+	for (i = 0; i < batch.Emails.nItems; i++)
+	    {
+	    email = (pSmtpLogEmail)batch.Emails.Items[i];
+	    ASSERTMAGIC(email, MGK_SMTP_LOG_EMAIL);
+	    if (!email->Changed)
+		continue;
+
+	    /** Update the status, then write the struct. **/
+	    if (UNLIKELY(smtp_internal_SpoolPath(resultPath, spoolDir, email->Name, ".result") != 0
+		|| smtp_internal_RefreshStatus(email->Struct, resultPath, email->Expired, rootAttributes, &changed) != 0
+		|| smtp_internal_SpoolPath(structPath, spoolDir, email->Name, ".struct") != 0
+		|| smtp_internal_WriteStruct(structPath, email->Struct) != 0
+	    ))  {
+		mssWarnError("Failed to update email \"%s\" in \"%s\" from the mail log, skipping.", email->Name, spoolDir);
+		continue;
+		}
+
+	    /** Stop tracking a finished email. **/
+	    status = smtp_internal_StructString(email->Struct, "status");
+	    queueId = smtp_internal_StructString(email->Struct, "queue_id");
+	    if (status != NULL && strcmp(status, "Pending") != 0 && queueId != NULL)
+		smtp_internal_IndexRemove(&spool->ByQueueID, queueId);
+	    }
+
+	/** Save where the read stopped. **/
+	written = true;
+	spool->LogDev = st.st_dev;
+	spool->LogIno = st.st_ino;
+	spool->LogOffset = offset;
+	spool->HasCursor = true;
+	if (UNLIKELY(smtp_internal_SaveCursor(spool) != 0))
+	    goto end;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	/** Reload the indexes from the structs, unless they were written. **/
+	if (UNLIKELY(rval != 0 && spool != NULL && !written))
+	    smtp_internal_UnloadSpool(spool);
+
+	if (log != NULL) fclose(log);
+	if (rotatedLog != NULL) fclose(rotatedLog);
+	if (emailsInitialized)
+	    smtp_internal_FreeLogBatch(&batch);
+	else if (namesInitialized)
+	    xhDeInit(&batch.ByName);
 
 	return rval;
     }
@@ -3156,6 +4057,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     pFile emailStructureFile = NULL;
     pStructInf emailStructure = NULL;
     char* status = NULL;
+    bool changed;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -3291,6 +4193,10 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
+	/** Record the results Postfix logged since the last read. **/
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
+	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+
 	/** Open the email structure file. **/
 	emailStructureFile = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
 	if (UNLIKELY(emailStructureFile == NULL))
@@ -3313,17 +4219,23 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
+	/** Update the send status of a Pending email from its sendmail result and the timeout. **/
+	status = smtp_internal_StructString(emailStructure, "status");
+	if (status != NULL && strcmp(status, "Pending") == 0)
+	    {
+	    if (UNLIKELY(smtp_internal_RefreshStatus(emailStructure, inf->ResultPath.String, false, inf->RootAttributes, &changed) != 0
+		|| (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, emailStructure) != 0)
+	    ))  {
+		mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
+		}
+	    }
+
 	/** Get the structure's attributes **/
 	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf->Attributes, inf->AttributeNames) != 0))
 	    {
 	    mssError(0, "SMTP", "Failed to load email attributes.");
 	    goto end;
 	    }
-
-	/** Update the send status of a Pending email. **/
-	status = smtp_internal_GetString(inf->Attributes, "status");
-	if (status != NULL && strcmp(status, "Pending") == 0 && smtp_internal_UpdateStatus(inf) != 0)
-	    mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
 
 	/** Success. **/
 	rval = 0;
@@ -4806,8 +5718,8 @@ smtpInitialize()
 	nmRegister(sizeof(SmtpData), "SmtpData");
 	nmRegister(sizeof(SmtpQueryData), "SmtpQueryData");
 	nmRegister(sizeof(SmtpSpool), "SmtpSpool");
-	nmRegister(sizeof(SmtpLogMsg), "SmtpLogMsg");
-	nmRegister(sizeof(SmtpLogRcpt), "SmtpLogRcpt");
+	nmRegister(sizeof(SmtpIndexEntry), "SmtpIndexEntry");
+	nmRegister(sizeof(SmtpLogEmail), "SmtpLogEmail");
 
 	/** Register the driver **/
 	if (UNLIKELY(objRegisterDriver(drv) < 0))
