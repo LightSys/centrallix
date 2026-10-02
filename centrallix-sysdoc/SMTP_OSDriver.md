@@ -200,8 +200,8 @@ The SMTP driver does not support getting, calling, or adding methods.
 
 ## IV Limitations
 - Running multiple Centrallix processes on the same spool directory is undefined behavior.
-- After the mail log rotates, the driver finds the rest of the old log by its inode (such as `maillog-20261001`).  If logrotate compresses the old log as it rotates it (`compress` without `delaycompress`), or deletes it before the attributes of an email are reloaded (when they are read or sent), the results logged there after the last read are missed, so those emails become Error with an unknown send status after the timeout expires (even if they sent successfully).
-- While a spool directory reads the mail log, reading the attributes of its emails or sending them waits for the read to finish.  This might be noticeable if the mail log has many new lines (such as on the first read).
+- After the mail log rotates, the driver finds the rest of the old log by its inode (such as `maillog-20261001`).  If logrotate compresses the old log as it rotates it (`compress` without `delaycompress`), or deletes it before the attributes of an email are reloaded (when it is opened, read, or sent), the results logged there after the last read are missed, so those emails become Error with an unknown send status after the timeout expires (even if they sent successfully).
+- While a spool directory reads the mail log, opening its emails, reading their attributes, or sending them waits for the read to finish.  This might be noticeable if the mail log has many new lines (such as on the first read).
 - Keep Postfix's `maximal_queue_lifetime` (5 days by default) under 6 days, or an email Postfix is still retrying becomes Error with an unknown send status.
 - If Postfix uses a relay host, Sent means the relay accepted the email, so failures after the relay are not tracked.
 - A deferred email cannot be resent or cancelled until Postfix gives up on it (`maximal_queue_lifetime`), because setting `is_ready` fails while the email is Pending.

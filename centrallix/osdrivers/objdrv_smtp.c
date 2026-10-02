@@ -256,7 +256,7 @@ struct
 
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
-int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wait);
+int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes);
 int smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
 int smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
@@ -2028,7 +2028,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
 		mssError(1, "SMTP", "Failed to read the mail log for \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
 		goto end;
 		}
-	    if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
+	    if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
 		mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 	    }
 
@@ -2452,7 +2452,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	/*** Read the mail log first, so any lines from earlier tries are not
 	 *** discovered later and applied to this one after we've cleared it.
 	 ***/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Keep other threads out until this try is recorded. **/
@@ -3797,16 +3797,15 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, pFile log, cha
  *** Pending emails, then save where it stopped.  The log is read without
  *** the lock, keeping only the lines about Pending emails, then the lock is
  *** held while those lines are recorded.  Only one read of a spool runs at
- *** a time.  Must not be called while locked.
+ *** a time, so a call first waits for a read already in progress.  Must not
+ *** be called while locked.
  ***
  *** @param spoolDir The spool directory.
  *** @param rootAttributes The attributes of the SMTP node.
- *** @param wait Whether to wait for a read of the spool already in progress,
- ***   then read.  Otherwise the call skips reading and returns 0.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wait)
+smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
     {
     pSmtpSpool spool = NULL;
     SmtpLogBatch batch;
@@ -3841,11 +3840,9 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wai
 	if (UNLIKELY(spool == NULL))
 	    return -1; /* Skip error handler, which ends a read in progress. */
 
-	/** Wait for, or skip, a read already in progress. **/
+	/** Wait for a read already in progress. **/
 	while (spool->Reading)
 	    {
-	    if (!wait)
-		return 0;
 	    spool->nWaiting++;
 	    if (UNLIKELY(syGetSem(spool->ReadDone, 1, 0) != 0))
 		{
@@ -4727,7 +4724,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    }
 
 	/** Record the results Postfix logged since the last read. **/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Keep other threads out until the struct is updated. **/
