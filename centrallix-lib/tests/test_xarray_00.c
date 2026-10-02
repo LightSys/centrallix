@@ -130,7 +130,7 @@ static bool doTest(void)
 	success &= ASSERT_EQL(xaGetItem(xa, 4), NULL, "%p"); /* Check null gap. */
 
 	/** Remove an item and ensure that it is gone. **/
-	success &= ASSERT_EQL(xaRemoveItem(xa, 2), 0, "%d"); /* Remove original index 2. */
+	success &= ASSERT_EQL(xaRemoveItem(xa, 2), 0, "%d"); /* Remove v2. */
 	success &= ASSERT_EQL(xaCount(xa), 5, "%d");
 	nmFree(v2, sizeof(int)); v2 = NULL; /* v2 is removed so it isn't freed with xaClear(). */
 

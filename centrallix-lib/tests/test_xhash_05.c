@@ -47,8 +47,8 @@ static bool doTest(void)
     {
     bool success = true;
 
-	/*** The hash never leaves the rows it was given, and survives
-	 *** xhInitialize(), which once rebuilt the table the hash reads from.
+	/*** The hash never leaves the rows it was given, and xhInitialize()
+	 *** does not change it.
 	 ***/
 	for (int r = 0; r < ROW_COUNT; r++)
 	    {

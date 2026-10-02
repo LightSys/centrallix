@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include "test_utils.h"
 
-/** Integers in the data file, and so the ops performed by one pass. **/
+/** Integers in the data file. **/
 #define N_INTS		12
 
 static int flagtypes[5] = { MLX_F_CPPCOMM, MLX_F_POUNDCOMM, MLX_F_SEMICOMM, MLX_F_DASHCOMM, MLX_F_CCOMM };

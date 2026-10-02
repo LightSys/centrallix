@@ -11,7 +11,7 @@
 /* Module: 	test_util_01.c     					*/
 /* Author:	Micah Shennum 					        */
 /* Creation:	May 26th, 2011 					        */
-/* Description: Test strtoui                                             */
+/* Description: Test strtoui                                            */
 /************************************************************************/
 
 #include <stdbool.h>

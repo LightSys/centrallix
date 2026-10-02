@@ -72,7 +72,7 @@ static bool doTest(void)
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, 100, "100 bytes");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1000, 1) - pow(1000, 0), (cs) ? "999 bytes"  : "999 bytes");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1000, 1),                (cs) ? "1000 bytes" : "1 KB");
-	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1000, 2) - pow(1000, 1), (cs) ? "975.59 KiB"  : "999 KB");
+	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1000, 2) - pow(1000, 1), (cs) ? "975.59 KiB" : "999 KB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1000, 2),                (cs) ? "976.56 KiB" : "1 MB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1000, 3) - pow(1000, 2), (cs) ? "952.72 MiB" : "999 MB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, pow(1000, 3),                (cs) ? "953.67 MiB" : "1 GB");
