@@ -216,7 +216,7 @@ All identifiers should be spelled correctly and avoid using non-obvious abbrevia
 ### Magic Numbers
 For: `.c`, `.h`, `.js`
 
-A magic number is any number defined in code who's purpose is not immediately self-explanatory to the reader.  Carefully consider any hard-coded number other than `-1`, `0`, or `1` to decide if it is a magic number.
+A magic number is any number defined in code whose purpose is not immediately self-explanatory to the reader.  Carefully consider any hard-coded number other than `-1`, `0`, or `1` to decide if it is a magic number.
 
 - Magic numbers in code should be replaced with `#define`s in `.c` or `.h` and global constants in `.js`.
 - Magic numbers should be defined near the code that is responsible for their values.  For example, if you write code that needs to know a function will output up to `318` characters, that magic value should be defined near the function in question, not near the code that needs the value.
@@ -269,7 +269,7 @@ If a struct supports `magic.h` by beginning with a magic field of type `Magic_t`
 ### Set Types
 For: `.c`, `.h`
 
-A set type is a named type that represents [one](#enums) or [multiple](#flags) of a collection of numerical available values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
+A set type is a named type that represents [one](#enums) or [multiple](#flags) of a collection of available numerical values, such as the algorithms a module supports or the flags a structure carries.  Every set follows these rules:
 - The set type should have a `typedef` specifying a numerical type.  This makes declarations using this type more explicit and obvious.
 	- The underlying numerical type should be the minimum size necessary for values defined.
 	- Typically, unsigned numerical types like `unsigned char`, `unsigned short`, or `unsigned int` are used.
@@ -444,7 +444,7 @@ All code is "tech debt", although I prefer the term "tech cost".  "Code clutter"
 	- This does not apply to code that only *happens* to be unreachable.  For example, the default case on a switch statement with cases for all defined values isn't considered "unreachable" here if the list of values is owned by another module.  In fact, this default case (usually an error case) would serve as a valuable warning if a new possible value was defined and the switch statement is not updated.
 
 ### File Encoding
-- All files should be encoded using UTF8.
+- All files should be encoded using UTF-8.
 - All files should have LF line endings.
 - All files should end with a newline, so the last line of content is complete (this also makes writing to the end easier).
 
@@ -553,7 +553,7 @@ error:
 - Do not print an error message if you are not able to add any new information about an already-detected error.
 	- In most cases, you can add new information, but avoid cluttering the error log when you genuinely can't.
 - Use `mssError()` to print errors and only to print errors.  (For warnings, use `fprintf(stderr, ...)`).
-	- See the [function comment](#function-comments) above the `mssError_internal()` definition in [mtsession.c](../centrallix-lib/src/mtsession.c) for info about calling `mssError()`.
+	- See the [function comment](#function-comments) above the `mssError()` definition in [mtsession.c](../centrallix-lib/src/mtsession.c) for info about calling `mssError()`.
 
 ### Recovering From Errors
 When you gracefully handle an error, if `mssError()` or similar functions are called (or likely to be called) during an error, call `mssClearError()` to mark the error as handled.  This prevents messages from this error from appearing at the start of the error stack for a later error.
@@ -702,9 +702,9 @@ For AI Agents reading this document for the first time, I recommend saving a mem
 
 ## Todo - Israel
 Styles that still need to be decided and documented:
-- How Markdown files are styled?
+- How Markdown files are styled.
 - How Python files are styled.  The 26 files in `centrallix-ui-test/tests`.  They have no rules today, and several universal rules here do not fit them.
-- How should long expressions or multi-line conditions be broken up? Does the line end with or start with the operator, and how far are continuation lines are indented?
+- How should long expressions or multi-line conditions be broken up? Does the line end with or start with the operator, and how far are continuation lines indented?
 - Add rules for `const` with pointers in C:
 	- Where is `const` required, if anywhere?
 	- What to do about the `pXxxxYyy` aliases, which hide the `const pXxxxYyy` trap.
@@ -712,6 +712,6 @@ Styles that still need to be decided and documented:
 	- [Naming identifiers](#naming-identifiers) calls for camelCase after the module prefix, but `centrallix-os/sys/js` is 1296 to 188 in favor of the prefix followed by snake_case (e.g. `ca_redraw_year()`).
 - Which version of ECMAScript should `js` files assume?
 	- Requiring `let` and `const` already sets the floor at ES6 (2015), but the tree also uses arrow functions, spread, `async`, template literals, and `class` without a stated target.
-- Decide whether the C `enum` keyword should be used instead of the macro pattern in [constant sets](#constant-sets).  It is allowed for now.
+- Decide whether the C `enum` keyword should be used instead of the macro pattern in [set types](#set-types).  It is allowed for now.
 	- `enum` Pros:  The compiler assigns the values, it can warn about an unhandled case in a `switch`, and debuggers show the value's name.
 	- Macro Pros:  An `enum`'s underlying type is implementation-defined, so it cannot be sized for a struct member or a wire format, and in C it gives no type checking anyway.
