@@ -193,7 +193,7 @@ testobj_show_hints(pObject obj, char* attrname)
     hints = objPresentationHints(obj, attrname);
     if(!hints)
 	{
-	mssError(1,"unable to get presentation hints for %s",attrname);
+	mssError(1,"TESTOBJ","unable to get presentation hints for %s",attrname);
 	return -1;
 	}
 
