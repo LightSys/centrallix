@@ -1283,7 +1283,7 @@ smtp_internal_GetSpool(char* spoolDir)
 int
 smtp_internal_InitGlobals()
     {
-    char local_host_name[HOST_NAME_MAX];
+    char local_host_name[HOST_NAME_MAX + 1];
     char* logPath;
 
 	/** Initialize the global attributes. **/
@@ -1308,6 +1308,7 @@ smtp_internal_InitGlobals()
 		strerror(errno), local_host_name
 	    );
 	    }
+	local_host_name[sizeof(local_host_name) - 1] = '\0'; /* Terminate a truncated name. */
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "local_host_name",	DATA_T_STRING,	0,	local_host_name) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "send_method",		DATA_T_STRING,	0,	"sendmail") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "server",		DATA_T_STRING,	0,	"127.0.0.1") < 0)) goto error;
@@ -4253,10 +4254,14 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	hostName = SMTP_ATTR(xhLookup(inf->RootAttributes, "local_host_name"));
 	ASSERTMAGIC(hostName, MGK_SMTP_ATTRIBUTE);
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
+	    {
+	    strtcpy(local_host_name, "localhost.localdomain", sizeof(local_host_name));
 	    fprintf(stderr,
 		"Warning: gethostname() failed (%s); using \"%s\".\n",
 		strerror(errno), local_host_name
 	    );
+	    }
+	local_host_name[sizeof(local_host_name) - 1] = '\0'; /* Terminate a truncated name. */
 	strtcpy(message_id, inf->Name, sizeof(message_id));
 	if (strrchr(message_id, '.'))
 	    *(strrchr(message_id, '.')) = '\0';
