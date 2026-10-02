@@ -190,7 +190,7 @@ long long test(char** tname)
 	    return -1;
 	    }
 
-	result = loopTest(doTest) * 13ll;
+	result = loopTest(doTest) * 9ll;
 
 	close(capture_fd);
 	if (!tmpFileDeInit(capture_path)) result = -1;

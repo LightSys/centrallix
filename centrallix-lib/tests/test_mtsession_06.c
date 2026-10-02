@@ -170,7 +170,7 @@ long long test(char** tname)
 	    }
 	mssInitialize("altpasswd", auth_path, "", 0, "test_mtsession");
 
-	result = loopTest(doTest) * 17ll;
+	result = loopTest(doTest) * 12ll;
 
 	fdClose(print_file, 0);
 	close(read_fd);

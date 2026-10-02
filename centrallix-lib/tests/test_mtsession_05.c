@@ -151,7 +151,7 @@ long long test(char** tname)
 	    }
 	mssInitialize("altpasswd", auth_path, "", 0, "test_mtsession");
 
-	result = loopTest(doTest) * 23ll;
+	result = loopTest(doTest) * 14ll;
 
 	if (!tmpFileDeInit(auth_path)) return -1;
 
