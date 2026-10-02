@@ -253,6 +253,7 @@ struct
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
 int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool wait);
+int smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
 int smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
 int smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
@@ -1846,8 +1847,9 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, 
 
 
 /*** smtp_internal_ReloadAttributes - reload the attributes of an email if its
- *** struct file has been replaced since they were loaded.  Attributes are
- *** updated in place, so attribute names already returned stay valid.
+ *** struct file has been replaced since they were loaded, after updating the
+ *** send status of a Pending email.  Attributes are updated in place, so
+ *** attribute names already returned stay valid.
  ***
  *** @param inf The email.  Other objects are skipped.
  *** @param readLog Whether to first record the results in the mail log,
@@ -1858,6 +1860,10 @@ int
 smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
     {
     pSmtpAttribute spoolDir;
+    pStructInf pendingStruct = NULL;
+    char* status;
+    bool changed;
+    int found;
     struct stat st;
     pFile structFile = NULL;
     pStructInf emailStruct = NULL;
@@ -1888,6 +1894,27 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 		}
 	    if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
 		mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	    }
+
+	/** Update the send status of a Pending email from its sendmail result and the timeout. **/
+	status = smtp_internal_GetString(inf->Attributes, "status");
+	if (status != NULL && strcmp(status, "Pending") == 0)
+	    {
+	    smtp_internal_Lock();
+	    found = smtp_internal_ReadStruct(inf->EmailStructPath.String, &pendingStruct);
+	    if (found == 1)
+		{
+		status = smtp_internal_StructString(pendingStruct, "status");
+		if (status != NULL && strcmp(status, "Pending") == 0 && UNLIKELY(
+		    smtp_internal_RefreshStatus(pendingStruct, inf->ResultPath.String, false, inf->RootAttributes, &changed) != 0
+		    || (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, pendingStruct) != 0)
+		))  {
+		    found = -1;
+		    }
+		}
+	    smtp_internal_Unlock();
+	    if (UNLIKELY(found < 0))
+		mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
 	    }
 
 	/** Skip an unchanged struct. **/
@@ -1996,6 +2023,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 	if (attributes != NULL) smtp_internal_FreeAttributes(attributes);
 	if (emailStruct != NULL) stFreeInf(emailStruct);
 	if (structFile != NULL) fdClose(structFile, 0);
+	if (pendingStruct != NULL) stFreeInf(pendingStruct);
 
 	return rval;
     }
