@@ -149,6 +149,7 @@ typedef struct
     XString		EmailPath;
     XString		EmailStructPath;
     XString		ResultPath;
+    struct stat		StructInfo; /* The struct file that Attributes were loaded from. */
     }
     SmtpData, *pSmtpData;
 
@@ -1844,6 +1845,143 @@ smtp_internal_GetStructAttributes(pStructInf structInf, pXHashTable attributes, 
     }
 
 
+/*** smtp_internal_ReloadAttributes - reload the attributes of an email if its
+ *** struct file has been replaced since they were loaded.  Attributes are
+ *** updated in place, so attribute names already returned stay valid.
+ ***
+ *** @param inf The email.  Other objects are skipped.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_ReloadAttributes(pSmtpData inf)
+    {
+    struct stat st;
+    pFile structFile = NULL;
+    pStructInf emailStruct = NULL;
+    pXHashTable attributes = NULL;
+    pXArray names = NULL;
+    pSmtpAttribute newAttr;
+    pSmtpAttribute oldAttr;
+    ObjData oldValue;
+    int oldType;
+    char* name;
+    int i;
+    int rval = -1;
+
+	/** Skip other objects and an unchanged struct. **/
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (inf->Type != SMTP_T_EML)
+	    return 0;
+	if (stat(inf->EmailStructPath.String, &st) != 0)
+	    {
+	    if (errno == ENOENT)
+		{
+		rval = 0; /* Deleted, so keep the loaded attributes. */
+		goto end;
+		}
+	    mssErrorErrno(1, "SMTP", "Failed to check email struct file \"%s\".", inf->EmailStructPath.String);
+	    goto end;
+	    }
+	if (st.st_dev == inf->StructInfo.st_dev && st.st_ino == inf->StructInfo.st_ino
+	    && st.st_mtim.tv_sec == inf->StructInfo.st_mtim.tv_sec
+	    && st.st_mtim.tv_nsec == inf->StructInfo.st_mtim.tv_nsec)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Parse the struct, checking the file it is read from. **/
+	structFile = fdOpen(inf->EmailStructPath.String, O_RDONLY, 0);
+	if (UNLIKELY(structFile == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to open email struct file \"%s\".", inf->EmailStructPath.String);
+	    goto end;
+	    }
+	if (UNLIKELY(fstat(fdFD(structFile), &st) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to check email struct file \"%s\".", inf->EmailStructPath.String);
+	    goto end;
+	    }
+	emailStruct = stParseMsg(structFile, 0);
+	if (UNLIKELY(emailStruct == NULL))
+	    {
+	    mssError(0, "SMTP", "Failed to parse email struct file \"%s\".", inf->EmailStructPath.String);
+	    goto end;
+	    }
+
+	/** Load the new attributes. **/
+	attributes = smtp_internal_NewAttributes();
+	if (UNLIKELY(attributes == NULL))
+	    goto end;
+	names = xaNew(16);
+	if (UNLIKELY(names == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to create attribute names array.");
+	    goto end;
+	    }
+	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStruct, attributes, names) != 0))
+	    goto end;
+
+	/** Update the existing attributes and add the new ones. **/
+	for (i = 0; i < names->nItems; i++)
+	    {
+	    name = (char*)names->Items[i];
+	    newAttr = SMTP_ATTR(xhLookup(attributes, name));
+	    ASSERTMAGIC(newAttr, MGK_SMTP_ATTRIBUTE);
+	    oldAttr = SMTP_ATTR(xhLookup(inf->Attributes, name));
+	    if (oldAttr != NULL)
+		{
+		/** Swap the values, so the old one is freed with the new table. **/
+		ASSERTMAGIC(oldAttr, MGK_SMTP_ATTRIBUTE);
+		oldType = oldAttr->Type;
+		oldValue = oldAttr->Value;
+		oldAttr->Type = newAttr->Type;
+		oldAttr->Value = newAttr->Value;
+		newAttr->Type = oldType;
+		newAttr->Value = oldValue;
+		continue;
+		}
+
+	    /** Move a new attribute over. **/
+	    if (UNLIKELY(xhRemove(attributes, name) != 0))
+		{
+		mssError(1, "SMTP", "Failed to remove new attribute '%s' from the reloaded attributes.", name);
+		goto end;
+		}
+	    if (UNLIKELY(xhAdd(inf->Attributes, newAttr->Name, (char*)newAttr) != 0))
+		{
+		mssError(1, "SMTP", "Failed to add new attribute '%s'.", name);
+		smtp_internal_ClearAttribute((char*)newAttr, NULL);
+		goto end;
+		}
+	    if (UNLIKELY(xaAddItem(inf->AttributeNames, newAttr->Name) < 0))
+		{
+		mssError(1, "SMTP", "Failed to add new attribute name '%s' to list.", name);
+		xhRemove(inf->Attributes, newAttr->Name);
+		smtp_internal_ClearAttribute((char*)newAttr, NULL);
+		goto end;
+		}
+	    }
+
+	/** Record which struct file the attributes came from. **/
+	inf->StructInfo = st;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(rval != 0))
+	    mssError(0, "SMTP", "Failed to reload the attributes of email \"%s\".", inf->Name);
+
+	if (names != NULL) xaFree(names);
+	if (attributes != NULL) smtp_internal_FreeAttributes(attributes);
+	if (emailStruct != NULL) stFreeInf(emailStruct);
+	if (structFile != NULL) fdClose(structFile, 0);
+
+	return rval;
+    }
+
+
 /*** smtp_internal_ApplyHeaders - Writes the headers from the header_*
  *** and message_id attributes into the email file, replacing existing
  *** headers of the same name.  The date defaults to the current time.
@@ -2239,6 +2377,10 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    smtp_internal_Unlock();
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
+
+	/** Load the results of earlier tries, which other opens may have recorded. **/
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf) != 0))
+	    goto end;
 
 	/** Mark the email Pending before handing it off, so other sends refuse it. **/
 	pod.String = "Pending";
@@ -4510,6 +4652,13 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
+	/** Record which struct file the attributes come from. **/
+	if (UNLIKELY(fstat(fdFD(emailStructureFile), &inf->StructInfo) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to check email struct file \"%s\".", inf->EmailStructPath.String);
+	    goto end;
+	    }
+
 	/** Parse the structure file. **/
 	emailStructure = stParseMsg(emailStructureFile, 0);
 	if (UNLIKELY(emailStructure == NULL))
@@ -4529,6 +4678,11 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 		|| (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, emailStructure) != 0)
 	    ))  {
 		mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
+		}
+	    else if (changed && UNLIKELY(stat(inf->EmailStructPath.String, &inf->StructInfo) != 0))
+		{
+		mssErrorErrno(1, "SMTP", "Failed to check email struct file \"%s\".", inf->EmailStructPath.String);
+		goto end;
 		}
 	    }
 	smtp_internal_Unlock();
@@ -5172,6 +5326,10 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (strcmp(attrname, "inner_type") == 0) return DATA_T_STRING;
 	if (strcmp(attrname, "annotation") == 0) return DATA_T_STRING;
 
+	/** Reload the attributes if the struct was replaced. **/
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf) != 0))
+	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+
 	/** Get the type of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
 	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
@@ -5278,6 +5436,10 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return 0;
 	    }
 
+	/** Reload the attributes if the struct was replaced. **/
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf) != 0))
+	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+
 	/** Get the value of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
 	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
@@ -5357,6 +5519,10 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 	    return NULL;
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
+	/** Reload the attributes if the struct was replaced. **/
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf) != 0))
+	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	inf->CurAttr = 0;
 
@@ -5617,6 +5783,10 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    return -1;
 	    }
 
+	/** Reload the attributes if the struct was replaced. **/
+	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf) != 0))
+	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+
 	/** Refuse to send an email that cannot be tracked. **/
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") == 0
 	    && datatype == DATA_T_INTEGER && val != NULL && val->Integer == 1))
@@ -5805,6 +5975,16 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 		goto end;
 		}
 
+	    /** Refuse an attribute the struct already has. **/
+	    if (UNLIKELY(stLookup(emlStruct, attr->Name) != NULL))
+		{
+		mssError(1, "SMTP",
+		    "Failed to add attribute '%s' to the email struct: it already exists.",
+		    attr->Name
+		);
+		goto end;
+		}
+
 	    /** Add the attribute to the email struct. **/
 	    createdStruct = stAddAttr(emlStruct, attr->Name);
 	    if (UNLIKELY(createdStruct == NULL))
@@ -5880,6 +6060,10 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    );
 	    return -1;
 	    }
+
+	/** Reload the attributes if the struct was replaced. **/
+	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf) != 0))
+	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
     return smtp_internal_AddAttr(inf_v, attrname, type, val, oxt);
     }
