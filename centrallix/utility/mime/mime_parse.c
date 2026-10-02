@@ -377,8 +377,11 @@ libmime_SetFilename(pMimeHeader msg, char *defaultName)
  ***                                be modified to contain the main part of the header.
  ***         (char*) hdr            This string will be overwritten with a string that
  ***                                is the name of the header element (To, From, Sender...)
+ ***         (int) hdrsize          The size of the hdr buffer, in bytes.
  ***         (long*) attrSeekStart  Pointer to a long indicating the seek offset
  ***                                to the beginning of the attribute value.
+ ***         (long*) nameOffset     Set to the count of characters between the
+ ***                                beginning of the name and the value.
  ***     Returns:
  ***         This function returns 0 on success, and -1 on failure.  It modifies
  ***         the "buf" parameter and sends its work back in this way.  This
@@ -451,9 +454,7 @@ libmime_ParseHeaderElement(char *buf, char* hdr, int hdrsize, long* attrSeekStar
 	count++;
 	}
 
-	/** Handle empty attributes without error. (Not sure if this is
-	 ** standard)
-	 **/
+	/** Handle empty attributes without error. **/
 	if (state == 2)
 	    {
 	    memcpy(hdr, buf, ((count-1)>(hdrsize-1)?(hdrsize-1):(count-1)));

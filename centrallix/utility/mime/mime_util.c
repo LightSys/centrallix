@@ -416,8 +416,8 @@ libmime_xhDeInit(pXHashTable this, int (*free_fn)())
     }
 
 
-/*** libmime_DumpMessage - print debugging output for the entire message
- *** structure.
+/*** libmime_DumpMessage - Stub for printing debugging output for the entire
+ *** message structure. Does nothing.
  ***/
 int
 libmime_DumpMessage(pMimeHeader msg)

@@ -186,8 +186,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	goto error;
 	}
 
-    /** assume we're only going to handle one level...		  **/
-    /** no longer. It now works for multipart messages. HKJ & JRS **/
+    /** Claim one path element, plus one per nested part matched below. **/
     obj->SubCnt=1;
 
     /** While we have a multipart message and there are more elements in the path,
@@ -206,10 +205,6 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    phdr = xaGetItem(&(inf->Header->Parts), i);
 	    if (!libmime_GetStringAttr(phdr, "Name", NULL, &nodeName) && !strcmp(nodeName, ptr))
 		{
-		/** FIXME FIXME FIXME FIXME
-		 **  Memory lost, where did it go?  Nobody knows, and nobody can find out
-		 ** FIXME FIXME FIXME FIXME
-		 **/
 		inf->Header = phdr;
 		inf->InternalType = MIME_INTERNAL_MESSAGE;
 		obj->SubCnt++;

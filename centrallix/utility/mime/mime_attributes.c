@@ -130,8 +130,6 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	attr->AttrSeekStart = attrSeekStart;
 	attr->AttrSeekEnd = attrSeekEnd;
 
-	/** Attempt to find the first parameter. **/
-
 	/** Process all parameters until the end of the line. **/
 	while (hasParams && (token = strtok_r(NULL, ";", &currentOffset)) != NULL)
 	    {

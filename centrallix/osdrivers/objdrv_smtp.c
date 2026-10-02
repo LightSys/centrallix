@@ -417,7 +417,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 		_exit(EXIT_FAILURE);
 		}
 
-	    /** Hopefully this makes our file stdin so we don't have to cat it into sendmail. **/
+	    /** Make the email file stdin for sendmail. **/
 	    if (UNLIKELY(dup2(fd, 0) < 0))
 		{
 		fprintf(stderr,
@@ -588,8 +588,8 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
     }
 
 
-/*** smtp_internal_ClearAttribute - Clears all the elements of the attributes
- *** hash table.
+/*** smtp_internal_ClearAttribute - Frees an attribute.  Also used as the
+ *** xhClear() callback for attributes hash tables.
  ***/
 int
 smtp_internal_ClearAttribute(char* inf_c, void* customParams)
