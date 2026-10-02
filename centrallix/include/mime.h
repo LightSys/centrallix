@@ -146,7 +146,7 @@ int libmime_SetContentType(pMimeHeader msg, char *buf);
 void libmime_PrintEntityContent(pMimeHeader msg, pLxSession lex);
 int libmime_GetEntityContent(long start, long end, pLxSession lex);
 int libmime_SetFilename(pMimeHeader msg, char *defaultName);
-int libmime_ReadPart(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags);
+int libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int offset, int flags);
 
 /** mime_address.c **/
 int libmime_ParseAddressList(char *buf, pXArray xary);
@@ -166,10 +166,11 @@ void libmime_FreeAddress(pEmailAddr addr);
 char* libmime_StringUnquote(char *str);
 int libmime_B64Purify(char *buf, int len);
 int libmime_ContentExtension(char *str, int type, char *subtype);
+int libmime_StringToLower(char *str);
 void* libmime_xhLookup(pXHashTable this, char* key);
 int libmime_xhAdd(pXHashTable this, char* key, char* data);
 int libmime_xhDeInit(pXHashTable this, int (*free_fn)());
-
+int libmime_DumpMessage(pMimeHeader msg);
 
 /** mime_attributes.c **/
 int libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, int attrSeekEnd, int nameOffset);
