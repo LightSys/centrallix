@@ -1,0 +1,46 @@
+id,region,product,qty,price,sold,rating,note
+1,"East","Doohickey",21,$12.50,"02/08/2026 01:13",1.97,
+2,"East","Gadget",4,$4.99,"03/15/2026 02:26",4.11,
+3,"East","Gizmo",7,$19.95,"04/22/2026 03:39",2.91,"<script>alert('xss')</script>"
+4,"East","Widget",33,$12.50,"05/01/2026 04:52",0.19,
+5,"East","Doohickey",28,$99.00,"06/08/2026 05:05",0.35,"Tom & Jerry &amp; friends"
+6,"East","Gadget",6,$0.01,"07/15/2026 06:18",2.12,
+7,"East","Gizmo",37,$4.99,"08/22/2026 07:31",4.74,
+8,"East","Widget",38,$4.99,"09/01/2026 08:44",2.89,"He said ""hi"" and it's fine"
+9,"East","Doohickey",26,$4.99,"10/08/2026 09:57",,
+10,"East","Gadget",15,$4.99,"11/15/2026 10:10",2.78,
+11,"East","Gizmo",9,$19.95,"12/22/2026 11:23",2.10,"a<b>c</b>d"
+12,"North","Doohickey",35,$4.99,"01/01/2026 12:36",2.85,
+13,"North","Gadget",36,$1234.56,"02/08/2026 13:49",0.90,
+14,"North","Gizmo",38,$0.01,"03/15/2026 14:02",3.19,"Café, naïve, Ünïcödé, 日本語, Ω≈ç√, 🎉"
+15,"North","Widget",24,$4.99,"04/22/2026 15:15",2.74,
+16,"North","Doohickey",5,$0.01,"05/01/2026 16:28",0.30,
+17,"North","Gadget",14,$99.00,"06/08/2026 17:41",3.40,"   three leading spaces"
+18,"North","Gizmo",28,$19.95,"07/15/2026 18:54",,
+19,"North","Widget",30,$0.01,"08/22/2026 19:07",4.62,
+20,"North","Doohickey",24,$19.95,"09/01/2026 20:20",1.24,"internal     five     spaces"
+21,"North","Gadget",12,$1234.56,"10/08/2026 21:33",3.90,
+22,"North","Gizmo",6,$0.01,"11/15/2026 22:46",1.50,
+23,"South","Doohickey",-2,-$19.95,"12/22/2026 23:59",3.65,"Refund issued"
+24,"South","Gadget",19,$0.01,"01/01/2026 00:12",4.90,
+25,"South","Gizmo",8,$0.01,"02/08/2026 01:25",2.09,
+26,"South","Widget",22,$12.50,"03/15/2026 02:38",4.67,"SupercalifragilisticexpialidociousSupercalifragilisticexpialidociousSupercalifragilisticexpialidociousSupercalifragilisticexpialidociousSupercalifragilisticexpialidociousSupercalifragilisticexpialidocious"
+27,"South","Doohickey",27,$4.99,"04/22/2026 03:51",,
+28,"South","Gadget",5,$0.01,"05/01/2026 04:04",2.87,
+29,"South","Gizmo",21,$19.95,"06/08/2026 05:17",3.48,
+30,"South","Widget",39,$99.00,"07/15/2026 06:30",2.90,
+31,"South","Doohickey",30,$4.99,"08/22/2026 07:43",4.20,
+32,"South","Gadget",18,$99.00,"09/01/2026 08:56",3.49,
+33,"South","Gizmo",5,$4.99,"10/08/2026 09:09",3.66,
+34,"West","Doohickey",20,$1234.56,"11/15/2026 10:22",2.89,
+35,"West","Gadget",29,$19.95,"12/22/2026 11:35",3.58,
+36,"West","Gizmo",23,$4.99,"01/01/2026 12:48",,
+37,"West","Widget",30,$19.95,"02/08/2026 13:01",0.84,
+38,"West","Doohickey",8,$99.00,"03/15/2026 14:14",0.29,
+39,"West","Gadget",19,$12.50,"04/22/2026 15:27",3.69,
+40,"West","Gizmo",26,$99.00,"05/01/2026 16:40",4.58,
+41,"West","Widget",32,$4.99,"06/08/2026 17:53",0.83,
+42,"West","Doohickey",26,$0.01,"07/15/2026 18:06",1.39,
+43,"West","Gadget",9,$99.00,"08/22/2026 19:19",4.32,
+44,"West","Gizmo",18,$1234.56,"09/01/2026 20:32",2.08,
+45,"West","Widget",23,$1234.56,"10/08/2026 21:45",,

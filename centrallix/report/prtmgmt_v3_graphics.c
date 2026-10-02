@@ -30,7 +30,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1069,7 +1069,16 @@ prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg,
         goto error;
     }
 
+    /* Flush any deferred output so write errors are detected here */
     cairo_destroy(cr);
+    cr = NULL;
+    cairo_surface_finish(surface);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
+    {
+        mssError(1, "PRT", "Error writing SVG image data");
+        goto error;
+    }
+
     cairo_surface_destroy(surface);
     g_object_unref(rsvg);
     return 0;

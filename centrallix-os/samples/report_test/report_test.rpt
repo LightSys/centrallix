@@ -1,0 +1,1065 @@
+$Version=2$
+// Exercises as much of the report generator as possible, with emphasis on the
+// HTML formatter. Render it as text/html or multipart/vnd.cx.htmlemail+related
+// and compare against application/pdf. Lines starting "Expect:" say what
+// the preceding test should look like.
+report_test "system/report"
+    {
+    title = "Report Generator Test";
+    document_format = "text/html";
+    resolution = 300;
+    pagewidth = 85;
+    pageheight = 66;
+    marginleft = 2.5;
+    marginright = 2.5;
+    margintop = 3;
+    marginbottom = 3;
+    dateformat = "dd MMM yyyy";
+    moneyformat = "$-###,###,##0.00";
+    nullformat = "(null)";
+    negative_fontcolor = "#c00000";
+
+    // Parameters.
+    p_string	"report/parameter" { type=string;   default="Hello & <World>"; }
+    p_integer	"report/parameter" { type=integer;  default=42; }
+    p_double	"report/parameter" { type=double;   default=3.14159; }
+    p_region	"report/parameter" { type=string;   default="South"; }
+    p_hidden	"report/parameter" { type=integer;  default=0; }
+    nowidth_test	"report/parameter" { type=integer;  default=0; }
+    areabreak_test	"report/parameter" { type=integer;  default=0; }
+    mono_png_test	"report/parameter" { type=integer;  default=0; }
+    multinested_test	"report/parameter" { type=integer;  default=0; }
+    out_qty	"report/parameter" { type=integer;  direction=out; default=runserver(:table_qy:tot_qty); }
+
+    // Single-row query with one value of each data type.
+    values_qy "report/query"
+	{
+	sql = "	select
+		    v_int = 1234567,
+		    v_neg_int = -42,
+		    v_double = 2.5,
+		    v_money = convert('money', 1234.5),
+		    v_neg_money = convert('money', -7.25),
+		    v_string = 'plain string',
+		    v_date = convert('datetime', '02 Oct 2026 13:45'),
+		    v_null = convert('string', null),
+		    v_sentence = 'The quick brown fox jumps over the lazy dog while the report generator wraps this paragraph across lines. ',
+		    v_long = replicate('The quick brown fox jumps over the lazy dog while the report generator wraps this paragraph across lines. ', 11),
+		    v_token = replicate('Supercalifragilistic', 10)
+		";
+	}
+
+    // Detail rows for the main data table, with group and grand totals.
+    table_qy "report/query"
+	{
+	sql = "select * from /samples/report_test/sales.csv/rows order by :region, :id";
+
+	grp_count	"report/aggregate" { compute="count(1)";                   reset=1; }
+	grp_qty		"report/aggregate" { compute="sum(:qty)";                  reset=1; }
+	grp_total	"report/aggregate" { compute="sum(:price * :qty)";         reset=1; }
+	tot_count	"report/aggregate" { compute="count(1)";                   reset=0; }
+	tot_qty		"report/aggregate" { compute="sum(:qty)";                  reset=0; }
+	tot_total	"report/aggregate" { compute="sum(:price * :qty)";         reset=0; }
+	tot_rating	"report/aggregate" { compute="avg(:rating)";               reset=0; }
+	tot_min		"report/aggregate" { compute="min(:price)";                reset=0; }
+	tot_max		"report/aggregate" { compute="max(:price)";                reset=0; }
+	tot_refunds	"report/aggregate" { compute="count(1)"; where=":qty < 0"; reset=0; }
+	}
+
+    // Rows with notes that need HTML escaping or UTF-8 handling.
+    notes_qy "report/query"
+	{
+	sql = "select :id, :note from /samples/report_test/sales.csv/rows where char_length(:note) > 0 order by :id";
+	}
+
+    // Parameter substitution in SQL.
+    param_qy "report/query"
+	{
+	sql = "select :id, :product, :qty from /samples/report_test/sales.csv/rows where :region = '&p_region' order by :id";
+	}
+
+    // SQL built by an expression.
+    expr_qy "report/query"
+	{
+	sql = runserver("select :id, :product from /samples/report_test/sales.csv/rows where :id <= " + (:this:p_integer / 10) + " order by :id");
+	}
+
+    empty_qy "report/query"
+	{
+	sql = "select * from /samples/report_test/sales.csv/rows where :id < 0";
+	}
+
+    limit_qy "report/query"
+	{
+	sql = "select :id, :product from /samples/report_test/sales.csv/rows order by :id";
+	}
+
+    // Outer and inner queries for nested tables.
+    regions_qy "report/query"
+	{
+	sql = "select * from /samples/report_test/regions.csv/rows order by :region";
+	}
+
+    region_sales_qy "report/query"
+	{
+	sql = "select :id, :product, :qty, :price from /samples/report_test/sales.csv/rows where :region = :regions_qy:region and :qty >= 30 order by :id";
+	}
+
+    // Queries for forms.
+    form_regions_qy "report/query"
+	{
+	sql = "select * from /samples/report_test/regions.csv/rows order by :region";
+	}
+
+    products_qy "report/query"
+	{
+	sql = "select :product, n = count(1) from /samples/report_test/sales.csv/rows group by :product order by :product";
+	}
+
+    group_qy "report/query"
+	{
+	sql = "select :region, :id from /samples/report_test/sales.csv/rows where :qty >= 30 order by :region, :id";
+	}
+
+    page_qy "report/query"
+	{
+	sql = "select * from /samples/report_test/regions.csv/rows order by :region";
+	}
+
+    // Queries for columns and charts.
+    column_qy "report/query"
+	{
+	sql = "select :id, :region, :product, :qty from /samples/report_test/sales.csv/rows order by :id";
+	}
+
+    chart_qy "report/query"
+	{
+	sql = "select :product, qty = sum(:qty), orders = count(1) from /samples/report_test/sales.csv/rows group by :product order by :product";
+	}
+
+    chart_series_qy "report/query"
+	{
+	sql = "select :region, :product, qty = sum(:qty) from /samples/report_test/sales.csv/rows group by :product, :region order by :product, :region";
+	}
+
+    // Page 1: absolutely positioned top-level objects. The first starts at y>0.
+    title_area "report/area"
+	{
+	x=0; y=1; width=80; height=3;
+	font=helvetica;
+	align=center;
+	title_data "report/data" { fontsize=24; style=bold; value=runserver("Report Generator Test\n"); }
+	title_sub "report/data" { fontsize=10; style=italic; value=runserver("Expect: this centered title block has a one-line gap above it."); }
+	}
+
+    info_left "report/area"
+	{
+	x=0; y=5; width=38; height=8;
+	border=0.02;
+	fixedsize=yes;
+	bgcolor="#eef4ff";
+	margintop=0.5; marginbottom=0.5; marginleft=1; marginright=1;
+	il_hdr "report/data" { style=bold; value=runserver("Parameters (fixed-size box)\n"); }
+	il_d1 "report/data" { value=runserver("p_string:  " + :this:p_string + "\n"); }
+	il_d2 "report/data" { value=runserver("p_integer: " + :this:p_integer + "\n"); }
+	il_d3 "report/data" { value=runserver("p_double:  " + :this:p_double + "\n"); }
+	il_d4 "report/data" { value=runserver("p_region:  " + :this:p_region + "\n"); }
+	il_d5 "report/data" { value=runserver("page:      " + :this:page + " (Expect: 1)"); }
+	}
+
+    info_right "report/area"
+	{
+	x=42; y=5; width=38; height=2;
+	border=0.02;
+	bgcolor="#fff4e0";
+	ir_hdr "report/data" { style=bold; value=runserver("Growing box (height=2)\n"); }
+	ir_d1 "report/data" { value=runserver("Expect: this box grows past its configured height to fit these lines, and sits beside the fixed box without overlapping anything below it.\n"); }
+	ir_d2 "report/data" { value=runserver("Line 3\nLine 4\nLine 5"); }
+	}
+
+    logo_image "report/image"
+	{
+	x=65; y=14; width=15; height=2.6;
+	source="/sys/images/centrallix_374x66.png";
+	}
+
+    logo_note "report/area"
+	{
+	x=0; y=14; width=60; height=2;
+	ln_d "report/data" { value=runserver("Expect: the Centrallix logo is flush right on this row (top-level image, x>0)."); }
+	}
+
+    // Top-level data with no enclosing area.
+    toplevel_data "report/data"
+	{
+	style=bold;
+	value=runserver("Top-level report/data with no area (bold).\n");
+	}
+
+    toplevel_data2 "report/data"
+	{
+	value=runserver("Expect: this second top-level line is not bold.\n");
+	}
+
+    // Sections 1-8 need values_qy to be active.
+    values_form "report/form"
+	{
+	source=values_qy;
+
+	// 1. Text styles.
+	s1_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n1. Text styles\n"); }
+	// Inline style changes share one area.
+	s1_area "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    s1_plain "report/data" { value=runserver("plain, "); }
+	    s1_bold "report/data" { style=bold; value=runserver("bold, "); }
+	    s1_italic "report/data" { style=italic; value=runserver("italic, "); }
+	    s1_under "report/data" { style=underline; value=runserver("underline, "); }
+	    s1_all "report/data" { style=bold,italic,underline; value=runserver("bold+italic+underline, "); }
+	    s1_plain2 "report/data" { style=bold,plain; value=runserver("bold then plain (plain).\n"); }
+	    s1_color "report/data" { fontcolor="#0060c0"; value=runserver("Blue text, "); }
+	    s1_color2 "report/data" { fontcolor="#008000"; style=bold; value=runserver("bold green text, "); }
+	    s1_color3 "report/data" { value=runserver("default color again.\n"); }
+	    s1_courier "report/data" { font=courier; value=runserver("courier "); }
+	    s1_mono "report/data" { font=monospace; value=runserver("monospace "); }
+	    s1_helv "report/data" { font=helvetica; value=runserver("helvetica "); }
+	    s1_arial "report/data" { font=arial; value=runserver("arial "); }
+	    s1_times "report/data" { font=times; value=runserver("times "); }
+	    s1_serif "report/data" { font=serif; value=runserver("serif\n"); }
+	    s1_sz6 "report/data" { fontsize=6; value=runserver("size6 "); }
+	    s1_sz8 "report/data" { fontsize=8; value=runserver("size8 "); }
+	    s1_sz10 "report/data" { fontsize=10; value=runserver("size10 "); }
+	    s1_sz105 "report/data" { fontsize=10.5; value=runserver("size10.5 "); }
+	    s1_sz12 "report/data" { fontsize=12; value=runserver("size12 "); }
+	    s1_sz18 "report/data" { fontsize=18; value=runserver("size18 "); }
+	    s1_sz36 "report/data" { fontsize=36; value=runserver("size36\n"); }
+	    s1_sz100 "report/data" { fontsize=100; font=times; value=runserver("Aa\n"); }
+	    s1_bg_area "report/area"
+		{
+		width=60;
+		height=0;
+		bgcolor="#ffff80";
+		fontcolor="#800080";
+		s1_bg_d "report/data" { value=runserver("Purple text on a yellow area background.\n"); }
+		}
+	    s1_after_bg "report/data" { value=runserver("Expect: this line is black on white again.\n"); }
+
+	    // Empty styled values must not leak their style.
+	    s1_empty_bold "report/data" { style=bold; value=runserver(""); }
+	    s1_after_empty "report/data" { value=runserver("Expect: this line (after an empty bold value) is not bold.\n"); }
+	    s1_empty_ital "report/data" { style=italic; value=runserver(""); }
+	    s1_after_empty2 "report/data" { value=runserver("Expect: this line (after an empty italic value) is not italic.\n"); }
+	    s1_null_under "report/data" { style=underline; nullformat=""; value=runserver(:values_qy:v_null); }
+	    s1_after_null "report/data" { value=runserver("Expect: this line (after a null underlined value) is not underlined.\n"); }
+	    }
+
+	// 2. Alignment.
+	s2_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n2. Alignment\n"); }
+	s2_left "report/area" { width=80; height=0; align=left; s2_left_d "report/data" { value=runserver("Left aligned."); } }
+	s2_center "report/area" { width=80; height=0; align=center; s2_center_d "report/data" { value=runserver("Center aligned."); } }
+	s2_right "report/area" { width=80; height=0; align=right; s2_right_d "report/data" { value=runserver("Right aligned."); } }
+	s2_full "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    align=full;
+	    s2_full_d "report/data" { value=runserver("Fully justified: " + :values_qy:v_sentence + :values_qy:v_sentence + :values_qy:v_sentence + "Last line is short."); }
+	    }
+	s2_mixed "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    border=0.01;
+	    s2_mixed_c "report/data" { align=center; value=runserver("Centered line in a mixed area.\n"); }
+	    s2_mixed_l "report/data" { align=left; value=runserver("Expect: this line is left aligned, below the centered one.\n"); }
+	    s2_mixed_r "report/data" { align=right; value=runserver("Right aligned line in the same area.\n"); }
+	    s2_mixed_n "report/data" { value=runserver("Expect: this line, with no align, is left aligned.\n"); }
+	    }
+
+	// 3. Whitespace and wrapping.
+	s3_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n3. Whitespace and wrapping\n"); }
+	s3_lead "report/data" { value=runserver("    Four leading spaces.\n        Eight leading spaces.\n"); }
+	s3_inner "report/data" { value=runserver("Five     inner     spaces (Expect: kept as five, compare with PDF).\n"); }
+	s3_tab "report/data" { value=runserver("Tab:\tone\ttwo\tthree (Expect: words start on 8-column tab stops)\n"); }
+	s3_nl "report/data" { value=runserver("Line A\nLine B\n\nLine D (after one blank line)\n"); }
+	s3_lh "report/area" { width=80; height=0; lineheight=2; s3_lh_d "report/data" { value=runserver("lineheight=2, line one\nline two (Expect: double spaced)\n"); } }
+	s3_auto1 "report/data" { autonewline=yes; value=runserver("autonewline one"); }
+	s3_auto2 "report/data" { autonewline=yes; value=runserver("autonewline two"); }
+	s3_long_hdr "report/data" { style=bold; value=runserver("Long paragraph (over 1000 bytes, soft wraps only):\n"); }
+	s3_long "report/data" { value=runserver(:values_qy:v_long + "\n"); }
+	s3_token_hdr "report/data" { style=bold; value=runserver("200-character token with no spaces:\n"); }
+	s3_token "report/data" { value=runserver(:values_qy:v_token + "\n"); }
+	s3_token_note "report/data" { value=runserver("Expect: the token wraps or is cut inside the page width; the page does not get wider.\n"); }
+
+	// 4. Escaping and encoding.
+	s4_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n4. HTML escaping and UTF-8\n"); }
+	s4_lit "report/data" { value=runserver("Literal: <b>not bold</b> & &amp; &lt; \"double\" 'single' <!-- not a comment --> \\backslash\n"); }
+	s4_param "report/data" { value=runserver("Parameter: " + :this:p_string + "\n"); }
+	s4_note "report/data" { value=runserver("Expect: every character above prints literally, nothing is interpreted as markup.\n"); }
+	s4_table "report/table"
+	    {
+	    width=80;
+	    height=0;
+	    columns=2;
+	    widths=6,73;
+	    colsep=1;
+	    source=notes_qy;
+	    s4_th "report/table-row" { header=yes; bottomborder=0.02; margintop=0; marginbottom=0; s4_th1 "report/table-cell" { style=bold; value=runserver("id"); } s4_th2 "report/table-cell" { style=bold; value=runserver("note (from UTF-8 CSV data)"); } }
+	    s4_tr "report/table-row" { margintop=0; marginbottom=0; s4_td1 "report/table-cell" { value=runserver(:notes_qy:id); } s4_td2 "report/table-cell" { value=runserver(:notes_qy:note); } }
+	    }
+
+	// 5. Hyperlinks.
+	s5_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n5. Hyperlinks\n"); }
+	// Links and plain text share one area.
+	s5_area "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    s5_pre "report/data" { value=runserver("Before the "); }
+	    s5_link "report/data" { url="https://lightsys.org"; fontcolor="#0000c0"; style=underline; value=runserver("LightSys link"); }
+	    s5_post "report/data" { value=runserver(" and after it.\n"); }
+	    s5_note "report/data" { value=runserver("Expect: only 'LightSys link' is a link, not the text around it.\n"); }
+	    s5_amp "report/data" { url="https://example.com/search?a=1&b=two%20words"; value=runserver("Link whose URL has & and %20\n"); }
+	    s5_space "report/data" { url="https://example.com/a page"; value=runserver("Link whose URL has a space\n"); }
+	    s5_quote "report/data" { url="https://example.com/\"quoted\""; value=runserver("URL with a double quote (Expect: printed but not linked)\n"); }
+	    s5_after "report/data" { value=runserver("Expect: this last line is not a link.\n"); }
+	    }
+
+	// 6. Data types and formats.
+	s6_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n6. Data types and formats\n"); }
+	s6_t "report/table"
+	    {
+	    width=80;
+	    height=0;
+	    columns=3;
+	    widths=26,26,26;
+	    colsep=1;
+	    innerborder=0.01;
+	    outerborder=0.02;
+	    s6_th "report/table-row" { header=yes; margintop=0; marginbottom=0; s6_th1 "report/table-cell" { style=bold; value=runserver("Type"); } s6_th2 "report/table-cell" { style=bold; value=runserver("Formatted"); } s6_th3 "report/table-cell" { style=bold; value=runserver("Expect"); } }
+	    s6_r1 "report/table-row" { margintop=0; marginbottom=0; s6_r1a "report/table-cell" { value="integer"; } s6_r1b "report/table-cell" { value=runserver(:values_qy:v_int); } s6_r1c "report/table-cell" { value="1234567"; } }
+	    s6_r2 "report/table-row" { margintop=0; marginbottom=0; s6_r2a "report/table-cell" { value="negative integer"; } s6_r2b "report/table-cell" { value=runserver(:values_qy:v_neg_int); } s6_r2c "report/table-cell" { value="-42 in red"; } }
+	    s6_r3 "report/table-row" { margintop=0; marginbottom=0; s6_r3a "report/table-cell" { value="double"; } s6_r3b "report/table-cell" { value=runserver(:values_qy:v_double); } s6_r3c "report/table-cell" { value="2.500000"; } }
+	    s6_r4 "report/table-row" { margintop=0; marginbottom=0; s6_r4a "report/table-cell" { value="money (report format)"; } s6_r4b "report/table-cell" { value=runserver(:values_qy:v_money); } s6_r4c "report/table-cell" { value="$ 1,234.50"; } }
+	    s6_r5 "report/table-row" { margintop=0; marginbottom=0; s6_r5a "report/table-cell" { value="negative money"; } s6_r5b "report/table-cell" { value=runserver(:values_qy:v_neg_money); } s6_r5c "report/table-cell" { value="$-7.25 in red"; } }
+	    s6_r6 "report/table-row" { margintop=0; marginbottom=0; s6_r6a "report/table-cell" { value="money (cell format)"; } s6_r6b "report/table-cell" { moneyformat="(###,##0.00)"; value=runserver(:values_qy:v_neg_money); } s6_r6c "report/table-cell" { value="(7.25) in red"; } }
+	    s6_r7 "report/table-row" { margintop=0; marginbottom=0; s6_r7a "report/table-cell" { value="money (green negative)"; } s6_r7b "report/table-cell" { negative_fontcolor="#008000"; value=runserver(:values_qy:v_neg_money); } s6_r7c "report/table-cell" { value="$-7.25 in green"; } }
+	    s6_r8 "report/table-row" { margintop=0; marginbottom=0; s6_r8a "report/table-cell" { value="date (report format)"; } s6_r8b "report/table-cell" { value=runserver(:values_qy:v_date); } s6_r8c "report/table-cell" { value="02 Oct 2026"; } }
+	    s6_r9 "report/table-row" { margintop=0; marginbottom=0; s6_r9a "report/table-cell" { value="date (cell format)"; } s6_r9b "report/table-cell" { dateformat="MMMM ddd, yyyy HH:mm"; value=runserver(:values_qy:v_date); } s6_r9c "report/table-cell" { value="October 2nd, 2026 13:45"; } }
+	    s6_r10 "report/table-row" { margintop=0; marginbottom=0; dateformat="MM/dd/yyyy"; s6_r10a "report/table-cell" { value="date (row format)"; } s6_r10b "report/table-cell" { value=runserver(:values_qy:v_date); } s6_r10c "report/table-cell" { value="10/02/2026"; } }
+	    s6_r11 "report/table-row" { margintop=0; marginbottom=0; s6_r11a "report/table-cell" { value="null (report format)"; } s6_r11b "report/table-cell" { value=runserver(:values_qy:v_null); } s6_r11c "report/table-cell" { value="(null)"; } }
+	    s6_r12 "report/table-row" { margintop=0; marginbottom=0; s6_r12a "report/table-cell" { value="null (cell format)"; } s6_r12b "report/table-cell" { nullformat="N/A"; value=runserver(:values_qy:v_null); } s6_r12c "report/table-cell" { value="N/A"; } }
+	    s6_r13 "report/table-row" { margintop=0; marginbottom=0; s6_r13a "report/table-cell" { value="string"; } s6_r13b "report/table-cell" { value=runserver(:values_qy:v_string); } s6_r13c "report/table-cell" { value="plain string"; } }
+	    s6_r14 "report/table-row" { margintop=0; marginbottom=0; s6_r14a "report/table-cell" { value="constant number"; } s6_r14b "report/table-cell" { value=99.5; } s6_r14c "report/table-cell" { value="99.500000"; } }
+	    s6_r15 "report/table-row" { margintop=0; marginbottom=0; s6_r15a "report/table-cell" { value="quoted expression"; } s6_r15b "report/table-cell" { value=":values_qy:v_int + 1"; } s6_r15c "report/table-cell" { value="the literal text"; } }
+	    }
+
+	// 7. Horizontal positioning within an area.
+	s7_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n7. Horizontal positioning (xpos)\n"); }
+	// Positions are relative to this area.
+	s7_area "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    s7_a1 "report/data" { xpos=0; style=bold; value=runserver("Label"); }
+	    s7_a2 "report/data" { xpos=20; style=bold; value=runserver("Value"); }
+	    s7_a3 "report/data" { xpos=50; style=bold; value=runserver("Notes\n"); }
+	    s7_b1 "report/data" { xpos=0; value=runserver("Integer"); }
+	    s7_b2 "report/data" { xpos=20; value=runserver(:values_qy:v_int); }
+	    s7_b3 "report/data" { xpos=50; value=runserver("starts at column 50\n"); }
+	    s7_c1 "report/data" { xpos=0; value=runserver("Skips Value"); }
+	    s7_c3 "report/data" { xpos=50; value=runserver("still at column 50\n"); }
+	    s7_d1 "report/data" { xpos=10; value=runserver("Indented to column 10"); }
+	    s7_d2 "report/data" { xpos=60; value=runserver("column 60\n"); }
+	    s7_note "report/data" { value=runserver("Expect: Value/Notes columns line up across rows.\n"); }
+	    s7_y1 "report/data" { xpos=0; value=runserver("ypos test: top"); }
+	    s7_y2 "report/data" { xpos=20; ypos=7; value=runserver("at ypos 7 (Expect: two lines below 'top', at column 20)\n"); }
+	    }
+
+	// 8. Areas.
+	s8_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n8. Areas\n"); }
+	s8_thin "report/area" { width=80; height=0; border=0.01; s8_thin_d "report/data" { value=runserver("Thin border (0.01)."); } }
+	s8_thick "report/area" { width=80; height=0; border=0.2; margintop=0.5; marginbottom=0.5; marginleft=1; marginright=1; s8_thick_d "report/data" { value=runserver("Thick border (0.2) with margins."); } }
+	s8_lmargin "report/area" { width=80; height=0; border=0.01; marginleft=10; s8_lmargin_d "report/data" { value=runserver("Left margin 10 only (Expect: indented on the left, compare others with PDF)."); } }
+	s8_fixed "report/area" { width=80; height=4; fixedsize=yes; border=0.01; s8_fixed_d "report/data" { value=runserver("Fixed height 4 with one line of content (Expect: empty space below)."); } }
+	s8_outer "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    bgcolor="#ffffe0";
+	    border=0.01;
+	    s8_outer_d1 "report/data" { value=runserver("Outer area (light yellow).\n"); }
+	    s8_mid "report/area"
+		{
+		width=70;
+		height=0;
+		bgcolor="#e0ffe0";
+		border=0.01;
+		s8_mid_d1 "report/data" { value=runserver("Middle area (light green).\n"); }
+		s8_inner "report/area"
+		    {
+		    width=60;
+		    height=0;
+		    bgcolor="#e0e0ff";
+		    border=0.01;
+		    s8_inner_d "report/data" { value=runserver("Inner area (light blue)."); }
+		    }
+		s8_mid_d2 "report/data" { value=runserver("Back in the middle area (Expect: green).\n"); }
+		}
+	    s8_outer_d2 "report/data" { value=runserver("Back in the outer area (Expect: yellow).\n"); }
+	    }
+	s8_nowidth_off "report/data" { condition=runserver(not :this:nowidth_test); value=runserver("Child area with no width: skipped, pass nowidth_test=1 to run it.\n"); }
+	s8_nowidth "report/area"
+	    {
+	    height=0;
+	    condition=runserver(:this:nowidth_test);
+	    width=80;
+	    border=0.01;
+	    s8_nw_d1 "report/data" { value=runserver("Area containing a child area with no width:\n"); }
+	    s8_nw_child "report/area"
+		{
+		height=0;
+		border=0.01;
+		bgcolor="#f0f0f0";
+		s8_nw_child_d "report/data" { value=runserver("Child area with no width (Expect: readable, compare with PDF)."); }
+		}
+	    }
+	s8_side "report/area"
+	    {
+	    width=80;
+	    height=3;
+	    s8_side_l "report/area" { x=0; y=0; width=38; height=3; border=0.01; s8_side_l_d "report/data" { value=runserver("Positioned child at x=0."); } }
+	    s8_side_r "report/area" { x=42; y=0; width=38; height=3; border=0.01; align=right; s8_side_r_d "report/data" { value=runserver("Positioned child at x=42, right aligned."); } }
+	    }
+	s8_cond_t "report/area" { width=80; height=0; condition=runserver(:this:p_integer = 42); s8_cond_t_d "report/data" { value=runserver("Expect: this line appears (condition true)."); } }
+	s8_cond_f "report/area" { width=80; height=0; condition=runserver(:this:p_hidden); s8_cond_f_d "report/data" { value=runserver("FAIL: this area has a false condition."); } }
+	s8_cond_d "report/data" { condition=runserver(1 = 0); value=runserver("FAIL: this data has a false condition.\n"); }
+	}
+
+    // 9. Static tables.
+    s9_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n9. Static tables (no source)\n"); }
+
+    s9_note "report/data" { value=runserver("Expect: only the dark header and summary rows are bold; the fixed-height row has lines between its cells and thick left and right edges.\n"); }
+    s9a "report/table"
+	{
+	width=80;
+	height=0;
+	columns=4;
+	widths=20,20,18,17;
+	colsep=1;
+	outerborder=0.05;
+	innerborder=0.01;
+	s9a_hdr "report/table-row"
+	    {
+	    header=yes;
+	    bgcolor="#404040";
+	    fontcolor="#ffffff";
+	    style=bold;
+	    margintop=0; marginbottom=0;
+	    s9a_h1 "report/table-cell" { value=runserver("Column A"); }
+	    s9a_h2 "report/table-cell" { value=runserver("Column B"); align=center; }
+	    s9a_h3 "report/table-cell" { value=runserver("Column C"); align=right; }
+	    s9a_h4 "report/table-cell" { value=runserver("Column D"); }
+	    }
+	s9a_r1 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s9a_r1c1 "report/table-cell" { value=runserver("left"); }
+	    s9a_r1c2 "report/table-cell" { value=runserver("center"); align=center; }
+	    s9a_r1c3 "report/table-cell" { value=runserver("right"); align=right; }
+	    s9a_r1c4 "report/table-cell" { value=runserver("Wrapping text in a narrow cell that needs several lines."); }
+	    }
+	s9a_r2 "report/table-row"
+	    {
+	    bgcolor="#e8f0ff";
+	    margintop=0; marginbottom=0;
+	    s9a_r2c1 "report/table-cell" { value=runserver("row bgcolor"); }
+	    s9a_r2c2 "report/table-cell" { fontcolor="#c00000"; value=runserver("red cell"); }
+	    s9a_r2c3 "report/table-cell" { style=italic; value=runserver("italic cell"); }
+	    s9a_r2c4 "report/table-cell" { value=runserver("plain cell"); }
+	    }
+	s9a_r3 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s9a_r3c1 "report/table-cell" { colspan=2; value=runserver("colspan=2 (Expect: spans A and B)"); }
+	    s9a_r3c3 "report/table-cell" { value=runserver("C"); }
+	    s9a_r3c4 "report/table-cell" { value=runserver("D"); }
+	    }
+	s9a_r4 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s9a_r4c1 "report/table-cell" { value=runserver("A"); }
+	    s9a_r4c2 "report/table-cell" { colspan=3; value=runserver("colspan=3 (Expect: spans B, C, and D)"); }
+	    }
+	s9a_r5 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s9a_r5c1 "report/table-cell" { style=bold; value=runserver(""); }
+	    s9a_r5c2 "report/table-cell" { value=runserver("Expect: not bold (after empty bold cell)"); }
+	    s9a_r5c3 "report/table-cell" { condition=runserver(1 = 0); value=runserver("FAIL: hidden cell"); }
+	    s9a_r5c4 "report/table-cell" { value=runserver("(cell C has condition false)"); }
+	    }
+	s9a_r6 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    value=runserver("General row: a row with value= spans the whole table.");
+	    }
+	s9a_r7 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s9a_r7d1 "report/data" { style=bold; value=runserver("General row with children: "); }
+	    s9a_r7d2 "report/data" { value=runserver("a data element and "); }
+	    s9a_r7a "report/area" { width=30; height=0; border=0.01; s9a_r7a_d "report/data" { value=runserver("a bordered area"); } }
+	    }
+	s9a_r8 "report/table-row"
+	    {
+	    condition=runserver(1 = 0);
+	    value=runserver("FAIL: this row has a false condition.");
+	    }
+	s9a_r9 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    topborder=0.05;
+	    s9a_r9c1 "report/table-cell" { value=runserver("row topborder"); }
+	    s9a_r9c2 "report/table-cell" { value=runserver("container cell:"); }
+	    s9a_r9c3 "report/table-cell"
+		{
+		s9a_r9c3d1 "report/data" { style=bold; value=runserver("child data\n"); }
+		s9a_r9c3d2 "report/data" { value=runserver("second line"); }
+		}
+	    s9a_r9c4 "report/table-cell"
+		{
+		s9a_r9c4i "report/image" { width=2; height=1; source="/sys/images/CX.png"; }
+		}
+	    }
+	s9a_r10 "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    innerborder=0.02;
+	    leftborder=0.1;
+	    rightborder=0.1;
+	    height=2;
+	    fixedsize=yes;
+	    s9a_r10c1 "report/table-cell" { value=runserver("row innerborder,"); }
+	    s9a_r10c2 "report/table-cell" { value=runserver("thick left and"); }
+	    s9a_r10c3 "report/table-cell" { value=runserver("right borders,"); }
+	    s9a_r10c4 "report/table-cell" { value=runserver("fixed height 2"); }
+	    }
+	s9a_sum "report/table-row"
+	    {
+	    summary=yes;
+	    margintop=0; marginbottom=0;
+	    topborder=0.02;
+	    bottomborder=0.05;
+	    style=bold;
+	    s9a_s1 "report/table-cell" { value=runserver("Summary row"); }
+	    s9a_s2 "report/table-cell" { value=runserver(""); }
+	    s9a_s3 "report/table-cell" { align=right; value=runserver(convert('money', 1234.56)); }
+	    s9a_s4 "report/table-cell" { value=runserver("bottomborder 0.05"); }
+	    }
+	}
+
+    s9_gap1 "report/data" { value=runserver("\nWidths from header cells, autowidth, and a shadow:\n"); }
+    s9b "report/table"
+	{
+	width=80;
+	height=0;
+	autowidth=yes;
+	colsep=2;
+	outerborder=0.02;
+	shadow=0.2;
+	s9b_hdr "report/table-row"
+	    {
+	    header=yes;
+	    bottomborder=0.02;
+	    margintop=0; marginbottom=0;
+	    s9b_h1 "report/table-cell" { width=10; style=bold; value=runserver("w=10"); }
+	    s9b_h2 "report/table-cell" { width=20; style=bold; value=runserver("w=20"); }
+	    s9b_h3 "report/table-cell" { width=10; style=bold; value=runserver("w=10"); }
+	    }
+	s9b_r "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s9b_c1 "report/table-cell" { value=runserver("a"); }
+	    s9b_c2 "report/table-cell" { value=runserver("b"); }
+	    s9b_c3 "report/table-cell" { value=runserver("c"); }
+	    }
+	}
+
+    s9_gap2 "report/data" { value=runserver("\nSeparate top, bottom, left, and right table borders (0.02, 0.1, 0.05, 0.2):\n"); }
+    s9c "report/table"
+	{
+	width=60;
+	height=0;
+	columns=2;
+	widths=29,29;
+	topborder=0.02;
+	bottomborder=0.1;
+	leftborder=0.05;
+	rightborder=0.2;
+	s9c_r "report/table-row"
+	    {
+	    s9c_c1 "report/table-cell" { value=runserver("row with default margins"); }
+	    s9c_c2 "report/table-cell" { value=runserver("(colsep/2 above and below)"); }
+	    }
+	}
+
+    // 10. Data-driven table with grouping, totals, and a page break.
+    s10_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n10. Data table with groups and totals\n"); }
+    s10_note "report/data" { value=runserver("Expect: the header repeats after each page break; subtotals East 224 / $ 4,365.06, North 252 / $ 61,977.48, South 192 / $ 6,686.55, West 263 / $ 81,254.42; total 931 / $ 154,283.51, avg rating 2.73, price range $-19.95 to $ 1,234.56; row 23 has red Qty and Price; only header and total rows are bold; rows 8, 14, and 30 show the CX icon; every row with a note (3, 5, 8, 11, 14, 17, 20, 23, 26) shows it.\n"); }
+    s10_t "report/table"
+	{
+	width=80;
+	height=0;
+	columns=8;
+	widths=4,7,10,5,10,13,6,17;
+	colsep=1;
+	source=table_qy;
+	font=helvetica;
+	fontsize=9;
+	dateformat="dd-MMM-yyyy";
+	s10_th "report/table-row"
+	    {
+	    header=yes;
+	    bottomborder=0.03;
+	    style=bold;
+	    margintop=0; marginbottom=0;
+	    s10_th1 "report/table-cell" { value=runserver("ID"); align=right; }
+	    s10_th2 "report/table-cell" { value=runserver("Region"); }
+	    s10_th3 "report/table-cell" { value=runserver("Product"); }
+	    s10_th4 "report/table-cell" { value=runserver("Qty"); align=right; }
+	    s10_th5 "report/table-cell" { value=runserver("Price"); align=right; }
+	    s10_th6 "report/table-cell" { value=runserver("Sold"); }
+	    s10_th7 "report/table-cell" { value=runserver("Rating"); align=right; }
+	    s10_th8 "report/table-cell" { value=runserver("Note"); }
+	    }
+	s10_tr "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s10_td1 "report/table-cell" { value=runserver(:table_qy:id); align=right; }
+	    s10_td2 "report/table-cell" { value=runserver(:table_qy:region); }
+	    s10_td3 "report/table-cell" { value=runserver(:table_qy:product); }
+	    s10_td4 "report/table-cell" { value=runserver(:table_qy:qty); align=right; }
+	    s10_td5 "report/table-cell" { value=runserver(:table_qy:price); align=right; }
+	    s10_td6 "report/table-cell" { value=runserver(:table_qy:sold); }
+	    s10_td7 "report/table-cell" { value=runserver(:table_qy:rating); align=right; nullformat="-"; }
+	    s10_td8 "report/table-cell"
+		{
+		s10_td8i "report/image" { condition=runserver(:table_qy:qty >= 38); width=2; height=1; source="/sys/images/CX.png"; }
+		s10_td8d "report/data" { value=runserver(substring(:table_qy:note, 1, 40)); }
+		}
+	    }
+	s10_grp "report/table-row"
+	    {
+	    summary=yes;
+	    summarize_for=runserver(:table_qy:region);
+	    topborder=0.01;
+	    style=italic;
+	    bgcolor="#f0f0f0";
+	    margintop=0; marginbottom=0;
+	    s10_g1 "report/table-cell" { colspan=3; value=runserver("Subtotal (" + :table_qy:grp_count + " rows)"); }
+	    s10_g2 "report/table-cell" { value=runserver(:table_qy:grp_qty); align=right; }
+	    s10_g3 "report/table-cell" { colspan=2; value=runserver(:table_qy:grp_total); align=right; }
+	    s10_g4 "report/table-cell" { colspan=2; value=runserver(""); }
+	    }
+	s10_tot "report/table-row"
+	    {
+	    summary=yes;
+	    topborder=0.03;
+	    bottomborder=0.03;
+	    style=bold;
+	    margintop=0; marginbottom=0;
+	    s10_t1 "report/table-cell" { colspan=3; value=runserver("Total (" + :table_qy:tot_count + " rows, " + :table_qy:tot_refunds + " refund)"); }
+	    s10_t2 "report/table-cell" { value=runserver(:table_qy:tot_qty); align=right; }
+	    s10_t3 "report/table-cell" { colspan=2; value=runserver(:table_qy:tot_total); align=right; }
+	    s10_t4 "report/table-cell" { colspan=2; value=runserver("avg rating " + convert('string', round(:table_qy:tot_rating, 2))); }
+	    }
+	s10_tot2 "report/table-row"
+	    {
+	    summary=yes;
+	    margintop=0; marginbottom=0;
+	    value=runserver("Price range: " + :table_qy:tot_min + " to " + :table_qy:tot_max);
+	    }
+	}
+    s10_out "report/data" { value=runserver("Out parameter out_qty: " + :this:out_qty + " (Expect: 931)\n"); }
+
+    // 11. Other query-driven tables.
+    s11_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n11. Empty, limited, parameterized, and nested tables\n"); }
+
+    s11_l1 "report/data" { value=runserver("Empty result, default nodatamsg (Expect: a no-data message and no header):\n"); }
+    s11a "report/table"
+	{
+	width=40; columns=2; widths=19,19; source=empty_qy; outerborder=0.01;
+	height=0;
+	s11a_h "report/table-row" { header=yes; s11a_h1 "report/table-cell" { value="FAIL: header"; } s11a_h2 "report/table-cell" { value="shown"; } }
+	s11a_r "report/table-row" { s11a_r1 "report/table-cell" { value=runserver(:empty_qy:id); } s11a_r2 "report/table-cell" { value=runserver(:empty_qy:product); } }
+	}
+
+    s11_l2 "report/data" { value=runserver("\nEmpty result, nodatamsg=no (Expect: nothing between this line and the next):\n"); }
+    s11b "report/table"
+	{
+	width=40; columns=2; widths=19,19; source=empty_qy; nodatamsg=no;
+	height=0;
+	s11b_r "report/table-row" { s11b_r1 "report/table-cell" { value=runserver(:empty_qy:id); } s11b_r2 "report/table-cell" { value=runserver(:empty_qy:product); } }
+	}
+
+    s11_l3 "report/data" { value=runserver("reclimit=3 (Expect: ids 1, 2, 3):\n"); }
+    s11c "report/table"
+	{
+	width=40; columns=2; widths=10,29; source=limit_qy; reclimit=3;
+	height=0;
+	s11c_r "report/table-row" { margintop=0; marginbottom=0; s11c_r1 "report/table-cell" { value=runserver(:limit_qy:id); } s11c_r2 "report/table-cell" { value=runserver(:limit_qy:product); } }
+	}
+
+    s11_l4 "report/data" { value=runserver("\n&p_region substitution in SQL (Expect: ids 23-33, all South):\n"); }
+    s11d "report/table"
+	{
+	width=40; columns=3; widths=8,20,10; source=param_qy;
+	height=0;
+	s11d_r "report/table-row" { margintop=0; marginbottom=0; s11d_r1 "report/table-cell" { value=runserver(:param_qy:id); } s11d_r2 "report/table-cell" { value=runserver(:param_qy:product); } s11d_r3 "report/table-cell" { value=runserver(:param_qy:qty); } }
+	}
+
+    s11_l5 "report/data" { value=runserver("\nSQL built by an expression (Expect: ids 1-4):\n"); }
+    s11e "report/table"
+	{
+	width=40; columns=2; widths=10,29; source=expr_qy;
+	height=0;
+	s11e_r "report/table-row" { margintop=0; marginbottom=0; s11e_r1 "report/table-cell" { value=runserver(:expr_qy:id); } s11e_r2 "report/table-cell" { value=runserver(:expr_qy:product); } }
+	}
+
+    s11_l6 "report/data" { value=runserver("\nNested tables (inner query uses the outer row):\n"); }
+    s11f "report/table"
+	{
+	width=80;
+	height=0;
+	columns=2;
+	widths=20,59;
+	colsep=1;
+	source=regions_qy;
+	outerborder=0.02;
+	innerborder=0.01;
+	s11f_h "report/table-row"
+	    {
+	    header=yes;
+	    style=bold;
+	    margintop=0; marginbottom=0;
+	    s11f_h1 "report/table-cell" { value=runserver("Region"); }
+	    s11f_h2 "report/table-cell" { value=runserver("Sales with qty >= 30"); }
+	    }
+	s11f_r "report/table-row"
+	    {
+	    margintop=0; marginbottom=0;
+	    s11f_c1 "report/table-cell"
+		{
+		s11f_c1d1 "report/data" { style=bold; value=runserver(:regions_qy:region + "\n"); }
+		s11f_c1d2 "report/data" { nullformat="(no manager)"; value=runserver(condition(char_length(:regions_qy:manager) > 0, :regions_qy:manager, null) + "\n"); }
+		s11f_c1d3 "report/data" { value=runserver(:regions_qy:target); }
+		}
+	    s11f_c2 "report/table-cell"
+		{
+		s11f_inner "report/table"
+		    {
+		    width=58;
+		    height=0;
+		    allowbreak=no;
+		    columns=4;
+		    widths=8,20,10,17;
+		    colsep=1;
+		    source=region_sales_qy;
+		    s11f_ih "report/table-row"
+			{
+			header=yes;
+			bottomborder=0.01;
+			margintop=0; marginbottom=0;
+			s11f_ih1 "report/table-cell" { style=italic; value=runserver("ID"); }
+			s11f_ih2 "report/table-cell" { style=italic; value=runserver("Product"); }
+			s11f_ih3 "report/table-cell" { style=italic; value=runserver("Qty"); }
+			s11f_ih4 "report/table-cell" { style=italic; value=runserver("Price"); }
+			}
+		    s11f_ir "report/table-row"
+			{
+			margintop=0; marginbottom=0;
+			s11f_ir1 "report/table-cell" { value=runserver(:region_sales_qy:id); }
+			s11f_ir2 "report/table-cell" { value=runserver(:region_sales_qy:product); }
+			s11f_ir3 "report/table-cell" { value=runserver(:region_sales_qy:qty); }
+			s11f_ir4 "report/table-cell" { value=runserver(:region_sales_qy:price); }
+			}
+		    }
+		}
+	    }
+	}
+
+    // 12. Multi-column sections.
+    s12_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n12. Multi-column sections\n"); }
+    s12_l1 "report/data" { value=runserver("Two balanced columns, colsep=4, with a separator line (Expect: the text is split evenly between the columns):\n"); }
+    s12a "report/section"
+	{
+	width=80;
+	height=0;
+	columns=2;
+	colsep=4;
+	border=0.02;
+	balanced=yes;
+	s12a_d "report/data" { value=runserver(replicate("Column text flows from one column into the next. ", 14)); }
+	}
+    s12_l2 "report/data" { value=runserver("\nThree balanced columns of records from a form, fontsize 9 (Expect: 24 records, 8 per column):\n"); }
+    s12b "report/section"
+	{
+	width=80;
+	height=0;
+	columns=3;
+	colsep=2;
+	balanced=yes;
+	fontsize=9;
+	s12b_f "report/form"
+	    {
+	    source=column_qy;
+	    reclimit=24;
+	    s12b_d "report/data" { value=runserver(convert('string', :column_qy:id) + ". " + :column_qy:region + " " + :column_qy:product + " x" + :column_qy:qty + "\n"); }
+	    }
+	}
+
+    // 13. Forms.
+    s13_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n13. Forms\n"); }
+
+    s13_l1 "report/data" { style=bold; value=runserver("One paragraph per record, directly on the page (Expect: one line per record):\n"); }
+    s13a "report/form"
+	{
+	source=form_regions_qy;
+	moneyformat="$###,###,##0";
+	s13a_d1 "report/data" { style=bold; value=runserver(:form_regions_qy:region); }
+	s13a_d2 "report/data" { value=runserver(" is managed by " + condition(char_length(:form_regions_qy:manager) > 0, :form_regions_qy:manager, "nobody") + " with a target of "); }
+	s13a_d3 "report/data" { value=runserver(:form_regions_qy:target); }
+	s13a_d4 "report/data" { value=runserver(" (form moneyformat, no cents).\n"); }
+	}
+
+    s13_l2 "report/data" { style=bold; value=runserver("\nreclimit=2, form style italic teal (Expect: East and North, italic teal):\n"); }
+    s13b "report/form"
+	{
+	source=form_regions_qy;
+	reclimit=2;
+	style=italic;
+	fontcolor="#006060";
+	s13b_d "report/data" { value=runserver("  " + :form_regions_qy:region + "\n"); }
+	}
+
+    s13_l3 "report/data" { style=bold; value=runserver("\nmultimode=parallel (Expect: four pairs, region beside product):\n"); }
+    s13c "report/form"
+	{
+	source=form_regions_qy, products_qy;
+	multimode=parallel;
+	s13c_d "report/data" { value=runserver("  " + :form_regions_qy:region + " / " + :products_qy:product + "\n"); }
+	}
+
+    s13_l4 "report/data" { style=bold; value=runserver("\nmultimode=nested in 4 balanced columns (Expect: each product once per region, 4 lines per column):\n"); }
+    s13d_sec "report/section"
+	{
+	width=80;
+	height=0;
+	columns=4;
+	colsep=1;
+	balanced=yes;
+	s13d "report/form"
+	    {
+	    source=form_regions_qy, products_qy;
+	    multimode=nested;
+	    s13d_d "report/data" { value=runserver(:form_regions_qy:region + " / " + :products_qy:product + "\n"); }
+	    }
+	}
+
+    s13_l5 "report/data" { style=bold; value=runserver("\nOuter/inner forms, inner reclimit=3 (Expect: the qty>=30 ids, three per line):\n"); }
+    s13e "report/form"
+	{
+	source=group_qy;
+	mode=outer;
+	s13e_d1 "report/data" { value=runserver("  >>> "); }
+	s13e_in "report/form"
+	    {
+	    source=group_qy;
+	    mode=inner;
+	    reclimit=3;
+	    s13e_d2 "report/data" { value=runserver(convert('string', :group_qy:id) + " "); }
+	    }
+	s13e_d3 "report/data" { value=runserver("<<<\n"); }
+	}
+
+    s13_l6 "report/data" { style=bold; value=runserver("\nInner table under an outer form, reclimit=3 (Expect: the same ids as above, one small table per group):\n"); }
+    s13g "report/form"
+	{
+	source=group_qy;
+	mode=outer;
+	s13g_t "report/table"
+	    {
+	    width=40;
+	    height=0;
+	    columns=2;
+	    widths=10,29;
+	    source=group_qy;
+	    mode=inner;
+	    reclimit=3;
+	    outerborder=0.01;
+	    s13g_r "report/table-row" { margintop=0; marginbottom=0; s13g_c1 "report/table-cell" { value=runserver(:group_qy:id); } s13g_c2 "report/table-cell" { value=runserver(:group_qy:region); } }
+	    }
+	}
+
+    s13f_off "report/data" { condition=runserver(not :this:multinested_test); value=runserver("\nmultimode=multinested: skipped, pass multinested_test=1 to run it.\n"); }
+    s13_l7 "report/data" { condition=runserver(:this:multinested_test); style=bold; value=runserver("\nmultimode=multinested (Expect: each region alone, then that region with each product):\n"); }
+    s13f "report/form"
+	{
+	condition=runserver(:this:multinested_test);
+	source=form_regions_qy, products_qy;
+	multimode=multinested;
+	s13f_d "report/data" { value=runserver(:form_regions_qy:region + " / " + isnull(:products_qy:product, "-") + "\n"); }
+	}
+
+    // 14. Images and SVG.
+    s14_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n14. Images and SVG\n"); }
+    s14_l1 "report/data" { value=runserver("RGB PNG, RGBA PNG, 8-bit grey PNG, and (with mono_png_test=1) 1-bit grey PNG:\n"); }
+    s14_row1 "report/area"
+	{
+	width=80;
+	height=6;
+	allowbreak=no;
+	s14_rgb "report/image" { x=0; y=0; width=12; height=6; source="/sys/images/lightsys_logo2d.png"; }
+	s14_rgba "report/image" { x=14; y=1; width=30; height=3; source="/sys/images/centrallix_374x66.png"; }
+	s14_g8 "report/image" { x=46; y=1; width=16; height=2; source="/samples/report_test/grey8.png"; }
+	s14_g1 "report/image" { condition=runserver(:this:mono_png_test); x=66; y=0; width=8; height=4; source="/samples/report_test/grey1.png"; }
+	}
+    s14_l1b "report/data" { value=runserver("\n4-bit grey PNG, 16-bit grey PNG (Expect: two left-to-right grey ramps, then one top-to-bottom ramp):\n"); }
+    s14_row2 "report/area"
+	{
+	width=80;
+	height=2;
+	allowbreak=no;
+	s14_g4 "report/image" { x=0; y=0; width=16; height=2; source="/samples/report_test/grey4.png"; }
+	s14_g16 "report/image" { x=20; y=0; width=16; height=2; source="/samples/report_test/grey16.png"; }
+	}
+    s14_l2 "report/data" { value=runserver("\nSVG (Expect: vector logo; some email clients do not show SVG):\n"); }
+    s14_svg "report/svg" { width=30; height=3; source="/sys/images/centrallix_374x66.svg"; }
+    // Inline images share one area with text.
+    s14_area "report/area"
+	{
+	width=80;
+	height=0;
+	s14_l3 "report/data" { value=runserver("\nInline image "); }
+	s14_inline "report/image" { width=2; height=1; source="/sys/images/CX.png"; }
+	s14_l4 "report/data" { value=runserver(" between two pieces of text on one line.\n"); }
+	s14_l5 "report/data" { value=runserver("Same image three times: "); }
+	s14_rep1 "report/image" { width=2; height=1; source="/sys/images/CX.png"; }
+	s14_rep2 "report/image" { width=2; height=1; source="/sys/images/CX.png"; }
+	s14_rep3 "report/image" { width=2; height=1; source="/sys/images/CX.png"; }
+	s14_l6 "report/data" { value=runserver("\nImage after a linked data element (Expect: only the word LightSys is a link, report/image has no url):\n"); }
+	s14_link_d "report/data" { url="https://lightsys.org"; value=runserver("LightSys "); }
+	s14_link_i "report/image" { width=2; height=1; source="/sys/images/CX.png"; }
+	s14_cond_i "report/image" { condition=runserver(1 = 0); width=10; height=2; source="/sys/images/lightsys_logo2d.png"; }
+	}
+
+    // 15. Charts.
+    s15_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n15. Charts\n"); }
+    s15_charts "report/area"
+	{
+	width=80;
+	height=34;
+	allowbreak=no;
+	fontsize=10;
+
+	s15_bar "report/chart"
+	    {
+	    source=chart_qy;
+	    x=0; y=0; width=39; height=16;
+	    chart_type=bar;
+	    title="Bar: two manual series";
+	    show_legend=yes;
+	    box=yes;
+	    s15_bar_x "report/chart-axis" { axis=x; label="Product"; }
+	    s15_bar_y "report/chart-axis" { axis=y; label="Count"; }
+	    s15_bar_s1 "report/chart-series" { x_value=runserver(:chart_qy:product); y_value=runserver(:chart_qy:qty); legend_name="Quantity"; color="#2060c0"; }
+	    s15_bar_s2 "report/chart-series" { y_value=runserver(:chart_qy:orders * 10); legend_name="Orders x10"; color="dark red"; show_value=no; }
+	    }
+
+	s15_line "report/chart"
+	    {
+	    source=chart_qy;
+	    x=41; y=0; width=39; height=16;
+	    chart_type=line;
+	    title="Line: scaled, rotated text, chart color";
+	    color="#c06000";
+	    scale=yes;
+	    text_rotation=yes;
+	    fontsize=8;
+	    s15_line_x "report/chart-axis" { axis=x; label="Product"; }
+	    s15_line_y "report/chart-axis" { axis=y; label="Quantity"; }
+	    s15_line_s "report/chart-series" { x_value=runserver(:chart_qy:product); y_value=runserver(:chart_qy:qty); show_percent=yes; }
+	    }
+
+	s15_pie "report/chart"
+	    {
+	    source=chart_qy;
+	    x=0; y=17; width=39; height=16;
+	    chart_type=pie;
+	    title="Pie: values in legend, percent on pie";
+	    show_legend=yes;
+	    zoom=0.8;
+	    s15_pie_x "report/chart-axis" { axis=x; label="Product"; fontsize=9; }
+	    s15_pie_y "report/chart-axis" { axis=y; label="Quantity"; }
+	    s15_pie_s "report/chart-series" { x_value=runserver(:chart_qy:product); y_value=runserver(:chart_qy:qty); show_value="legend"; show_percent="pie"; fontsize=8; }
+	    }
+
+	s15_auto "report/chart"
+	    {
+	    source=chart_series_qy;
+	    x=41; y=17; width=39; height=16;
+	    chart_type=bar;
+	    title="Auto series by region";
+	    show_legend=yes;
+	    palette="#1f77b4","#ff7f0e,#2ca02c","#d62728";
+	    x_value=runserver(:chart_series_qy:product);
+	    y_value=runserver(:chart_series_qy:qty);
+	    series_value=runserver(:chart_series_qy:region);
+	    legend_value=runserver(:chart_series_qy:region);
+	    s15_auto_x "report/chart-axis" { axis=x; label="Product"; }
+	    s15_auto_y "report/chart-axis" { axis=y; label="Quantity"; }
+	    }
+	}
+
+    // 16. Table inside an area, long enough to cross a page break.
+    s15_note "report/data" { value=runserver("Expect: bar chart with blue and dark red series; orange line chart; pie with percents on the slices and values in the legend; auto-series bars in four different colors for East, North, South, and West.\n"); }
+
+    s16_off "report/data" { condition=runserver(not :this:areabreak_test); value=runserver("\nTable inside an area across a page break: skipped, pass areabreak_test=1 to run it.\n"); }
+    s16 "report/area"
+	{
+	height=0;
+	condition=runserver(:this:areabreak_test);
+	width=80;
+	s16_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n16. Table inside an area across a page break\n"); }
+	s16_t1 "report/table"
+	    {
+	    width=80; columns=2; widths=10,69; source=limit_qy;
+	    height=0;
+	    s16_t1r "report/table-row" { margintop=0; marginbottom=0; s16_t1c1 "report/table-cell" { value=runserver(:limit_qy:id); } s16_t1c2 "report/table-cell" { value=runserver(:limit_qy:product); } }
+	    }
+	s16_t2 "report/table"
+	    {
+	    width=80; columns=2; widths=10,69; source=limit_qy;
+	    height=0;
+	    s16_t2r "report/table-row" { margintop=0; marginbottom=0; s16_t2c1 "report/table-cell" { value=runserver(:limit_qy:id); } s16_t2c2 "report/table-cell" { value=runserver(:limit_qy:product); } }
+	    }
+	}
+
+    // 17. One page per record.
+    s17 "report/form"
+	{
+	source=page_qy;
+	ffsep=yes;
+	s17_area "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    s17_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("17. Page per record: " + :page_qy:region + "\n"); }
+	    s17_d1 "report/data" { value=runserver("This is page " + :this:page + ". Expect: North, South, and West each start a new page.\n"); }
+	    s17_d2 "report/data" { condition=runserver(:page_qy:region = 'West'); style=bold; value=runserver("\nEnd of report.\n"); }
+	    }
+	}
+    }
