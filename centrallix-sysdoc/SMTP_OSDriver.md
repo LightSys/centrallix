@@ -68,7 +68,7 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time a Pending email is opened, the driver checks the results Postfix logged in `/var/log/maillog` and sets `status` to Sent or Error once Postfix finishes.  An email that is still Pending 6 days after `last_try_date` becomes Error.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time an email is opened or sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  An email that is still Pending 6 days after `last_try_date` becomes Error.
 
 Sent means the next mail server accepted the email for every recipient.
 
@@ -81,7 +81,7 @@ The SMTP driver does not implement the entire OS driver interface.  Its function
 ### A. Initialization
 The SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
 
-The driver also opens `/var/log/maillog` as root and reads the results of emails already handed to Postfix, so Centrallix must run as root.  To read a different log, set `mail_log` in an `smtp` block of `centrallix.conf`:
+The driver opens `/var/log/maillog` as root to read the results of emails handed to Postfix, so Centrallix must run as root.  To read a different log, set `mail_log` in an `smtp` block of `centrallix.conf`:
 
 ```
 smtp "system/config"
@@ -110,8 +110,8 @@ Internally, the SMTP driver opens objects as follows:
     - `smtp_internal_OpenEml()`:
         1.  Attempt to open the email file.
         2.  Create the email object (a struct and a MIME file) with default attributes.
-        3.  Open the email struct file and fill out the attribute array.
-        4.  If the email is Pending, update its send status.
+        3.  Record the results Postfix logged since the spool directory last read the mail log.
+        4.  Open the email struct file, update its send status if it is Pending, and fill out the attribute array.
 
 The `Close()` routine simply cleans up the structures used to store the SMTP object's attributes after opening as per normal ObjectSystem close.
 
@@ -186,6 +186,8 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after it becomes Sent or Error.  01 Jan 1900 means never, and Draft and Pending emails never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.  Read-only.
 | last_try_date                | The date/time of the most recent attempt to send this email (01 Jan 1900 until then).  Read-only.
 | last_try_status              | The result of the most recent attempt to send this email: None (not tried, or no failures), TempFail (a temporary failure, which Postfix retries while the email is Pending), or Fail (a permanent failure, set as soon as any recipient fails, even while the email is Pending).  Read-only.
+| queue_id                     | The Postfix queue ID of the most recent attempt, recorded from the mail log once Postfix queues the email.  Read-only.
+| rcpt_count                   | The number of recipients Postfix queued the most recent attempt for.  Read-only.
 | last_try_msg                 | The failure details of the most recent attempt to send this email: sendmail's output, or how many recipients were sent the email followed by the latest result (bounced, deferred, or expired) and server reply of each recipient that was not, such as `Sent to 1 of 2 recipients. b@example.com: bounced: 550 5.1.1 User unknown`.  Updated as Postfix reports results.  Empty if there are no failures.  Read-only.
 
 When the email is sent, `message_id` and each non-empty `header_*` attribute are written as headers, replacing any header of the same name in the content.
@@ -197,7 +199,10 @@ The SMTP driver does not support getting, calling, or adding methods.
 
 
 ## IV Limitations
-- The driver keeps the results it reads from the mail log for 7 days, and after a restart it only rereads the current log.  A Pending email that is not opened or queried before its results are dropped becomes Error with an unknown send status, even if it was sent, so check Pending emails regularly.
+- Running more than one Centrallix process on the same spool directory is undefined behavior.
+- After the mail log rotates, the driver finds the rest of the old log by its inode (such as `maillog-20261001`).  If logrotate compresses the old log as it rotates it (`compress` without `delaycompress`), or deletes it before an email in the spool is opened again, the results logged there after the last read are missed, so those emails become Error with an unknown send status.
+- Reading a large part of the mail log at once, such as on the first read, blocks Centrallix until it finishes.
+- An open email does not update if new results are detected after it was opened.
 - Keep Postfix's `maximal_queue_lifetime` (5 days by default) under 6 days, or an email Postfix is still retrying becomes Error with an unknown send status.
 - If Postfix uses a relay host, Sent means the relay accepted the email, so failures after the relay are not tracked.
 - A deferred email cannot be resent or cancelled until Postfix gives up on it (`maximal_queue_lifetime`), because setting `is_ready` fails while the email is Pending.
