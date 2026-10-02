@@ -164,6 +164,8 @@ long long test(char** tname)
 	if (!print_file || read_fd < 0)
 	    {
 	    fprintf(stderr, "  > could not open the file to print to\n");
+	    if (print_file) fdClose(print_file, 0);
+	    if (read_fd >= 0) close(read_fd);
 	    tmpFileDeInit(print_path);
 	    tmpFileDeInit(auth_path);
 	    return -1;

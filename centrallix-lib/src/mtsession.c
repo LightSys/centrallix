@@ -796,6 +796,7 @@ mssSetParamPtr(char* paramname, void* ptr)
 	if (is_new && xhAdd(&s->Params, p->Name, (void*)p) != 0)
 	    {
 	    mssError(1, "MSS", "Failed to add param pointer to xhash.");
+	    nmFree(p, sizeof(MtParam));
 	    goto error;
 	    }
 

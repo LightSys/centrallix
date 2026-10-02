@@ -199,6 +199,7 @@ long long test(char** tname)
 	if (!authCred(cred, PASSWORD) || auth_fd < 0)
 	    {
 	    fprintf(stderr, "  > could not prepare the auth file\n");
+	    if (auth_fd >= 0) close(auth_fd);
 	    tmpFileDeInit(auth_path);
 	    return -1;
 	    }
