@@ -803,7 +803,7 @@ mssSetParamPtr(char* paramname, void* ptr)
 	return 0;
 
     error:
-	mssError(1, "MSS", "Failed to set session parameter pointer.");
+	mssError(0, "MSS", "Failed to set session parameter pointer.");
 	return -1;
     }
 
