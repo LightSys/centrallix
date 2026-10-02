@@ -721,7 +721,7 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	param = libmime_GetMimeParam(inf->Header, attrName, paramName);
 	if (!param)
 	    {
-	    /** A missing header defaults to null. **/
+	    /** A missing parameter defaults to null. **/
 	    rval = 1;
 	    goto end;
 	    }
