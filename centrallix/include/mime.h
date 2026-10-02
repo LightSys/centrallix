@@ -201,7 +201,7 @@ int libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data,
 int libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype);
 
 int libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList);
-int libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param,  char* data);
+int libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data);
 int libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataList);
 int libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data);
 

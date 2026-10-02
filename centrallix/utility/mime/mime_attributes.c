@@ -62,7 +62,7 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 	/** Append all data up to the next semicolon. **/
 	if (hasParams)
 	    {
-	    token  = strtok_r(data, ";", &currentOffset);
+	    token = strtok_r(data, ";", &currentOffset);
 	    if (!token)
 		{
 		token = currentOffset;
@@ -422,7 +422,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
     pMimeParam param = NULL;
 
 	/** If the parameter argument is empty, we are creating an attribute. **/
-	if(!paramName || !strlen(paramName))
+	if (!paramName || !strlen(paramName))
 	    {
 	    /** Allocate the new attribute. **/
 	    attr = (pMimeAttr)nmMalloc(sizeof(MimeAttr));
@@ -501,7 +501,7 @@ libmime_CreateAttrParam(pMimeHeader this, char* attrName, char* paramName)
 		return NULL;
 		}
 
-	    /** Return the pointer to the relevant ptod.**/
+	    /** Return the pointer to the relevant ptod. **/
 	    return &param->Ptod;
 	    }
 
@@ -519,11 +519,12 @@ libmime_GetPtodFromHeader(pMimeHeader this, char* attr, char* param)
     {
     pTObjData* pPtod = NULL;
 
-    pPtod = libmime_GetPtodPointer(this, attr, param);
-    if (!pPtod)
-	{
-	return NULL;
-	}
+	pPtod = libmime_GetPtodPointer(this, attr, param);
+	if (!pPtod)
+	    {
+	    return NULL;
+	    }
+
     return *pPtod;
     }
 
@@ -545,12 +546,13 @@ libmime_GetPtodPointer(pMimeHeader this, char* attr, char* param)
 	/** If param, search the XHashTable, otherwise return default. **/
 	if (param && strlen(param))
 	    {
-		if (!((pMimeAttr)ptr)->Params.nRows) return NULL;
-		/** Get the param value **/
-		ptr = (pMimeParam)libmime_xhLookup(&((pMimeAttr)ptr)->Params, param);
-		if (!ptr) return NULL;
+	    if (!((pMimeAttr)ptr)->Params.nRows) return NULL;
 
-		return &((pMimeParam)ptr)->Ptod;
+	    /** Get the param value **/
+	    ptr = (pMimeParam)libmime_xhLookup(&((pMimeAttr)ptr)->Params, param);
+	    if (!ptr) return NULL;
+
+	    return &((pMimeParam)ptr)->Ptod;
 	    }
 
     /** No param, so give the default **/
@@ -654,7 +656,7 @@ libmime_GetStringArrayAttr(pMimeHeader this, char* attr, char* param, pStringVec
 	ptod = libmime_GetPtodFromHeader(this, attr, param);
 	if (!ptod) return -1;
 
-    *ret = ptod->Data.StringVec;
+	*ret = ptod->Data.StringVec;
 
     return 0;
     }
@@ -891,13 +893,13 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	memset(newVec, 0, newVecSize);
 
 	/** Copy the old string vector to the new one. **/
-	for(i = 0; i < stringVec->nStrings; i++)
+	for (i = 0; i < stringVec->nStrings; i++)
 	    {
 	    newVec[i] = stringVec->Strings[i];
 	    }
 
 	/** Append the contents of the XArray data list. **/
-	for(j = 0; j < dataList->nItems; j++)
+	for (j = 0; j < dataList->nItems; j++)
 	    {
 	    newVec[i+j] = nmSysStrdup((char*)xaGetItem(dataList, j));
 	    if (!newVec[i+j])
