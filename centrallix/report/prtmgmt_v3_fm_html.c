@@ -27,8 +27,8 @@
 /* Date:	April 4th, 2003						*/
 /* Description:	This module is the HTML formatter, which takes a page	*/
 /* 		structure and outputs structured HTML.  This is made	*/
-/* 		separate from the html formatter because HTML is not	*/
-/* 		a html formatting language.				*/
+/* 		separate from the strict formatter because HTML is not	*/
+/* 		a strict formatting language.				*/
 /************************************************************************/
 
 #include <fcntl.h>
@@ -1122,7 +1122,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const int w = max(obj->Width * PRT_HTMLFM_XPIXEL, 1);
 		const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
 
-		// Allocate image buffer.
+		/** Allocate image buffer. **/
 		imgBuf.buffer = nmMalloc(MAX_IMAGE_SIZE);
 		if (UNLIKELY(imgBuf.buffer == NULL))
 		    {
@@ -1146,7 +1146,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Encode the image to base64. **/
-		base64Image = (base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size));
+		base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
 		if (UNLIKELY(base64Image == NULL)) goto error_image;
 		base64Size = strlen(base64Image) + 1;
 
@@ -1180,7 +1180,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    char* extension = (is_png) ? "png"       : "svg";
 
 		    /** Write the src value. **/
-		    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "cid:image_%d", id) < 0))
+		    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "cid:image_%lu", id) < 0))
 			{
 			mssError(0, "PRT", "Failed to write image source.");
 			goto error_image;
@@ -1265,7 +1265,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    goto error_image;
 		    }
 
-		// Clean up.
+		/** Clean up. **/
 		nmFree(base64Image, base64Size);
 		base64Image = NULL;
 
@@ -1482,7 +1482,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 			    "</tr><tr>"
 			    "<td style=\"height:%dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td>",
-			   (int)((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL)
+			    (int)((subobj->Y - last_height) * PRT_HTMLFM_YPIXEL)
 			) < 0))
 			    {
 			    mssError(0, "PRT", "Failed to write spacer row.");

@@ -148,10 +148,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		else 
 		    widths[i] = xset[i+1] - xset[i];
 
-		/** We could use relative 'n*' formatting; older browsers will interpret as pixel
-		 ** width, newer ones as relative width, but doesn't seem to work right
-		 ** with newer browsers.
-		 **/
+		/** Write the column's relative 'n*' width. **/
 		if (UNLIKELY(prt_htmlfm_OutputPrintf(context,"<col width=\"%d*\">\n",(int)(widths[i]*PRT_HTMLFM_XPIXEL+0.0001)) < 0))
 		    {
 		    mssError(0, "PRT", "Failed to write column #%d/%d width.", i + 1, n_xset);
@@ -368,7 +365,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		content_bottom = scan->Y + scan->Height;
 	    }
 
-	/** Pad the area out to the content bottom with a trailing spacer row. **/
+	/** Pad from the content bottom to the area bottom with a trailing spacer row. **/
 	if (area->ContentTail && (content_bottom + 0.01 < area->Height))
 	    {
 	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
