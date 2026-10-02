@@ -236,6 +236,7 @@ struct
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
     XHashTable		Spools;				/* Hash of spool_dir to pSmtpSpool */
     char		LogPath[PATH_MAX];		/* Path of the mail log */
+    int			LockDepth;			/* Nesting depth of smtp_internal_Lock() */
     }
     SMTP_INF;
 
@@ -744,6 +745,35 @@ smtp_internal_AddDefault(pXArray defaults, char* name, int type, int intVal, cha
     }
 
 
+/*** smtp_internal_Lock - stop other threads from running until the matching
+ *** smtp_internal_Unlock().  File I/O lets other threads run, so this keeps
+ *** them from changing a struct or the mail log cursor while the current
+ *** thread reads and writes it.  Calls may nest.  Never sleep or wait for
+ *** another process while locked.
+ ***/
+void
+smtp_internal_Lock(void)
+    {
+	if (SMTP_INF.LockDepth++ == 0)
+	    thLock();
+
+    return;
+    }
+
+
+/*** smtp_internal_Unlock - let other threads run again, once every
+ *** smtp_internal_Lock() has a matching unlock.
+ ***/
+void
+smtp_internal_Unlock(void)
+    {
+	if (--SMTP_INF.LockDepth == 0)
+	    thUnlock();
+
+    return;
+    }
+
+
 /*** smtp_internal_SpoolPath - build the path of a file of an email in a
  *** spool directory, by replacing the extension of the email name.
  ***
@@ -1030,7 +1060,8 @@ smtp_internal_ClearRcpts(char* structPath)
     int i;
     int rval = -1;
 
-	/** Read the struct. **/
+	/** Read the struct, keeping other threads out until it is written. **/
+	smtp_internal_Lock();
 	found = smtp_internal_ReadStruct(structPath, &emailStruct);
 	if (UNLIKELY(found == 0))
 	    mssError(1, "SMTP", "Failed to clear the recipient results of missing email struct \"%s\".", structPath);
@@ -1054,6 +1085,7 @@ smtp_internal_ClearRcpts(char* structPath)
 	rval = 0;
 
     end:
+	smtp_internal_Unlock();
 	if (emailStruct != NULL) stFreeInf(emailStruct);
 
 	return rval;
@@ -2152,6 +2184,7 @@ smtp_internal_SendEmail(pSmtpData inf)
     char* tryMsgStr = "";
     ObjData pod;
     bool recordFailed = false;
+    bool locked = false;
     int pending;
     int rval = -1;
 
@@ -2170,6 +2203,10 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
 
+	/** Keep other threads out until this try is recorded. **/
+	smtp_internal_Lock();
+	locked = true;
+
 	/** Refuse to send an email that is already Pending, even from another open. **/
 	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
 	if (UNLIKELY(pending != 0))
@@ -2178,6 +2215,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 		mssError(1, "SMTP", "Failed to send \"%s\": it is already Pending.", inf->Name);
 	    else
 		mssError(0, "SMTP", "Failed to check whether \"%s\" is already Pending.", inf->Name);
+	    smtp_internal_Unlock();
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
 
@@ -2245,6 +2283,10 @@ smtp_internal_SendEmail(pSmtpData inf)
 	if (spool->Loaded && messageId != NULL && UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, messageId, inf->Name) != 0))
 	    goto end;
 
+	/** Let other threads run while sendmail runs. **/
+	smtp_internal_Unlock();
+	locked = false;
+
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
 	    goto end;
@@ -2294,6 +2336,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 		mssError(1, "SMTP", "Failed to send \"%s\": %s", inf->Name, tryMsgStr);
 		}
 	    }
+	if (locked) smtp_internal_Unlock();
 
 	if (tryMsg != NULL) xsFree(tryMsg);
 
@@ -3381,6 +3424,9 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
     int i;
     int rval = -1;
 
+	/** Keep other threads out until the read is done. **/
+	smtp_internal_Lock();
+
 	/** Load the spool directory. **/
 	spool = smtp_internal_GetSpool(spoolDir);
 	if (UNLIKELY(spool == NULL))
@@ -3508,6 +3554,7 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	    smtp_internal_FreeLogBatch(&batch);
 	else if (namesInitialized)
 	    xhDeInit(&batch.ByName);
+	smtp_internal_Unlock();
 
 	return rval;
     }
@@ -4108,6 +4155,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     pStructInf emailStructure = NULL;
     char* status = NULL;
     bool changed;
+    bool locked = false;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -4247,6 +4295,10 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
+	/** Keep other threads out until the struct is updated. **/
+	smtp_internal_Lock();
+	locked = true;
+
 	/** Open the email structure file. **/
 	emailStructureFile = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
 	if (UNLIKELY(emailStructureFile == NULL))
@@ -4279,6 +4331,8 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 		mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
 		}
 	    }
+	smtp_internal_Unlock();
+	locked = false;
 
 	/** Get the structure's attributes **/
 	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf->Attributes, inf->AttributeNames) != 0))
@@ -4300,6 +4354,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	if (UNLIKELY(fd != NULL)) fdClose(fd, 0);
 	if (LIKELY(emailStructureFile != NULL)) fdClose(emailStructureFile, 0);
 	if (LIKELY(emailStructure != NULL)) stFreeInf(emailStructure);
+	if (locked) smtp_internal_Unlock();
 
 	return rval;
     }
@@ -5124,6 +5179,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 
     pFile emlStructFileRead = NULL;
     pStructInf emlStruct = NULL;
+    bool locked = false;
 
     int rval = -1;
 
@@ -5252,6 +5308,10 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    }
 	else if (inf->Type == SMTP_T_EML)
 	    {
+	    /** Keep other threads out until the struct is written. **/
+	    smtp_internal_Lock();
+	    locked = true;
+
 	    /** Open the email structure file. **/
 	    emlStructFileRead = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
 	    if (UNLIKELY(emlStructFileRead == NULL))
@@ -5297,6 +5357,8 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    /** Write changes to the email struct file. **/
 	    if (UNLIKELY(smtp_internal_WriteStruct(inf->EmailStructPath.String, emlStruct) != 0))
 		goto end;
+	    smtp_internal_Unlock();
+	    locked = false;
 
 	    /** If the email is ready to send, send it. **/
 	    if (strcmp(attrname, "is_ready") == 0 && val->Integer == 1)
@@ -5321,6 +5383,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	/** Free appropriate memory and close appropriate files. **/
 	if (UNLIKELY(emlStructFileRead != NULL)) fdClose(emlStructFileRead, 0);
 	if (emlStruct != NULL) stFreeInf(emlStruct);
+	if (locked) smtp_internal_Unlock();
 
 	return rval;
     }
@@ -5386,6 +5449,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
     pSnNode rootNode = NULL;
     pFile emlStructFileRead = NULL;
     pStructInf emlStruct = NULL;
+    bool locked = false;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -5515,6 +5579,10 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    }
 	else if (inf->Type == SMTP_T_EML)
 	    {
+	    /** Keep other threads out until the struct is written. **/
+	    smtp_internal_Lock();
+	    locked = true;
+
 	    /** Open the email structure file. **/
 	    emlStructFileRead = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
 	    if (UNLIKELY(emlStructFileRead == NULL))
@@ -5578,6 +5646,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	if (UNLIKELY(unstoredAttr != NULL)) smtp_internal_ClearAttribute((char*)unstoredAttr, NULL);
 	if (emlStructFileRead != NULL) fdClose(emlStructFileRead, 0);
 	if (emlStruct != NULL) stFreeInf(emlStruct);
+	if (locked) smtp_internal_Unlock();
 
 	return rval;
     }
