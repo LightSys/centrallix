@@ -385,7 +385,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	pid = fork();
 	if (UNLIKELY(pid < 0))
 	    {
-	    mssErrorErrno(1, "SMTP", "Unable to fork (1).");
+	    mssErrorErrno(1, "SMTP", "Failed to fork (1).");
 	    goto end;
 	    }
 	if (pid == 0)
@@ -431,7 +431,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    pid = fork();
 	    if (UNLIKELY(pid < 0))
 		{
-		fprintf(stderr, "SMTP: Unable to fork (2). (%s)\n", strerror(errno));
+		fprintf(stderr, "SMTP: Failed to fork (2). (%s)\n", strerror(errno));
 		_exit(EXIT_FAILURE);
 		}
 	    if (pid == 0)
@@ -477,7 +477,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 		/** Supervise sendmail. **/
 		if (UNLIKELY(pid < 0))
 		    {
-		    dprintf(resultFd, "SMTP: Unable to fork (3). (%s)\n", strerror(errno));
+		    dprintf(resultFd, "SMTP: Failed to fork (3). (%s)\n", strerror(errno));
 		    snprintf(result, sizeof(result), "error");
 		    }
 		else
@@ -2144,7 +2144,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 		    if (UNLIKELY(objCurrentDate(&now) != 0))
 			{
 			mssError(1, "SMTP",
-			    "Unable to obtain the current date for the Date header."
+			    "Failed to get the current date for the Date header."
 			);
 			goto end;
 			}
@@ -4151,7 +4151,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    if (i >= 100)
 		{
 		mssError(1, "SMTP",
-		    "Unable to auto-generate a unique filename. May have exceeded allowable range of filenames."
+		    "Failed to auto-generate a unique filename. May have exceeded allowable range of filenames."
 		);
 		goto end;
 		}
@@ -4222,7 +4222,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    currentAttr = (pSmtpAttribute)xaGetItem(&SMTP_INF.DefaultEmailAttributes, i);
 	    if (UNLIKELY(currentAttr == NULL))
 		{
-		mssError(1, "SMTP", "Unable to get default attribute %d.", i);
+		mssError(1, "SMTP", "Failed to get default attribute %d.", i);
 		goto end;
 		}
 	    ASSERTMAGIC(currentAttr, MGK_SMTP_ATTRIBUTE);
@@ -4232,7 +4232,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    if (UNLIKELY(createdStruct == NULL))
 		{
 		mssError(1, "SMTP",
-		    "Unable to add new attribute (%s) to the email struct.",
+		    "Failed to add new attribute (%s) to the email struct.",
 		    currentAttr->Name
 		);
 		goto end;
@@ -4242,7 +4242,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    if (UNLIKELY(stSetAttrValue(createdStruct, currentAttr->Type, &currentAttr->Value, 0) != 0))
 		{
 		mssError(1, "SMTP",
-		    "Unable to write to the default attribute (%s).",
+		    "Failed to write to the default attribute (%s).",
 		    currentAttr->Name
 		);
 		goto end;
@@ -4272,7 +4272,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	createdStruct = stAddAttr(emailStruct, "message_id");
 	if (UNLIKELY(createdStruct == NULL))
 	    {
-	    mssError(1, "SMTP", "Unable to add new attribute (message_id) to the email struct.");
+	    mssError(1, "SMTP", "Failed to add new attribute (message_id) to the email struct.");
 	    goto end;
 	    }
 
@@ -4280,7 +4280,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	pod.String = message_id;
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_STRING, &pod, 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Unable to write to the default attribute (message_id).");
+	    mssError(1, "SMTP", "Failed to write to the default attribute (message_id).");
 	    goto end;
 	    }
 
@@ -4299,14 +4299,14 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	createdStruct = stAddAttr(emailStruct, "expire_date");
 	if (UNLIKELY(createdStruct == NULL))
 	    {
-	    mssError(1, "SMTP", "Unable to add new attribute (expire_date) to the email struct.");
+	    mssError(1, "SMTP", "Failed to add new attribute (expire_date) to the email struct.");
 	    goto end;
 	    }
 
 	/** Set the default expire_date value. **/
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_DATETIME, POD(&attrDate), 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Unable to write to the default attribute (expire_date).");
+	    mssError(1, "SMTP", "Failed to write to the default attribute (expire_date).");
 	    goto end;
 	    }
 	nmFree(attrDate, sizeof(DateTime));
@@ -4328,7 +4328,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (UNLIKELY(createdStruct == NULL))
 	    {
 	    mssError(1, "SMTP",
-		"Unable to add new attribute (first_try_date) to the email struct."
+		"Failed to add new attribute (first_try_date) to the email struct."
 	    );
 	    goto end;
 	    }
@@ -4336,7 +4336,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	/** Set the default first_try_date value. **/
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_DATETIME, POD(&attrDate), 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Unable to write to the default attribute (first_try_date).");
+	    mssError(1, "SMTP", "Failed to write to the default attribute (first_try_date).");
 	    goto end;
 	    }
 	nmFree(attrDate, sizeof(DateTime));
@@ -4357,14 +4357,14 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	createdStruct = stAddAttr(emailStruct, "last_try_date");
 	if (UNLIKELY(createdStruct == NULL))
 	    {
-	    mssError(1, "SMTP", "Unable to add new attribute (last_try_date) to the email struct.");
+	    mssError(1, "SMTP", "Failed to add new attribute (last_try_date) to the email struct.");
 	    goto end;
 	    }
 
 	/** Set the default last_try_date value. **/
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_DATETIME, POD(&attrDate), 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Unable to write to the default attribute (last_try_date).");
+	    mssError(1, "SMTP", "Failed to write to the default attribute (last_try_date).");
 	    goto end;
 	    }
 	nmFree(attrDate, sizeof(DateTime));
@@ -4375,7 +4375,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (UNLIKELY(emailStructFile == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP",
-		"Unable to create the email struct file (%s).",
+		"Failed to create the email struct file (%s).",
 		inf->EmailStructPath.String
 	    );
 	    goto end;
@@ -4478,7 +4478,7 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	    if (UNLIKELY(node != NULL))
 		{
 		mssError(1, "SMTP",
-		    "Node exists and CREAT and EXCL flags are set. Cannot create new node."
+		    "Failed to create new node: it exists and CREAT and EXCL flags are set."
 		);
 		goto error;
 		}
@@ -4641,13 +4641,13 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    strlen(spoolDir->Value.String)
 	) != 0))
 	    {
-	    mssError(1, "SMTP", "Unable to copy spool directory path into the email path.");
+	    mssError(1, "SMTP", "Failed to copy spool directory path into the email path.");
 	    goto end;
 	    }
 
 	if (UNLIKELY(xsConcatPrintf(&inf->EmailPath, "/%s", inf->Name) < 0))
 	    {
-	    mssError(1, "SMTP", "Unable to append email name to email path.");
+	    mssError(1, "SMTP", "Failed to append email name \"%s\" to email path.", inf->Name);
 	    goto end;
 	    }
 
@@ -4927,7 +4927,7 @@ smtp_internal_Close(pSmtpData inf)
 	    {
 	    if (UNLIKELY(fdClose(inf->ContentFile, 0) != 0))
 		{
-		mssError(1, "SMTP", "Unable to close email file (%s).", inf->EmailPath.String);
+		mssError(1, "SMTP", "Failed to close email file (%s).", inf->EmailPath.String);
 		rval = -1;
 		}
 	    }
@@ -5003,14 +5003,14 @@ smtpCreate(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTr
 	    node = snReadNode(obj);
 	    if (UNLIKELY(node != NULL))
 		{
-		mssError(1, "SMTP", "Unable to create root node because it already exists.");
+		mssError(1, "SMTP", "Failed to create root node because it already exists.");
 		goto error;
 		}
 
 	    node = smtp_internal_CreateRootNode(obj, mask);
 	    if (UNLIKELY(node == NULL))
 		{
-		mssError(0, "SMTP", "Unable to create root node.");
+		mssError(0, "SMTP", "Failed to create root node.");
 		goto error;
 		}
 	    }
@@ -5123,7 +5123,7 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	/** Read the contents of emails directly. **/
 	if (UNLIKELY(inf->Type != SMTP_T_EML))
 	    {
-	    mssError(1, "SMTP", "Unable to read content from smtp object of type %d.", inf->Type);
+	    mssError(1, "SMTP", "Failed to read content from smtp object of type %d.", inf->Type);
 	    return -1;
 	    }
 
@@ -5164,7 +5164,7 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	/** Write the contents of emails directly. **/
 	if (UNLIKELY(inf->Type != SMTP_T_EML))
 	    {
-	    mssError(1, "SMTP", "Unable to write content to smtp object of type %d.", inf->Type);
+	    mssError(1, "SMTP", "Failed to write content to smtp object of type %d.", inf->Type);
 	    return -1;
 	    }
 
@@ -5210,7 +5210,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy = (pSmtpQueryData)nmMalloc(sizeof(SmtpQueryData));
 	if (UNLIKELY(qy == NULL))
 	    {
-	    mssError(1,"SMTP","Unable to allocate query object");
+	    mssError(1, "SMTP", "Failed to allocate query object.");
 	    goto error;
 	    }
 	memset(qy, 0, sizeof(SmtpQueryData));
@@ -5248,7 +5248,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 	else if (inf->Type == SMTP_T_EML)
 	    {
-	    mssError(1, "SMTP", "Unable to query on system/smtp-message type objects");
+	    mssError(1, "SMTP", "Failed to query system/smtp-message type objects.");
 	    goto error;
 	    }
 
@@ -5330,7 +5330,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    inf = (pSmtpData)nmMalloc(sizeof(SmtpData));
 	    if (UNLIKELY(inf == NULL))
 		{
-		mssError(1, "SMTP", "Unable to create smtp data object");
+		mssError(1, "SMTP", "Failed to create smtp data object.");
 		goto error;
 		}
 	    memset(inf, 0, sizeof(SmtpData));
@@ -5349,7 +5349,7 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    }
 	else if (qy->Data->Type == SMTP_T_EML)
 	    {
-	    mssError(1, "SMTP", "Unable to query smtp-message data objects");
+	    mssError(1, "SMTP", "Failed to query smtp-message data objects.");
 	    goto error;
 	    }
 
@@ -5388,7 +5388,7 @@ smtpQueryClose(void* qy_v, pObjTrxTree* oxt)
 	    {
 	    if (UNLIKELY(closedir(qy->Directory) != 0))
 		{
-		mssErrorErrno(1,"SMTP","Unable to close directory");
+		mssErrorErrno(1, "SMTP", "Failed to close spool directory.");
 		rval = -1;
 		}
 	    }
@@ -5449,7 +5449,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	if (!inf_v)
 	    {
-	    mssError(1, "SMTP", "Cannot get attribute '%s' of a NULL object.", attrname);
+	    mssError(1, "SMTP", "Failed to get attribute '%s' of a NULL object.", attrname);
 	    return -1;
 	    }
 
@@ -5565,7 +5565,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 		default:
 		    mssError(1, "SMTP",
-			"Cannot get attribute '%s' of unsupported type %s.",
+			"Failed to get attribute '%s' of unsupported type %s.",
 			attrname, objTypeToStr(attr->Type)
 		    );
 		    return -1;
@@ -5669,7 +5669,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    /** Add the attribute if it is not found. **/
 	    if (UNLIKELY(smtp_internal_AddAttr(inf, attrname, datatype, val, oxt) != 0))
 		{
-		mssError(0, "SMTP", "Unable to create the requested attribute object.");
+		mssError(0, "SMTP", "Failed to create the requested attribute '%s'.", attrname);
 		goto end;
 		}
 
@@ -5677,7 +5677,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
 	    if (UNLIKELY(attr == NULL))
 		{
-		mssError(1, "SMTP", "Unable to open requested attribute object.");
+		mssError(1, "SMTP", "Failed to open the requested attribute '%s'.", attrname);
 		goto end;
 		}
 	    }
@@ -5687,8 +5687,8 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	if (attr->Type != datatype)
 	    {
 	    mssError(1, "SMTP",
-		"Attempt to assign invalid data type to attribute. (Assigning %s to %s)",
-		objTypeToStr(datatype), objTypeToStr(attr->Type)
+		"Attempt to assign invalid data type to attribute '%s'. (Assigning %s to %s)",
+		attrname, objTypeToStr(datatype), objTypeToStr(attr->Type)
 	    );
 	    goto end;
 	    }
@@ -5696,7 +5696,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	/** We don't yet support null values **/
 	if (UNLIKELY(val == NULL))
 	    {
-	    mssError(1, "SMTP", "Error setting attribute %s to NULL (not supported).", attrname);
+	    mssError(1, "SMTP", "Failed to set attribute '%s' to NULL (not supported).", attrname);
 	    goto end;
 	    }
 
@@ -5740,7 +5740,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    rootNode = snReadNode(inf->Obj->Prev);
 	    if (UNLIKELY(rootNode == NULL))
 		{
-		mssError(0, "SMTP", "Unable to open root node for writing");
+		mssError(0, "SMTP", "Failed to open root node for writing.");
 		goto end;
 		}
 	    ASSERTMAGIC(rootNode, MGK_STNODE);
@@ -5754,7 +5754,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 		}
 	    if (UNLIKELY(stSetAttrValue(attrStruct, datatype, val, 0) != 0))
 		{
-		mssError(1, "SMTP", "Unable to write to the given attribute");
+		mssError(1, "SMTP", "Failed to write to attribute '%s'.", attrname);
 		goto end;
 		}
 
@@ -5764,7 +5764,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    /** Write the changes to the root node back to the OS tree. **/
 	    if (UNLIKELY(snWriteNode(inf->Obj->Prev, rootNode) != 0))
 		{
-		mssError(0, "SMTP", "Unable to write data to the root node");
+		mssError(0, "SMTP", "Failed to write data to the root node.");
 		goto end;
 		}
 	    }
@@ -5805,7 +5805,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 		}
 	    if (UNLIKELY(stSetAttrValue(attrStruct, datatype, val, 0) < 0))
 		{
-		mssError(1, "SMTP", "Unable to set attribute '%s'", attrname);
+		mssError(1, "SMTP", "Failed to set attribute '%s'.", attrname);
 		goto end;
 		}
 
@@ -5986,7 +5986,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 
 	    default:
 		mssError(1, "SMTP",
-		    "Cannot add attribute '%s' of unsupported type %s.",
+		    "Failed to add attribute '%s' of unsupported type %s.",
 		    attr->Name, objTypeToStr(attr->Type)
 		);
 		goto end;
@@ -5995,7 +5995,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	/** Add the attribute to the attribute hash and the attribute name list. **/
 	if (UNLIKELY(xhAdd(inf->Attributes, attr->Name, (char*)attr) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to add attribute (it may be a duplicate).");
+	    mssError(1, "SMTP", "Failed to add attribute '%s' (it may be a duplicate).", attr->Name);
 	    goto end;
 	    }
 	if (UNLIKELY(xaAddItem(inf->AttributeNames, attr->Name) < 0))
@@ -6013,7 +6013,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    rootNode = snReadNode(inf->Obj->Prev);
 	    if (UNLIKELY(rootNode == NULL))
 		{
-		mssError(0, "SMTP", "Unable to open root node.");
+		mssError(0, "SMTP", "Failed to open root node.");
 		goto end;
 		}
 	    ASSERTMAGIC(rootNode, MGK_STNODE);
@@ -6022,14 +6022,14 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    createdStruct = stAddAttr(rootNode->Data, attr->Name);
 	    if (UNLIKELY(createdStruct == NULL))
 		{
-		mssError(1, "SMTP", "Unable to add new attribute to the root node.");
+		mssError(1, "SMTP", "Failed to add new attribute '%s' to the root node.", attr->Name);
 		goto end;
 		}
 
 	    /** Set the default attribute value. **/
 	    if (UNLIKELY(stSetAttrValue(createdStruct, attr->Type, &attr->Value, 0) != 0))
 		{
-		mssError(1, "SMTP", "Unable to write to the given attribute");
+		mssError(1, "SMTP", "Failed to write to attribute '%s'.", attr->Name);
 		goto end;
 		}
 
@@ -6039,7 +6039,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    /** Write the changes to the root node. **/
 	    if (UNLIKELY(snWriteNode(inf->Obj->Prev, rootNode) != 0))
 		{
-		mssError(0, "SMTP", "Unable to write root node.");
+		mssError(0, "SMTP", "Failed to write root node.");
 		goto end;
 		}
 	    }
@@ -6095,7 +6095,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    /** Set the attribute value. **/
 	    if (UNLIKELY(stSetAttrValue(createdStruct, attr->Type, &attr->Value, 0) < 0))
 		{
-		mssError(1, "SMTP", "Unable to write to the given attribute '%s'", attr->Name);
+		mssError(1, "SMTP", "Failed to write to attribute '%s'.", attr->Name);
 		goto end;
 		}
 

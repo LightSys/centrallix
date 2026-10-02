@@ -167,12 +167,12 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     lex = mlxGenericSession(obj->Prev, objRead, MLX_F_LINEONLY|MLX_F_NODISCARD|MLX_F_EOF);
     if (libmime_ParseHeader(lex, msg, 0, 0) < 0)
 	{
-	mssError(0, "MIME", "There was an error parsing message header in mimeOpen().");
+	mssError(0, "MIME", "Failed to parse the header of \"%s\".", objFilePath(obj->Prev));
 	goto error;
 	}
     if (libmime_ParseMultipartBody(lex, msg, msg->MsgSeekStart, msg->MsgSeekEnd) < 0)
 	{
-	mssError(0, "MIME", "There was an error parsing message body in mimeOpen().");
+	mssError(0, "MIME", "Failed to parse the body of \"%s\".", objFilePath(obj->Prev));
 	goto error;
 	}
     mlxCloseSession(lex);

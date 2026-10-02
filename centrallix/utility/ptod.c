@@ -57,7 +57,7 @@ ptodAllocate()
 	ptod = (pTObjData)nmMalloc(sizeof(TObjData));
 	if (!ptod)
 	    {
-	    mssError(1, "PTOD", "Could not allocate the ptod.");
+	    mssError(1, "PTOD", "Failed to allocate the ptod.");
 	    return NULL;
 	    }
 
@@ -184,7 +184,7 @@ ptodCreateString(char* data, int flags)
 	    datPtod = (pTObjData)nmSysMalloc(sizeof(TObjData) + strSize);
 	    if (!datPtod)
 		{
-		mssError(1, "PTOD", "Could not allocate string ptod object.");
+		mssError(1, "PTOD", "Failed to allocate string ptod object.");
 		return NULL;
 		}
 	    memset(datPtod, 0, sizeof(TObjData) + strSize);

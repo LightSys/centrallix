@@ -65,7 +65,7 @@ libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst, int src
 	/** First 6 bits of source[0] --> first byte dst. **/
 	if (maxdst < 5)
 	    {
-	    mssError(1,"MIME","Could not encode MIME data field - internal resources exceeded");
+	    mssError(1,"MIME","Failed to encode MIME data field - internal resources exceeded");
 	    return -1;
 	    }
 	dst[0] = b64[src[0]>>2];
@@ -121,7 +121,7 @@ libmime_DecodeBase64(char* dst, char* src, int maxdst)
 	/** First 6 bits. **/
 	if (maxdst < 4) 
 	    {
-	    mssError(1,"MIME","Could not decode MIME data field - internal resources exceeded");
+	    mssError(1,"MIME","Failed to decode MIME data field - internal resources exceeded");
 	    return -1;
 	    }
 	ptr = strchr(b64,src[0]);

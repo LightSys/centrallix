@@ -813,7 +813,7 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    if (!ptod)
 		{
-		mssError(0, "MIME", "Failed to create the string array attribute");
+		mssError(0, "MIME", "Failed to create string array attribute \"%s\".", attr);
 		return -1;
 		}
 	    }
@@ -874,7 +874,7 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    if (!ptod)
 		{
-		mssError(0, "MIME", "Failed to create the string array attribute");
+		mssError(0, "MIME", "Failed to create string array attribute \"%s\".", attr);
 		return -1;
 		}
 	    }
@@ -937,7 +937,7 @@ libmime_AddArrayAttr(pMimeHeader this, char* attr, char* param, void* data)
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    if (!ptod)
 		{
-		mssError(0, "MIME", "Failed to create the array attribute");
+		mssError(0, "MIME", "Failed to create array attribute \"%s\".", attr);
 		return -1;
 		}
 	    }
@@ -971,7 +971,7 @@ libmime_AppendArrayAttr(pMimeHeader this, char* attr, char* param, pXArray dataL
 	    ptod = libmime_GetPtodFromHeader(this, attr, param);
 	    if (!ptod)
 		{
-		mssError(0, "MIME", "Failed to create the array attribute");
+		mssError(0, "MIME", "Failed to create array attribute \"%s\".", attr);
 		return -1;
 		}
 	    }

@@ -505,7 +505,7 @@ libmime_ParseMultipartBody(pLxSession lex, pMimeHeader msg, int start, int end)
     /** Check recursion **/
     if (thExcessiveRecursion())
 	{
-	mssError(1, "MIME", "Could not parse multipart body: resource exhaustion occurred");
+	mssError(1, "MIME", "Failed to parse multipart body: resource exhaustion occurred");
 	return -1;
 	}
 

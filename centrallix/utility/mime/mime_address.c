@@ -75,7 +75,7 @@ libmime_ParseAddressList(char *buf, pXArray xary)
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
-	    mssError(1, "MIME", "Could not parse address list: resource exhaustion occurred");
+	    mssError(1, "MIME", "Failed to parse address list: resource exhaustion occurred");
 	    return -1;
 	    }
 

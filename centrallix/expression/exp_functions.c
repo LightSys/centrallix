@@ -4499,12 +4499,12 @@ int exp_fn_path_element(pExpression tree, pParamObjects objlist, pExpression i0,
 	}
     if (strpbrk(i0->String, "/?&="))
 	{
-	mssError(1, "EXP", "illegal character in string provided to path_element()");
+	mssError(1, "EXP", "illegal character in string '%s' provided to path_element()", i0->String);
 	return -1;
 	}
     if (strstr(i0->String, "%2f") || strstr(i0->String, "%2F"))
 	{
-	mssError(1, "EXP", "illegal character in string provided to path_element()");
+	mssError(1, "EXP", "illegal character in string '%s' provided to path_element()", i0->String);
 	return -1;
 	}
     if (!strcmp(i0->String, ""))
@@ -4516,7 +4516,7 @@ int exp_fn_path_element(pExpression tree, pParamObjects objlist, pExpression i0,
 	{
 	if (!strcasecmp(i0->String, bad_paths[i]))
 	    {
-	    mssError(1, "EXP", "string provided to path_element() cannot be '.' or '..'");
+	    mssError(1, "EXP", "string '%s' provided to path_element() cannot be '.' or '..'", i0->String);
 	    return -1;
 	    }
 	}
@@ -4559,7 +4559,7 @@ int exp_fn_path_params(pExpression tree, pParamObjects objlist, pExpression i0, 
 		}
 	    if (strpbrk(param_name->String, "=&?/"))
 		{
-		mssError(1, "EXP", "path_params() param name contained illegal character");
+		mssError(1, "EXP", "path_params() param name '%s' contained illegal character", param_name->String);
 		goto error;
 		}
 	    if (!strcmp(param_name->String, ""))
