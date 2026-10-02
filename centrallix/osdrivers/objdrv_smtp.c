@@ -74,6 +74,9 @@
 /** Minimum seconds between sweeps of one spool directory. **/
 #define SMTP_SWEEP_INTERVAL	(60 * 60)
 
+/** Minimum seconds between throttled reloads of one open email. **/
+#define SMTP_RELOAD_INTERVAL	5
+
 /** Seconds to wait for sendmail before killing it. **/
 #define SMTP_SENDMAIL_TIMEOUT	60
 
@@ -150,6 +153,7 @@ typedef struct
     XString		EmailStructPath;
     XString		ResultPath;
     struct stat		StructInfo; /* The struct file that Attributes were loaded from. */
+    time_t		LastLoad; /* When Attributes were last loaded. */
     }
     SmtpData, *pSmtpData;
 
@@ -1989,11 +1993,14 @@ smtp_internal_ReloadStruct(pSmtpData inf)
  *** @param inf The email.  Other objects are skipped.
  *** @param readLog Whether to first record the results in the mail log,
  ***   waiting for a read already in progress.  Must be false while locked.
+ *** @param throttle Whether to skip the reload if the attributes were
+ ***   loaded in the last SMTP_RELOAD_INTERVAL seconds.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
+smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
     {
+    time_t curTime = time(NULL);
     pSmtpAttribute spoolDir;
     pStructInf emailStruct = NULL;
     char* status;
@@ -2005,6 +2012,11 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 	if (inf->Type != SMTP_T_EML)
 	    return 0;
+
+	/** Throttle reloads. **/
+	if (throttle && curTime - inf->LastLoad < SMTP_RELOAD_INTERVAL)
+	    return 0;
+	inf->LastLoad = curTime;
 
 	/** Update the struct with results from the Postfix logs. **/
 	if (readLog)
@@ -2460,7 +2472,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    }
 
 	/** Load the results of earlier tries, which other opens may have recorded. **/
-	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, false) != 0))
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, false, false) != 0))
 	    goto end;
 
 	/** Mark the email Pending before handing it off, so other sends refuse it. **/
@@ -4714,6 +4726,10 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
+	/** Record the results Postfix logged since the last read. **/
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
+	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+
 	/** Keep other threads out until the struct is updated. **/
 	smtp_internal_Lock();
 	locked = true;
@@ -4729,7 +4745,8 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
-	/** Record which struct file the attributes come from. **/
+	/** Record which struct file the attributes come from, and when. **/
+	inf->LastLoad = time(NULL);
 	if (UNLIKELY(fstat(fdFD(emailStructureFile), &inf->StructInfo) != 0))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to check email struct file \"%s\".", inf->EmailStructPath.String);
@@ -5404,7 +5421,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	if (strcmp(attrname, "annotation") == 0) return DATA_T_STRING;
 
 	/** Reload the attributes if the struct was replaced. **/
-	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true, true) != 0))
 	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Get the type of the stored attribute. **/
@@ -5514,7 +5531,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	/** Reload the attributes if the struct was replaced. **/
-	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true, true) != 0))
 	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Get the value of the stored attribute. **/
@@ -5598,7 +5615,7 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
 
 	/** Reload the attributes if the struct was replaced. **/
-	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true, true) != 0))
 	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	inf->CurAttr = 0;
@@ -5861,7 +5878,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    }
 
 	/** Reload the attributes if the struct was replaced. **/
-	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
+	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true, false) != 0))
 	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Refuse to send an email that cannot be tracked. **/
@@ -6139,7 +6156,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 	    }
 
 	/** Reload the attributes if the struct was replaced. **/
-	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
+	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true, false) != 0))
 	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
     return smtp_internal_AddAttr(inf_v, attrname, type, val, oxt);
