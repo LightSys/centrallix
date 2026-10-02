@@ -62,7 +62,7 @@ The SMTP OS Driver provides the capability for the Centrallix Object System to s
 ## II Usage
 In order to use the SMTP driver, the root node must first have all required [node attributes](#node-attributes).  Of these, `spool_dir` is the most important attribute, and the optional `expire_time`, `content_has_headers`, and `local_host_name` attributes may also be helpful for defining how emails are created and sent.
 
-Email objects are created as children of the root SMTP node and, when created, contain no content or headers.  Further modification of the email object should be accomplished through the MIME driver, however, this is not currently supported so the SMTP driver provides several [email node attributes](#email-attributes) for setting certain, important headers (e.g. `To`, `From`, etc.).
+Email objects are created as children of the root SMTP node and, when created, contain no content or headers.  Further modification of the email object should be accomplished through the MIME driver; however, this is not currently supported, so the SMTP driver provides several [email node attributes](#email-attributes) for setting certain, important headers (e.g. `To`, `From`, etc.).
 
 > ⚠️ **Warning**: Before an email can be sent, the `envelope_from` attribute must be set.  Otherwise, the sent email will be registered as from the user running Centrallix.  As this is normally blocked by most email servers, this will cause the email to fail to send.
 

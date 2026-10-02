@@ -393,7 +393,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    /** we're in the child process -- disable MTask context switches to be safe **/
 	    thLock();
 
-	    /** close all open fds (except for 0-2 -- std{in,out,err}) **/
+	    /** close all open fds (except for 0-2 -- std{in,out,err} -- and the result file) **/
 	    maxfiles = sysconf(_SC_OPEN_MAX);
 	    if (maxfiles <= 0)
 		{
@@ -439,7 +439,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 		/** we're in the supervisor process -- disable MTask context switches to be safe **/
 		thLock();
 
-		/** close all open fds (except for 0-2 -- std{in,out,err}) **/
+		/** close all open fds (except for 0-2 -- std{in,out,err} -- and the result file) **/
 		maxfiles = sysconf(_SC_OPEN_MAX);
 		if (maxfiles <= 0)
 		    {
@@ -1337,7 +1337,7 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_user_agent",	DATA_T_STRING,	0,	"Centrallix/" PACKAGE_VERSION) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "header_mime_version",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "status",		DATA_T_STRING,	0,	"Draft") < 0)) goto error;
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "is_ready",		DATA_T_INTEGER,	0,	0) < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "is_ready",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "try_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_status",	DATA_T_STRING,	0,	"None") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_msg",		DATA_T_STRING,	0,	"") < 0)) goto error;
@@ -1380,7 +1380,7 @@ smtp_internal_GetString(pXHashTable attributes, char* name)
     }
 
 
-/*** smtp_internal_IsEmail - Returns 1 if the filename is an email.
+/*** smtp_internal_IsEmail - Returns true if the filename is an email.
  ***/
 bool
 smtp_internal_IsEmail(char* filename)
@@ -3486,7 +3486,7 @@ smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
  *** read from disk and cached for later calls in the same log read batch.
  ***
  *** @param spool The spool directory.
- *** @param batch The current bach, which holds the cache for the current mail
+ *** @param batch The current batch, which holds the cache for the current mail
  *** 	log read batch.
  *** @param name The email file name.
  *** @returns The email, or NULL if it no longer exists or cannot be read.
@@ -5744,7 +5744,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    attrStruct = stLookup(rootNode->Data, attrname);
 	    if (UNLIKELY(attrStruct == NULL))
 		{
-		mssError(1, "SMTP", "Attribute not found in the root node.");
+		mssError(1, "SMTP", "Attribute '%s' not found in the root node.", attrname);
 		goto end;
 		}
 	    if (UNLIKELY(stSetAttrValue(attrStruct, datatype, val, 0) != 0))
@@ -5795,7 +5795,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    attrStruct = stLookup(emlStruct, attrname);
 	    if (UNLIKELY(attrStruct == NULL))
 		{
-		mssError(1, "SMTP", "Attribute not found in the email structure file.");
+		mssError(1, "SMTP", "Attribute '%s' not found in the email structure file.", attrname);
 		goto end;
 		}
 	    if (UNLIKELY(stSetAttrValue(attrStruct, datatype, val, 0) < 0))
