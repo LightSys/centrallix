@@ -6219,6 +6219,7 @@ int
 smtpInitialize()
     {
     pObjDriver drv = NULL;
+    bool typesInitialized = false;
 
 	/** Allocate the driver **/
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
@@ -6239,10 +6240,15 @@ smtpInitialize()
 	/** Set up the structure **/
 	strcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver");
 	drv->Capabilities = 0;
-	if (UNLIKELY(xaInit(&(drv->RootContentTypes),1) != 0
-	    || xaAddItem(&(drv->RootContentTypes),"system/smtp") < 0
-	))   {
+	if (UNLIKELY(xaInit(&(drv->RootContentTypes),1) != 0))
+	    {
 	    mssError(1, "SMTP", "Failed to set up root content types.");
+	    goto error;
+	    }
+	typesInitialized = true;
+	if (UNLIKELY(xaAddItem(&(drv->RootContentTypes),"system/smtp") < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to add root content type \"system/smtp\".");
 	    goto error;
 	    }
 
@@ -6290,6 +6296,7 @@ smtpInitialize()
     error:
 	mssError(0, "SMTP", "Failed to initialize the SMTP driver.");
 
+	if (typesInitialized) xaDeInit(&(drv->RootContentTypes));
 	if (drv != NULL) nmFree(drv, sizeof(ObjDriver));
 
 	return -1;
