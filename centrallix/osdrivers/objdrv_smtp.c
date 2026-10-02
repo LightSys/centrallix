@@ -4366,7 +4366,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	attrDate = NULL;
 
 	/** Create the struct file. **/
-	emailStructFile = fdOpen(inf->EmailStructPath.String, O_CREAT | O_RDWR | O_EXCL, 0755);
+	emailStructFile = fdOpen(inf->EmailStructPath.String, O_CREAT | O_RDWR | O_EXCL, 0644);
 	if (UNLIKELY(emailStructFile == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP",
