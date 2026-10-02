@@ -213,4 +213,5 @@ The SMTP driver does not support getting, calling, or adding methods.
 - Rarely, a status is wrong:
     - Results added to the Postfix logs while they are rotated can be missed, so the email becomes Error with an unknown send status.
     - If sendmail queues the email but is killed by the 60 second timeout, the email becomes Error even though Postfix may send it, and sending it again sends a duplicate.
+    - If Centrallix is killed with SIGKILL, or the machine loses power, while it sends an email, the email may stay Pending forever.
 - Sending an email again reuses its Message-ID, and some mail services (such as Gmail) drop a message whose Message-ID they have already received.
