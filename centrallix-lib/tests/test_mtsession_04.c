@@ -193,7 +193,7 @@ long long test(char** tname)
     long long result;
 
 	*tname = "mtsession-04 Error Stack";
-	
+
 	/** Hide warning noise when this test deliberately causes failures. **/
 	WarnPrintEnabled = 0;
 
