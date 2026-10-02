@@ -4652,10 +4652,6 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
-	/** Record the results Postfix logged since the last read, unless another thread is. **/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, false) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
-
 	/** Keep other threads out until the struct is updated. **/
 	smtp_internal_Lock();
 	locked = true;
