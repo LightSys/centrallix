@@ -92,6 +92,9 @@
 /** Seconds an email may stay Pending before it becomes Error (6 days). **/
 #define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60)
 
+/** Seconds a Pending email may go without a sendmail result or queue ID before it becomes Error. **/
+#define SMTP_RESULT_TIMEOUT	(2 * SMTP_SENDMAIL_TIMEOUT)
+
 /*** The name of the file in each spool directory that records how much of the
  *** mail log has been read and processed.
  ***/
@@ -285,6 +288,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
     char header[SMTP_RESULT_HEADER_LEN + 1];
     struct timespec pollInterval = {0, 100 * 1000 * 1000};
     int polls;
+    int exitStatus = EXIT_SUCCESS;
     bool tmpCreated = false;
     int rval = -1;
 
@@ -510,19 +514,35 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 			}
 		    }
 
-		/** Write the status line, then publish the result. **/
+		/** Write the status line.  A blank one still publishes as an unknown result. **/
 		snprintf(header, sizeof(header), "%-*s\n", SMTP_RESULT_HEADER_LEN - 1, result);
-		if (UNLIKELY(pwrite(resultFd, header, SMTP_RESULT_HEADER_LEN, 0) != SMTP_RESULT_HEADER_LEN
-		    || close(resultFd) != 0
-		    || rename(tmpPath, resultPath) != 0 /* Publish. */
-		))  {
+		if (UNLIKELY(pwrite(resultFd, header, SMTP_RESULT_HEADER_LEN, 0) != SMTP_RESULT_HEADER_LEN))
+		    {
 		    fprintf(stderr,
-			"SMTP: Failed to write sendmail result file (%s). (%s)\n",
-			resultPath, strerror(errno)
+			"SMTP: Failed to write status line \"%s\" to sendmail result file (%s). (%s)\n",
+			result, tmpPath, strerror(errno)
 		    );
-		    _exit(EXIT_FAILURE);
+		    exitStatus = EXIT_FAILURE;
 		    }
-		_exit(EXIT_SUCCESS);
+		if (UNLIKELY(close(resultFd) != 0))
+		    {
+		    fprintf(stderr,
+			"SMTP: Failed to close sendmail result file (%s). (%s)\n",
+			tmpPath, strerror(errno)
+		    );
+		    exitStatus = EXIT_FAILURE;
+		    }
+
+		/** Publish the result, even after a failure, so it reaches the parent. **/
+		if (UNLIKELY(rename(tmpPath, resultPath) != 0))
+		    {
+		    fprintf(stderr,
+			"SMTP: Failed to publish sendmail result file (%s) as (%s). (%s)\n",
+			tmpPath, resultPath, strerror(errno)
+		    );
+		    exitStatus = EXIT_FAILURE;
+		    }
+		_exit(exitStatus);
 		}
 	    else
 		{
@@ -2681,7 +2701,8 @@ smtp_internal_ReadResult(char* resultPath, char* header, pXString output)
 /*** smtp_internal_RefreshStatus - update the struct of a Pending email from
  *** its sendmail result and the recipient results recorded in it.  It
  *** becomes Sent or Error once Postfix finishes, or Error if there is still
- *** no result SMTP_PENDING_TIMEOUT seconds after last_try_date.
+ *** no result SMTP_PENDING_TIMEOUT seconds after last_try_date.  Without a
+ *** sendmail result or queue ID, it becomes Error after SMTP_RESULT_TIMEOUT.
  ***
  *** @param emailStruct The struct of the email, read from its file.
  *** @param resultPath The path of the sendmail result file.
@@ -2713,6 +2734,7 @@ smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expir
     char* sep = " ";
     bool logged = false;
     bool timedOut = false;
+    bool unknown = false;
     int rcptCount = 0;
     int result;
     int printed;
@@ -2787,10 +2809,11 @@ smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expir
 		status = (nBounced == 0 && nDeferred == 0 && !expired) ? "Sent" : "Error";
 	    }
 
-	/** Give up on an email with no result in time. **/
+	/** Give up on an email with no result in time, sooner if sendmail never reported back. **/
 	dateStr = smtp_internal_StructString(emailStruct, "last_try_date");
 	if (status == NULL && dateStr != NULL)
 	    {
+	    unknown = (result == 0 && !logged);
 	    memset(&cutoff, 0, sizeof(DateTime));
 	    if (UNLIKELY(objDataToDateTime(DATA_T_STRING, dateStr, &cutoff, NULL) != 0))
 		{
@@ -2799,8 +2822,9 @@ smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expir
 		}
 	    if (cutoff.Value != 0)
 		{
-		if (UNLIKELY(objDateAdd(&cutoff, SMTP_PENDING_TIMEOUT, 0, 0, 0, 0, 0) != 0 || objCurrentDate(&now) != 0))
-		    {
+		if (UNLIKELY(objDateAdd(&cutoff, (unknown) ? SMTP_RESULT_TIMEOUT : SMTP_PENDING_TIMEOUT, 0, 0, 0, 0, 0) != 0
+		    || objCurrentDate(&now) != 0
+		))  {
 		    mssError(0, "SMTP", "Failed to check whether the send status timed out.");
 		    goto end;
 		    }
@@ -2808,10 +2832,17 @@ smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expir
 		    {
 		    status = "Error";
 		    timedOut = true;
-		    if (UNLIKELY(xsPrintf(&tryMsg,
-			"Send status unknown %d days after the last try.",
-			SMTP_PENDING_TIMEOUT / (24 * 60 * 60)
-		    ) < 0))
+		    if (unknown)
+			printed = xsPrintf(&tryMsg,
+			    "No sendmail result %d seconds after the last try.",
+			    SMTP_RESULT_TIMEOUT
+			);
+		    else
+			printed = xsPrintf(&tryMsg,
+			    "Send status unknown %d days after the last try.",
+			    SMTP_PENDING_TIMEOUT / (24 * 60 * 60)
+			);
+		    if (UNLIKELY(printed < 0))
 			{
 			mssError(1, "SMTP", "Failed to describe the send status timeout.");
 			goto end;

@@ -68,7 +68,7 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time an email is opened or sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  An email that is still Pending 6 days after `last_try_date` becomes Error.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time an email is opened or sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  An email that is still Pending 6 days after `last_try_date` becomes Error, or 2 minutes after it if sendmail never reported a result and Postfix never logged it.
 
 Sent means the next mail server accepted the email for every recipient.
 
