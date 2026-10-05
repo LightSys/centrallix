@@ -25,7 +25,6 @@ report_test "system/report"
     p_double	"report/parameter" { type=double;   default=3.14159; }
     p_region	"report/parameter" { type=string;   default="South"; }
     p_hidden	"report/parameter" { type=integer;  default=0; }
-    nowidth_test	"report/parameter" { type=integer;  default=0; }
     areabreak_test	"report/parameter" { type=integer;  default=0; }
     mono_png_test	"report/parameter" { type=integer;  default=0; }
     multinested_test	"report/parameter" { type=integer;  default=0; }
@@ -410,11 +409,9 @@ report_test "system/report"
 		}
 	    s8_outer_d2 "report/data" { value=runserver("Back in the outer area (Expect: yellow).\n"); }
 	    }
-	s8_nowidth_off "report/data" { condition=runserver(not :this:nowidth_test); value=runserver("Child area with no width: skipped, pass nowidth_test=1 to run it.\n"); }
 	s8_nowidth "report/area"
 	    {
 	    height=0;
-	    condition=runserver(:this:nowidth_test);
 	    width=80;
 	    border=0.01;
 	    s8_nw_d1 "report/data" { value=runserver("Area containing a child area with no width:\n"); }

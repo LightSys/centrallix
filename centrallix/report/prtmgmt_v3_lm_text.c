@@ -1062,9 +1062,9 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    }
 		}
 
-	    /** Set width/height to 0 if unspecified and let it grow **/
+	    /** Fill the width if unspecified; start the height at 0 and let it grow **/
 	    if (objptr->Width < 0)
-		objptr->Width = 0;
+		objptr->Width = prtInnerWidth(this);
 	    if (objptr->Height < 0)
 		objptr->Height = 0;
 
