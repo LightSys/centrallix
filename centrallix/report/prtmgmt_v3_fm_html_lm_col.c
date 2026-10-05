@@ -9,6 +9,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/expect.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -59,7 +60,8 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
     {
     pPrtObjStream column, subobj;
     PrtHTMLfmSavedStyle oldstyle;
-    double end_y = 0.0;
+    pPrtColLMData lm_inf = (pPrtColLMData)(section->LMData);
+    double end_x = -1.0;
 
 	/** Write the section prologue **/
 	if (UNLIKELY(prt_htmlfm_SaveStyle(context, &oldstyle) < 0))
@@ -67,8 +69,13 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 	    mssError(0, "PRT", "Failed to save style.");
 	    goto err;
 	    }
-	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context,
-	    "<table role=\"presentation\" cellpadding=\"0\"><tr>\n"
+	/** Size the section as a share of its container's inner width. **/
+	int width_pct = 100;
+	if (section->Parent != NULL && prtInnerWidth(section->Parent) > 0.0)
+	    width_pct = min(100, (int)(section->Width / prtInnerWidth(section->Parent) * 100.0 + 0.5));
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+	    "<table role=\"presentation\" cellpadding=\"0\" width=\"%d%%\"><tr>\n",
+	    width_pct
 	) < 0))
 	    {
 	    mssError(0, "PRT", "Failed to write section opening tags.");
@@ -79,12 +86,20 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 	for(column = section->ContentHead; column; column = column->Next)
 	    {
 	    if (column->ObjType->TypeID != PRT_OBJ_T_SECTCOL) continue;
-	    if (end_y > 0.0 && end_y != column->Y)
+	    if (end_x >= 0.0 && column->X > end_x + 0.001)
 		{
-		if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
-			"<td width=\"%d\">&nbsp;</td>",
-			(int)(column->Y - end_y + 0.001)
-		) < 0))
+		/** Write the gap between columns, split by the separator line if there is one. **/
+		const int gap = (int)((column->X - end_x) * PRT_HTMLFM_XPIXEL + 0.5);
+		const int rval = (lm_inf != NULL && lm_inf->Separator.nLines > 0)
+		    ? prt_htmlfm_OutputPrintf(context,
+			"<td width=\"%d\" style=\"border-right:%dpx solid #%6.6X;\"></td><td width=\"%d\"></td>",
+			gap / 2,
+			max((int)(lm_inf->Separator.Width[0] * PRT_HTMLFM_XPIXEL + 0.5), 1),
+			lm_inf->Separator.Color[0],
+			gap - gap / 2
+		    )
+		    : prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"></td>", gap);
+		if (UNLIKELY(rval < 0))
 		    {
 		    mssError(0, "PRT", "Failed to write column gap.");
 		    goto err;
@@ -111,7 +126,7 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 		mssError(0, "PRT", "Failed to write column closing tag.");
 		goto err;
 		}
-	    end_y = column->Y + column->Width;
+	    end_x = column->X + column->Width;
 	    }
 
 	/** Output the section epilogue **/
