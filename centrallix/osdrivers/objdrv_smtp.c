@@ -3345,8 +3345,8 @@ smtp_internal_LoadSpool(pSmtpSpool spool)
 	    found = smtp_internal_ReadStruct(path, &emailStruct);
 	    if (UNLIKELY(found < 0))
 		{
-		mssWarnError("Failed to track email \"%s\", skipping.", path);
-		continue;
+		mssError(0, "SMTP", "Failed to track email \"%s\".", path);
+		goto end;
 		}
 	    if (found == 0)
 		continue; /* No struct yet. */
@@ -3549,28 +3549,35 @@ smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
  *** @param batch The current batch, which holds the cache for the current mail
  *** 	log read batch.
  *** @param name The email file name.
- *** @returns The email, or NULL if it no longer exists or cannot be read.
- *** 	This function does not fail and resolves failures with a warning.
+ *** @param ret Set to the email, or NULL if it no longer exists.
+ *** @returns 0 if the email was found,
+ ***          1 if it no longer exists,
+ ***         -1 on failure.
  ***/
-pSmtpLogEmail
-smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name)
+int
+smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name, pSmtpLogEmail* ret)
     {
     pSmtpLogEmail email = NULL;
     char structPath[PATH_MAX];
     int found;
+    int rval = -1;
 
 	/** Find the email in cache. **/
+	*ret = NULL;
 	email = (pSmtpLogEmail)xhLookup(&batch->ByName, name);
 	ASSERTMAGIC(email, MGK_SMTP_LOG_EMAIL);
 	if (email != NULL)
-	    return email;
+	    {
+	    *ret = email;
+	    return 0;
+	    }
 
 	/** Not found: read its struct. **/
 	email = nmMalloc(sizeof(SmtpLogEmail));
 	if (UNLIKELY(email == NULL))
 	    {
 	    mssError(1, "SMTP", "Failed to allocate %zu bytes to update email \"%s\".", sizeof(SmtpLogEmail), name);
-	    goto error;
+	    goto end;
 	    }
 	memset(email, 0, sizeof(SmtpLogEmail));
 	SETMAGIC(email, MGK_SMTP_LOG_EMAIL);
@@ -3578,35 +3585,40 @@ smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name)
 	if (UNLIKELY(email->Name == NULL))
 	    {
 	    mssError(1, "SMTP", "Failed to copy email name \"%s\".", name);
-	    goto error;
+	    goto end;
 	    }
 	if (UNLIKELY(smtp_internal_SpoolPath(structPath, spool->Path, name, ".struct") != 0))
-	    goto error;
+	    goto end;
 	found = smtp_internal_ReadStruct(structPath, &email->Struct);
 	if (UNLIKELY(found < 0))
-	    goto error;
+	    goto end;
 	if (found == 0)
-	    goto end; /* Deleted. */
+	    {
+	    rval = 1; /* Deleted. */
+	    goto end;
+	    }
 
 	/** Add it to the batch. **/
 	if (UNLIKELY(xaAddItem(&batch->Emails, email) < 0))
 	    {
 	    mssError(1, "SMTP", "Failed to add email \"%s\" to the mail log updates.", name);
-	    goto error;
+	    goto end;
 	    }
 	if (UNLIKELY(xhAdd(&batch->ByName, email->Name, (char*)email) != 0))
 	    {
 	    mssError(1, "SMTP", "Failed to index email \"%s\" in the mail log updates.", name);
 	    xaRemoveItem(&batch->Emails, batch->Emails.nItems - 1);
-	    goto error;
+	    goto end;
 	    }
 
-	return email;
-
-    error:
-	mssWarnError("Failed to update email \"%s\" in \"%s\" from the mail log, skipping.", name, spool->Path);
+	/** Success. **/
+	*ret = email;
+	email = NULL;
+	rval = 0;
 
     end:
+	if (UNLIKELY(rval < 0))
+	    mssError(0, "SMTP", "Failed to read email \"%s\" in \"%s\" to update it from the mail log.", name, spool->Path);
 	if (email != NULL)
 	    {
 	    if (email->Struct != NULL) stFreeInf(email->Struct);
@@ -3614,7 +3626,7 @@ smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name)
 	    nmFree(email, sizeof(SmtpLogEmail));
 	    }
 
-	return NULL;
+	return rval;
     }
 
 
@@ -3647,7 +3659,8 @@ smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
 	if (entry == NULL)
 	    return 0;
 	ASSERTMAGIC(entry, MGK_SMTP_INDEX_ENTRY);
-	email = smtp_internal_GetLogEmail(spool, batch, entry->Name);
+	if (UNLIKELY(smtp_internal_GetLogEmail(spool, batch, entry->Name, &email) < 0))
+	    return -1;
 
 	/** Stop tracking emails that were deleted or are no longer Pending. **/
 	value = (email != NULL) ? smtp_internal_StructString(email->Struct, "status") : NULL;
@@ -4006,8 +4019,8 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 		|| smtp_internal_SpoolPath(structPath, spoolDir, email->Name, ".struct") != 0
 		|| smtp_internal_WriteStruct(structPath, email->Struct) != 0
 	    ))  {
-		mssWarnError("Failed to update email \"%s\" in \"%s\" from the mail log, skipping.", email->Name, spoolDir);
-		continue;
+		mssError(0, "SMTP", "Failed to update email \"%s\" in \"%s\" from the mail log.", email->Name, spoolDir);
+		goto end;
 		}
 
 	    /** Stop tracking a finished email. **/
