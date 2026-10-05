@@ -2722,6 +2722,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
     int nl = 0;
     PrtTextStyle oldstyle;
     pPrtTextStyle oldstyleptr = &oldstyle;
+    int oldjust;
     int t,rval;
     ObjData od;
     pStructInf value_inf;
@@ -2738,6 +2739,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 
 	/** Get style information **/
 	prtGetTextStyle(container_handle, &oldstyleptr);
+	oldjust = prtGetJustification(container_handle);
 	cxssPushContext();
 	context_pushed = 1;
 	rpt_internal_CheckFormats(inf, data);
@@ -2824,6 +2826,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 
 	/** Put the fonts etc back **/
 	prtSetTextStyle(container_handle, &oldstyle);
+	prtSetJustification(container_handle, oldjust);
 	if (url)
 	    prtSetURL(container_handle, NULL);
 	cxssPopContext();
@@ -2832,6 +2835,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 
     error:
 	prtSetTextStyle(container_handle, &oldstyle);
+	prtSetJustification(container_handle, oldjust);
 	if (url)
 	    prtSetURL(container_handle, NULL);
 	if (context_pushed)
@@ -2856,6 +2860,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
     pRptActiveQueries ac;
     PrtTextStyle oldstyle;
     pPrtTextStyle oldstyleptr = &oldstyle;
+    int oldjust;
     int reccnt;
     int rval;
     int n;
@@ -2917,6 +2922,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 
 	/** Get style information **/
 	prtGetTextStyle(container_handle, &oldstyleptr);
+	oldjust = prtGetJustification(container_handle);
 	cxssPushContext();
 	context_pushed = 1;
 	rpt_internal_CheckFormats(inf, form);
@@ -2982,6 +2988,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 
 	/** Set formatting/style information back to how it was before **/
 	prtSetTextStyle(container_handle, &oldstyle);
+	prtSetJustification(container_handle, oldjust);
 	cxssPopContext();
 	context_pushed = 0;
 
