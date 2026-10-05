@@ -4120,6 +4120,7 @@ int
 smtp_internal_CreateEmail(pSmtpData inf)
     {
     pXString autoName = NULL;
+    pXString messageId = NULL;
 
     pSmtpAttribute hostName = NULL;
 
@@ -4131,10 +4132,10 @@ smtp_internal_CreateEmail(pSmtpData inf)
     pFile checkFile = NULL;
     pFile emailFile = NULL;
     pFile emailStructFile = NULL;
-    char message_id[80];
     ObjData pod;
     int i;
     unsigned char email_id[8];
+    unsigned char message_key[8];
     char local_host_name[128] = "localhost.localdomain";
 
     bool emailCreated = false;
@@ -4301,7 +4302,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    }
 
 	/** Add dynamic attributes which have object specific defaults. **/
-	/** Calculate the message id (name without suffix). **/
+	/** Find the host name for the Message-ID. **/
 	hostName = SMTP_ATTR(xhLookup(inf->RootAttributes, "local_host_name"));
 	ASSERTMAGIC(hostName, MGK_SMTP_ATTRIBUTE);
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
@@ -4313,11 +4314,26 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    );
 	    }
 	local_host_name[sizeof(local_host_name) - 1] = '\0'; /* Terminate a truncated name. */
-	strtcpy(message_id, inf->Name, sizeof(message_id));
-	if (strrchr(message_id, '.'))
-	    *(strrchr(message_id, '.')) = '\0';
-	strtcat(message_id, "@", sizeof(message_id));
-	strtcat(message_id, hostName?(hostName->Value.String):local_host_name, sizeof(message_id));
+
+	/** Generate a random Message-ID, so it is unique across spools. **/
+	if (UNLIKELY(cxssGenerateKey(message_key, sizeof(message_key)) < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to generate a random Message-ID.");
+	    goto end;
+	    }
+	messageId = xsNew();
+	if (UNLIKELY(messageId == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate an xstring for the Message-ID.");
+	    goto end;
+	    }
+	if (UNLIKELY(xsQPrintf(messageId, "%8STR&HEX@%STR",
+	    message_key, (hostName) ? hostName->Value.String : local_host_name
+	) < 0))
+	    {
+	    mssError(1, "SMTP", "Failed to format a random Message-ID.");
+	    goto end;
+	    }
 
 	/** Create the message_id attribute. **/
 	createdStruct = stAddAttr(emailStruct, "message_id");
@@ -4328,7 +4344,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    }
 
 	/** Set the default message_id value. **/
-	pod.String = message_id;
+	pod.String = messageId->String;
 	if (UNLIKELY(stSetAttrValue(createdStruct, DATA_T_STRING, &pod, 0) != 0))
 	    {
 	    mssError(1, "SMTP", "Failed to write to the default attribute (message_id).");
@@ -4466,6 +4482,7 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	    mssError(0, "SMTP", "Failed to create email (%s).", inf->EmailPath.String);
 
 	if (LIKELY(autoName != NULL)) xsFree(autoName);
+	if (LIKELY(messageId != NULL)) xsFree(messageId);
 	if (LIKELY(emailFile != NULL)) fdClose(emailFile, 0);
 	if (LIKELY(emailStructFile != NULL)) fdClose(emailStructFile, 0);
 	if (UNLIKELY(attrDate != NULL)) nmFree(attrDate, sizeof(DateTime));
