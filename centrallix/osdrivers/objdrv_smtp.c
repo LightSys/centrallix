@@ -261,6 +261,7 @@ struct
 int smtp_internal_Close(pSmtpData inf);
 int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes);
 int smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed);
+int smtp_internal_ReadResult(char* resultPath, char* header, pXString output);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
 int smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
 int smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt);
@@ -289,6 +290,9 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
     struct timespec pollInterval = {0, 100 * 1000 * 1000};
     int polls;
     int exitStatus = EXIT_SUCCESS;
+    int found;
+    XString output;
+    bool outputInitialized = false;
     bool tmpCreated = false;
     int rval = -1;
 
@@ -384,7 +388,8 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	 *** for an email to send.
 	 ***
 	 *** Note: Children don't have our error session so failures should
-	 *** not call mssError().  Thus, we use fprintf(stderr) instead.
+	 *** not call mssError().  Thus, they write to the result file, or to
+	 *** stderr when that is not possible.
 	 ***/
 	pid = fork();
 	if (UNLIKELY(pid < 0))
@@ -414,8 +419,8 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    fd = open(emailPath, O_RDONLY);
 	    if (UNLIKELY(fd < 0))
 		{
-		fprintf(stderr,
-		    "SMTP: Failed to open email file (%s) for sendmail. (%s)\n",
+		dprintf(resultFd,
+		    "Failed to open email file (%s) for sendmail. (%s)",
 		    emailPath, strerror(errno)
 		);
 		_exit(EXIT_FAILURE);
@@ -424,8 +429,8 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    /** Make the email file stdin for sendmail. **/
 	    if (UNLIKELY(dup2(fd, 0) < 0))
 		{
-		fprintf(stderr,
-		    "SMTP: Failed to redirect email file (%s) to stdin for sendmail. (%s)\n",
+		dprintf(resultFd,
+		    "Failed to redirect email file (%s) to stdin for sendmail. (%s)",
 		    emailPath, strerror(errno)
 		);
 		_exit(EXIT_FAILURE);
@@ -435,7 +440,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    pid = fork();
 	    if (UNLIKELY(pid < 0))
 		{
-		fprintf(stderr, "SMTP: Failed to fork (2). (%s)\n", strerror(errno));
+		dprintf(resultFd, "Failed to fork (2). (%s)", strerror(errno));
 		_exit(EXIT_FAILURE);
 		}
 	    if (pid == 0)
@@ -581,10 +586,24 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    }
 	if (UNLIKELY(!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != EXIT_SUCCESS))
 	    {
-	    mssError(1, "SMTP",
-		"Sendmail launcher process (pid %d) exited with status %d.",
-		pid, WEXITSTATUS(wstatus)
-	    );
+	    /** Report the reason the launcher wrote to the result file. **/
+	    if (UNLIKELY(xsInit(&output) != 0))
+		{
+		mssError(1, "SMTP", "Failed to initialize the sendmail launcher output string.");
+		goto end;
+		}
+	    outputInitialized = true;
+	    found = smtp_internal_ReadResult(tmpPath, header, &output);
+	    if (found == 1 && output.Length > 0)
+		mssError(1, "SMTP",
+		    "Sendmail launcher process (pid %d) exited with status %d: %s.",
+		    pid, WEXITSTATUS(wstatus), output.String
+		);
+	    else
+		mssError((found < 0) ? 0 : 1, "SMTP",
+		    "Sendmail launcher process (pid %d) exited with status %d.",
+		    pid, WEXITSTATUS(wstatus)
+		);
 	    goto end;
 	    }
 
@@ -603,6 +622,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    );
 
 	if (LIKELY(argv != NULL)) xaDeInit(argv);
+	if (outputInitialized) xsDeInit(&output);
 
 	return rval;
     }
