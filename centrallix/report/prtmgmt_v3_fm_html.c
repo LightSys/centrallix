@@ -1546,9 +1546,11 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    goto err;
 		    }
 		
-		/** Write child content. **/
+		/** Write child content, closing its style tags within the cell. **/
+		if (UNLIKELY(prt_htmlfm_InitStyle(context, &(subobj->TextStyle)) < 0)) goto err;
 		if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err;
-		
+		if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
+
 		/** Close container. **/
 		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
 		    {
