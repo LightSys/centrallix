@@ -1379,9 +1379,11 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    goto err;
 	    }
 
-	/** Write the start of the second row with correct margins. **/
+	/*** Write the start of the second row with correct margins.  Long words
+	 *** may break anywhere, so they can't widen the page past its margins.
+	 ***/
 	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
-	    "<tr><td style=\"width:%dpx;\"></td><td>\n",
+	    "<tr><td style=\"width:%dpx;\"></td><td style=\"overflow-wrap:anywhere;\">\n",
 	    left_margin
 	) < 0))
 	    {
