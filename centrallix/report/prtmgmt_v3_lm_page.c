@@ -94,17 +94,18 @@ prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
 	    next_page = this->Next;
 	    }
 
-	/** Can we emit the previous page? **/
+	/** Can we emit the previous page?  A failure is flagged on the session,
+	 ** so the page is done with either way.
+	 **/
 	if (this->nOpens == 0)
 	    {
-	    if (prt_internal_GeneratePage(PRTSESSION(this), this) >= 0)
-		{
-		/** Bump the handle **/
-		prtUpdateHandleByPtr((void*)this, (void*)next_page);
+	    prt_internal_GeneratePage(PRTSESSION(this), this);
 
-		/** Free the page data **/
-		prt_internal_FreeTree(this);
-		}
+	    /** Bump the handle **/
+	    prtUpdateHandleByPtr((void*)this, (void*)next_page);
+
+	    /** Free the page data **/
+	    prt_internal_FreeTree(this);
 	    }
 
 	/** Set the new container to the next page **/

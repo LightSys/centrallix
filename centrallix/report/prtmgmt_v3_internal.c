@@ -824,13 +824,19 @@ prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
 
 	/** First, give the layout managers a chance to 'finalize' **/
 	if (prt_internal_Finalize_r(page) < 0)
+	    {
+	    s->Flags |= PRT_SESSION_F_ERROR;
 	    return -1;
+	    }
 
 	/** Next, y-sort the page **/
 	/*first = prt_internal_YSort(page);*/
 	first = prt_internal_YMergeSort(page);
 	if (!first)
+	    {
+	    s->Flags |= PRT_SESSION_F_ERROR;
 	    return -1;
+	    }
 
 	/** Now, send it to the formatter **/
 	if (s->Formatter->Generate(s->FormatterData, page) < 0)
