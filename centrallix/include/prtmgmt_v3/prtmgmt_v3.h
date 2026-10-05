@@ -572,6 +572,7 @@ int prtSetURL(int handle_id, char* url);
 int prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width, double height, int flags);
 int prtWriteString(int handle_id, char* str);
 int prtWriteNL(int handle_id);
+int prtWriteTab(int handle_id);
 int prtWriteFF(int handle_id);
 
 /*** Print object creation functions ***/

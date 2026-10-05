@@ -713,7 +713,6 @@ prtWriteString(int handle_id, char* str)
     int rval=0;
     char* special_char_ptr;
     int len;
-    double x;
 
 	/** Check the obj **/
 	if (!obj) return -1;
@@ -764,11 +763,7 @@ prtWriteString(int handle_id, char* str)
 		    }
 		else if (*special_char_ptr == '\t')
 		    {
-		    if (obj->ContentTail)
-			x = floor(floor((obj->ContentTail->X + obj->ContentTail->Width)/8.0 + 0.00000001)*8.0 + 8.00000001);
-		    else
-			x = 8.0;
-		    rval = prtSetHPos(handle_id, x);
+		    rval = prtWriteTab(handle_id);
 		    if (rval < 0) rval = prtWriteNL(handle_id);
 		    if (rval < 0) break;
 		    }
@@ -826,6 +821,52 @@ prtWriteNL(int handle_id)
 	prt_internal_DispatchEvents(s);
 
     return rval;
+    }
+
+
+/*** prtWriteTab - move to the next 8-column tab stop on the current line of
+ *** text.  Returns -1 if the container has no lines of text or the tab stop
+ *** is past the end of the line.
+ ***/
+int
+prtWriteTab(int handle_id)
+    {
+    pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    pPrtObjStream tab_obj;
+    double x;
+    pPrtSession s = PRTSESSION(obj);
+
+	/** Check the obj **/
+	if (!obj) return -1;
+	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
+	if (obj->ObjType->TypeID != PRT_OBJ_T_AREA && obj->ObjType->TypeID != PRT_OBJ_T_PAGE) return -1;
+
+	/** Add an empty string at the end of the line **/
+	tab_obj = prt_internal_AllocObjByID(PRT_OBJ_T_STRING);
+	if (!tab_obj) return -1;
+	tab_obj->Session = obj->Session;
+	tab_obj->Content = nmSysMalloc(2);
+	tab_obj->ContentSize = 2;
+	tab_obj->Content[0] = '\0';
+	tab_obj->Width = 0.0;
+	tab_obj->ConfigWidth = 0.0;
+	prt_internal_CopyAttrs(prt_internal_GetStyleObj(obj), tab_obj);
+	tab_obj->Height = prt_internal_GetFontHeight(tab_obj);
+	tab_obj->ConfigHeight = tab_obj->Height;
+	tab_obj->YBase = prt_internal_GetFontBaseline(tab_obj);
+	if (obj->LayoutMgr->AddObject(obj, tab_obj) < 0)
+	    return -1;
+
+	/** Move it to the next tab stop, if that is on the line **/
+	x = floor(floor(tab_obj->X/8.0 + 0.00000001)*8.0 + 8.00000001);
+	if (x - PRT_FP_FUDGE > prtInnerWidth(tab_obj->Parent))
+	    return -1;
+	tab_obj->X = x;
+	tab_obj->Flags |= PRT_OBJ_F_XSET;
+
+	prt_internal_DispatchEvents(s);
+
+    return 0;
     }
 
 
