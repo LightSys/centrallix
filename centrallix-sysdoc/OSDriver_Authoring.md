@@ -205,6 +205,8 @@ Another field in the driver structure is the Capabilities field. This field is a
 
 - OBJDRV_C_TRANS: Indicates that this objectsystem driver requires transaction management by the OSML's transaction layer (the OXT layer).  OS drivers that require this normally are those that for some reason cannot complete operations in independence from one another.  For example, with a database driver, the creation of a new row object and the setting of its attributes must be done as one operation, although the operation requires several calls from the end user's process.  The OXT allows for the grouping of objectsystem calls so that the os driver does not have to complete them independently, but instead can wait until several calls have been made before actually completing the operation.
 
+- OBJDRV_C_JOIN: Indicates that this objectsystem driver can join the subobjects of several of its objects in one query, through the OpenJoinQuery and QueryFetchJoin entry points (see Section E).
+
 The 'Name' field should be filled in with a description of the OS driver, with a maximum length of 63 characters (plus the string null terminator).  Normally, the 2-4 letter prefix of the driver is included at the beginning of 'Name', such as "UXD - UNIX filesystem driver".  
 
 Finally, the 'RootContentTypes' field is an XArray containing a list of strings, each of which specifies the node object types that the driver will handle.  Such types are added to this XArray using the normal XArray utility functions, such as:
@@ -393,6 +395,12 @@ All object drivers will need to add an element to the obj->Pathname structure to
 QueryDelete is passed the qy_v void* parameter, and an oxt parameter. It should return 0 on successful deletion, and -1 on failure.
 
 QueryClose is also passed qy_v and oxt.  It should close the query, whether or not QueryFetch has been called enough times to enumerate all of the query results.
+
+A driver with OBJDRV_C_JOIN also implements OpenJoinQuery and QueryFetchJoin, which the OSML calls for objOpenJoinQuery() and objQueryFetchJoin().  QueryClose closes joined queries too.
+
+OpenJoinQuery is passed an array of the sources' inf_v values, the array of ObjJoinSource and its length, the pObjQuery, a void** to set to the new qy_v, and oxt.  Each source's Tree may reference its own subobjects and those of earlier sources, by ObjID.  It returns 1 if the query is open, 0 if the driver cannot join these sources (with no error), or -1 on error.  A driver must return 0 unless its rows exactly match those of querying each source in turn with the earlier sources' values filled in.
+
+QueryFetchJoin is passed qy_v, an array of new objects (one per source, set up as for QueryFetch), an array to fill with each source's inf_v, the open mode, and oxt.  An OBJ_JS_F_OUTER source with no matching row gets NULL.  It returns 1 on a row, 0 at the end of the results, or -1 on error.
 
 ### F.  Managing Object Attributes
 All objects will have at least some attributes.  Five attributes are mandatory: 'name', 'content_type', 'inner_type', 'outer_type', and 'annotation'.  All compliant drivers must implement these five attributes, all of which have a data type of DATA_T_STRING.
