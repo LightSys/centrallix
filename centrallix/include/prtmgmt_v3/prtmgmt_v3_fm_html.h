@@ -50,7 +50,10 @@
 #define PRT_HTMLFM_EMAIL_BOUNDARY_SIZE  (sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) + PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN)
 
 #define PRT_HTMLFM_MAX_TABSTOP          (32)
-#define PRT_HTMLFM_XPIXEL               (7)
+/*** Pixels per layout unit.  An X unit is 0.1in at 72px/in, the width of a
+ *** 12px monospace character, which the font metrics also assume.
+ ***/
+#define PRT_HTMLFM_XPIXEL               (7.2)
 #define PRT_HTMLFM_YPIXEL               (12)
 
 /** Session flags **/
