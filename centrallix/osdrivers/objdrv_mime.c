@@ -657,8 +657,8 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    inf->AttrValue = NULL;
 	    }
 
-	/** Handle special attributes. **/
-	if (!strcasecmp(attrname, "Content-Transfer-Encoding"))
+	/** Handle special attributes, including the transfer_encoding alias. **/
+	if (!strcasecmp(attrname, "Content-Transfer-Encoding") || !strcmp(attrname, "transfer_encoding"))
 	    {
 	    libmime_GetIntAttr(inf->Header, "Content-Transfer-Encoding", NULL, &int_attr);
 	    val->String = EncodingStrings[int_attr];
@@ -696,6 +696,14 @@ mimeGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    else if (!strcmp(attrName, "content_type") || !strcmp(attrName, "inner_type"))
 		{
 		rval = libmime_GetStringAttr(inf->Header, "Content-Type", NULL, &val->String);
+		}
+	    else if (!strcmp(attrName, "charset"))
+		{
+		rval = (libmime_GetStringAttr(inf->Header, "Content-Type", "charset", &val->String) == 0) ? 0 : 1;
+		}
+	    else if (!strcmp(attrName, "mime_version"))
+		{
+		rval = (libmime_GetStringAttr(inf->Header, "MIME-Version", NULL, &val->String) == 0) ? 0 : 1;
 		}
 	    else
 		{
