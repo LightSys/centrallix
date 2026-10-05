@@ -25,7 +25,6 @@ report_test "system/report"
     p_double	"report/parameter" { type=double;   default=3.14159; }
     p_region	"report/parameter" { type=string;   default="South"; }
     p_hidden	"report/parameter" { type=integer;  default=0; }
-    areabreak_test	"report/parameter" { type=integer;  default=0; }
     out_qty	"report/parameter" { type=integer;  direction=out; default=runserver(:table_qy:tot_qty); }
 
     // Single-row query with one value of each data type.
@@ -1020,11 +1019,9 @@ report_test "system/report"
     // 16. Table inside an area, long enough to cross a page break.
     s15_note "report/data" { value=runserver("Expect: bar chart with blue and dark red series; orange line chart; pie with percents on the slices and values in the legend; auto-series bars in four different colors for East, North, South, and West.\n"); }
 
-    s16_off "report/data" { condition=runserver(not :this:areabreak_test); value=runserver("\nTable inside an area across a page break: skipped, pass areabreak_test=1 to run it.\n"); }
     s16 "report/area"
 	{
 	height=0;
-	condition=runserver(:this:areabreak_test);
 	width=80;
 	s16_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n16. Table inside an area across a page break\n"); }
 	s16_t1 "report/table"

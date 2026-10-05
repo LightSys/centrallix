@@ -172,12 +172,13 @@ prt_textlm_Resize(pPrtObjStream this, double new_width, double new_height)
 
 
 /*** prt_textlm_ChildBreakReq() - a child object is requesting a page break
- *** operation.  Right now, we ain't gonna support such thangs in this lm.
+ *** operation, which breaks this area so the child can continue in the
+ *** area's continuation.
  ***/
 int
 prt_textlm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *new_this)
     {
-    return -1;
+    return this->LayoutMgr->Break(this, new_this);
     }
 
 
