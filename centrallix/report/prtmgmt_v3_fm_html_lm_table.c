@@ -157,8 +157,10 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
 			cur_col++;
+			const int colspan = ((pPrtTabLMData)(cell->LMData))->ColSpan;
 			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"",
-				(int)(cell->Width*PRT_HTMLFM_XPIXEL)) < 0))
+				(int)(cell->Width*PRT_HTMLFM_XPIXEL)) < 0
+			    || (colspan > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", colspan) < 0)))
 			    goto err_cell;
 			int saved_bg = prt_htmlfm_OutputBGColor(context, cell->BGColor);
 			if (UNLIKELY(saved_bg < 0)) goto err_cell;
