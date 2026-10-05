@@ -2105,14 +2105,25 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		    }
 		else
 		    {
-		    /** general purpose container here. **/
-		    if (rpt_internal_DoContainer(inf, subinf, rs, tablecell_handle) < 0)
+		    /** General purpose container here, in an area so its text flows and wraps. **/
+		    area_handle = prtAddObject(tablecell_handle, PRT_OBJ_T_AREA, 0,0,-1,-1, flags, NULL);
+		    if (area_handle < 0)
 			{
-			mssError(0,"RPT","problem constructing cell object '%s' (error doing content)", subinf->Name);
+			mssError(0,"RPT","problem constructing cell object '%s' (error adding area object)", subinf->Name);
 			prtEndObject(tablecell_handle);
 			prtEndObject(tablerow_handle);
 			goto error;
 			}
+		    rpt_internal_SetMargins(inf, subinf, area_handle, 0, 0, 0, 0);
+		    if (rpt_internal_DoContainer(inf, subinf, rs, area_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing cell object '%s' (error doing content)", subinf->Name);
+			prtEndObject(area_handle);
+			prtEndObject(tablecell_handle);
+			prtEndObject(tablerow_handle);
+			goto error;
+			}
+		    prtEndObject(area_handle);
 		    }
 
 		/** End the cell **/
@@ -2151,13 +2162,23 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		    }
 		else
 		    {
-		    /** Handle table row as a monolithic container with abstract content in it **/
-		    if (rpt_internal_DoContainer(inf, tablerow, rs, tablerow_handle) < 0)
+		    /** Handle table row as a monolithic container with abstract content in it, in an area so its text flows. **/
+		    area_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_AREA, 0,0,-1,-1, flags, NULL);
+		    if (area_handle < 0)
 			{
-			mssError(0,"RPT","problem constructing row object '%s' (error doing content)", tablerow->Name);
+			mssError(0,"RPT","problem constructing row object '%s' (error adding area object)", tablerow->Name);
 			prtEndObject(tablerow_handle);
 			goto error;
 			}
+		    rpt_internal_SetMargins(inf, tablerow, area_handle, 0, 0, 0, 0);
+		    if (rpt_internal_DoContainer(inf, tablerow, rs, area_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing row object '%s' (error doing content)", tablerow->Name);
+			prtEndObject(area_handle);
+			prtEndObject(tablerow_handle);
+			goto error;
+			}
+		    prtEndObject(area_handle);
 		    }
 		break; /* end the subinf for() loop, since we did all objects in DoContainer or DoArea */
 		}
