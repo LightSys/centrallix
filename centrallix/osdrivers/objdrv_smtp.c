@@ -228,6 +228,16 @@ typedef struct
     SmtpLogBatch, *pSmtpLogBatch;
 
 
+/*** Structure for a rotated mail log that a spool directory still needs to read. ***/
+typedef struct
+    {
+    char*	Path;
+    time_t	MTime;		/* When it was last written, before it was rotated. */
+    bool	IsCursor;	/* The spool directory's cursor is in this log. */
+    }
+    SmtpRotatedLog, *pSmtpRotatedLog;
+
+
 /*** Structure for the parts of one mail log line. ***/
 typedef struct
     {
@@ -3165,23 +3175,73 @@ smtp_internal_OpenLog(char* path)
     }
 
 
-/*** smtp_internal_FindRotatedLog - find the mail log that the cursor of a
- *** spool directory is in, after it was rotated to a name such as
- *** maillog-20261001 or maillog.1.
- ***
- *** @param spool The spool directory, which has a cursor.
- *** @param path Set to the path of the rotated log.  Must hold PATH_MAX bytes.
- *** @returns 1 if it was found, 0 if not, or -1 on failure.
+/*** smtp_internal_CompareRotatedLogs - qsort() callback that orders rotated
+ *** mail logs from oldest to newest.
  ***/
 int
-smtp_internal_FindRotatedLog(pSmtpSpool spool, char* path)
+smtp_internal_CompareRotatedLogs(const void* a, const void* b)
     {
+    pSmtpRotatedLog logA = *(pSmtpRotatedLog*)a;
+    pSmtpRotatedLog logB = *(pSmtpRotatedLog*)b;
+
+	/** The cursor's log goes first, even if another has the same mtime. **/
+	if (logA->MTime != logB->MTime)
+	    return (logA->MTime < logB->MTime) ? -1 : 1;
+	if (logA->IsCursor != logB->IsCursor)
+	    return (logA->IsCursor) ? -1 : 1;
+
+    return 0;
+    }
+
+
+/*** smtp_internal_FreeRotatedLogs - free the logs found by
+ *** smtp_internal_FindRotatedLogs(), leaving the XArray empty.
+ ***/
+void
+smtp_internal_FreeRotatedLogs(pXArray logs)
+    {
+    pSmtpRotatedLog log;
+    int i;
+
+	for (i = 0; i < logs->nItems; i++)
+	    {
+	    log = (pSmtpRotatedLog)logs->Items[i];
+	    nmSysFree(log->Path);
+	    nmFree(log, sizeof(SmtpRotatedLog));
+	    }
+	xaClear(logs, NULL, NULL);
+
+    return;
+    }
+
+
+/*** smtp_internal_FindRotatedLogs - find the rotated mail logs that a spool
+ *** directory has not finished reading: the one its cursor is in (after it
+ *** was rotated to a name such as maillog-20261001 or maillog.1), then each
+ *** log rotated after it.  Compressed logs are skipped.
+ ***
+ *** @param spool The spool directory, which has a cursor.
+ *** @param logs An initialized XArray, set to the pSmtpRotatedLog of each log
+ ***   from oldest to newest.  Free them with smtp_internal_FreeRotatedLogs().
+ *** @returns 1 if the cursor's log was found, 0 if not, or -1 on failure.
+ ***/
+int
+smtp_internal_FindRotatedLogs(pSmtpSpool spool, pXArray logs)
+    {
+    static char* compressed[] = { ".gz", ".bz2", ".xz", ".zst", ".lz4", ".Z" };
     char dirPath[PATH_MAX];
+    char path[PATH_MAX];
     char* base;
+    char* ext;
     int baseLen;
     DIR* dir = NULL;
     struct dirent* entry;
     struct stat st;
+    pSmtpRotatedLog log = NULL;
+    time_t cursorMTime = 0;
+    bool found = false;
+    bool skip;
+    int i;
     int rval = -1;
 
 	/** Split the log path into its directory and base name. **/
@@ -3208,7 +3268,7 @@ smtp_internal_FindRotatedLog(pSmtpSpool spool, char* path)
 	    goto end;
 	    }
 
-	/** Find the rotated log with the cursor's inode. **/
+	/** Collect the rotated logs. **/
 	while (1)
 	    {
 	    /** Get the next file. **/
@@ -3221,23 +3281,86 @@ smtp_internal_FindRotatedLog(pSmtpSpool spool, char* path)
 		    mssErrorErrno(1, "SMTP", "Failed to read mail log directory \"%s\".", dirPath);
 		    goto end;
 		    }
-		rval = 0; /* Not found. */
-		goto end;
+		break; /* No more files. */
 		}
 
-	    /** Check files named like a rotated log. **/
+	    /** Check uncompressed files named like a rotated log. **/
 	    if (strncmp(entry->d_name, base, baseLen) != 0 || (entry->d_name[baseLen] != '-' && entry->d_name[baseLen] != '.'))
 		continue;
-	    if (snprintf(path, PATH_MAX, "%s/%s", dirPath, entry->d_name) >= PATH_MAX)
+	    ext = strrchr(entry->d_name, '.');
+	    skip = false;
+	    for (i = 0; ext != NULL && i < (int)(sizeof(compressed) / sizeof(compressed[0])); i++)
+		if (strcmp(ext, compressed[i]) == 0)
+		    skip = true;
+	    if (skip)
 		continue;
-	    if (stat(path, &st) == 0 && st.st_dev == spool->LogDev && st.st_ino == spool->LogIno)
-		break;
+	    if (snprintf(path, sizeof(path), "%s/%s", dirPath, entry->d_name) >= (int)sizeof(path))
+		continue;
+	    if (stat(path, &st) != 0 || !S_ISREG(st.st_mode))
+		continue;
+
+	    /** Keep it. **/
+	    log = nmMalloc(sizeof(SmtpRotatedLog));
+	    if (UNLIKELY(log == NULL))
+		{
+		mssError(1, "SMTP", "Failed to allocate %zu bytes to track rotated mail log \"%s\".", sizeof(SmtpRotatedLog), path);
+		goto end;
+		}
+	    memset(log, 0, sizeof(SmtpRotatedLog));
+	    log->Path = nmSysStrdup(path);
+	    if (UNLIKELY(log->Path == NULL))
+		{
+		mssError(1, "SMTP", "Failed to copy rotated mail log path \"%s\".", path);
+		goto end;
+		}
+	    log->MTime = st.st_mtime;
+	    log->IsCursor = (st.st_dev == spool->LogDev && st.st_ino == spool->LogIno);
+	    if (UNLIKELY(xaAddItem(logs, log) < 0))
+		{
+		mssError(1, "SMTP", "Failed to track rotated mail log \"%s\".", path);
+		goto end;
+		}
+	    if (log->IsCursor)
+		{
+		found = true;
+		cursorMTime = log->MTime;
+		}
+	    log = NULL;
 	    }
+
+	/** Without the cursor's log, there is no way to tell which logs are newer. **/
+	if (!found)
+	    {
+	    smtp_internal_FreeRotatedLogs(logs);
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Drop the logs rotated before the cursor's, then order the rest. **/
+	for (i = logs->nItems - 1; i >= 0; i--)
+	    {
+	    log = (pSmtpRotatedLog)logs->Items[i];
+	    if (log->MTime < cursorMTime)
+		{
+		xaRemoveItem(logs, i);
+		nmSysFree(log->Path);
+		nmFree(log, sizeof(SmtpRotatedLog));
+		}
+	    }
+	log = NULL;
+	qsort(logs->Items, logs->nItems, sizeof(void*), smtp_internal_CompareRotatedLogs);
 
 	/** Success. **/
 	rval = 1;
 
     end:
+	if (UNLIKELY(log != NULL))
+	    {
+	    if (log->Path != NULL) nmSysFree(log->Path);
+	    nmFree(log, sizeof(SmtpRotatedLog));
+	    }
+	if (UNLIKELY(rval < 0))
+	    smtp_internal_FreeRotatedLogs(logs);
 	if (dir != NULL) closedir(dir);
 
 	return rval;
@@ -3884,7 +4007,9 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
     SmtpLogBatch batch;
     bool batchInitialized = false;
     pSmtpLogEmail email;
-    char rotatedPath[PATH_MAX];
+    XArray rotatedLogs;
+    bool rotatedLogsInitialized = false;
+    pSmtpRotatedLog rotated;
     char structPath[PATH_MAX];
     char resultPath[PATH_MAX];
     char* status;
@@ -3964,28 +4089,39 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	    goto end;
 	batchInitialized = true;
 
-	/** Finish the rotated log the cursor is in. **/
+	/** Find the rotated log the cursor is in, and each log rotated after it. **/
 	if (spool->HasCursor && !sameLog)
 	    {
-	    found = smtp_internal_FindRotatedLog(spool, rotatedPath);
+	    if (UNLIKELY(xaInit(&rotatedLogs, 8) != 0))
+		{
+		mssError(1, "SMTP", "Failed to initialize the list of rotated mail logs.");
+		goto end;
+		}
+	    rotatedLogsInitialized = true;
+	    found = smtp_internal_FindRotatedLogs(spool, &rotatedLogs);
 	    if (UNLIKELY(found < 0))
 		goto end;
 	    if (found == 0)
 		{
 		fprintf(stderr,
 		    "Warning: Failed to find the rotated mail log where \"%s\" stopped reading, "
-		    "so results Postfix logged there after that are missed.\n",
+		    "so results Postfix logged there and in later rotated logs are missed.\n",
 		    spoolDir
 		);
 		}
-	    else
+
+	    /** Finish the cursor's log, then read each later one from the start. **/
+	    for (i = 0; i < rotatedLogs.nItems; i++)
 		{
-		rotatedLog = smtp_internal_OpenLog(rotatedPath);
+		rotated = (pSmtpRotatedLog)rotatedLogs.Items[i];
+		rotatedLog = smtp_internal_OpenLog(rotated->Path);
 		if (UNLIKELY(rotatedLog == NULL))
 		    goto end;
-		rotatedOffset = spool->LogOffset;
-		if (UNLIKELY(smtp_internal_ReadLogLines(spool, &batch, rotatedLog, rotatedPath, &rotatedOffset) != 0))
+		rotatedOffset = (rotated->IsCursor) ? spool->LogOffset : 0;
+		if (UNLIKELY(smtp_internal_ReadLogLines(spool, &batch, rotatedLog, rotated->Path, &rotatedOffset) != 0))
 		    goto end;
+		fdClose(rotatedLog, 0);
+		rotatedLog = NULL;
 		}
 	    }
 
@@ -4051,6 +4187,11 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 
 	if (log != NULL) fdClose(log, 0);
 	if (rotatedLog != NULL) fdClose(rotatedLog, 0);
+	if (rotatedLogsInitialized)
+	    {
+	    smtp_internal_FreeRotatedLogs(&rotatedLogs);
+	    xaDeInit(&rotatedLogs);
+	    }
 	if (batchInitialized) smtp_internal_FreeLogBatch(&batch);
 
 	/** End the read, waking the threads waiting for it. **/
