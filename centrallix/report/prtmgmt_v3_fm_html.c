@@ -685,7 +685,13 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	    }
 	if (exit_style) return 0; /* Done exiting. */
 
-	/** Set the dirty flags for styles that need to be rewritten. **/
+	/*** Set the dirty flags for styles that need to be rewritten.  A rewritten
+	 *** tag's old dirty flag is stale (its opening tag was never written), so
+	 *** clear it first.
+	 ***/
+	if (rewrite_bold) context->StyleFlags &= ~PRT_HTMLFM_SF_BOLDDIRTY;
+	if (rewrite_italic) context->StyleFlags &= ~PRT_HTMLFM_SF_ITALICDIRTY;
+	if (rewrite_underline) context->StyleFlags &= ~PRT_HTMLFM_SF_UNDERLINEDIRTY;
 	if (rewrite_bold && (style->Attr & PRT_OBJ_A_BOLD))
 	    context->StyleFlags |= PRT_HTMLFM_SF_BOLDDIRTY;
 	if (rewrite_italic && (style->Attr & PRT_OBJ_A_ITALIC))
