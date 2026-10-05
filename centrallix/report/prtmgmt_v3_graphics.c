@@ -514,7 +514,7 @@ prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width
 	/** build a new image object **/
 	image_obj = prt_internal_AllocObjByID(PRT_OBJ_T_IMAGE);
 	if (!image_obj) return -ENOMEM;
-	prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,image_obj);
+	prt_internal_CopyAttrs(prt_internal_GetStyleObj(obj),image_obj);
 	image_obj->Flags = flags & PRT_OBJ_UFLAGMASK;
 	image_obj->X = x;
 	image_obj->Y = y;
@@ -872,10 +872,7 @@ prtWriteSvgToContainer(int handle_id, pPrtSvg svg, double x, double y,
     if (!svg_obj) return -ENOMEM;
     
     /* Copy attributes inherited from parent */
-    if (obj->ContentTail) 
-        prt_internal_CopyAttrs(obj->ContentTail, svg_obj);
-    else 
-        prt_internal_CopyAttrs(obj, svg_obj);
+    prt_internal_CopyAttrs(prt_internal_GetStyleObj(obj), svg_obj);
 
     /* Set other relevant attributes */
     svg_obj->Flags = flags & PRT_OBJ_UFLAGMASK;

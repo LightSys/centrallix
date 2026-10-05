@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -275,11 +275,8 @@ prtGetTextStyle(int handle_id, pPrtTextStyle *style)
 	if (!obj) return -1;
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
-	/** Check for a child object **/
-	if (obj->ContentTail != NULL)
-	    get_obj = obj->ContentTail;
-	else
-	    get_obj = obj;
+	/** Find the object holding the style **/
+	get_obj = prt_internal_GetStyleObj(obj);
 
 	/** Get the style. **/
 	memcpy(*style, &(get_obj->TextStyle), sizeof(PrtTextStyle));
@@ -327,11 +324,8 @@ prtGetAttr(int handle_id)
 	if (!obj) return -1;
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
-	/** Check for a child object **/
-	if (obj->ContentTail != NULL)
-	    tgt_obj = obj->ContentTail;
-	else
-	    tgt_obj = obj;
+	/** Find the object holding the style **/
+	tgt_obj = prt_internal_GetStyleObj(obj);
 
     return tgt_obj->TextStyle.Attr;
     }
@@ -397,11 +391,8 @@ prtGetFont(int handle_id)
 	if (!obj) return NULL;
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
-	/** Check for a child object **/
-	if (obj->ContentTail != NULL)
-	    tgt_obj = obj->ContentTail;
-	else
-	    tgt_obj = obj;
+	/** Find the object holding the style **/
+	tgt_obj = prt_internal_GetStyleObj(obj);
 
     return prtLookupFontName(tgt_obj->TextStyle.FontID);
     }
@@ -462,11 +453,8 @@ prtGetFontSize(int handle_id)
 	if (!obj) return -1;
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
-	/** Check for a child object **/
-	if (obj->ContentTail != NULL)
-	    tgt_obj = obj->ContentTail;
-	else
-	    tgt_obj = obj;
+	/** Find the object holding the style **/
+	tgt_obj = prt_internal_GetStyleObj(obj);
 
     return tgt_obj->TextStyle.FontSize;
     }
@@ -519,11 +507,8 @@ prtGetMinFontSize(int handle_id)
 	if (!obj) return -1;
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
-	/** Check for a child object **/
-	if (obj->ContentTail != NULL)
-	    tgt_obj = obj->ContentTail;
-	else
-	    tgt_obj = obj;
+	/** Find the object holding the style **/
+	tgt_obj = prt_internal_GetStyleObj(obj);
 
     return tgt_obj->TextStyle.MinFontSize;
     }
@@ -568,11 +553,8 @@ prtGetColor(int handle_id)
 	if (!obj) return -1;
 	ASSERTMAGIC(obj, MGK_PRTOBJSTRM);
 
-	/** Check for a child object **/
-	if (obj->ContentTail != NULL)
-	    tgt_obj = obj->ContentTail;
-	else
-	    tgt_obj = obj;
+	/** Find the object holding the style **/
+	tgt_obj = prt_internal_GetStyleObj(obj);
 
     return tgt_obj->TextStyle.Color;
     }
@@ -758,8 +740,8 @@ prtWriteString(int handle_id, char* str)
 	    string_obj->ContentSize = len+2;
 	    strncpy((char*)string_obj->Content, str, len);
 	    string_obj->Content[len] = 0;
-	    prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,string_obj);
-	    string_obj->Width = prt_internal_GetStringWidth((obj->ContentTail)?(obj->ContentTail):obj, (char*)string_obj->Content, -1);
+	    prt_internal_CopyAttrs(prt_internal_GetStyleObj(obj),string_obj);
+	    string_obj->Width = prt_internal_GetStringWidth(prt_internal_GetStyleObj(obj), (char*)string_obj->Content, -1);
 	    string_obj->ConfigWidth = string_obj->Width;
 	    string_obj->Height = prt_internal_GetFontHeight(string_obj);
 	    string_obj->ConfigHeight = string_obj->Height;
@@ -834,7 +816,7 @@ prtWriteNL(int handle_id)
 	nl_obj->Content[0] = '\0';
 	nl_obj->Width = 0.0;
 	nl_obj->ConfigWidth = 0.0;
-	prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,nl_obj);
+	prt_internal_CopyAttrs(prt_internal_GetStyleObj(obj),nl_obj);
 	nl_obj->Height = prt_internal_GetFontHeight(nl_obj);
 	nl_obj->ConfigHeight = nl_obj->Height;
 	nl_obj->YBase = prt_internal_GetFontBaseline(nl_obj);

@@ -499,6 +499,7 @@ int prt_internal_FreeTree(pPrtObjStream obj);
 int prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page);
 pPrtObjStream prt_internal_GetPage(pPrtObjStream obj);
 pPrtObjStream prt_internal_AddEmptyObj(pPrtObjStream container);
+pPrtObjStream prt_internal_GetStyleObj(pPrtObjStream container);
 pPrtObjStream prt_internal_CreateEmptyObj(pPrtObjStream container);
 int prt_internal_Dump(pPrtObjStream obj);
 pPrtObjStream prt_internal_Duplicate(pPrtObjStream obj, int with_content);
