@@ -719,8 +719,10 @@ prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, 
 		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 	png_write_info(libpng_png_ptr, libpng_info_ptr);
 	png_set_bgr(libpng_png_ptr);
-	if (img->Hdr.ColorMode == PRT_COLOR_T_FULL) 
+	if (img->Hdr.ColorMode == PRT_COLOR_T_FULL)
 	    png_set_filler(libpng_png_ptr, 0, PNG_FILLER_AFTER);
+	if (img->Hdr.ColorMode == PRT_COLOR_T_MONO)
+	    png_set_packswap(libpng_png_ptr);
 
 	/** Allocate and setup row pointer **/
 	row_pointer = (png_byte*)nmSysMalloc(bytes_per_row);
