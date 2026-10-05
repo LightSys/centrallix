@@ -1014,7 +1014,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		{
 		/** Compute string properties. **/
 		const bool has_content = (strlen((char*)obj->Content) > 0);
-		const bool has_url = (obj->URL != NULL && strchr(obj->URL, '"') == NULL);
+		const bool has_url = (has_content && obj->URL != NULL && strchr(obj->URL, '"') == NULL);
 
 		/** Write style, if needed. **/
 		if (UNLIKELY(prt_htmlfm_SetStyle(context, &(obj->TextStyle)) < 0)) goto error_string;
