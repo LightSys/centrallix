@@ -233,7 +233,7 @@ typedef struct _PE
 
 
 /*** Session flags ***/
-#define PRT_SESSION_F_ERROR	    1		/* generation failed; the output is incomplete */
+#define PRT_SESSION_F_ERROR	    2		/* generation failed; the output is incomplete (1 is PRT_SESS_F_NOZ) */
 
 
 /*** Print Session structure ***/
