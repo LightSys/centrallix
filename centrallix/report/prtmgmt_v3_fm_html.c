@@ -84,9 +84,9 @@
 
 #define PRT_HTMLFM_EMAIL_CONTENT_HEADER_FORMAT "\n" \
     "--%s\n" \
-    /** Report data (e.g. donor names) may contain raw UTF-8 octets >127. **/ \
+    /** Quoted-printable allows lines over 998 bytes and raw UTF-8 octets >127. **/ \
     "Content-Type: text/html; charset=utf-8\n" \
-    "Content-Transfer-Encoding: 8bit\n" \
+    "Content-Transfer-Encoding: quoted-printable\n" \
     "\n"
 
 /*** The HTML part is closed by the next boundary delimiter (in an inline image
@@ -241,9 +241,14 @@ typedef struct
     } ImageBuffer;
 
 
+/** Max quoted-printable line length, before the soft line break's "=". **/
+#define PRT_HTMLFM_QP_LINE_LEN 75
+
 /*** prt_htmlfm_WriteEmail() - writes output for an email report, ending
- *** each line with CRLF as email requires.  Takes the same arguments as
- *** the session's WriteFn() so that xsGenPrintf_va() can use it.
+ *** each line with CRLF as email requires, and encoding the HTML part as
+ *** quoted-printable so that long lines and non-ASCII bytes are allowed.
+ *** Takes the same arguments as the session's WriteFn() so that
+ *** xsGenPrintf_va() can use it.
  ***
  *** @param context_v The report formatter context.
  *** @param str The output to write.
@@ -256,24 +261,114 @@ static int
 prt_htmlfm_WriteEmail(void* context_v, char* str, int len, int offset, int flags)
     {
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
+    static const char hex[] = "0123456789ABCDEF";
     char buf[512];
     int n = 0;
 
 	for (int i = 0; i < len; i++)
 	    {
+	    const unsigned char ch = (unsigned char)str[i];
+
 	    /** Flush the buffer when it is nearly full. **/
-	    if (n >= (int)sizeof(buf) - 2)
+	    if (n >= (int)sizeof(buf) - 16)
 		{
 		if (context->Session->WriteFn(context->Session->WriteArg, buf, n, 0, FD_U_PACKET) < n) return -1;
 		n = 0;
 		}
 
-	    if (str[i] == '\n') buf[n++] = '\r';
-	    buf[n++] = str[i];
+	    /** Outside the HTML part, just end lines with CRLF. **/
+	    if (!context->QPEncode)
+		{
+		if (ch == '\n') buf[n++] = '\r';
+		buf[n++] = ch;
+		continue;
+		}
+
+	    /** Write a held space or tab, encoding it if it would end a line. **/
+	    if (context->QPPending != '\0')
+		{
+		const int width = (ch == '\n') ? 3 : 1;
+		if (context->QPLineLen + width > PRT_HTMLFM_QP_LINE_LEN)
+		    {
+		    memcpy(buf + n, "=\r\n", 3);
+		    n += 3;
+		    context->QPLineLen = 0;
+		    }
+		if (ch == '\n')
+		    {
+		    buf[n++] = '=';
+		    buf[n++] = hex[(unsigned char)context->QPPending >> 4];
+		    buf[n++] = hex[(unsigned char)context->QPPending & 0x0F];
+		    }
+		else
+		    {
+		    buf[n++] = context->QPPending;
+		    }
+		context->QPLineLen += width;
+		context->QPPending = '\0';
+		}
+
+	    /** Hold spaces and tabs until we know what follows them. **/
+	    if (ch == ' ' || ch == '\t')
+		{
+		context->QPPending = ch;
+		continue;
+		}
+
+	    /** Line breaks pass through as CRLF. **/
+	    if (ch == '\n')
+		{
+		memcpy(buf + n, "\r\n", 2);
+		n += 2;
+		context->QPLineLen = 0;
+		continue;
+		}
+
+	    /** Other characters are literal if printable, or else encoded. **/
+	    const int width = (ch >= 33 && ch <= 126 && ch != '=') ? 1 : 3;
+	    if (context->QPLineLen + width > PRT_HTMLFM_QP_LINE_LEN)
+		{
+		memcpy(buf + n, "=\r\n", 3);
+		n += 3;
+		context->QPLineLen = 0;
+		}
+	    if (width == 1)
+		{
+		buf[n++] = ch;
+		}
+	    else
+		{
+		buf[n++] = '=';
+		buf[n++] = hex[ch >> 4];
+		buf[n++] = hex[ch & 0x0F];
+		}
+	    context->QPLineLen += width;
 	    }
 	if (n > 0 && context->Session->WriteFn(context->Session->WriteArg, buf, n, 0, FD_U_PACKET) < n) return -1;
 
     return len;
+    }
+
+
+/*** prt_htmlfm_EndQP() - ends quoted-printable output for an email report,
+ *** ending the line after any held space or tab.
+ ***
+ *** @param context The report formatter context.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+prt_htmlfm_EndQP(pPrtHTMLfmInf context)
+    {
+
+	/** Write the held character as if a line break follows it. **/
+	if (context->QPPending != '\0' && prt_htmlfm_WriteEmail(context, "\n", 1, 0, FD_U_PACKET) < 0)
+	    {
+	    mssError(1, "PRT", "Failed to end the quoted-printable HTML part of the email report.");
+	    return -1;
+	    }
+	context->QPEncode = 0;
+
+    return 0;
     }
 
 
@@ -462,6 +557,7 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 		mssError(0, "PRT", "Failed to write content email header.");
 		goto reject;
 		}
+	    context->QPEncode = 1;
 	    }
 
 	/*** Write HTML header.  Report content always sits on a white page area
@@ -595,6 +691,7 @@ prt_htmlfm_Close(void* context_v)
 		mssError(0, "PRT", "Failed to write email content footer.");
 		goto end;
 		}
+	    if (UNLIKELY(prt_htmlfm_EndQP(context) < 0)) goto end;
 	    }
 
 	/** Write attachments for emails. **/

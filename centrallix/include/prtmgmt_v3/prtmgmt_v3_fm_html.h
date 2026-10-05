@@ -94,6 +94,9 @@ typedef struct _PSFI
     int			BGColor;	/* The current background color showing through. */
     pXArray		Attachments;
     char		Boundary[PRT_HTMLFM_EMAIL_BOUNDARY_SIZE];
+    int			QPEncode;	/* Whether email output is quoted-printable (the HTML part). */
+    int			QPLineLen;	/* Characters on the current quoted-printable line. */
+    char		QPPending;	/* A held space or tab, encoded if a line break follows; or 0. */
     }
     PrtHTMLfmInf, *pPrtHTMLfmInf;
 
