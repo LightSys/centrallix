@@ -506,7 +506,8 @@ int
 mime_internal_IsLowerAttr(pMimeInfo inf, char* attrname)
     {
     static char* smtpAttrs[] = { "status", "is_ready", "tag", "message_id", "try_count",
-	"first_try_date", "last_try_date", "last_try_status", "last_try_msg", "expire_date" };
+	"first_try_date", "last_try_date", "last_try_status", "last_try_msg", "expire_date",
+	"queue_id", "rcpt_count" };
     int i;
 
 	if (!strcmp(attrname, "envelope_from") || !strcmp(attrname, "envelope_to"))
