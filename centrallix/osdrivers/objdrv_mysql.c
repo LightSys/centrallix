@@ -23,7 +23,7 @@
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
 /*                                                                      */
-/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -106,6 +106,7 @@ typedef struct
     unsigned char ColKeys[MYSD_MAX_COLS];
     char*        Cols[MYSD_MAX_COLS];
     char*        ColTypes[MYSD_MAX_COLS];
+    char*        ColCollations[MYSD_MAX_COLS];	/* NULL if none */
     unsigned int ColLengths[MYSD_MAX_COLS];
     pObjPresentationHints ColHints[MYSD_MAX_COLS];
     int                nCols;
@@ -122,6 +123,7 @@ typedef struct
 #define MYSD_COL_F_NULL         1       /* column allows nulls */
 #define MYSD_COL_F_PRIKEY       2       /* column is part of primary key */
 #define MYSD_COL_F_UNSIGNED     4       /* Flag for unsigned on integer fields */
+#define MYSD_COL_F_EXACTINT     8       /* integer values fit a Centrallix integer exactly */
 
 
 /*** Structure used by this driver internally. ***/
@@ -162,6 +164,16 @@ typedef struct
 
 #define MYSD(x) ((pMysdData)(x))
 
+/*** Joined query, see mysdOpenJoinQuery(). ***/
+typedef struct
+    {
+    pMysdData	Sources[OBJSYS_MAX_JOIN];	/* rows object of each table */
+    int		nSources;
+    MYSQL_RES*	Result;
+    }
+    MysdJoin, *pMysdJoin;
+
+
 /*** Structure used by queries for this driver. ***/
 typedef struct
     {
@@ -170,8 +182,22 @@ typedef struct
     XString            Clause;
     int                ItemCnt;
     pObjQuery		Query;
+    pMysdJoin		Join;		/* NULL unless a joined query */
     }
     MysdQuery, *pMysdQuery;
+
+
+/*** Tables that an expression being translated to SQL can reference. ***/
+typedef struct
+    {
+    pMysdTable	TData[OBJSYS_MAX_JOIN];
+    int		ObjIDs[OBJSYS_MAX_JOIN];	/* expression object id of each table */
+    int		nTables;
+    int		Qualify;			/* name columns as `tN`.`col` */
+    int		ThisTable;			/* table whose criteria are being written */
+    char*	ConnCharset;			/* character set of the connection */
+    }
+    MysdClauseTables, *pMysdClauseTables;
 
 
 /*** GLOBALS ***/
@@ -724,8 +750,9 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysdTable tdata)
             if(!strcmp(data_desc, "mediumtext") || !strcmp(data_desc, "mediumblob")) tdata->ColLengths[tdata->nCols] = 0xFFFFFF;
             if(!strcmp(data_desc, "longtext") || !strcmp(data_desc, "longblob")) tdata->ColLengths[tdata->nCols] = 0xFFFFFFFF;
 
-            /** Type **/
+            /** Type and collation **/
             tdata->ColTypes[tdata->nCols] = nmSysStrdup(data_desc);
+            tdata->ColCollations[tdata->nCols] = (row[2])?nmSysStrdup(row[2]):NULL;
             if (!strcmp(data_desc, "int") || !strcmp(data_desc, "bigint") || !strcmp(data_desc, "tinyint") || !strcmp(data_desc, "smallint") || !strcmp(data_desc, "mediumint") || !strcmp(data_desc, "bit"))
                 tdata->ColCxTypes[tdata->nCols] = DATA_T_INTEGER;
             else if (!strcmp(data_desc, "char") || !strcmp(data_desc, "varchar") 
@@ -748,13 +775,18 @@ mysd_internal_ParseTData(MYSQL_RES *resultset, int rowcnt, pMysdTable tdata)
                 if(!strcmp(pos,"unsigned")) 
                     tdata->ColFlags[i] |= MYSD_COL_F_UNSIGNED;
                 }
+
+            /** Integer that reads back as the same Centrallix integer? **/
+            if ((!strcmp(data_desc, "int") || !strcmp(data_desc, "tinyint") || !strcmp(data_desc, "smallint") || !strcmp(data_desc, "mediumint")) &&
+                    !strstr(row[1], "zerofill") && !(!strcmp(data_desc, "int") && strstr(row[1], "unsigned")))
+                tdata->ColFlags[i] |= MYSD_COL_F_EXACTINT;
             
             /** Allow nulls **/
-            if (row[2] && !strcmp(row[2], "YES"))
+            if (row[3] && !strcmp(row[3], "YES"))
                 tdata->ColFlags[i] |= MYSD_COL_F_NULL;
 
             /** Primary Key **/
-            if (row[3] && !strcmp(row[3], "PRI"))
+            if (row[4] && !strcmp(row[4], "PRI"))
                 {
                 if (tdata->nKeys >= MYSD_MAX_KEYS)
                     {
@@ -794,7 +826,7 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
         /** this next bit will break any charset not ASCII **/ 
         /** throw an error if some joker tries to throw in a backtick **/
         if(strchr(tablename,'`')) goto error; 
-        result = mysd_internal_RunQuery(node, "SHOW COLUMNS FROM `?`",tablename);
+        result = mysd_internal_RunQuery(node, "SHOW FULL COLUMNS FROM `?`",tablename);
         if (!result || result == MYSD_RUNQUERY_ERROR)
             goto error;
         rowcnt = mysql_num_rows(result);
@@ -844,31 +876,42 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
     }
 
 
-/*** mysd_internal_DupRow() - duplicate a MYSQL_ROW structure
+/*** mysd_internal_DupRowPart() - duplicate n_fields fields of a MYSQL_ROW,
+ *** starting at field offset, as a row of their own.
  ***/
 MYSQL_ROW
-mysd_internal_DupRow(MYSQL_ROW row, MYSQL_RES* result)
+mysd_internal_DupRowPart(MYSQL_ROW row, int offset, int n_fields)
     {
     MYSQL_ROW new_row;
-    int n_fields;
     int i;
-
-	n_fields = mysql_num_fields(result);
-	if (n_fields <= 0) return NULL;
 
 	new_row = nmSysMalloc((n_fields+1) * sizeof(char*));
 	if (!new_row) return NULL;
 
 	for(i=0;i<n_fields;i++)
 	    {
-	    if (row[i])
-		new_row[i] = nmSysStrdup(row[i]);
+	    if (row[offset+i])
+		new_row[i] = nmSysStrdup(row[offset+i]);
 	    else
 		new_row[i] = NULL;
 	    }
 	new_row[n_fields] = (char*)(-1L);
 
     return new_row;
+    }
+
+
+/*** mysd_internal_DupRow() - duplicate a MYSQL_ROW structure
+ ***/
+MYSQL_ROW
+mysd_internal_DupRow(MYSQL_ROW row, MYSQL_RES* result)
+    {
+    int n_fields;
+
+	n_fields = mysql_num_fields(result);
+	if (n_fields <= 0) return NULL;
+
+    return mysd_internal_DupRowPart(row, 0, n_fields);
     }
 
 
@@ -1609,15 +1652,163 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
     return 0;
     }
 
+/*** mysd_internal_ClauseTable() - find which of the tables a property in an
+ *** expression refers to.  A query on one table has no aliases, so every
+ *** property is in that table.  Returns the table's index, or -1 if none.
+ ***/
+int
+mysd_internal_ClauseTable(pMysdClauseTables tables, pExpression prop)
+    {
+    int i;
+
+	if (!tables->Qualify)
+	    return 0;
+	for(i=0; i<tables->nTables; i++)
+	    if (tables->ObjIDs[i] == prop->ObjID)
+		return i;
+
+    return -1;
+    }
+
+
+/*** mysd_internal_ColumnID() - find a column of a table by name.  A name
+ *** that the driver or the OSML answers itself, such as "name", is never a
+ *** column.  Returns the column's index, or -1 if none.
+ ***/
+int
+mysd_internal_ColumnID(pMysdTable tdata, char* colname)
+    {
+    int i;
+
+	if (!strcmp(colname, "name") || !strcmp(colname, "annotation") || !strcmp(colname, "content_type") ||
+		!strcmp(colname, "inner_type") || !strcmp(colname, "outer_type") || !strcmp(colname, "last_modification") ||
+		!strcmp(colname, "objcontent") || !strncmp(colname, "cx__", 4))
+	    return -1;
+	for(i=0; i<tdata->nCols; i++)
+	    if (!strcmp(colname, tdata->Cols[i]))
+		return i;
+
+    return -1;
+    }
+
+
+/*** mysd_internal_CollationCharset() - copy the character set of a
+ *** collation, which is its name up to the first '_', into buf.
+ ***/
+void
+mysd_internal_CollationCharset(char* collation, char* buf, int buflen)
+    {
+
+	strtcpy(buf, collation, buflen);
+	buf[strcspn(buf, "_")] = '\0';
+
+    return;
+    }
+
+
+/*** mysd_internal_CharsetHolds() - check whether a character set has every
+ *** character of another, so converting to it loses nothing.
+ ***/
+int
+mysd_internal_CharsetHolds(char* charset, char* other)
+    {
+
+	if (!strcmp(charset, other) || !strcmp(other, "ascii") || !strcmp(charset, "utf8mb4"))
+	    return 1;
+	if (!strcmp(charset, "utf8") || !strcmp(charset, "utf8mb3"))
+	    return (strcmp(other, "utf8mb4") && strcmp(other, "utf16") && strcmp(other, "utf16le") && strcmp(other, "utf32"));
+
+    return 0;
+    }
+
+
+/*** mysd_internal_IsFrozenConst() - check whether TreeToClause() writes a
+ *** property as a constant value, because its value was frozen.
+ ***/
+int
+mysd_internal_IsFrozenConst(pExpression prop)
+    {
+
+	if (!(prop->Flags & EXPR_F_FREEZEEVAL) && !(prop->Parent && (prop->Parent->Flags & EXPR_F_FREEZEEVAL)))
+	    return 0;
+
+    return ((prop->Flags & EXPR_F_NULL) || prop->DataType == DATA_T_INTEGER || prop->DataType == DATA_T_STRING ||
+	    prop->DataType == DATA_T_DATETIME || prop->DataType == DATA_T_MONEY || prop->DataType == DATA_T_DOUBLE);
+    }
+
+
+/*** mysd_internal_JoinColumns() - check that a property is a column of an
+ *** earlier table compared directly with a column of this table, and find
+ *** both columns.  Returns the earlier table's index, or -1 if not.
+ ***/
+int
+mysd_internal_JoinColumns(pMysdClauseTables tables, pExpression prop, int* col, int* this_col)
+    {
+    pExpression other;
+    int table;
+
+	table = mysd_internal_ClauseTable(tables, prop);
+	if (table < 0 || table >= tables->ThisTable || !prop->Parent || prop->Parent->NodeType != EXPR_N_COMPARE || prop->Parent->Children.nItems != 2)
+	    return -1;
+	other = (pExpression)(prop->Parent->Children.Items[(prop->Parent->Children.Items[0] == (void*)prop)?1:0]);
+	if (other->NodeType != EXPR_N_PROPERTY || other->ObjID == -1 || mysd_internal_IsFrozenConst(other) ||
+		mysd_internal_ClauseTable(tables, other) != tables->ThisTable)
+	    return -1;
+	*col = mysd_internal_ColumnID(tables->TData[table], prop->Name);
+	*this_col = mysd_internal_ColumnID(tables->TData[tables->ThisTable], other->Name);
+	if (*col < 0 || *this_col < 0)
+	    return -1;
+
+    return table;
+    }
+
+
+/*** mysd_internal_JoinCollation() - find the collation that makes a column
+ *** of an earlier table compare like the literal a query on this table alone
+ *** would get: the value read through the connection's character set, in
+ *** this column's collation.  Sets *conn_charset when the value must first
+ *** pass through the connection's character set.  Returns NULL if the
+ *** column compares as is.
+ ***/
+char*
+mysd_internal_JoinCollation(pMysdClauseTables tables, pExpression prop, char** conn_charset)
+    {
+    pMysdTable tdata, this_tdata;
+    char charset[64];
+    int col, this_col, table;
+
+	*conn_charset = NULL;
+	table = mysd_internal_JoinColumns(tables, prop, &col, &this_col);
+	if (table < 0)
+	    return NULL;
+	tdata = tables->TData[table];
+	this_tdata = tables->TData[tables->ThisTable];
+	if (tdata->ColCxTypes[col] != DATA_T_STRING || !tdata->ColCollations[col] || !this_tdata->ColCollations[this_col])
+	    return NULL;
+
+	/** Characters the connection cannot carry are lost **/
+	mysd_internal_CollationCharset(tdata->ColCollations[col], charset, sizeof(charset));
+	if (!mysd_internal_CharsetHolds(tables->ConnCharset, charset))
+	    *conn_charset = tables->ConnCharset;
+	if (!*conn_charset && !strcmp(tdata->ColCollations[col], this_tdata->ColCollations[this_col]))
+	    return NULL;
+
+    return this_tdata->ColCollations[this_col];
+    }
+
+
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
  ***/
 int
-mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_clause, MYSQL * conn)
+mysd_internal_TreeToClause(pExpression tree, pMysdClauseTables tables, pXString where_clause, MYSQL * conn)
     {
     pExpression subtree;
     int i,id = 0;
     XString tmp;
+    char* collation;
+    char* conn_charset;
+    char charset[64];
     char* fn_use_name;
     int use_stock_fn_call;
     char quote;
@@ -1716,7 +1907,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 
             case EXPR_N_OBJECT:
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 break;
 
             case EXPR_N_PROPERTY:
@@ -1768,15 +1959,25 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     }
                 else
                     {
+                    /** Which table is it in? **/
+                    id = mysd_internal_ClauseTable(tables, tree);
+                    if (id < 0)
+                        {
+                        mssError(1,"MYSD","Property '%s' is not in a table of this query", tree->Name);
+                        return -1;
+                        }
+
                     /** Is this a special type of property (i.e., name or annotation?) **/
                     if (!strcmp(tree->Name,"name"))
                         {
                         xsConcatenate(where_clause, " CONCAT_WS('|', ", -1);
-                        for(i=0;i<tdata[id]->nKeys;i++)
+                        for(i=0;i<tables->TData[id]->nKeys;i++)
                             {
                             if (i != 0) xsConcatenate(where_clause, " , ", 3);
-                            xsConcatenate(where_clause, "cast(`", -1);
-			    mysd_internal_SafeAppend(conn, where_clause, tdata[id]->Keys[i]);
+                            xsConcatenate(where_clause, "cast(", -1);
+                            if (tables->Qualify) xsConcatQPrintf(where_clause, "`t%POS`.", id);
+                            xsConcatenate(where_clause, "`", 1);
+			    mysd_internal_SafeAppend(conn, where_clause, tables->TData[id]->Keys[i]);
                             xsConcatenate(where_clause, "` as char)", 10);
                             }
                         xsConcatenate(where_clause, ") ",2);
@@ -1788,9 +1989,20 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     else
                         {
                         /** "Normal" type of object... **/
-                        xsConcatenate(where_clause, " `", 2);
+                        collation = (tables->Qualify && id != tables->ThisTable)?mysd_internal_JoinCollation(tables, tree, &conn_charset):NULL;
+                        xsConcatenate(where_clause, (collation)?" CONVERT(":" ", -1);
+                        if (collation && conn_charset) xsConcatenate(where_clause, "CONVERT(", -1);
+                        if (tables->Qualify) xsConcatQPrintf(where_clause, "`t%POS`.", id);
+                        xsConcatenate(where_clause, "`", 1);
 			mysd_internal_SafeAppend(conn, where_clause, tree->Name);
                         xsConcatenate(where_clause, "` ", 2);
+                        if (collation && conn_charset)
+                            xsConcatQPrintf(where_clause, "USING %STR) ", conn_charset);
+                        if (collation)
+                            {
+                            mysd_internal_CollationCharset(collation, charset, sizeof(charset));
+                            xsConcatQPrintf(where_clause, "USING %STR) COLLATE %STR ", charset, collation);
+                            }
                         }
                     }
                 break;
@@ -1798,55 +2010,55 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             case EXPR_N_COMPARE:
                 xsConcatenate(where_clause, " (", 2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, " ", 1);
                 if (tree->CompareType & MLX_CMP_LESS) xsConcatenate(where_clause,"<",1);
                 if (tree->CompareType & MLX_CMP_GREATER) xsConcatenate(where_clause,">",1);
                 if (tree->CompareType & MLX_CMP_EQUALS) xsConcatenate(where_clause,"=",1);
                 xsConcatenate(where_clause, " ", 1);
                 subtree = (pExpression)(tree->Children.Items[1]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, ") ", 2);
                 break;
 
             case EXPR_N_AND:
                 xsConcatenate(where_clause, " (",2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, " AND ",5);
                 subtree = (pExpression)(tree->Children.Items[1]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, ") ",2);
                 break;
 
             case EXPR_N_OR:
                 xsConcatenate(where_clause, " (",2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, " OR ",4);
                 subtree = (pExpression)(tree->Children.Items[1]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, ") ",2);
                 break;
 
             case EXPR_N_ISNOTNULL:
                 xsConcatenate(where_clause, " (",2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, " IS NOT NULL) ",14);
                 break;
 
             case EXPR_N_ISNULL:
                 xsConcatenate(where_clause, " (",2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, " IS NULL) ",10);
                 break;
 
             case EXPR_N_NOT:
                 xsConcatenate(where_clause, " ( NOT ( ",9);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+                mysd_internal_TreeToClause(subtree,tables,where_clause,conn);
                 xsConcatenate(where_clause, " ) ) ",5);
                 break;
 
@@ -1869,20 +2081,20 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    {
 		    /** MySQL convert() params are reversed to what CX, Sybase, and MS SQL expect. **/
 		    xsConcatenate(where_clause, " convert(", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
 		    xsConcatenate(where_clause, " , ", 3);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables,  where_clause,conn);
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
 		else if (!strcmp(tree->Name,"upper") || !strcmp(tree->Name, "lower"))
 		    {
 		    /** check if database is using an expected character set **/
-		    pMysdTable tempTdata = *tdata;
+		    pMysdTable tempTdata = tables->TData[0];
 
 		    /** need to change collation to guarantee the result is case sensitive (in case it is used in compares) **/
 		    xsConcatPrintf(where_clause, " (%s(", tree->Name);
 		    len = xsLength(where_clause);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables, where_clause, conn);
 
 		    if (xsLength(where_clause) - len == 6 && !strcmp(xsString(where_clause)+len, " NULL "))
 			{
@@ -1935,9 +2147,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			xsConcatenate(where_clause, " timestampdiff(", -1);
 			xsConcatenate(where_clause, subtree->String, -1);
 			xsConcatenate(where_clause, ", ", -1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
 			xsConcatenate(where_clause, ", ", -1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata,  where_clause,conn);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tables,  where_clause,conn);
 			xsConcatenate(where_clause, ") ", -1);
 			}
 		    else
@@ -1950,9 +2162,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    {
 		    /** MySQL uses date_add(date, interval increment datepart) instead of dateadd(datepart, increment, date) **/
 		    xsConcatenate(where_clause, " date_add(", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata,  where_clause,conn);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tables,  where_clause,conn);
 		    xsConcatenate(where_clause, ", interval ", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
 		    xsConcatenate(where_clause, " ", 1);
 		    subtree = (pExpression)(tree->Children.Items[0]);
 		    if (subtree->DataType != DATA_T_STRING || subtree->Flags & EXPR_F_NULL)
@@ -1979,16 +2191,16 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     for(i=0;i<255 && i<((pExpression)(tree->Children.Items[1]))->Integer;i++)
                         xsConcatenate(where_clause, " ", 1);
                     xsConcatenate(where_clause, "',1,", 4);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
                     xsConcatenate(where_clause, " - char_length(", -1);
-                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables,  where_clause,conn);
                     xsConcatenate(where_clause, ")) ", 3);
                     }
                 else if (!strcmp(tree->Name,"eval"))
                     {
                     mssError(1,"MYSD","MySQL does not support eval() CXSQL function");
                     /* just put silly thing as text instead of evaluated */
-                    if (tree->Children.nItems == 1) mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                    if (tree->Children.nItems == 1) mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables,  where_clause,conn);
                     return -1;
                     }
 		else if (!strcmp(tree->Name,"datepart"))
@@ -2000,13 +2212,13 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			xsConcatenate(where_clause, " ", 1);
 			xsConcatenate(where_clause, subtree->String, -1);
 			xsConcatenate(where_clause, "(", 1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
 			xsConcatenate(where_clause, ") ", 2);
 			}
 		    else if (subtree->DataType == DATA_T_STRING && subtree->String && (!strcmp(subtree->String, "weekday")))
 			{
 			xsConcatenate(where_clause, " dayofweek(", -1);
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
 			xsConcatenate(where_clause, ") ", 2);
 			}
 		    else
@@ -2018,9 +2230,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		else if (!strcmp(tree->Name, "replace"))
 		    {
 		    xsConcatenate(where_clause, " replace(", -1);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata, where_clause, conn);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables, where_clause, conn);
 		    xsConcatenate(where_clause, ",", 1);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, where_clause, conn);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables, where_clause, conn);
 		    xsConcatenate(where_clause, ",", 1);
 		    subtree = (pExpression)tree->Children.Items[2];
 
@@ -2029,7 +2241,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			xsConcatenate(where_clause, "\"\") ", 4);
 		    else
 			{
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tdata, where_clause, conn);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[2]), tables, where_clause, conn);
 			xsConcatenate(where_clause, ") ", 2);
 			}
 		    }
@@ -2048,7 +2260,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			    xsConcatenate(where_clause, " SHA2(", 6);
 
 			/** Data **/
-			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata, where_clause, conn);
+			mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables, where_clause, conn);
 
 			/** Bit length, if needed **/
 			if (!strcmp(subtree->String, "sha256") || !strcmp(subtree->String, "sha384") || !strcmp(subtree->String, "sha512"))
@@ -2077,7 +2289,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                         {
                         if (i != 0) xsConcatenate(where_clause,",",1);
                         subtree = (pExpression)(tree->Children.Items[i]);
-                        mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
+                        mysd_internal_TreeToClause(subtree, tables,  where_clause,conn);
                         }
                     xsConcatenate(where_clause, ") ", 2);
                     }
@@ -2102,11 +2314,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if (subtree->NodeType == EXPR_N_PROPERTY && !(subtree->Flags & EXPR_F_FREEZEEVAL) && subtree->DataType == DATA_T_UNAVAILABLE)
 		    {
 		    /** A property under our control **/
-		    for(i=0;i<tdata[0]->nCols;i++)
+		    id = mysd_internal_ClauseTable(tables, subtree);
+		    for(i=0;id>=0 && i<tables->TData[id]->nCols;i++)
 			{
-			if (!strcmp(subtree->Name, tdata[0]->Cols[i]))
+			if (!strcmp(subtree->Name, tables->TData[id]->Cols[i]))
 			    {
-			    if (tdata[0]->ColCxTypes[i] == DATA_T_STRING)
+			    if (tables->TData[id]->ColCxTypes[i] == DATA_T_STRING)
 				subtree->DataType = DATA_T_STRING;
 			    }
 			}
@@ -2140,9 +2353,9 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		     **/
 		    tree->DataType = DATA_T_STRING;
 		    xsConcatenate(where_clause, " CONCAT(", -1);
-		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
+		    mysd_internal_TreeToClause(subtree, tables,  where_clause,conn);
 		    xsConcatenate(where_clause, " , ", 3);
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
 		else
@@ -2153,7 +2366,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		     **/
 		    i = strlen(where_clause->String);
 		    xsConcatenate(where_clause, "       (", -1);
-		    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
+		    mysd_internal_TreeToClause(subtree, tables,  where_clause,conn);
 		    if (subtree->DataType == DATA_T_STRING)
 			{
 			tree->DataType = DATA_T_STRING;
@@ -2164,38 +2377,38 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 			{
 			xsConcatenate(where_clause, " + ", 3);
 			}
-		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+		    mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
 		    xsConcatenate(where_clause, ") ", 2);
 		    }
                 break;
 
             case EXPR_N_MINUS:
                 xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables,  where_clause,conn);
                 xsConcatenate(where_clause, " - ", 3);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
                 xsConcatenate(where_clause, ") ", 2);
                 break;
 
             case EXPR_N_DIVIDE:
                 xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables,  where_clause,conn);
                 xsConcatenate(where_clause, " / ", 3);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
                 xsConcatenate(where_clause, ") ", 2);
                 break;
 
             case EXPR_N_MULTIPLY:
                 xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables,  where_clause,conn);
                 xsConcatenate(where_clause, " * ", 3);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tdata,  where_clause,conn);
+                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[1]), tables,  where_clause,conn);
                 xsConcatenate(where_clause, ") ", 2);
                 break;
 
             case EXPR_N_IN:
                 xsConcatenate(where_clause, " (", 2);
-                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tdata,  where_clause,conn);
+                mysd_internal_TreeToClause((pExpression)(tree->Children.Items[0]), tables,  where_clause,conn);
                 xsConcatenate(where_clause, " IN (", 5);
                 subtree = (pExpression)(tree->Children.Items[1]);
                 if (subtree->NodeType == EXPR_N_LIST)
@@ -2203,12 +2416,12 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                     for(i=0;i<subtree->Children.nItems;i++)
                         {
                         if (i != 0) xsConcatenate(where_clause, ",", 1);
-                        mysd_internal_TreeToClause((pExpression)(subtree->Children.Items[i]), tdata,  where_clause,conn);
+                        mysd_internal_TreeToClause((pExpression)(subtree->Children.Items[i]), tables,  where_clause,conn);
                         }
                     }
                 else
                     {
-                    mysd_internal_TreeToClause(subtree, tdata,  where_clause,conn);
+                    mysd_internal_TreeToClause(subtree, tables,  where_clause,conn);
                     }
                 xsConcatenate(where_clause, ") ) ", 4);
                 break;
@@ -2484,6 +2697,7 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     pMysdData inf = MYSD(inf_v);
     pMysdQuery qy = NULL;
     pMysdConn escape_conn = NULL;
+    MysdClauseTables tables;
     int i;
 
         /** check if we should really allow a query **/
@@ -2509,13 +2723,18 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
             query->Flags |= OBJ_QY_F_FULLSORT;
             if(query->Tree || query->SortBy[0]) 
                 {
+                tables.TData[0] = qy->Data->TData;
+                tables.nTables = 1;
+                tables.Qualify = 0;
+                tables.ThisTable = 0;
+                tables.ConnCharset = NULL;
                 escape_conn = mysd_internal_GetConn(qy->Data->Node);
 		if (!escape_conn)
 		    goto error;
                 if (query->Tree)
                     {
                     xsConcatenate(&qy->Clause, " WHERE ", 7);
-                    mysd_internal_TreeToClause((pExpression)(query->Tree),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
+                    mysd_internal_TreeToClause((pExpression)(query->Tree),&tables,&qy->Clause,&escape_conn->Handle);
                     }
                 if (query->SortBy[0])
                     {
@@ -2523,7 +2742,7 @@ mysdOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
                     for(i=0;query->SortBy[i] && i < (sizeof(query->SortBy)/sizeof(void*));i++)
                         {
                         if (i != 0) xsConcatenate(&qy->Clause, ", ", 2);
-                        mysd_internal_TreeToClause((pExpression)(query->SortBy[i]),&(qy->Data->TData),&qy->Clause,&escape_conn->Handle);
+                        mysd_internal_TreeToClause((pExpression)(query->SortBy[i]),&tables,&qy->Clause,&escape_conn->Handle);
                         }
                     }
 		if (query->Flags & OBJ_QY_F_ONEROW)
@@ -2562,6 +2781,12 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pMysdConn conn;
     char name_buf[(MYSD_NAME_LEN+1)*MYSD_MAX_KEYS];
     char* new_obj_name = NULL;
+
+	if (qy->Join)
+	    {
+	    mssError(1, "MYSD", "Joined queries are fetched with QueryFetchJoin");
+	    goto error;
+	    }
 
         /** Alloc the structure **/
         if(!(inf = (pMysdData)nmMalloc(sizeof(MysdData))))
@@ -2670,6 +2895,12 @@ mysdQueryDelete(void* qy_v, pObjTrxTree* oxt)
     pMysdQuery qy = (pMysdQuery)qy_v;
     MYSQL_RES * result;
 
+	if (qy->Join)
+	    {
+	    mssError(1, "MYSD", "Joined queries do not support delete");
+	    return -1;
+	    }
+
 	/** Run the delete. **/
 	result = mysd_internal_RunQuery(qy->Data->Node, "DELETE FROM `?` ?q", qy->Data->TData->Name, qy->Clause.String);
 	if (result == MYSD_RUNQUERY_ERROR)
@@ -2687,19 +2918,472 @@ mysdQueryClose(void* qy_v, pObjTrxTree* oxt)
     pMysdQuery qy = (pMysdQuery)qy_v;
     static MYSQL_RES * last_result = NULL;
         
-        /** Free the last result and store the pointer to this query's result.
-	 ** Note: last_result is *static* and retains the value from the
-	 ** previous call to this function.
-	 **/
-        if(last_result) mysql_free_result(last_result);
-        last_result = qy->Data->Result;
-        qy->Data->Result = NULL;
+	if (qy->Join)
+	    {
+	    /** Joined query keeps its own result **/
+	    if (qy->Join->Result) mysql_free_result(qy->Join->Result);
+	    nmFree(qy->Join, sizeof(MysdJoin));
+	    }
+	else
+	    {
+	    /** Free the last result and store the pointer to this query's result.
+	     ** Note: last_result is *static* and retains the value from the
+	     ** previous call to this function.
+	     **/
+	    if(last_result) mysql_free_result(last_result);
+	    last_result = qy->Data->Result;
+	    qy->Data->Result = NULL;
+	    }
         
         /** Free the structure **/
 	xsDeInit(&qy->Clause);
         nmFree(qy, sizeof(MysdQuery));
 
     return 0;
+    }
+
+
+/*** mysd_internal_IsSqlName() - check that the name of a character set or
+ *** collation can be written into SQL as is.
+ ***/
+int
+mysd_internal_IsSqlName(char* name)
+    {
+
+	if (!name || !name[0])
+	    return 0;
+
+    return (strspn(name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") == strlen(name));
+    }
+
+
+/*** mysd_internal_IsCollationName() - check that a collation name can be
+ *** written into SQL as is, and names its character set.
+ ***/
+int
+mysd_internal_IsCollationName(char* collation)
+    {
+
+    return (mysd_internal_IsSqlName(collation) && strchr(collation, '_'));
+    }
+
+
+/*** mysd_internal_ColumnsComparable() - check whether comparing a column of
+ *** an earlier table (tdata1) directly with a column of this table (tdata2)
+ *** gives the same result as comparing this table's column with the earlier
+ *** one's value written as a literal on a connection using conn_charset.
+ *** Returns 1 if so, 0 if not.
+ ***/
+int
+mysd_internal_ColumnsComparable(pMysdTable tdata1, int col1, pMysdTable tdata2, int col2, char* conn_charset)
+    {
+    char charset1[64], charset2[64];
+
+	if (tdata1->ColCxTypes[col1] != tdata2->ColCxTypes[col2])
+	    return 0;
+
+	switch(tdata1->ColCxTypes[col1])
+	    {
+	    case DATA_T_INTEGER:
+		/** Literals are the value read as a Centrallix integer **/
+		return (tdata1->ColFlags[col1] & MYSD_COL_F_EXACTINT)?1:0;
+
+	    case DATA_T_STRING:
+		/** Values are converted as literals are, see JoinCollation() **/
+		if (!mysd_internal_IsCollationName(tdata1->ColCollations[col1]) || !mysd_internal_IsCollationName(tdata2->ColCollations[col2]))
+		    return 0;
+		mysd_internal_CollationCharset(tdata1->ColCollations[col1], charset1, sizeof(charset1));
+		mysd_internal_CollationCharset(tdata2->ColCollations[col2], charset2, sizeof(charset2));
+
+		/** A literal that this column cannot hold is an error, not a match **/
+		return (mysd_internal_CharsetHolds(charset2, conn_charset) || mysd_internal_CharsetHolds(charset2, charset1));
+
+	    case DATA_T_DATETIME:
+		/** Literals carry whole seconds only **/
+		return (!strcmp(tdata1->ColTypes[col1], tdata2->ColTypes[col2]) &&
+			tdata1->ColLengths[col1] == 0 && tdata2->ColLengths[col2] == 0);
+	    }
+
+    return 0;
+    }
+
+
+/*** mysd_internal_JoinTreeOk() - check that an expression on one table of a
+ *** joined query means the same as in a query on that table alone, where the
+ *** earlier tables' values would be frozen constants.  So a column of an
+ *** earlier table may only be compared directly with a column of this table.
+ *** Returns 1 if so, 0 if not, or -1 on error.
+ ***/
+int
+mysd_internal_JoinTreeOk(pExpression tree, pMysdClauseTables tables)
+    {
+    int i, rval;
+    int table, col, this_col;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"MYSD","Failed to check joined query: resource exhaustion occurred");
+	    return -1;
+	    }
+
+	/** TreeToClause() writes nothing for other node types **/
+	switch(tree->NodeType)
+	    {
+	    case EXPR_N_DATETIME: case EXPR_N_MONEY: case EXPR_N_DOUBLE: case EXPR_N_INTEGER:
+	    case EXPR_N_STRING: case EXPR_N_OBJECT: case EXPR_N_PROPERTY: case EXPR_N_COMPARE:
+	    case EXPR_N_AND: case EXPR_N_OR: case EXPR_N_ISNOTNULL: case EXPR_N_ISNULL:
+	    case EXPR_N_NOT: case EXPR_N_FUNCTION: case EXPR_N_PLUS: case EXPR_N_MINUS:
+	    case EXPR_N_DIVIDE: case EXPR_N_MULTIPLY: case EXPR_N_IN:
+		break;
+	    case EXPR_N_LIST:
+		if (tree->Parent && tree->Parent->NodeType == EXPR_N_IN)
+		    break;
+		return 0;
+	    default:
+		return 0;
+	    }
+
+	/** Column of some table? **/
+	if (tree->NodeType == EXPR_N_PROPERTY && tree->ObjID != -1 && !mysd_internal_IsFrozenConst(tree))
+	    {
+	    if (mysd_internal_ClauseTable(tables, tree) == tables->ThisTable)
+		return 1;
+
+	    /** Earlier table: must be compared with a column of this one **/
+	    table = mysd_internal_JoinColumns(tables, tree, &col, &this_col);
+	    if (table < 0)
+		return 0;
+
+	    return mysd_internal_ColumnsComparable(tables->TData[table], col, tables->TData[tables->ThisTable], this_col, tables->ConnCharset);
+	    }
+
+	/** Check the subtrees **/
+	for(i=0; i<tree->Children.nItems; i++)
+	    {
+	    rval = mysd_internal_JoinTreeOk((pExpression)(tree->Children.Items[i]), tables);
+	    if (rval != 1)
+		return rval;
+	    }
+
+    return 1;
+    }
+
+
+/*** mysd_internal_SameDatabase() - check whether two nodes reach the same
+ *** database with the same settings, so one connection can query both.
+ ***/
+int
+mysd_internal_SameDatabase(pMysdNode node1, pMysdNode node2)
+    {
+    int auth_flags = MYSD_NODE_F_USECXAUTH | MYSD_NODE_F_SETCXAUTH;
+
+	if (node1 == node2)
+	    return 1;
+
+    return (!strcmp(node1->Server, node2->Server) && !strcmp(node1->Database, node2->Database) &&
+	    !strcmp(node1->Username, node2->Username) && !strcmp(node1->Password, node2->Password) &&
+	    !strcmp(node1->DefaultPassword, node2->DefaultPassword) && !strcmp(node1->DatabaseCollation, node2->DatabaseCollation) &&
+	    (node1->Flags & auth_flags) == (node2->Flags & auth_flags));
+    }
+
+
+/*** mysdOpenJoinQuery() - open a query joining the rows of several tables in
+ *** one database, run as a single SQL statement.  Declines (returns 0) unless
+ *** every source is the rows of a table with a primary key in the same
+ *** database, and every expression keeps its meaning when run this way.
+ *** Returns 1 if opened, 0 if declined, or -1 on error.
+ ***/
+int
+mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuery query, void** qy_data, pObjTrxTree* oxt)
+    {
+    pMysdData inf;
+    pMysdQuery qy = NULL;
+    pMysdConn conn = NULL;
+    MysdClauseTables tables;
+    MYSQL_RES* result;
+    MYSQL_ROW row;
+    MYSQL_FIELD* fields;
+    char conn_charset[64];
+    int i, j, k, n_cols, n_sort;
+    int rval = -1;
+
+	*qy_data = NULL;
+
+	/** Only rows of tables in one database can be joined **/
+	n_cols = 0;
+	for(i=0; i<n_sources; i++)
+	    {
+	    inf = MYSD(inf_v[i]);
+	    if (inf->Type != MYSD_T_ROWSOBJ || !inf->TData || inf->TData->nKeys == 0 || !mysd_internal_SameDatabase(inf->Node, MYSD(inf_v[0])->Node))
+		{
+		rval = 0;
+		goto end;
+		}
+	    for(j=0; j<i; j++)
+		{
+		if (sources[j].ObjID == sources[i].ObjID)
+		    {
+		    rval = 0;
+		    goto end;
+		    }
+		}
+	    tables.TData[i] = inf->TData;
+	    tables.ObjIDs[i] = sources[i].ObjID;
+	    n_cols += inf->TData->nCols;
+	    }
+	tables.nTables = n_sources;
+	tables.Qualify = 1;
+
+	/** Connection to run it on **/
+	conn = mysd_internal_GetConn(MYSD(inf_v[0])->Node);
+	if (!conn)
+	    goto end;
+
+	/** Literals were read and written in the session's character sets, which must agree **/
+	result = mysd_internal_RunQuery_conn(conn, MYSD(inf_v[0])->Node, "SELECT @@character_set_client, @@character_set_connection, @@character_set_results");
+	if (!result || result == MYSD_RUNQUERY_ERROR)
+	    {
+	    mssError(0, "MYSD", "Failed to read the connection's character sets (%s)", mysql_error(&conn->Handle));
+	    goto end;
+	    }
+	conn_charset[0] = '\0';
+	row = mysql_fetch_row(result);
+	if (row && row[0] && row[1] && row[2] && !strcmp(row[0], row[1]) && !strcmp(row[0], row[2]))
+	    strtcpy(conn_charset, row[0], sizeof(conn_charset));
+	mysql_free_result(result);
+	if (!mysd_internal_IsSqlName(conn_charset))
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+	tables.ConnCharset = conn_charset;
+
+	/** Every expression must keep its meaning **/
+	for(i=0; i<n_sources; i++)
+	    {
+	    tables.ThisTable = i;
+	    if (sources[i].Tree)
+		{
+		rval = mysd_internal_JoinTreeOk((pExpression)(sources[i].Tree), &tables);
+		if (rval != 1)
+		    goto end;
+		}
+	    for(j=0; sources[i].SortBy && j<OBJSYS_SORT_MAX && sources[i].SortBy[j]; j++)
+		{
+		rval = mysd_internal_JoinTreeOk((pExpression)(sources[i].SortBy[j]), &tables);
+		if (rval != 1)
+		    goto end;
+		}
+	    }
+	rval = -1;
+
+	/** Allocate the query **/
+	qy = (pMysdQuery)nmMalloc(sizeof(MysdQuery));
+	if (!qy)
+	    goto end;
+	memset(qy, 0, sizeof(MysdQuery));
+	xsInit(&qy->Clause);
+	qy->Data = MYSD(inf_v[0]);
+	qy->Query = query;
+	qy->Join = (pMysdJoin)nmMalloc(sizeof(MysdJoin));
+	if (!qy->Join)
+	    goto end;
+	memset(qy->Join, 0, sizeof(MysdJoin));
+	for(i=0; i<n_sources; i++)
+	    qy->Join->Sources[i] = MYSD(inf_v[i]);
+	qy->Join->nSources = n_sources;
+
+	/** Columns of every table, in Centrallix's join order **/
+	xsConcatenate(&qy->Clause, "SELECT STRAIGHT_JOIN ", -1);
+	for(i=0; i<n_sources; i++)
+	    xsConcatQPrintf(&qy->Clause, (i == 0)?"`t%POS`.*":", `t%POS`.*", i);
+
+	/** Tables, each joined on its criteria **/
+	xsConcatenate(&qy->Clause, " FROM ", -1);
+	for(i=0; i<n_sources; i++)
+	    {
+	    if (i > 0)
+		xsConcatenate(&qy->Clause, (sources[i].Flags & OBJ_JS_F_OUTER)?" LEFT JOIN ":" JOIN ", -1);
+	    xsConcatenate(&qy->Clause, "`", 1);
+	    if (mysd_internal_SafeAppend(&conn->Handle, &qy->Clause, tables.TData[i]->Name) < 0)
+		goto end;
+	    xsConcatQPrintf(&qy->Clause, "` `t%POS`", i);
+	    tables.ThisTable = i;
+	    if (i > 0)
+		{
+		xsConcatenate(&qy->Clause, " ON ", -1);
+		if (!sources[i].Tree)
+		    xsConcatenate(&qy->Clause, " (1=1) ", -1);
+		else if (mysd_internal_TreeToClause((pExpression)(sources[i].Tree), &tables, &qy->Clause, &conn->Handle) < 0)
+		    goto end;
+		}
+	    }
+	tables.ThisTable = 0;
+	if (sources[0].Tree)
+	    {
+	    xsConcatenate(&qy->Clause, " WHERE ", -1);
+	    if (mysd_internal_TreeToClause((pExpression)(sources[0].Tree), &tables, &qy->Clause, &conn->Handle) < 0)
+		goto end;
+	    }
+
+	/** Sort by each table's sort items in turn **/
+	n_sort = 0;
+	for(i=0; i<n_sources; i++)
+	    {
+	    tables.ThisTable = i;
+	    for(j=0; sources[i].SortBy && j<OBJSYS_SORT_MAX && sources[i].SortBy[j]; j++)
+		{
+		xsConcatenate(&qy->Clause, (n_sort++ == 0)?" ORDER BY ":", ", -1);
+		if (mysd_internal_TreeToClause((pExpression)(sources[i].SortBy[j]), &tables, &qy->Clause, &conn->Handle) < 0)
+		    goto end;
+		}
+	    }
+
+	/** Run it **/
+	qy->Join->Result = mysd_internal_RunQuery_conn(conn, qy->Data->Node, "?q", qy->Clause.String);
+	if (!qy->Join->Result || qy->Join->Result == MYSD_RUNQUERY_ERROR)
+	    {
+	    qy->Join->Result = NULL;
+	    mssError(0, "MYSD", "Joined query failed (%s): %s", mysql_error(&conn->Handle), qy->Clause.String);
+	    goto end;
+	    }
+	if (mysql_num_fields(qy->Join->Result) != n_cols)
+	    {
+	    mssError(1, "MYSD", "Joined query returned %d columns, but its tables have %d", (int)mysql_num_fields(qy->Join->Result), n_cols);
+	    goto end;
+	    }
+
+	/** Each column must be where the cached table information says **/
+	fields = mysql_fetch_fields(qy->Join->Result);
+	for(k=i=0; i<n_sources; i++)
+	    {
+	    for(j=0; j<tables.TData[i]->nCols; j++, k++)
+		{
+		if (strcmp(fields[k].org_name, tables.TData[i]->Cols[j]) != 0)
+		    {
+		    mssError(1, "MYSD", "Joined query returned column '%s' where table '%s' has column '%s'",
+			    fields[k].org_name, tables.TData[i]->Name, tables.TData[i]->Cols[j]);
+		    goto end;
+		    }
+		}
+	    }
+
+	rval = 1;
+	*qy_data = (void*)qy;
+
+    end:
+	if (conn)
+	    mysd_internal_ReleaseConn(&conn);
+	if (rval != 1 && qy)
+	    mysdQueryClose(qy, oxt);
+
+    return rval;
+    }
+
+
+/*** mysdQueryFetchJoin() - fetch the next row of a joined query as one row
+ *** object per table.  A table that an outer join gave no row has NULL key
+ *** columns, and gets no object.  Returns 1 on a row, 0 at the end of the
+ *** results, or -1 on error.
+ ***/
+int
+mysdQueryFetchJoin(void* qy_v, pObject objs[], void* data[], int mode, pObjTrxTree* oxt)
+    {
+    pMysdQuery qy = (pMysdQuery)qy_v;
+    pMysdJoin join = qy->Join;
+    pMysdData inf;
+    pMysdTable tdata;
+    MYSQL_ROW row;
+    char name_buf[(MYSD_NAME_LEN+1)*MYSD_MAX_KEYS];
+    char* key;
+    int i, k, offset, len;
+    int rval = -1;
+
+	if (!join)
+	    {
+	    mssError(1, "MYSD", "Not a joined query");
+	    return -1;
+	    }
+	for(i=0; i<join->nSources; i++)
+	    data[i] = NULL;
+
+	/** End of results? **/
+	row = mysql_fetch_row(join->Result);
+	if (!row)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Each table has its own run of columns **/
+	offset = 0;
+	for(i=0; i<join->nSources; i++)
+	    {
+	    tdata = join->Sources[i]->TData;
+
+	    /** No row for this table? **/
+	    for(k=0; k<tdata->nKeys; k++)
+		if (!row[offset + tdata->KeyCols[k]])
+		    break;
+	    if (k < tdata->nKeys)
+		{
+		offset += tdata->nCols;
+		continue;
+		}
+
+	    /** Name the row by its key, as mysd_internal_GetNextRow() does **/
+	    name_buf[0] = '\0';
+	    for(len=k=0; k<tdata->nKeys; k++)
+		{
+		key = row[offset + tdata->KeyCols[k]];
+		len += strlen(key) + 1;
+		if (len >= sizeof(name_buf))
+		    {
+		    mssError(1, "MYSD", "Object name too long while retrieving row");
+		    goto end;
+		    }
+		if (k > 0)
+		    strcat(name_buf, "|");
+		strcat(name_buf, key);
+		}
+
+	    /** Set up the row object **/
+	    inf = (pMysdData)nmMalloc(sizeof(MysdData));
+	    if (!inf)
+		goto end;
+	    memset(inf, 0, sizeof(MysdData));
+	    data[i] = (void*)inf;
+	    inf->Type = MYSD_T_ROW;
+	    inf->Row = mysd_internal_DupRowPart(row, offset, tdata->nCols);
+	    if (!inf->Row)
+		goto end;
+	    if (obj_internal_AddToPath(objs[i]->Pathname, name_buf) < 0)
+		goto end;
+	    obj_internal_CopyPath(&(inf->Pathname), objs[i]->Pathname);
+	    strtcpy(inf->Objname, inf->Pathname.Elements[inf->Pathname.nElements - 1], sizeof(inf->Objname));
+	    inf->Name = inf->Objname;
+	    inf->TData = tdata;
+	    inf->Node = join->Sources[i]->Node;
+	    inf->Node->SnNode->OpenCnt++;
+	    inf->Obj = objs[i];
+	    offset += tdata->nCols;
+	    }
+
+	rval = 1;
+
+    end:
+	if (rval != 1)
+	    {
+	    for(i=0; i<join->nSources; i++)
+		{
+		if (data[i])
+		    mysd_internal_Close(MYSD(data[i]));
+		data[i] = NULL;
+		}
+	    }
+
+    return rval;
     }
 
 
@@ -3411,7 +4095,7 @@ mysdInitialize()
 
         /** Setup the structure **/
         strcpy(drv->Name,"MySQL ObjectSystem Driver");
-        drv->Capabilities = OBJDRV_C_TRANS | OBJDRV_C_FULLQUERY;
+        drv->Capabilities = OBJDRV_C_TRANS | OBJDRV_C_FULLQUERY | OBJDRV_C_JOIN;
         xaInit(&(drv->RootContentTypes),16);
         xaAddItem(&(drv->RootContentTypes),"application/mysql");
 
@@ -3440,9 +4124,12 @@ mysdInitialize()
         drv->PresentationHints = mysdPresentationHints;
         drv->Info = mysdInfo;
         drv->Commit = mysdCommit;
+        drv->OpenJoinQuery = mysdOpenJoinQuery;
+        drv->QueryFetchJoin = mysdQueryFetchJoin;
 
         nmRegister(sizeof(MysdData),"MysdData");
         nmRegister(sizeof(MysdQuery),"MysdQuery");
+        nmRegister(sizeof(MysdJoin),"MysdJoin");
 
         /** Register the driver **/
         if (objRegisterDriver(drv) < 0) 
