@@ -297,17 +297,25 @@ int
 libmime_CreateIntAttr(pMimeHeader this, char* attr, char* param, int data)
     {
     pTObjData* pPtod = NULL;
+    pTObjData ptod = NULL;
 
-	/** Create the parameter/attribute and get the ptod. **/
-	pPtod = libmime_CreateAttrParam(this, attr, param);
-	if (!pPtod)
+	/** Create the ptod (before creating the attribute, in case it fails). **/
+	ptod = ptodCreateInt(data);
+	if (!ptod)
 	    {
 	    mssError(0, "MIME", "Failed to create integer attribute \"%s\".", attr);
 	    return -1;
 	    }
 
-	/** Populate the ptod. **/
-	*pPtod = ptodCreateInt(data);
+	/** Create the parameter/attribute and store the ptod. **/
+	pPtod = libmime_CreateAttrParam(this, attr, param);
+	if (!pPtod)
+	    {
+	    mssError(0, "MIME", "Failed to create integer attribute \"%s\".", attr);
+	    ptodFree(ptod);
+	    return -1;
+	    }
+	*pPtod = ptod;
 
     return 0;
     }
@@ -319,17 +327,25 @@ int
 libmime_CreateStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags)
     {
     pTObjData* pPtod = NULL;
+    pTObjData ptod = NULL;
 
-	/** Create the parameter/attribute and get the ptod. **/
-	pPtod = libmime_CreateAttrParam(this, attr, param);
-	if (!pPtod)
+	/** Create the ptod (before creating the attribute, in case it fails). **/
+	ptod = ptodCreateString(data, flags);
+	if (!ptod)
 	    {
 	    mssError(0, "MIME", "Failed to create string attribute \"%s\".", attr);
 	    return -1;
 	    }
 
-	/** Populate the ptod. **/
-	*pPtod = ptodCreateString(data, flags);
+	/** Create the parameter/attribute and store the ptod. **/
+	pPtod = libmime_CreateAttrParam(this, attr, param);
+	if (!pPtod)
+	    {
+	    mssError(0, "MIME", "Failed to create string attribute \"%s\".", attr);
+	    ptodFree(ptod);
+	    return -1;
+	    }
+	*pPtod = ptod;
 
     return 0;
     }
@@ -368,17 +384,25 @@ int
 libmime_CreateAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype)
     {
     pTObjData* pPtod = NULL;
+    pTObjData ptod = NULL;
 
-	/** Create the attribute/parameter and get the ptod. **/
-	pPtod = libmime_CreateAttrParam(this, attr, param);
-	if (!pPtod)
+	/** Create the ptod (before creating the attribute, in case it fails). **/
+	ptod = ptodCreate(data, datatype);
+	if (!ptod)
 	    {
 	    mssError(0, "MIME", "Failed to create generic attribute \"%s\".", attr);
 	    return -1;
 	    }
 
-	/** Populate the ptod. **/
-	*pPtod = ptodCreate(data, datatype);
+	/** Create the attribute/parameter and store the ptod. **/
+	pPtod = libmime_CreateAttrParam(this, attr, param);
+	if (!pPtod)
+	    {
+	    mssError(0, "MIME", "Failed to create generic attribute \"%s\".", attr);
+	    ptodFree(ptod);
+	    return -1;
+	    }
+	*pPtod = ptod;
 
     return 0;
     }
@@ -729,6 +753,7 @@ int
 libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int flags)
     {
     pTObjData *pPtod = NULL;
+    pTObjData ptod = NULL;
 
 	/** Get the old ptod. **/
 	pPtod = libmime_GetPtodPointer(this, attr, param);
@@ -752,11 +777,17 @@ libmime_SetStringAttr(pMimeHeader this, char* attr, char* param, char* data, int
 	    return 0;
 	    }
 
-	/** Free the old ptod. **/
-	ptodFree(*pPtod);
+	/** Make the new ptod, keeping the old value on failure. **/
+	ptod = ptodCreateString(data, flags);
+	if (!ptod)
+	    {
+	    mssError(0, "MIME", "Failed to set string attribute \"%s\".", attr);
+	    return -1;
+	    }
 
-	/** Make the new ptod. **/
-	*pPtod = ptodCreateString(data, flags);
+	/** Replace the old ptod. **/
+	ptodFree(*pPtod);
+	*pPtod = ptod;
 
     return 0;
     }
@@ -768,6 +799,7 @@ int
 libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datatype)
     {
     pTObjData *pPtod = NULL;
+    pTObjData ptod = NULL;
 
 	/** Get the old ptod. **/
 	pPtod = libmime_GetPtodPointer(this, attr, param);
@@ -783,11 +815,17 @@ libmime_SetAttr(pMimeHeader this, char* attr, char* param, void* data, int datat
 	    return 0;
 	    }
 
-	/** Free the old ptod. **/
-	ptodFree(*pPtod);
+	/** Make the new ptod, keeping the old value on failure. **/
+	ptod = ptodCreate(data, datatype);
+	if (!ptod)
+	    {
+	    mssError(0, "MIME", "Failed to set attribute \"%s\".", attr);
+	    return -1;
+	    }
 
-	/** Make the new ptod. **/
-	*pPtod = ptodCreate(data, datatype);
+	/** Replace the old ptod. **/
+	ptodFree(*pPtod);
+	*pPtod = ptod;
 
     return 0;
     }
