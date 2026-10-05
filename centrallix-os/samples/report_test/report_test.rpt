@@ -493,7 +493,7 @@ report_test "system/report"
 	    s9a_r5c1 "report/table-cell" { style=bold; value=runserver(""); }
 	    s9a_r5c2 "report/table-cell" { value=runserver("Expect: not bold (after empty bold cell)"); }
 	    s9a_r5c3 "report/table-cell" { condition=runserver(1 = 0); value=runserver("FAIL: hidden cell"); }
-	    s9a_r5c4 "report/table-cell" { value=runserver("(cell C has condition false)"); }
+	    s9a_r5c4 "report/table-cell" { value=runserver("Expect: in column C (cell C has condition false)"); }
 	    }
 	s9a_r6 "report/table-row"
 	    {
