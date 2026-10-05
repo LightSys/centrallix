@@ -788,35 +788,31 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 			}
 		    }
 		}
+	    /** A null border leaves the side as set by outerborder **/
 	    else if (!strcmp(attrname, "topborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->TopBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "bottomborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->BottomBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "leftborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->LeftBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "rightborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "innerborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
 		}
 	    }
 
@@ -925,35 +921,31 @@ prt_tablm_InitRow(pPrtObjStream row, pPrtTabLMData old_lm_data, va_list va)
 			}
 		    }
 		}
+	    /** A null border leaves the side as set by outerborder **/
 	    else if (!strcmp(attrname, "topborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->TopBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "bottomborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->BottomBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "leftborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->LeftBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "rightborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "innerborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
 		}
 	    }
 
