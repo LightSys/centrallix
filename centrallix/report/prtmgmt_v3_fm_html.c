@@ -32,6 +32,7 @@
 /************************************************************************/
 
 #include <fcntl.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -1597,9 +1598,19 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 			}
 		    }
 
-		/** Compute rowspan and colspan. **/
+		/*** Compute colspan, stopping where another object in this row begins,
+		 *** since cells can't overlap (e.g. a logo drawn over a header area).
+		 ***/
+		double right = subobj->X + subobj->Width;
+		for (scan = page_obj->ContentHead; scan != NULL; scan = scan->Next)
+		    {
+		    if (scan != subobj && fabs(scan->Y - subobj->Y) < 0.001 && scan->X > subobj->X + 0.001 && scan->X < right)
+			right = scan->X;
+		    }
 		cs=1;
-		while (cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < subobj->X + subobj->Width) cs++;
+		while (cur_col+cs < n_cols && (colpos[cur_col+cs]+0.001) < right) cs++;
+
+		/** Compute rowspan. **/
 		rs=1;
 		while (cur_row+rs < n_rows && (rowpos[cur_row+rs]+0.001) < subobj->Y + subobj->Height)
 		    {
