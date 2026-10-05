@@ -241,6 +241,42 @@ typedef struct
     } ImageBuffer;
 
 
+/*** prt_htmlfm_WriteEmail() - writes output for an email report, ending
+ *** each line with CRLF as email requires.  Takes the same arguments as
+ *** the session's WriteFn() so that xsGenPrintf_va() can use it.
+ ***
+ *** @param context_v The report formatter context.
+ *** @param str The output to write.
+ *** @param len The length of the output.
+ *** @param offset Unused.
+ *** @param flags Unused.
+ *** @returns len on success, or -1 on failure.
+ ***/
+static int
+prt_htmlfm_WriteEmail(void* context_v, char* str, int len, int offset, int flags)
+    {
+    pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
+    char buf[512];
+    int n = 0;
+
+	for (int i = 0; i < len; i++)
+	    {
+	    /** Flush the buffer when it is nearly full. **/
+	    if (n >= (int)sizeof(buf) - 2)
+		{
+		if (context->Session->WriteFn(context->Session->WriteArg, buf, n, 0, FD_U_PACKET) < n) return -1;
+		n = 0;
+		}
+
+	    if (str[i] == '\n') buf[n++] = '\r';
+	    buf[n++] = str[i];
+	    }
+	if (n > 0 && context->Session->WriteFn(context->Session->WriteArg, buf, n, 0, FD_U_PACKET) < n) return -1;
+
+    return len;
+    }
+
+
 /*** prt_htmlfm_Output() - outputs a string of text into the HTML
  *** document.
  ***/
@@ -258,7 +294,9 @@ prt_htmlfm_Output(pPrtHTMLfmInf context, char* str, int len)
 	mssClearError();
 
 	/** Write output. **/
-	rval = context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET);
+	rval = (context->Flags & PRT_HTMLFM_F_EMAIL)
+	    ? prt_htmlfm_WriteEmail(context, str, len, 0, FD_U_PACKET)
+	    : context->Session->WriteFn(context->Session->WriteArg, str, len, 0, FD_U_PACKET);
 
 	/** Print error message, if needed. **/
 	if (UNLIKELY(rval < 0))
@@ -284,7 +322,9 @@ prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...)
 
 	/** Write formatted output. **/
 	va_start(va, fmt);
-	rval = xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va);
+	rval = (context->Flags & PRT_HTMLFM_F_EMAIL)
+	    ? xsGenPrintf_va(prt_htmlfm_WriteEmail, context, NULL, NULL, fmt, va)
+	    : xsGenPrintf_va(context->Session->WriteFn, context->Session->WriteArg, NULL, NULL, fmt, va);
 	va_end(va);
 
 	/** Print error message, if needed. **/
