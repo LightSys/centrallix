@@ -1129,8 +1129,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const bool has_url = (obj->URL != NULL && strchr(obj->URL, '"') == NULL);
 		const bool is_png = (type_id == PRT_OBJ_T_IMAGE);
 
-		/** Compute justification type. **/
-		const char* justify_type = "left";
+		/** Compute justification.  Only right-justified images float; others stay inline with their text. **/
+		bool right_justify = false;
 		if (obj->Parent)
 		    {
 		    /*** Compute the X offset at which the image is flush with
@@ -1146,7 +1146,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    if (realComparePrecision(obj->X, rightAlignedX, 0.1) >= 0 &&
 			realComparePrecision(obj->X, 0.0, 0.1) > 0)
 			{
-			justify_type = "right";
+			right_justify = true;
 			}
 		    }
 
@@ -1283,8 +1283,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 
 		/** Write the rest of the image tag. **/
 		if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
-		    "\" align=\"%s\" border=\"0\" width=\"%d\" height=\"%d\">",
-		    justify_type, w, h
+		    "\"%s border=\"0\" width=\"%d\" height=\"%d\">",
+		    (right_justify) ? " align=\"right\"" : "", w, h
 		) < 0))
 		    {
 		    mssError(0, "PRT", "Failed to write image layout properties.");
