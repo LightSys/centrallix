@@ -401,9 +401,6 @@ prt_textod_WriteText(void* context_v, char* str, char* url, double width, double
     pPrtTextodInf context = (pPrtTextodInf)context_v;
     int n;
 
-	/** Make sure the physical position matches the logical one. **/
-	prt_textod_SetHPos(context_v, context->CurHPos);
-
 	/** output it. **/
 	n = strlen(str);
 	/*prt_textod_Output(context, str, n);*/
@@ -463,9 +460,6 @@ prt_textod_WriteRect(void* context_v, double width, double height, double next_y
     char rectbuf[33];
     int n,cnt;
     char rectch;
-
-	/** Make sure the physical position matches the logical one. **/
-	prt_textod_SetHPos(context_v, context->CurHPos);
 
 	/** Select an appropriate character to use **/
 	if (width < 1.0 && height >= 1.0) rectch = '|';
