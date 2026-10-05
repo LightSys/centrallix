@@ -4077,7 +4077,6 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 		    childexp->DataType = DATA_T_STRING;
 		    childexp->Alloc = 1;
 		    childexp->String = nmSysStrdup(ptr);
-		    paletteInd++;
 		    childobj->Value = childexp;
 		    stAddInf(subobj, childobj);
 		    }
