@@ -419,7 +419,8 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	png_set_swap(libpng_png_ptr);
 	png_set_bgr(libpng_png_ptr);
 	png_set_packswap(libpng_png_ptr);
-	png_set_palette_to_rgb(libpng_png_ptr);
+	if (color_type == PNG_COLOR_TYPE_PALETTE)
+	    png_set_palette_to_rgb(libpng_png_ptr);
 	if (bit_depth == 8 && color_type == PNG_COLOR_TYPE_RGB) 
 	    png_set_filler(libpng_png_ptr, 0, PNG_FILLER_AFTER);
 
