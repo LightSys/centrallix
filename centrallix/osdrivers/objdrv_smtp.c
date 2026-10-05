@@ -232,7 +232,7 @@ typedef struct
 typedef struct
     {
     char*	Path;
-    time_t	MTime;		/* When it was last written, before it was rotated. */
+    struct timespec MTime;	/* When it was last written, before it was rotated. */
     bool	IsCursor;	/* The spool directory's cursor is in this log. */
     }
     SmtpRotatedLog, *pSmtpRotatedLog;
@@ -3185,8 +3185,10 @@ smtp_internal_CompareRotatedLogs(const void* a, const void* b)
     pSmtpRotatedLog logB = *(pSmtpRotatedLog*)b;
 
 	/** The cursor's log goes first, even if another has the same mtime. **/
-	if (logA->MTime != logB->MTime)
-	    return (logA->MTime < logB->MTime) ? -1 : 1;
+	if (logA->MTime.tv_sec != logB->MTime.tv_sec)
+	    return (logA->MTime.tv_sec < logB->MTime.tv_sec) ? -1 : 1;
+	if (logA->MTime.tv_nsec != logB->MTime.tv_nsec)
+	    return (logA->MTime.tv_nsec < logB->MTime.tv_nsec) ? -1 : 1;
 	if (logA->IsCursor != logB->IsCursor)
 	    return (logA->IsCursor) ? -1 : 1;
 
@@ -3238,7 +3240,7 @@ smtp_internal_FindRotatedLogs(pSmtpSpool spool, pXArray logs)
     struct dirent* entry;
     struct stat st;
     pSmtpRotatedLog log = NULL;
-    time_t cursorMTime = 0;
+    struct timespec cursorMTime = { 0, 0 };
     bool found = false;
     bool skip;
     int i;
@@ -3313,7 +3315,7 @@ smtp_internal_FindRotatedLogs(pSmtpSpool spool, pXArray logs)
 		mssError(1, "SMTP", "Failed to copy rotated mail log path \"%s\".", path);
 		goto end;
 		}
-	    log->MTime = st.st_mtime;
+	    log->MTime = st.st_mtim;
 	    log->IsCursor = (st.st_dev == spool->LogDev && st.st_ino == spool->LogIno);
 	    if (UNLIKELY(xaAddItem(logs, log) < 0))
 		{
@@ -3340,7 +3342,8 @@ smtp_internal_FindRotatedLogs(pSmtpSpool spool, pXArray logs)
 	for (i = logs->nItems - 1; i >= 0; i--)
 	    {
 	    log = (pSmtpRotatedLog)logs->Items[i];
-	    if (log->MTime < cursorMTime)
+	    if (log->MTime.tv_sec < cursorMTime.tv_sec
+		|| (log->MTime.tv_sec == cursorMTime.tv_sec && log->MTime.tv_nsec < cursorMTime.tv_nsec))
 		{
 		xaRemoveItem(logs, i);
 		nmSysFree(log->Path);
