@@ -171,8 +171,13 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			    goto err_cell;
 			int saved_bg = prt_htmlfm_OutputBGColor(context, cell->BGColor);
 			if (UNLIKELY(saved_bg < 0)) goto err_cell;
-			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, " style=\"padding:%dpx;",
-				(int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2)) < 0))
+			/** Split the column gap between neighbors, like the layout, so the outer cells have no side padding. **/
+			const int half_sep = (int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2);
+			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, " style=\"padding:%dpx %dpx %dpx %dpx;",
+				half_sep,
+				(cur_col == n_cols) ? 0 : half_sep,
+				half_sep,
+				(cur_col == 1) ? 0 : half_sep) < 0))
 			    goto err_cell;
 
 			/* top border */
