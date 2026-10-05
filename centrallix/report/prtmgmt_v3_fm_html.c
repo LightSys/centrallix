@@ -1325,22 +1325,6 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     }
 
 
-/*** prt_htmlfm_InLine() - check whether obj is one of the sibling objects
- *** from start through end.
- ***/
-static bool
-prt_htmlfm_InLine(pPrtObjStream start, pPrtObjStream end, pPrtObjStream obj)
-    {
-	for (pPrtObjStream scan = start; scan != NULL; scan = scan->Next)
-	    {
-	    if (scan == obj) return true;
-	    if (scan == end) break;
-	    }
-
-    return false;
-    }
-
-
 /*** prt_htmlfm_Generate() - generate the html for the page.  Basically,
  *** walk through the document and generate appropriate html layout to
  *** make the thing look similar to what it should.  Does not yet support
@@ -1351,7 +1335,6 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     {
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
     pPrtObjStream subobj, scan;
-    pPrtObjStream line_start = NULL, line_end = NULL;
     double colpos[PRT_HTMLFM_MAXCOLS];
     double rowpos[PRT_HTMLFM_MAXROWS];
     int n_cols=0, n_rows=0;
@@ -1526,33 +1509,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    {
 	    if (subobj->Parent == page_obj)
 		{
-		/*** Skip strings already written as part of a line, and objects
-		 *** with no height (e.g. an empty table), which would otherwise
-		 *** share a row with the next object.
+		/*** Skip objects with no height (e.g. an empty table), which would
+		 *** otherwise share a row with the next object.
 		 ***/
-		if (prt_htmlfm_InLine(line_start, line_end, subobj)) continue;
 		if (subobj->Height < 0.001) continue;
-
-		/*** The page gives each string its own row, so join the strings of
-		 *** one line (through the one ending it with a newline) into one cell.
-		 ***/
-		line_start = line_end = subobj;
-		if (subobj->ObjType->TypeID == PRT_OBJ_T_STRING)
-		    {
-		    while (!(line_end->Flags & PRT_OBJ_F_NEWLINE) && line_end->Next != NULL
-			&& line_end->Next->ObjType->TypeID == PRT_OBJ_T_STRING)
-			line_end = line_end->Next;
-		    }
-
-		/** Blank lines need an explicit height. **/
-		bool line_blank = (subobj->ObjType->TypeID == PRT_OBJ_T_STRING);
-		double line_height = 0.0;
-		for (scan = line_start; line_blank; scan = scan->Next)
-		    {
-		    if (((char*)scan->Content)[0] != '\0') line_blank = false;
-		    line_height = max(line_height, scan->Height);
-		    if (scan == line_end) break;
-		    }
 
 		/** Next row? **/
 		if (subobj->Y > rowpos[cur_row])
@@ -1620,8 +1580,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    }
 		
 		/** Update the lowest bottom edge for this row. **/
-		if (line_end->Y + line_end->Height > last_height)
-		    last_height = line_end->Y + line_end->Height;
+		if (subobj->Y + subobj->Height > last_height)
+		    last_height = subobj->Y + subobj->Height;
 		
 		/*** Write container HTML, skipping default values
 		 *** (colspan/rowspan="1", align="left") to reduce HTML size.
@@ -1631,8 +1591,6 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    || (rs > 1 && prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs) < 0)
 		    || (subobj->Justification != PRT_JUST_T_LEFT
 			&& prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[subobj->Justification]) < 0)
-		    || (line_blank && prt_htmlfm_OutputPrintf(context,
-			" style=\"height:%dpx;\"", (int)(line_height * PRT_HTMLFM_YPIXEL + 0.5)) < 0)
 		    || prt_htmlfm_OutputStrLiteral(context, ">") < 0
 		))  {
 		    mssError(0, "PRT", "Failed to write container opening tag.");
@@ -1642,11 +1600,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		/** Write child content, closing its style tags within the cell. **/
 		if (UNLIKELY(prt_htmlfm_InitStyle(context, &(subobj->TextStyle)) < 0)) goto err;
 		prt_htmlfm_SetKeepSpaces(context);
-		for (scan = line_start; scan != NULL; scan = scan->Next)
-		    {
-		    if (UNLIKELY(prt_htmlfm_Generate_r(context, scan) < 0)) goto err;
-		    if (scan == line_end) break;
-		    }
+		if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err;
 		if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
 
 		/** Close container. **/

@@ -17,7 +17,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -50,6 +50,11 @@
 /*		page is started for that area.				*/
 /************************************************************************/
 
+
+/** Marks the text area that page-level strings flow into. **/
+#define PRT_PAGELM_F_TEXTFLOW	PRT_OBJ_F_LMFLAG1
+
+int prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj);
 
 
 /*** prt_pagelm_Break() - this is called when we actually are going to do
@@ -174,6 +179,48 @@ prt_pagelm_Resize(pPrtObjStream this, double new_width, double new_height)
     }
 
 
+/*** prt_pagelm_AddText() - adds a string to the text area at the end of
+ *** the page, starting a new text area if the page does not end with one.
+ *** The area wraps the text and breaks onto the next page as it grows.
+ ***/
+int
+prt_pagelm_AddText(pPrtObjStream this, pPrtObjStream string_obj)
+    {
+    pPrtObjStream flow;
+    int handle_id;
+    int rval;
+
+	/** Start a text area? **/
+	flow = this->ContentTail;
+	if (!flow || !(flow->Flags & PRT_PAGELM_F_TEXTFLOW))
+	    {
+	    flow = prt_internal_AllocObjByID(PRT_OBJ_T_AREA);
+	    if (!flow) return -1;
+	    flow->Session = this->Session;
+	    flow->Flags |= (PRT_OBJ_F_ALLOWBREAK | PRT_PAGELM_F_TEXTFLOW);
+	    flow->Width = -1.0;
+	    flow->ConfigWidth = -1.0;
+	    flow->Z = this->Z + 1;
+	    prt_internal_CopyAttrs(string_obj, flow);
+	    flow->LayoutMgr->InitContainer(flow, NULL, NULL);
+	    if (prt_pagelm_AddObject(this, flow) < 0)
+		{
+		prt_internal_FreeTree(flow);
+		return -1;
+		}
+	    }
+
+	/** The text layout manager looks up the area's handle, so give it one **/
+	flow->Justification = this->Justification;
+	handle_id = prtAllocHandle(flow);
+	if (handle_id < 0) return -1;
+	rval = flow->LayoutMgr->AddObject(flow, string_obj);
+	prtFreeHandle(handle_id);
+
+    return rval;
+    }
+
+
 /*** prt_pagelm_AddObject() - used to add a new object to the page.  If the
  *** object is too big, it will end up being clipped by the formatting stage
  *** later on.
@@ -182,6 +229,10 @@ int
 prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     {
     pPrtObjStream new_parent;
+
+	/** Strings flow as text instead of stacking one per row **/
+	if (this->ObjType->TypeID == PRT_OBJ_T_PAGE && new_child_obj->ObjType->TypeID == PRT_OBJ_T_STRING)
+	    return prt_pagelm_AddText(this, new_child_obj);
 
 	/** Need to adjust the height/width if unspecified? **/
 	if (new_child_obj->Width < 0)
