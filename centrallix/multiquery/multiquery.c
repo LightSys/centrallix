@@ -1807,10 +1807,11 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				break;
 				}
 
-			    if (mlxNextToken(lxs) != MLX_TOK_RESERVEDWD)
+			    t = mlxNextToken(lxs);
+			    if (t != MLX_TOK_RESERVEDWD && t != MLX_TOK_KEYWORD)
 			        {
 				next_state = ParseError;
-				mssError(1,"MQ","SET requires one of rowcount, multistatement, or showplan");
+				mssError(1,"MQ","SET requires one of rowcount, multistatement, showplan, or passthrough");
 				mlxNoteError(lxs);
 				}
 			    else
@@ -1894,6 +1895,23 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 						next_state = LookForClause;
 						}
 					    }
+					}
+				    }
+				else if (!strcasecmp(ptr,"passthrough"))
+				    {
+				    if (mlxNextToken(lxs) != MLX_TOK_INTEGER)
+				        {
+					next_state = ParseError;
+			                mssError(1,"MQ","SET PASSTHROUGH expects 0 or 1 following");
+					mlxNoteError(lxs);
+					}
+				    else
+				        {
+					if (mlxIntVal(lxs))
+					    stmt->Query->Flags &= ~MQ_F_NOPASSTHROUGH;
+					else
+					    stmt->Query->Flags |= MQ_F_NOPASSTHROUGH;
+					next_state = LookForClause;
 					}
 				    }
 				else
