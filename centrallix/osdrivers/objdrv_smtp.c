@@ -3894,6 +3894,7 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
     pFile rotatedLog = NULL;
     off_t offset;
     off_t rotatedOffset;
+    int nWake;
     bool sameLog;
     bool changed;
     bool locked = false;
@@ -4054,12 +4055,10 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 
 	/** End the read, waking the threads waiting for it. **/
 	spool->Reading = false;
-	if (spool->nWaiting > 0)
-	    {
-	    if (UNLIKELY(syPostSem(spool->ReadDone, spool->nWaiting, 0) != 0))
-		fprintf(stderr, "Warning: Failed to wake %d threads waiting for the mail log read of \"%s\".\n", spool->nWaiting, spoolDir);
-	    spool->nWaiting = 0;
-	    }
+	nWake = spool->nWaiting;
+	spool->nWaiting = 0; /* Before waking, so threads that wait for a later read are counted for it. */
+	if (nWake > 0 && UNLIKELY(syPostSem(spool->ReadDone, nWake, 0) != 0))
+	    fprintf(stderr, "Warning: Failed to wake %d threads waiting for the mail log read of \"%s\".\n", nWake, spoolDir);
 
 	return rval;
     }
