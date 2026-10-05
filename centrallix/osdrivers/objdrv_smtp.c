@@ -285,6 +285,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
     int wstatus, wait_rval;
     int resultFd = -1;
     char tmpPath[PATH_MAX];
+    struct stat emailStat;
     char result[SMTP_RESULT_HEADER_LEN];
     char header[SMTP_RESULT_HEADER_LEN + 1];
     struct timespec pollInterval = {0, 100 * 1000 * 1000};
@@ -361,13 +362,20 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    goto end;
 	    }
 
+	/** Give the result file the permissions of the email, without execute. **/
+	if (UNLIKELY(stat(emailPath, &emailStat) != 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to check email file (%s).", emailPath);
+	    goto end;
+	    }
+
 	/** Create the result file, which the supervisor renames when done. **/
 	if (UNLIKELY(snprintf(tmpPath, sizeof(tmpPath), "%s.tmp", resultPath) >= (int)sizeof(tmpPath)))
 	    {
 	    mssError(1, "SMTP", "Sendmail result file path is too long: \"%s.tmp\".", resultPath);
 	    goto end;
 	    }
-	resultFd = open(tmpPath, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	resultFd = open(tmpPath, O_WRONLY | O_CREAT | O_TRUNC, emailStat.st_mode & 0666);
 	if (UNLIKELY(resultFd < 0))
 	    {
 	    mssErrorErrno(1, "SMTP", "Failed to create sendmail result file (%s).", tmpPath);
@@ -4437,8 +4445,8 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	nmFree(attrDate, sizeof(DateTime));
 	attrDate = NULL;
 
-	/** Create the struct file. **/
-	emailStructFile = fdOpen(inf->EmailStructPath.String, O_CREAT | O_RDWR | O_EXCL, 0644);
+	/** Create the struct file with the permissions of the email, without execute. **/
+	emailStructFile = fdOpen(inf->EmailStructPath.String, O_CREAT | O_RDWR | O_EXCL, inf->Mask & 0666);
 	if (UNLIKELY(emailStructFile == NULL))
 	    {
 	    mssErrorErrno(1, "SMTP",
