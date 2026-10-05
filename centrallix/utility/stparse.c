@@ -1474,6 +1474,7 @@ stGenerateMsgGeneric(void* dst, int (*write_fn)(), pStructInf info, int flags)
     pXString xs;
     pParamObjects objlist;
     char* quote = "";
+    int rval = 0;
 
 	ASSERTMAGIC(info,MGK_STRUCTINF);
 
@@ -1513,12 +1514,16 @@ stGenerateMsgGeneric(void* dst, int (*write_fn)(), pStructInf info, int flags)
 
 	/** Put the trailing brace on and write the thing. **/
 	xsConcatPrintf(xs, "    }\r\n");
-	write_fn(dst, xs->String, xs->Length, 0,0);
+	if (write_fn(dst, xs->String, xs->Length, 0,0) < 0)
+	    {
+	    mssError(0,"ST","Failed to write structure '%s'",info->Name);
+	    rval = -1;
+	    }
 	xsDeInit(xs);
 	nmFree(xs,sizeof(XString));
 	expFreeParamList(objlist);
 
-    return 0;
+    return rval;
     }
 
 int
