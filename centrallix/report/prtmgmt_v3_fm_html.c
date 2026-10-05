@@ -1331,9 +1331,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	const int right_margin = (int)(page_obj->MarginRight * PRT_HTMLFM_XPIXEL + 0.001);
 	const int center_width = (int)((page_obj->Width - page_obj->MarginLeft - page_obj->MarginRight + 0.001) * PRT_HTMLFM_XPIXEL);
 
-	/** Write the opening tag for a table to set margins. **/
-	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context,
-	    "<table role=\"presentation\" cellpadding=\"0\" width=\"100%\">"
+	/** Write the opening tag for a table to set margins, no wider than the page. **/
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+	    "<table role=\"presentation\" cellpadding=\"0\" width=\"100%%\" style=\"max-width:%dpx;\">",
+	    (int)(page_obj->Width * PRT_HTMLFM_XPIXEL + 0.001)
 	) < 0))
 	    {
 	    mssError(0, "PRT", "Failed to write margin table opening tag.");
