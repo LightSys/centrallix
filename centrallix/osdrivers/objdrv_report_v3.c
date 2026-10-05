@@ -5306,6 +5306,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    {
 	    title_str = rpt_internal_SubstParam(inf, title);
 	    title = title_str->String;
+	    prtSetSessionParam(ps, "title", title);
 	    }
 
 	/** Resolution specified? **/

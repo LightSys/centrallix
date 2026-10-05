@@ -114,12 +114,14 @@
 #define PRT_HTMLFM_EMAIL_FOOTER_FORMAT "--%s--\n"
 
 
-/** HTML document headers. **/
-#define PRT_HTMLFM_HEADER \
+/** HTML document headers, before and after the document title. **/
+#define PRT_HTMLFM_HEADER_TITLE \
     "<!DOCTYPE html>\n" \
     "<html lang=\"en\">\n" \
     "<head>\n" \
-	"<title>Centrallix HTML Document</title>\n" \
+	"<title>"
+#define PRT_HTMLFM_HEADER \
+	"</title>\n" \
 	"<meta charset=\"utf-8\">\n" \
 	"<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n" \
 	"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" \
@@ -497,6 +499,56 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
     }
 
 
+/*** prt_htmlfm_WriteHeader() - writes the email headers (for email reports)
+ *** and the HTML document header, unless they have been written already.
+ *** Writing them with the first output lets the report set the title first.
+ ***
+ *** @param context The report formatter context.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+prt_htmlfm_WriteHeader(pPrtHTMLfmInf context)
+    {
+
+	if (context->WroteHeader) return 0;
+	context->WroteHeader = 1;
+
+	/** Write the email headers. **/
+	if (context->Flags & PRT_HTMLFM_F_EMAIL)
+	    {
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_HEADER_FORMAT, context->Boundary) < 0))
+		{
+		mssError(0, "PRT", "Failed to write email header.");
+		return -1;
+		}
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER_FORMAT, context->Boundary) < 0))
+		{
+		mssError(0, "PRT", "Failed to write content email header.");
+		return -1;
+		}
+	    context->QPEncode = 1;
+	    }
+
+	/*** Write HTML header.  Report content always sits on a white page area
+	 *** (white body, or the white page cell in paginated mode), so white is
+	 *** the current background, letting us skip setting the background on
+	 *** white cells, reducing the HTML size.
+	 ***/
+	context->BGColor = 0xFFFFFF;
+	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
+	const char* font_family = prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE];
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_HEADER_TITLE) < 0
+	    || prt_htmlfm_OutputEncoded(context, prtGetSessionParam(context->Session, "title", "Centrallix HTML Document"), -1) < 0
+	    || prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, background_color, font_family) < 0
+	))  {
+	    mssError(0, "PRT", "Failed to write html header.");
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_htmlfm_Probe() - this function is called when a new printmanagement
  *** session is opened and this driver is being asked whether or not it can
  *** print the given content type.
@@ -535,43 +587,15 @@ prt_htmlfm_Probe(pPrtSession s, char* output_type)
 	    goto reject;
 	    }
 
-	/** Generate the MIME boundary and write the email headers. **/
+	/** Generate the MIME boundary for email reports. **/
 	if (context->Flags & PRT_HTMLFM_F_EMAIL)
 	    {
-	    /** Generate boundary. **/
 	    memcpy(context->Boundary, PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX, sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) - 1);
 	    if (cxssGenerateHexKey(context->Boundary + sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) - 1, PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN) < 0)
 		{
 		mssError(1, "PRT", "Failed to generate a MIME boundary for the email report.");
 		goto reject;
 		}
-
-	    /** Write headers. **/
-	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_HEADER_FORMAT, context->Boundary) < 0))
-		{
-		mssError(0, "PRT", "Failed to write email header.");
-		goto reject;
-		}
-	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_EMAIL_CONTENT_HEADER_FORMAT, context->Boundary) < 0))
-		{
-		mssError(0, "PRT", "Failed to write content email header.");
-		goto reject;
-		}
-	    context->QPEncode = 1;
-	    }
-
-	/*** Write HTML header.  Report content always sits on a white page area
-	 *** (white body, or the white page cell in paginated mode), so white is
-	 *** the current background, letting us skip setting the background on
-	 *** white cells, reducing the HTML size.
-	 ***/
-	context->BGColor = 0xFFFFFF;
-	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
-	const char* font_family = prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE];
-	if (UNLIKELY(prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, background_color, font_family) < 0))
-	    {
-	    mssError(0, "PRT", "Failed to write html header.");
-	    goto reject;
 	    }
 
 	/** Success, we can print this content type. **/
@@ -675,6 +699,9 @@ prt_htmlfm_Close(void* context_v)
     {
     pPrtHTMLfmInf context = (pPrtHTMLfmInf)context_v;
     int rval = -1;
+
+	/** Write the header, if no pages did. **/
+	if (UNLIKELY(prt_htmlfm_WriteHeader(context) < 0)) goto end;
 
 	/** Write HTML footer. **/
 	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_FOOTER) < 0))
@@ -1508,6 +1535,9 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     int cur_row, cur_col;
     double last_height;
     int rs,cs;
+
+	/** Write the header before the first page. **/
+	if (UNLIKELY(prt_htmlfm_WriteHeader(context) < 0)) goto err;
 
 	/** Write the page HTML (for paginated reports). **/
 	if (context->Flags & PRT_HTMLFM_F_PAGINATED)
