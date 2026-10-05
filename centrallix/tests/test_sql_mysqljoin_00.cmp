@@ -1,0 +1,9 @@
+MQJ: Joining 3 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"pk","bid","btype","zid"
+"100004",1,"C",
+"100004",2,"E",
+"100004",3,"P",3
+"pk","bid","btype","zid"
+"100004",1,"C",
+"100004",2,"E",
+"100004",3,"P",3

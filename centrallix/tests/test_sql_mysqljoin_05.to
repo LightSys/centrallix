@@ -1,0 +1,44 @@
+##NAME MySQL join pushdown, cases 042-051
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# 042_coll_surname_powell_trailing
+csv select k1 = :p1:p_partner_key, k2 = :p2:p_partner_key, s1 = :p1:p_surname, s2 = :p2:p_surname from /tests/Test_DB/p_partner/rows p1, /tests/Test_DB/p_partner/rows p2 where :p1:p_surname = :p2:p_surname and :p1:p_partner_key < :p2:p_partner_key and :p1:p_surname = 'Powell' and :p1:p_partner_key < '100050' and :p2:p_partner_key < '100050' order by :p1:p_partner_key, :p2:p_partner_key
+csv set passthrough 0 select k1 = :p1:p_partner_key, k2 = :p2:p_partner_key, s1 = :p1:p_surname, s2 = :p2:p_surname from /tests/Test_DB/p_partner/rows p1, /tests/Test_DB/p_partner/rows p2 where :p1:p_surname = :p2:p_surname and :p1:p_partner_key < :p2:p_partner_key and :p1:p_surname = 'Powell' and :p1:p_partner_key < '100050' and :p2:p_partner_key < '100050' order by :p1:p_partner_key, :p2:p_partner_key
+
+# 043_coll_given_vs_surname_cross_table
+csv select :p:p_partner_key, :p:p_given_name, lk = :l:p_partner_key, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_given_name = :l:p_city and :p:p_partner_key >= '100000' and :p:p_partner_key < '101500' order by :p:p_partner_key, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_given_name, lk = :l:p_partner_key, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_given_name = :l:p_city and :p:p_partner_key >= '100000' and :p:p_partner_key < '101500' order by :p:p_partner_key, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 044_coll_city_selfjoin_loc
+csv select n = count(1), mn = min(:l1:p_partner_key) from /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :l1:p_city = :l2:p_city and :l1:p_partner_key < :l2:p_partner_key and :l1:p_partner_key >= '100000' and :l1:p_partner_key < '100030'
+csv set passthrough 0 select n = count(1), mn = min(:l1:p_partner_key) from /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :l1:p_city = :l2:p_city and :l1:p_partner_key < :l2:p_partner_key and :l1:p_partner_key >= '100000' and :l1:p_partner_key < '100030'
+
+# 045_coll_contact_data_vs_location_addr
+csv select :c:p_partner_key, :c:p_contact_id, :c:p_contact_data, lk = :l:p_partner_key from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_contact_data = :l:p_address_1 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100060' order by :c:p_partner_key, :c:p_contact_id, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :c:p_partner_key, :c:p_contact_id, :c:p_contact_data, lk = :l:p_partner_key from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_contact_data = :l:p_address_1 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100060' order by :c:p_partner_key, :c:p_contact_id, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 046_type_string_vs_int_loc_id
+csv select :c:p_partner_key, :c:p_contact_id, cl = :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id = :l:p_location_id and :c:p_partner_key >= '100000' and :c:p_partner_key < '100020' and :l:p_revision_id = 0 order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+csv set passthrough 0 select :c:p_partner_key, :c:p_contact_id, cl = :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id = :l:p_location_id and :c:p_partner_key >= '100000' and :c:p_partner_key < '100020' and :l:p_revision_id = 0 order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+
+# 047_type_int_vs_string_phone_country
+csv select :ci:p_partner_key, :ci:p_contact_id, :ci:p_phone_country, :c:p_country_code from /tests/Test_DB/p_contact_info/rows ci, /tests/Test_DB/p_country/rows c where :c:p_phone_code = :ci:p_phone_country and :ci:p_partner_key >= '100000' and :ci:p_partner_key < '100015' order by :ci:p_partner_key, :ci:p_contact_id, :c:p_country_code
+csv set passthrough 0 select :ci:p_partner_key, :ci:p_contact_id, :ci:p_phone_country, :c:p_country_code from /tests/Test_DB/p_contact_info/rows ci, /tests/Test_DB/p_country/rows c where :c:p_phone_code = :ci:p_phone_country and :ci:p_partner_key >= '100000' and :ci:p_partner_key < '100015' order by :ci:p_partner_key, :ci:p_contact_id, :c:p_country_code
+
+# 048_type_string_ge_int
+csv select :c:p_partner_key, :c:p_contact_id, :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id >= :l:p_location_id and :l:p_revision_id = 0 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100015' order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+csv set passthrough 0 select :c:p_partner_key, :c:p_contact_id, :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id >= :l:p_location_id and :l:p_revision_id = 0 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100015' order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+
+# 049_type_int_vs_int_ids
+csv select :l:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :c:p_contact_id = :l:p_location_id and :l:p_partner_key = :c:p_partner_key and :l:p_partner_key >= '100000' and :l:p_partner_key < '100035' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :l:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :c:p_contact_id = :l:p_location_id and :l:p_partner_key = :c:p_partner_key and :l:p_partner_key >= '100000' and :l:p_partner_key < '100035' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# 050_multicol_contact_selfjoin
+csv select k = :c1:p_partner_key, id1 = :c1:p_contact_id, id2 = :c2:p_contact_id, t = :c1:p_contact_type from /tests/Test_DB/p_contact_info/rows c1, /tests/Test_DB/p_contact_info/rows c2 where :c1:p_partner_key = :c2:p_partner_key and :c1:p_contact_data = :c2:p_contact_data and :c1:p_contact_id < :c2:p_contact_id and :c1:p_partner_key >= '100000' and :c1:p_partner_key < '100040' order by :c1:p_partner_key, :c1:p_contact_id, :c2:p_contact_id
+csv set passthrough 0 select k = :c1:p_partner_key, id1 = :c1:p_contact_id, id2 = :c2:p_contact_id, t = :c1:p_contact_type from /tests/Test_DB/p_contact_info/rows c1, /tests/Test_DB/p_contact_info/rows c2 where :c1:p_partner_key = :c2:p_partner_key and :c1:p_contact_data = :c2:p_contact_data and :c1:p_contact_id < :c2:p_contact_id and :c1:p_partner_key >= '100000' and :c1:p_partner_key < '100040' order by :c1:p_partner_key, :c1:p_contact_id, :c2:p_contact_id
+
+# 051_nonequi_loc_lt_selfjoin
+csv select k = :l1:p_partner_key, a = :l1:p_location_id, b = :l2:p_location_id from /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :l1:p_partner_key = :l2:p_partner_key and :l1:p_location_id < :l2:p_location_id and :l1:p_revision_id = 0 and :l2:p_revision_id = 0 and :l1:p_partner_key >= '100000' and :l1:p_partner_key < '100050' order by :l1:p_partner_key, :l1:p_location_id, :l2:p_location_id
+csv set passthrough 0 select k = :l1:p_partner_key, a = :l1:p_location_id, b = :l2:p_location_id from /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :l1:p_partner_key = :l2:p_partner_key and :l1:p_location_id < :l2:p_location_id and :l1:p_revision_id = 0 and :l2:p_revision_id = 0 and :l1:p_partner_key >= '100000' and :l1:p_partner_key < '100050' order by :l1:p_partner_key, :l1:p_location_id, :l2:p_location_id

@@ -1,0 +1,44 @@
+##NAME MySQL join pushdown, cases 074-083
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# 074_order_first_source_only
+csv select :p:p_partner_key, :p:p_surname, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_location_id = 1 and :l:p_revision_id = 0 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100045' order by :p:p_surname, :p:p_partner_key
+csv set passthrough 0 select :p:p_partner_key, :p:p_surname, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_location_id = 1 and :l:p_revision_id = 0 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100045' order by :p:p_surname, :p:p_partner_key
+
+# 075_order_first_and_later
+csv select :p:p_partner_key, :p:p_surname, :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :p:p_surname, :p:p_partner_key, :l:p_city, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_surname, :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :p:p_surname, :p:p_partner_key, :l:p_city, :l:p_location_id, :l:p_revision_id
+
+# 076_order_later_only_unique
+csv select :p:p_partner_key, :l:p_city, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :l:p_city, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_city, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :l:p_city, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 077_order_desc_mixed
+csv select :p:p_partner_key, :l:p_city, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :l:p_city desc, :p:p_partner_key desc, :l:p_location_id desc, :l:p_revision_id desc
+csv set passthrough 0 select :p:p_partner_key, :l:p_city, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :l:p_city desc, :p:p_partner_key desc, :l:p_location_id desc, :l:p_revision_id desc
+
+# 078_order_by_name_pk
+csv select :p:p_partner_key, :l:p_location_id, ln = :l:name from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :p:name, :l:name
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, ln = :l:name from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :p:name, :l:name
+
+# 079_order_nulls_and_empty_state
+csv select :l:p_partner_key, :l:p_location_id, :l:p_state_province from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100050' and :l:p_country_code != 'US' order by :l:p_state_province, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :l:p_partner_key, :l:p_location_id, :l:p_state_province from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100050' and :l:p_country_code != 'US' order by :l:p_state_province, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 080_order_by_expression_both_tables
+csv select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by char_length(:p:p_surname) + char_length(:l:p_city), :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by char_length(:p:p_surname) + char_length(:l:p_city), :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 081_order_trailing_space_names
+csv select :p:p_partner_key, :p:p_surname from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_surname >= 'Pow' and :p:p_surname < 'Pox' order by :p:p_surname, :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_surname from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_surname >= 'Pow' and :p:p_surname < 'Pox' order by :p:p_surname, :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 082_order_limit
+csv select :p:p_partner_key, :l:p_location_id, :l:p_revision_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id limit 7
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, :l:p_revision_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id limit 7
+
+# 083_order_later_desc_limit
+csv select :p:p_partner_key, :l:p_city, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key order by :l:p_city desc, :p:p_partner_key, :l:p_location_id, :l:p_revision_id limit 12
+csv set passthrough 0 select :p:p_partner_key, :l:p_city, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key order by :l:p_city desc, :p:p_partner_key, :l:p_location_id, :l:p_revision_id limit 12

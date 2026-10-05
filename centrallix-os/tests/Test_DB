@@ -1,0 +1,9 @@
+$Version=2$
+Test_DB "application/mysql"
+    {
+    // MySQL test database, created by centrallix/tests/mysql_test_db.sql.
+    server = "localhost";
+    database = "Centrallix_Test";
+    username = "cxtest";
+    password = "cxtest";
+    }

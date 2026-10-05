@@ -1,0 +1,44 @@
+##NAME MySQL join pushdown, cases 178-188
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# 178_join_cond_negated_not_eq
+csv select k1 = :p:p_partner_key, k2 = :l:p_partner_key from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where not (:l:p_partner_key = :p:p_partner_key) and :p:p_partner_key >= '100000' and :p:p_partner_key < '100005' and :l:p_partner_key >= '100000' and :l:p_partner_key < '100006' order by :p:p_partner_key, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select k1 = :p:p_partner_key, k2 = :l:p_partner_key from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where not (:l:p_partner_key = :p:p_partner_key) and :p:p_partner_key >= '100000' and :p:p_partner_key < '100005' and :l:p_partner_key >= '100000' and :l:p_partner_key < '100006' order by :p:p_partner_key, :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 179_join_cond_ge_on_keys_narrow
+csv select k1 = :p:p_partner_key, k2 = :l:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :l:p_partner_key >= :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100005' and :l:p_partner_key < '100007' and :l:p_revision_id = 0 order by :p:p_partner_key, :l:p_partner_key, :l:p_location_id
+csv set passthrough 0 select k1 = :p:p_partner_key, k2 = :l:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :l:p_partner_key >= :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100005' and :l:p_partner_key < '100007' and :l:p_revision_id = 0 order by :p:p_partner_key, :l:p_partner_key, :l:p_location_id
+
+# 180_transitive_equalities_three_aliases
+csv select :p:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :p:p_partner_key and :c:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :p:p_partner_key and :c:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# 181_duplicate_join_predicate
+csv select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :l:p_partner_key = :p:p_partner_key and :l:p_partner_key = :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100014' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :l:p_partner_key = :p:p_partner_key and :l:p_partner_key = :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100014' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# 182_aggregates_over_outer_nulls
+csv select n = count(1), nl = count(:l:p_location_id), sm = sum(:l:p_location_id), mn = min(:l:p_city), mx = max(:l:p_state_province), av = avg(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '102000'
+csv set passthrough 0 select n = count(1), nl = count(:l:p_location_id), sm = sum(:l:p_location_id), mn = min(:l:p_city), mx = max(:l:p_state_province), av = avg(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '102000'
+
+# 183_mixed_expression_source_and_plain
+csv select :p:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_partner/rows p, expression ('/tests/Test_DB/p_location/rows') l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_partner/rows p, expression ('/tests/Test_DB/p_location/rows') l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# 184_mixed_expression_first_then_plain_pair
+csv select :p:p_partner_key, :l:p_location_id, :c:p_contact_id from expression ('/tests/Test_DB/p_partner/rows') p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, :c:p_contact_id from expression ('/tests/Test_DB/p_partner/rows') p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# 186_datetime_created_between_ranges_group
+csv select mo = datepart(month, :p:s_date_created), n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:s_date_created >= :p:s_date_created group by datepart(month, :p:s_date_created) order by datepart(month, :p:s_date_created)
+csv set passthrough 0 select mo = datepart(month, :p:s_date_created), n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:s_date_created >= :p:s_date_created group by datepart(month, :p:s_date_created) order by datepart(month, :p:s_date_created)
+
+# 187_datetime_le_p_dup_vs_partner
+csv select :d:p_partner_key, :d:p_dup_partner_key, :d:s_date_created from /tests/Test_DB/p_dup/rows d, /tests/Test_DB/p_partner/rows p where :p:p_partner_key = :d:p_partner_key and :p:s_date_created <= :d:s_date_created and :d:p_partner_key < '100100' order by :d:p_partner_key, :d:p_dup_partner_key
+csv set passthrough 0 select :d:p_partner_key, :d:p_dup_partner_key, :d:s_date_created from /tests/Test_DB/p_dup/rows d, /tests/Test_DB/p_partner/rows p where :p:p_partner_key = :d:p_partner_key and :p:s_date_created <= :d:s_date_created and :d:p_partner_key < '100100' order by :d:p_partner_key, :d:p_dup_partner_key
+
+# 188_three_way_inner_with_outer_leaf_and_csv_const
+csv select :p:p_partner_key, :l:p_location_id, don = :d:p_partner_key, :s:abbrev from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_donor/rows d, /tests/States.csv/rows s where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key *= :d:p_partner_key and :s:abbrev = :l:p_state_province and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, don = :d:p_partner_key, :s:abbrev from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_donor/rows d, /tests/States.csv/rows s where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key *= :d:p_partner_key and :s:abbrev = :l:p_state_province and :p:p_partner_key >= '100000' and :p:p_partner_key < '100025' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
