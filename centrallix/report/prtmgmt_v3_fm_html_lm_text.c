@@ -9,6 +9,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/expect.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -63,6 +64,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
     pPrtObjStream scan, linetail, next_xset_obj, justif_subscan;
     int i,j,cur_xset,next_xset;
     double w, cur_x;
+    double line_top, line_bottom, prev_bottom = -1.0;
     int last_needed_cols, cur_needs_cols, need_new_row, in_td, in_tr;
     PrtHTMLfmSavedStyle oldstyle;
     char* justifytypes[] = { "left", "right", "center", "justify" };
@@ -167,14 +169,28 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    cur_xset = 0;
 	    linetail = scan;
 	    cur_needs_cols = 0;
+	    line_top = scan->Y;
+	    line_bottom = -1.0;
 	    while(1)
 		{
 		if (linetail->Flags & PRT_OBJ_F_XSET) cur_needs_cols = 1;
+		if (!(linetail->Flags & PRT_OBJ_F_MARGINRELEASE))
+		    {
+		    line_top = min(line_top, linetail->Y);
+		    line_bottom = max(line_bottom, linetail->Y + linetail->Height);
+		    }
 		if ((linetail->Flags & PRT_OBJ_F_NEWLINE) || !linetail->Next) break;
+
+		/** An object placed below this line (e.g. by ypos) starts a new line. **/
+		if ((linetail->Next->Flags & PRT_OBJ_F_YSET) && line_bottom >= 0.0 && linetail->Next->Y >= line_bottom - 0.001) break;
 
 		linetail = linetail->Next;
 		}
-	    need_new_row = (cur_needs_cols || last_needed_cols || scan->Justification != PRT_JUST_T_LEFT);
+
+	    /** Leave a vertical gap (e.g. from ypos or lineheight) before this line? **/
+	    const double gap = (prev_bottom >= 0.0 && line_bottom >= 0.0) ? line_top - prev_bottom : 0.0;
+	    if (line_bottom >= 0.0) prev_bottom = line_bottom;
+	    need_new_row = (cur_needs_cols || last_needed_cols || scan->Justification != PRT_JUST_T_LEFT || gap >= 0.5);
 	    if (need_new_row)
 		{
 		if (in_td)
@@ -195,6 +211,19 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 			goto err;
 			}
 		    in_tr = 0;
+		    }
+		if (gap >= 0.5)
+		    {
+		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<tr><td") < 0
+			|| (n_xset > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_xset) < 0)
+			|| prt_htmlfm_OutputPrintf(context,
+			    " style=\"height:%dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td></tr>\n",
+			    (int)(gap * PRT_HTMLFM_YPIXEL + 0.5)
+			) < 0
+		    ))  {
+			mssError(0, "PRT", "Failed to write line gap row.");
+			goto err;
+			}
 		    }
 		}
 	    if (!in_tr)
