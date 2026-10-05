@@ -4472,7 +4472,13 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	/** Title and axis labels **/
 	if (*title)
 #ifdef HAVE_MGL2
+	    {
+	    /** An explicit plot factor puts the title off the chart; use the automatic one **/
+	    mgl_set_plotfactor(ctx->gr, 0.0);
 	    mgl_puts(ctx->gr, 0.5, 0.9, 0.0, title, "A", ctx->fontsize * ctx->font_scale_factor);
+	    if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
+		mgl_set_plotfactor(ctx->gr, 1.55/ctx->zoom);
+	    }
 #else
 	    mgl_title(ctx->gr, title, "", ctx->fontsize * ctx->font_scale_factor);
 #endif
