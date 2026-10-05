@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <errno.h>
 #include "barcode.h"
 #include "report.h"
@@ -236,6 +237,15 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 	    new_h = child->Y + req_height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom;
 	    if (!(parent->Flags & PRT_OBJ_F_FIXEDSIZE) && this != parent->ContentTail &&
 		    new_h - PRT_FP_FUDGE <= parent->ContentTail->Height &&
+		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
+		return 0;
+
+	    /*** An empty child at the top of a column must grow anyway, since a
+	     *** column break would leave it just as empty and short.
+	     ***/
+	    const bool child_empty = (!child->ContentHead
+		|| (child->ContentHead->X + child->ContentHead->Width == 0.0 && !child->ContentHead->Next));
+	    if (child->Y < PRT_FP_FUDGE && child_empty && !(parent->Flags & PRT_OBJ_F_FIXEDSIZE) &&
 		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
 		return 0;
 
