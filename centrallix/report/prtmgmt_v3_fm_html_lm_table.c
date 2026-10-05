@@ -118,6 +118,10 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    || prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]) < 0
 	    || prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]) < 0
 	    || prt_htmlfm_OutputBorder(context, "left", lm_data->LeftBorder.Width[0], lm_data->LeftBorder.Color[0]) < 0
+	    || (lm_data->Shadow.nLines > 0 && prt_htmlfm_OutputPrintf(context, " box-shadow: %dpx %dpx 0 #%6.6X;",
+		max(1, (int)(lm_data->ShadowWidth * PRT_HTMLFM_XPIXEL + 0.5)),
+		max(1, (int)(lm_data->ShadowWidth * PRT_HTMLFM_XPIXEL + 0.5)),
+		lm_data->Shadow.Color[0]) < 0)
 	    || prt_htmlfm_OutputStrLiteral(context, "\">") < 0
 	))  {
 	    mssError(0, "PRT", "Failed to write table opening tag.");
