@@ -1325,6 +1325,32 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
     }
 
 
+/*** prt_htmlfm_SkipCols() - write an empty cell spanning the given number
+ *** of skipped layout columns, if any, and reset the count.
+ ***
+ *** @param context The report formatter context in which to print.
+ *** @param n_cols The number of columns to skip, set to 0 afterward.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+prt_htmlfm_SkipCols(pPrtHTMLfmInf context, int* n_cols)
+    {
+
+	if (*n_cols == 0) return 0;
+	const int rval = (*n_cols > 1)
+	    ? prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", *n_cols)
+	    : prt_htmlfm_OutputStrLiteral(context, "<td>&nbsp;</td>");
+	if (UNLIKELY(rval < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write %d skipped column(s).", *n_cols);
+	    return -1;
+	    }
+	*n_cols = 0;
+
+    return 0;
+    }
+
+
 /*** prt_htmlfm_Generate() - generate the html for the page.  Basically,
  *** walk through the document and generate appropriate html layout to
  *** make the thing look similar to what it should.  Does not yet support
@@ -1337,6 +1363,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
     pPrtObjStream subobj, scan;
     double colpos[PRT_HTMLFM_MAXCOLS];
     double rowpos[PRT_HTMLFM_MAXROWS];
+    int spanned_to[PRT_HTMLFM_MAXCOLS];	/* last row covered by a rowspan in each column */
     int n_cols=0, n_rows=0;
     int found;
     int i;
@@ -1500,6 +1527,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	cur_row = 0;
 	cur_col = 0;
 	last_height = 0.0;
+	for (i=0; i<PRT_HTMLFM_MAXCOLS; i++) spanned_to[i] = -1;
 	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<tr>") < 0))
 	    {
 	    mssError(0, "PRT", "Failed to write table row opening tag.");
@@ -1539,32 +1567,26 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    cur_col = 0;
 		    }
 
-		/** Skip cols? **/
-		if (subobj->X > colpos[cur_col])
+		/** Skip cols, filling only those not covered by a rowspan from above. **/
+		i=0;
+		while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1)
 		    {
-		    i=0;
-		    while(subobj->X > (colpos[cur_col]+0.001) && cur_col < PRT_HTMLFM_MAXCOLS-1)
-			{
+		    if (spanned_to[cur_col] < cur_row)
 			i++;
-			cur_col++;
-			}
-		    const int skip_rval = (i > 1)
-			? prt_htmlfm_OutputPrintf(context, "<td colspan=\"%d\">&nbsp;</td>", i)
-			: prt_htmlfm_OutputStrLiteral(context, "<td>&nbsp;</td>");
-		    if (UNLIKELY(skip_rval < 0))
-			{
-			mssError(0, "PRT", "Failed to write %d skipped column(s).", i);
+		    else if (UNLIKELY(prt_htmlfm_SkipCols(context, &i) < 0))
 			goto err;
-			}
+		    cur_col++;
 		    }
+		if (UNLIKELY(prt_htmlfm_SkipCols(context, &i) < 0)) goto err;
 
-		/*** Compute colspan, stopping where another object in this row begins,
+		/*** Compute colspan, stopping where another object beside this one begins,
 		 *** since cells can't overlap (e.g. a logo drawn over a header area).
 		 ***/
 		double right = subobj->X + subobj->Width;
 		for (scan = page_obj->ContentHead; scan != NULL; scan = scan->Next)
 		    {
-		    if (scan != subobj && fabs(scan->Y - subobj->Y) < 0.001 && scan->X > subobj->X + 0.001 && scan->X < right)
+		    if (scan != subobj && scan->Y < subobj->Y + subobj->Height - 0.001 && scan->Y + scan->Height > subobj->Y + 0.001
+			    && scan->X > subobj->X + 0.001 && scan->X < right)
 			right = scan->X;
 		    }
 		cs=1;
@@ -1610,6 +1632,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    goto err;
 		    }
 		
+		for (i=0; i<cs; i++) spanned_to[cur_col+i] = cur_row+rs-1;
 		cur_col += cs;
 		if (cur_col >= n_cols) cur_col = n_cols-1;
 		}
