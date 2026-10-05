@@ -391,10 +391,11 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    in_tr = 0;
 	    }
 
-	/** Detect the bottom of the rendered content. **/
+	/** Detect the bottom of the rendered content, ignoring border decorations. **/
 	double content_bottom = 0.0;
 	for (scan = area->ContentHead; scan != NULL; scan = scan->Next)
 	    {
+	    if (scan->Flags & PRT_OBJ_F_MARGINRELEASE) continue;
 	    if (scan->Y + scan->Height > content_bottom)
 		content_bottom = scan->Y + scan->Height;
 	    }
