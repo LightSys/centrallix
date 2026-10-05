@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -68,6 +68,7 @@ typedef struct _PTEXT
     int			CurHPos;
     int			CurVPos;
     unsigned char	PageBuf[PRT_TEXTOD_MAXROWS][PRT_TEXTOD_MAXCOLS+1];
+    unsigned char	IsText[PRT_TEXTOD_MAXROWS][PRT_TEXTOD_MAXCOLS];	/* whether each cell holds text, not a rule */
     double		LineY[PRT_TEXTOD_MAXROWS];
     int			MaxLine;
     double		MarginTop;
@@ -97,10 +98,10 @@ prt_textod_Output(pPrtTextodInf context, char* str, int len)
 
 /*** prt_textod_BufWrite() - write data into the page buffer, adjusting
  *** the line end markers, line positions, and line-page-Y locations,
- *** as needed.
+ *** as needed.  Text replaces rules and shading, which never replace text.
  ***/
 int
-prt_textod_BufWrite(pPrtTextodInf context, double x, double y, char* text)
+prt_textod_BufWrite(pPrtTextodInf context, double x, double y, char* text, int is_text)
     {
     int row,col,i,len;
 
@@ -124,10 +125,12 @@ prt_textod_BufWrite(pPrtTextodInf context, double x, double y, char* text)
 	    for(i=context->MaxLine; i>=row; i--)
 		{
 		memcpy(context->PageBuf[i+1], context->PageBuf[i], PRT_TEXTOD_MAXCOLS+1);
+		memcpy(context->IsText[i+1], context->IsText[i], PRT_TEXTOD_MAXCOLS);
 		context->LineY[i+1] = context->LineY[i];
 		}
 	    context->LineY[row] = y;
 	    memset(context->PageBuf[row], 0, PRT_TEXTOD_MAXCOLS+1);
+	    memset(context->IsText[row], 0, PRT_TEXTOD_MAXCOLS);
 	    for(i=0;i<PRT_TEXTOD_MAXCOLS;i++)
 		{
 		}
@@ -143,7 +146,17 @@ prt_textod_BufWrite(pPrtTextodInf context, double x, double y, char* text)
 	for(i=0;i<len;i++)
 	    {
 	    if (i+col >= PRT_TEXTOD_MAXCOLS) break;
-	    if (text[i] == '|' && context->PageBuf[row][col+i] == '-')
+	    if (is_text)
+		{
+		if (!context->IsText[row][col+i] || context->PageBuf[row][col+i] == ' ' || context->PageBuf[row][col+i] == '\0')
+		    {
+		    context->PageBuf[row][col+i] = text[i];
+		    context->IsText[row][col+i] = 1;
+		    }
+		}
+	    else if (context->IsText[row][col+i])
+		continue;
+	    else if (text[i] == '|' && context->PageBuf[row][col+i] == '-')
 		context->PageBuf[row][col+i] = '+';
 	    else if (text[i] == '-' && context->PageBuf[row][col+i] == '|')
 		context->PageBuf[row][col+i] = '+';
@@ -180,6 +193,7 @@ prt_textod_OutputPage(pPrtTextodInf context)
 	for(row=0;row<PRT_TEXTOD_MAXROWS;row++) 
 	    {
 	    memset(context->PageBuf[row], 0, PRT_TEXTOD_MAXCOLS+1);
+	    memset(context->IsText[row], 0, PRT_TEXTOD_MAXCOLS);
 	    context->LineY[row] = 0.0;
 	    }
 
@@ -216,6 +230,7 @@ prt_textod_Open(pPrtSession s)
 	for(i=0;i<PRT_TEXTOD_MAXROWS;i++) 
 	    {
 	    memset(context->PageBuf[i], 0, PRT_TEXTOD_MAXCOLS+1);
+	    memset(context->IsText[i], 0, PRT_TEXTOD_MAXCOLS);
 	    context->LineY[i] = 0.0;
 	    }
 
@@ -404,7 +419,7 @@ prt_textod_WriteText(void* context_v, char* str, char* url, double width, double
 	/** output it. **/
 	n = strlen(str);
 	/*prt_textod_Output(context, str, n);*/
-	prt_textod_BufWrite(context, context->CurHPos, context->CurVPos, str);
+	prt_textod_BufWrite(context, context->CurHPos, context->CurVPos, str, 1);
 	context->CurHPos += n;
 	context->CurPhysHPos += n;
 
@@ -480,7 +495,7 @@ prt_textod_WriteRect(void* context_v, double width, double height, double next_y
 	    if (cnt > 32) cnt = 32;
 	    rectbuf[cnt] = '\0';
 	    /*prt_textod_Output(context, rectbuf, cnt);*/
-	    prt_textod_BufWrite(context, context->CurHPos, context->CurVPos, rectbuf);
+	    prt_textod_BufWrite(context, context->CurHPos, context->CurVPos, rectbuf, 0);
 	    context->CurHPos += cnt;
 	    context->CurPhysHPos += cnt;
 	    n -= cnt;
