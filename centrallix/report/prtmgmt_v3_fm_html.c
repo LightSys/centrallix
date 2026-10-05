@@ -337,7 +337,10 @@ prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len)
 		    case '<': repl = "&lt;"; break;
 		    case '>': repl = "&gt;"; break;
 		    case '&': repl = "&amp;"; break;
-		    case ' ': repl = ( context->StyleFlags & PRT_HTMLFM_SF_KEEPSPACES ) ? "&nbsp;" : " "; break;
+		    case ' ': /* Keep leading spaces and each space after the first in a run. */
+			repl = ((context->StyleFlags & PRT_HTMLFM_SF_KEEPSPACES) || (badcharpos > str && badcharpos[-1] == ' '))
+			    ? "&nbsp;" : " ";
+			break;
 		    default: repl = ""; break;
 		    }
 		if (UNLIKELY(prt_htmlfm_Output(context, repl, -1) < 0))
@@ -1556,6 +1559,7 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		
 		/** Write child content, closing its style tags within the cell. **/
 		if (UNLIKELY(prt_htmlfm_InitStyle(context, &(subobj->TextStyle)) < 0)) goto err;
+		prt_htmlfm_SetKeepSpaces(context);
 		if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err;
 		if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
 

@@ -197,6 +197,7 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			
 			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "\">") < 0)) goto err_cell;
 			if (UNLIKELY(prt_htmlfm_InitStyle(context, &(cell->TextStyle)) < 0)) goto err_cell;
+			prt_htmlfm_SetKeepSpaces(context);
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
 			    {
 			    if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err_cell;
