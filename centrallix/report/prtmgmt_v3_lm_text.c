@@ -981,6 +981,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     double x,y;
     int handle_id;
     bool is_block;
+    bool is_marker;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
@@ -1128,8 +1129,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** Ok, done any initial splitting or moving that was needed. **/
 	    /** Add the objptr, and then see about adding split_obj if needed. **/
 	    /** First, do we need to request more room in the 'area'? **/
+	    /** Empty strings that do not end a line (style changes) need no room. **/
 	    new_parent = NULL;
-	    if (objptr->Y + objptr->Height - PRT_FP_FUDGE > prtInnerHeight(this))
+	    is_marker = (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && objptr->Content[0] == '\0'
+		&& !(objptr->Flags & PRT_OBJ_F_NEWLINE));
+	    if (!is_marker && objptr->Y + objptr->Height - PRT_FP_FUDGE > prtInnerHeight(this))
 	        {
 		/** Request the additional space, if allowed **/
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)

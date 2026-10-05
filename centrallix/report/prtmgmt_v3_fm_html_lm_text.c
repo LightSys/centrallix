@@ -192,6 +192,17 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		linetail = linetail->Next;
 		}
 
+	    /** A last line of only style changes (empty strings) is not a line. **/
+	    bool markers_only = (linetail->Next == NULL && scan != area->ContentHead);
+	    for (pPrtObjStream marker = scan; markers_only; marker = marker->Next)
+		{
+		if (marker->ObjType->TypeID != PRT_OBJ_T_STRING || ((char*)marker->Content)[0] != '\0'
+		    || (marker->Flags & PRT_OBJ_F_NEWLINE))
+		    markers_only = false;
+		if (marker == linetail) break;
+		}
+	    if (markers_only) break;
+
 	    /** Leave a vertical gap (e.g. from ypos or lineheight) before this line? **/
 	    const double gap = (prev_bottom >= 0.0 && line_bottom >= 0.0) ? line_top - prev_bottom : 0.0;
 	    if (line_bottom >= 0.0) prev_bottom = line_bottom;
