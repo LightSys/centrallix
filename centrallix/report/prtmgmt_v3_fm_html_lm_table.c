@@ -9,6 +9,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/expect.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -102,9 +103,15 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    }
 
 
+	/** Size the table as a share of its container's inner width. **/
+	int width_pct = 100;
+	if (table->Parent != NULL && prtInnerWidth(table->Parent) > 0.0)
+	    width_pct = min(100, (int)(table->Width / prtInnerWidth(table->Parent) * 100.0 + 0.5));
+
 	/** Write the container HTML with borders. **/
 	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
-	    "<table width=\"100%%\" cellpadding=\"0\" style=\"height: %dpx;",
+	    "<table width=\"%d%%\" cellpadding=\"0\" style=\"height: %dpx;",
+	    width_pct,
 	    (int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5)
 	) < 0
 	    || prt_htmlfm_OutputBorder(context, "top", lm_data->TopBorder.Width[0], lm_data->TopBorder.Color[0]) < 0
