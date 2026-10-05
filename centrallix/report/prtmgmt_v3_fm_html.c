@@ -1525,8 +1525,12 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 	    {
 	    if (subobj->Parent == page_obj)
 		{
-		/** Skip strings already written as part of a line. **/
+		/*** Skip strings already written as part of a line, and objects
+		 *** with no height (e.g. an empty table), which would otherwise
+		 *** share a row with the next object.
+		 ***/
 		if (prt_htmlfm_InLine(line_start, line_end, subobj)) continue;
+		if (subobj->Height < 0.001) continue;
 
 		/*** The page gives each string its own row, so join the strings of
 		 *** one line (through the one ending it with a newline) into one cell.
