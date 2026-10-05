@@ -277,11 +277,13 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		}
 
 	    /** Ok, couldn't resize.  If we are in the header row, or in the first
-	     ** data row, try moving the table to the next page altogether.
+	     ** data row, or in a table that cannot break, try moving the table to
+	     ** the next page altogether.
 	     **/
 	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
 		{
-		if (!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER))
+		if (!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER)
+			|| !(this->Parent->Flags & PRT_OBJ_F_ALLOWBREAK))
 		    {
 		    table_obj = this->Parent;
 		    new_parent = old_parent;
