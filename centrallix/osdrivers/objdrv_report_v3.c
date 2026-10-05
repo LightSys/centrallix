@@ -2965,7 +2965,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		/** No inner iterations; exit out now. **/
 		break;
 		}
-	    last_inner_cnt = qy->InnerExecCnt;
+	    if (outer_mode) last_inner_cnt = qy->InnerExecCnt;
 
 	    /** Emit a page break if requested **/
 	    if (ffsep) prtWriteFF(container_handle);

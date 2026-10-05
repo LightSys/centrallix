@@ -26,7 +26,6 @@ report_test "system/report"
     p_region	"report/parameter" { type=string;   default="South"; }
     p_hidden	"report/parameter" { type=integer;  default=0; }
     areabreak_test	"report/parameter" { type=integer;  default=0; }
-    multinested_test	"report/parameter" { type=integer;  default=0; }
     out_qty	"report/parameter" { type=integer;  direction=out; default=runserver(:table_qy:tot_qty); }
 
     // Single-row query with one value of each data type.
@@ -900,11 +899,9 @@ report_test "system/report"
 	    }
 	}
 
-    s13f_off "report/data" { condition=runserver(not :this:multinested_test); value=runserver("\nmultimode=multinested: skipped, pass multinested_test=1 to run it.\n"); }
-    s13_l7 "report/data" { condition=runserver(:this:multinested_test); style=bold; value=runserver("\nmultimode=multinested (Expect: each region alone, then that region with each product):\n"); }
+    s13_l7 "report/data" { style=bold; value=runserver("\nmultimode=multinested (Expect: each region alone, then that region with each product):\n"); }
     s13f "report/form"
 	{
-	condition=runserver(:this:multinested_test);
 	source=form_regions_qy, products_qy;
 	multimode=multinested;
 	s13f_d "report/data" { value=runserver(:form_regions_qy:region + " / " + isnull(:products_qy:product, "-") + "\n"); }
