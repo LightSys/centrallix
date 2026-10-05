@@ -88,6 +88,7 @@ report_test "system/report"
     limit_qy "report/query"
 	{
 	sql = "select :id, :product from /samples/report_test/sales.csv/rows order by :id";
+	limit_count "report/aggregate" { compute="count(1)"; reset=0; }
 	}
 
     // Outer and inner queries for nested tables.
@@ -699,12 +700,13 @@ report_test "system/report"
 	s11b_r "report/table-row" { s11b_r1 "report/table-cell" { value=runserver(:empty_qy:id); } s11b_r2 "report/table-cell" { value=runserver(:empty_qy:product); } }
 	}
 
-    s11_l3 "report/data" { value=runserver("reclimit=3 (Expect: ids 1, 2, 3):\n"); }
+    s11_l3 "report/data" { value=runserver("reclimit=3 (Expect: ids 1, 2, 3, then a summary row):\n"); }
     s11c "report/table"
 	{
 	width=40; columns=2; widths=10,29; source=limit_qy; reclimit=3;
 	height=0;
 	s11c_r "report/table-row" { margintop=0; marginbottom=0; s11c_r1 "report/table-cell" { value=runserver(:limit_qy:id); } s11c_r2 "report/table-cell" { value=runserver(:limit_qy:product); } }
+	s11c_s "report/table-row" { summary=yes; margintop=0; marginbottom=0; s11c_s1 "report/table-cell" { value=runserver("Summary"); } s11c_s2 "report/table-cell" { value=runserver(convert('string', :limit_qy:limit_count) + " rows (Expect: 3 rows)"); } }
 	}
 
     s11_l4 "report/data" { value=runserver("\n&p_region substitution in SQL (Expect: ids 23-33, all South):\n"); }

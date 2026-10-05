@@ -2491,6 +2491,9 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    if (ac) rval = rpt_internal_NextRecord(ac, inf, table, rs, 0);
 	    else rval = 1;
 
+	    /** The record limit ends the table, with its final summary, as the end of the data does **/
+	    if (rval == 0 && reclimit != -1 && reccnt + 1 >= reclimit) rval = 1;
+
 	    /** Emit summary rows? **/
 	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
 		{
