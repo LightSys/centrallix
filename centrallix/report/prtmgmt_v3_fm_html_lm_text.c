@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -101,6 +102,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    goto err;
 	    }
 	int saved_bg = context->BGColor;
+	const bool pad_wrap = (lm_inf->AreaBorder.nLines == 0
+	    && (area->MarginTop != 0.0 || area->MarginBottom != 0.0 || area->MarginLeft != 0.0 || area->MarginRight != 0.0));
 	if (lm_inf->AreaBorder.nLines > 0)
 	    {
 	    /** Draw the border. **/
@@ -117,10 +120,12 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 	else
 	    {
-	    /** No border: Draw the padding and background directly. **/
-	    const int pad = (area->MarginTop + area->MarginBottom + area->MarginLeft + area->MarginRight) * PRT_HTMLFM_XPIXEL/4;
-	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" width=\"100%%\" cellpadding=\"%d\"", pad) < 0
+	    /** No border: Draw the background directly, wrapped in a cell padded by any margins. **/
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\"") < 0
 		|| prt_htmlfm_OutputBGColor(context, area->BGColor) < 0
+		|| (pad_wrap && (prt_htmlfm_OutputStrLiteral(context, "><tr><td") < 0
+		    || prt_htmlfm_OutputPadding(context, area) < 0
+		    || prt_htmlfm_OutputStrLiteral(context, ">\n<table role=\"presentation\" width=\"100%\" cellpadding=\"0\"") < 0))
 		|| prt_htmlfm_OutputStrLiteral(context, ">\n") < 0
 	    ))  {
 		mssError(0, "PRT", "Failed to write area table opening tag.");
@@ -408,8 +413,9 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 
 	/** Output the area epilogue **/
-	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</table>\n") < 0))
-	    {
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</table>\n") < 0
+	    || (pad_wrap && prt_htmlfm_OutputStrLiteral(context, "</td></tr></table>\n") < 0)
+	))  {
 	    mssError(0, "PRT", "Failed to write area table closing tag.");
 	    goto err;
 	    }

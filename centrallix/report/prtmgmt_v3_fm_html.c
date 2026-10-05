@@ -882,34 +882,58 @@ prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor)
     }
 
 
+/*** prt_htmlfm_OutputPadding() - write a style attribute that pads an
+ *** element by the given prt object's margins, skipping it if they are zero.
+ ***/
+int
+prt_htmlfm_OutputPadding(pPrtHTMLfmInf context, pPrtObjStream obj)
+    {
+	const int top    = (int)(obj->MarginTop    * PRT_HTMLFM_YPIXEL + 0.5);
+	const int right  = (int)(obj->MarginRight  * PRT_HTMLFM_XPIXEL + 0.5);
+	const int bottom = (int)(obj->MarginBottom * PRT_HTMLFM_YPIXEL + 0.5);
+	const int left   = (int)(obj->MarginLeft   * PRT_HTMLFM_XPIXEL + 0.5);
+	if (top == 0 && right == 0 && bottom == 0 && left == 0) return 0;
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+	    " style=\"padding:%dpx %dpx %dpx %dpx;\"",
+	    top, right, bottom, left
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write padding %dpx %dpx %dpx %dpx.", top, right, bottom, left);
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_htmlfm_Border() - use nested tables to create a border matching
- *** the given border structure, with an appropriate margin setting from
- *** the given prt object.  Zero-width borders (those with no lines) are
- *** skipped to reduce HTML size.
+ *** the given border structure, padded inside by the given prt object's
+ *** margins.  Zero-width borders (those with no lines) are skipped to reduce
+ *** HTML size.
  ***/
 int
 prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
     {
     int i;
-    int m,bw,iw;
-
-	/** Figure the margins **/
-	m = (obj->MarginTop + obj->MarginBottom + obj->MarginLeft + obj->MarginRight)*PRT_HTMLFM_XPIXEL/4;
+    int bw,iw;
 
 	/** Construct the border for each element **/
 	for (i=0;i<border->nLines;i++)
 	    {
-	    /** Output border line itself **/
+	    /** Output border line itself, padding the innermost by the margins. **/
+	    const bool innermost = (i == border->nLines-1);
 	    bw = border->Width[i]*PRT_HTMLFM_XPIXEL + 0.5;
 	    if (bw == 0) bw = 1;
-	    iw = ((i==border->nLines-1)?m:(border->Sep*PRT_HTMLFM_XPIXEL)) + 0.5;
-	    if (iw == 0 && i!=border->nLines-1) iw = 1;
+	    iw = (innermost) ? 0 : (int)(border->Sep*PRT_HTMLFM_XPIXEL + 0.5);
+	    if (iw == 0 && !innermost) iw = 1;
 	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">",
 		    (int)(bw),
 		    (int)(border->Color[i])) < 0
-		|| prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\">\n",
+		|| prt_htmlfm_OutputPrintf(context, "<table role=\"presentation\" cellpadding=\"%d\"><tr><td bgcolor=\"#%6.6X\"",
 		    (int)(iw),
 		    (int)(obj->BGColor)) < 0
+		|| (innermost && prt_htmlfm_OutputPadding(context, obj) < 0)
+		|| prt_htmlfm_OutputStrLiteral(context, ">\n") < 0
 	    ))  {
 		mssError(0, "PRT", "Failed to write border line #%d/%d.", i + 1, border->nLines);
 		return -1;

@@ -125,6 +125,7 @@ int prt_htmlfm_WriteStyle(pPrtHTMLfmInf context);
 int prt_htmlfm_EndStyle(pPrtHTMLfmInf context);
 
 int prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor);
+int prt_htmlfm_OutputPadding(pPrtHTMLfmInf context, pPrtObjStream obj);
 int prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 int prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 
