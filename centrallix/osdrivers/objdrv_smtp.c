@@ -875,8 +875,7 @@ smtp_internal_SpoolPath(char* path, char* spoolDir, char* name, char* ext)
  *** @param path The path of the struct file.
  *** @param emailStruct Set to the parsed struct, which the caller frees, or
  ***   NULL if there is none.
- *** @returns 1 on success, 0 if the file does not exist, 2 if it cannot be
- ***   parsed, or -1 on failure.
+ *** @returns 1 on success, 0 if the file does not exist, or -1 on failure.
  ***/
 int
 smtp_internal_ReadStruct(char* path, pStructInf* emailStruct)
@@ -897,7 +896,7 @@ smtp_internal_ReadStruct(char* path, pStructInf* emailStruct)
 	if (UNLIKELY(*emailStruct == NULL))
 	    {
 	    mssError(0, "SMTP", "Failed to parse email struct file \"%s\".", path);
-	    return 2;
+	    return -1;
 	    }
 
     return 1;
@@ -2118,7 +2117,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
 		}
 	    }
 	smtp_internal_Unlock();
-	if (UNLIKELY(found < 0 || found == 2))
+	if (UNLIKELY(found < 0))
 	    mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
 
 	/** Load the updated status. **/
@@ -3472,11 +3471,6 @@ smtp_internal_LoadSpool(pSmtpSpool spool)
 		mssError(0, "SMTP", "Failed to track email \"%s\".", path);
 		goto end;
 		}
-	    if (UNLIKELY(found == 2))
-		{
-		mssWarnError("Failed to track corrupt email \"%s\", skipping.", path);
-		continue;
-		}
 	    if (found == 0)
 		continue; /* No struct yet. */
 
@@ -3678,9 +3672,9 @@ smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
  *** @param batch The current batch, which holds the cache for the current mail
  *** 	log read batch.
  *** @param name The email file name.
- *** @param ret Set to the email, or NULL if it no longer exists or is corrupt.
+ *** @param ret Set to the email, or NULL if it no longer exists.
  *** @returns 0 if the email was found,
- ***          1 if it no longer exists or is corrupt (skipped with a warning),
+ ***          1 if it no longer exists,
  ***         -1 on failure.
  ***/
 int
@@ -3721,12 +3715,6 @@ smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name, pSm
 	found = smtp_internal_ReadStruct(structPath, &email->Struct);
 	if (UNLIKELY(found < 0))
 	    goto end;
-	if (UNLIKELY(found == 2))
-	    {
-	    mssWarnError("Failed to update corrupt email \"%s\" in \"%s\" from the mail log, skipping.", name, spool->Path);
-	    rval = 1; /* Skipped like a deleted email, since it can never be updated. */
-	    goto end;
-	    }
 	if (found == 0)
 	    {
 	    rval = 1; /* Deleted. */
