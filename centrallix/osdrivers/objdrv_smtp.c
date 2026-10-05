@@ -5227,6 +5227,7 @@ int
 smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+    int pending;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -5251,12 +5252,26 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    return -1;
 	    }
 
+	/** Refuse to change a Pending email, which sendmail may be reading. **/
+	smtp_internal_Lock();
+	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
+	if (UNLIKELY(pending != 0))
+	    {
+	    if (pending > 0)
+		mssError(1, "SMTP", "Failed to write to \"%s\": it is Pending.", inf->Name);
+	    else
+		mssError(0, "SMTP", "Failed to check whether \"%s\" is Pending.", inf->Name);
+	    smtp_internal_Unlock();
+	    return -1;
+	    }
+
 	rval = fdWrite(inf->ContentFile, buffer, cnt, offset, flags);
 	if (UNLIKELY(rval < 0))
 	    mssErrorErrno(1, "SMTP",
 		"Failed to write %d bytes at offset %d to email file (%s).",
 		cnt, offset, inf->EmailPath.String
 	    );
+	smtp_internal_Unlock();
 
 	return rval;
     }
@@ -5934,6 +5949,8 @@ int
 smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+    int pending;
+    int rval = -1;
 
 	/** Refuse writes to read-only emails and attributes. **/
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
@@ -5972,6 +5989,24 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		);
 		return -1;
 		}
+	    }
+
+	/** Refuse to change a Pending email.  Sending checks is_ready itself. **/
+	if (inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") != 0)
+	    {
+	    smtp_internal_Lock();
+	    pending = smtp_internal_IsPending(inf->EmailStructPath.String);
+	    if (LIKELY(pending == 0))
+		rval = smtp_internal_SetAttrValue(inf_v, attrname, datatype, val, oxt);
+	    else if (pending > 0)
+		mssError(1, "SMTP",
+		    "Failed to set attribute '%s' of \"%s\": it is Pending.",
+		    attrname, inf->Name
+		);
+	    else
+		mssError(0, "SMTP", "Failed to check whether \"%s\" is Pending.", inf->Name);
+	    smtp_internal_Unlock();
+	    return rval;
 	    }
 
     return smtp_internal_SetAttrValue(inf_v, attrname, datatype, val, oxt);
