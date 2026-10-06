@@ -94,7 +94,7 @@ prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
 		    ? prt_htmlfm_OutputPrintf(context,
 			"<td width=\"%d\" style=\"border-right:%dpx solid #%6.6X;\"></td><td width=\"%d\"></td>",
 			gap / 2,
-			max((int)(lm_inf->Separator.Width[0] * PRT_HTMLFM_XPIXEL + 0.5), 1),
+			max(PRT_HTMLFM_BORDER_PIXELS(lm_inf->Separator.Width[0]), 1),
 			lm_inf->Separator.Color[0],
 			gap - gap / 2
 		    )

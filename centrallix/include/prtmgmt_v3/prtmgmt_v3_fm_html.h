@@ -1,6 +1,7 @@
 #ifndef _PRTMGMT_V3_FM_HTML_H
 #define _PRTMGMT_V3_FM_HTML_H
 
+#include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -58,6 +59,9 @@
  ***/
 #define PRT_HTMLFM_XPIXEL               (7.2)
 #define PRT_HTMLFM_YPIXEL               (12)
+
+/** Pixels for a border width, rounded up so no border is drawn thinner than its width. **/
+#define PRT_HTMLFM_BORDER_PIXELS(w)     ((int)ceil((w) * PRT_HTMLFM_XPIXEL - 0.001))
 
 /** Session flags **/
 typedef unsigned char SessionFlags; /* A type holding 0 or more session flags. */

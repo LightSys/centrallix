@@ -1202,7 +1202,7 @@ prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj)
 	    {
 	    /** Output border line itself, padding the innermost by the margins. **/
 	    const bool innermost = (i == border->nLines-1);
-	    bw = border->Width[i]*PRT_HTMLFM_XPIXEL + 0.5;
+	    bw = PRT_HTMLFM_BORDER_PIXELS(border->Width[i]);
 	    if (bw == 0) bw = 1;
 	    iw = (innermost) ? 0 : (int)(border->Sep*PRT_HTMLFM_XPIXEL + 0.5);
 	    if (iw == 0 && !innermost) iw = 1;

@@ -53,7 +53,7 @@
 
 
 /*** prt_htmlfm_OutputBorder() - Writes a single CSS "border-<side>" declaration
- *** with an integer pixel width.  Rounding widths to the nearest integer reduces
+ *** with an integer pixel width.  Rounding widths up to whole pixels reduces
  *** HTML bloat and improves rendering consistency (especially for some email
  *** HTML).  Also, 0-width borders are skipped to reduce HTML bloat.
  *** 
@@ -69,7 +69,7 @@ prt_htmlfm_OutputBorder(pPrtHTMLfmInf context, const char* side, double width_un
     int border_width;
 
 	if (width_units == 0.0) return 0;
-	border_width = (int)(width_units * PRT_HTMLFM_XPIXEL + 0.5);
+	border_width = PRT_HTMLFM_BORDER_PIXELS(width_units);
 	if (border_width < 1) border_width = 1;
 	const int rval = (color == -1)
 	    ? prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid;", side, border_width)
@@ -128,8 +128,8 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	    || prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]) < 0
 	    || prt_htmlfm_OutputBorder(context, "left", lm_data->LeftBorder.Width[0], lm_data->LeftBorder.Color[0]) < 0
 	    || (lm_data->Shadow.nLines > 0 && prt_htmlfm_OutputPrintf(context, " box-shadow: %dpx %dpx 0 #%6.6X;",
-		max(1, (int)(lm_data->ShadowWidth * PRT_HTMLFM_XPIXEL + 0.5)),
-		max(1, (int)(lm_data->ShadowWidth * PRT_HTMLFM_XPIXEL + 0.5)),
+		max(1, PRT_HTMLFM_BORDER_PIXELS(lm_data->ShadowWidth)),
+		max(1, PRT_HTMLFM_BORDER_PIXELS(lm_data->ShadowWidth)),
 		lm_data->Shadow.Color[0]) < 0)
 	    || prt_htmlfm_OutputStrLiteral(context, "\">") < 0
 	))  {
