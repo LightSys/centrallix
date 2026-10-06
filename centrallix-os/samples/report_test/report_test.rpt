@@ -1043,6 +1043,7 @@ report_test "system/report"
 	}
 
     // 17. One page per record.
+    s17_gap "report/data" { value=runserver("\n"); }
     s17 "report/form"
 	{
 	source=page_qy;
