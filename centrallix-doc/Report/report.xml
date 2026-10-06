@@ -367,7 +367,7 @@ myTable "report/table"
 			<child type="report/chart-series">
 				<childproperty name="color" type="string">The color to be used for the series.</childproperty>
 				<childproperty name="legend_name" type="string">The name to be displayed on the legend for the series.</childproperty>
-				<childproperty name="show_percent" type="yes/no">Whether to show the series value as a percentage above the bar or line point.  Default "no".</childproperty>
+				<childproperty name="show_percent" type="yes/no">Whether to show the series value's percentage of the series total above the bar or line point, after the value if show_value is also set.  Default "no".</childproperty>
 				<childproperty name="show_value" type="yes/no">Whether to show the series value above the bar or line point.  Default "yes".</childproperty>
 				<childproperty name="x_value" type="expression">The X value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</childproperty>
 				<childproperty name="y_value" type="expression">The Y value for the series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</childproperty>
