@@ -483,8 +483,9 @@ prt_textod_WriteRect(void* context_v, double width, double height, double next_y
 	else if (width < 1.0 && height < 1.0) rectch = '+';
 	else rectch = '*';
 
-	/** How many? **/
-	if (width < 1.0) n = 1;
+	/** How many?  A shaded area, such as a background, has no plain text form. **/
+	if (rectch == '*') n = 0;
+	else if (width < 1.0) n = 1;
 	else n = (width + 0.0001);
 
 	/** Write em **/
