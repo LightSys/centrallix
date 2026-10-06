@@ -62,80 +62,53 @@
 #include "st_node.h"
 
 
-/** Debugging mode **/
+/** Define whether to use debugging mode. **/
 #define	SMTP_DEBUG	0
 
-/** Define types of SMTP objects. **/
-#define SMTP_T_ROOT	0
-#define SMTP_T_EML	1
-
-/** Seconds to keep a sent or failed email (3 days). **/
+/** Define attribute defaults. **/
+#define SMTP_DEFAULT_LOG_PATH		"/var/log/maillog"
 #define SMTP_DEFAULT_EXPIRE_TIME	(3 * 24 * 60 * 60)
-
-/** Minimum seconds between sweeps of one spool directory. **/
-#define SMTP_SWEEP_INTERVAL	(60 * 60)
-
-/** Minimum seconds between throttled reads of the mail log by one spool directory (1 hour). **/
 #define SMTP_DEFAULT_LOG_READ_INTERVAL	(60 * 60)
 
-/** Seconds to wait for sendmail before killing it. **/
-#define SMTP_SENDMAIL_TIMEOUT	60
+/** Define file names. **/
+#define SMTP_CURSOR_FILE        ".mail_log_cursor" /* Stores a spool dir's mail log position. */
+#define SMTP_LOCK_FILE          ".spool_lock"      /* Locks a spool dir and alerts when pending emails update. */
 
-/** Bytes in the status line at the start of a sendmail result file. **/
-#define SMTP_RESULT_HEADER_LEN	16
+/** Define sizes. **/
+#define SMTP_RESULT_HEADER_LEN	 16                /* Bytes in the status line at the start of a sendmail result file. */
+#define SMTP_TRY_MSG_MAX	 1024              /* Bytes of sendmail output kept in last_try_msg. */
+#define SMTP_QUEUE_ID_SIZE	 32                /* Bytes for a Postfix queue ID (including the NUL-terminator). */
+#define SMTP_LOG_READ_SIZE	(64 * 1024)        /* Bytes of the mail log to read before yielding. */
+#define SMTP_SERIAL_LEN		 21                /* Bytes of the serial count in the lock file, including the newline. */
 
-/** Bytes of sendmail output kept in last_try_msg. **/
-#define SMTP_TRY_MSG_MAX	1024
+/** Define timeouts & intervals. **/
+#define SMTP_LOCK_POLL_INTERVAL	 50                /* Milliseconds between tries to get a spool dir lock. */
+#define SMTP_LOCK_TIMEOUT	 60                /* Seconds to wait for a spool dir lock before failing. */
+#define SMTP_SWEEP_INTERVAL	(60 * 60)          /* Seconds between spool dir sweeps for expired emails. */
+#define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60) /* Seconds to wait before a Pending email times out to Error. */
+#define SMTP_SENDMAIL_TIMEOUT	 60                /* Seconds to wait for sendmail before killing it. */
+#define SMTP_RESULT_TIMEOUT	(2 * SMTP_SENDMAIL_TIMEOUT) /* Seconds a Pending email waits for the sendmail supervisor
+							     * or Postfix Queue ID before timing out to Error. */
 
-/** The default log where Postfix records the results of sending emails. **/
-#define SMTP_DEFAULT_LOG_PATH	"/var/log/maillog"
+/** Define the group type of a recipient result in an email struct. **/
+#define SMTP_RCPT_TYPE		"system/smtp-recipient"
 
-/** Seconds an email may stay Pending before it becomes Error (6 days). **/
-#define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60)
-
-/** Seconds a Pending email may go without a sendmail result or queue ID before it becomes Error. **/
-#define SMTP_RESULT_TIMEOUT	(2 * SMTP_SENDMAIL_TIMEOUT)
-
-/*** The name of the file in each spool directory that records how much of the
- *** mail log has been read and processed.
- ***/
-#define SMTP_CURSOR_FILE	".mail_log_cursor"
-
-/*** The name of the file in each spool directory that processes lock to take
- *** turns using it.  It holds a serial that a process bumps before changing
- *** the Pending emails.
- ***/
-#define SMTP_LOCK_FILE		".spool_lock"
-
-/** Bytes of the serial in the lock file, including the newline. **/
-#define SMTP_SERIAL_LEN		21
-
-/** Milliseconds between tries to lock a spool directory that another process has locked. **/
-#define SMTP_LOCK_POLL_INTERVAL	50
-
-/** Seconds to wait for the spool directory unlock before failing. **/
-#define SMTP_LOCK_TIMEOUT	60
-
-/** Bytes of the mail log to read before letting other threads run. **/
-#define SMTP_LOG_READ_SIZE	(64 * 1024)
-
-/** Bytes for a Postfix queue ID, including the null terminator. **/
-#define SMTP_QUEUE_ID_SIZE	32
-
-/** Recipient results read from the mail log. **/
+/** Define the types of recipient results read from the mail log. **/
 #define SMTP_RCPT_SENT		0
 #define SMTP_RCPT_DEFERRED	1
 #define SMTP_RCPT_BOUNCED	2
 
-/** The group type of a recipient result in an email struct. **/
-#define SMTP_RCPT_TYPE		"system/smtp-recipient"
-
-/** Kinds of mail log lines. **/
+/** Define the mail log line types. **/
 #define SMTP_LINE_NONE		0	/* No result. */
 #define SMTP_LINE_QUEUED	1	/* message-id=<id> */
 #define SMTP_LINE_RCPT_COUNT	2	/* from=<addr>, size=N, nrcpt=N */
 #define SMTP_LINE_EXPIRED	3	/* from=<addr>, status=expired */
 #define SMTP_LINE_RCPT		4	/* to=<addr>, ..., status=<status> (reply) */
+
+/** Define SMTP driver object types. **/
+#define SMTP_T_ROOT	0
+#define SMTP_T_EML	1
+
 
 /*** Structure to store attribute information. ***/
 typedef struct
