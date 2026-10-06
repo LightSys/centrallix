@@ -137,6 +137,41 @@ prt_htmlfm_ContentBottom(pPrtObjStream area)
     }
 
 
+/*** prt_htmlfm_SpaceBelow() - finds the empty space to leave below an area's
+ *** content.  In a table cell, this is the space below the content of the
+ *** row's tallest cell, since the HTML row grows to fit that cell.
+ ***
+ *** @param area The text area.
+ *** @returns The height of the space, or 0.0 if there is none.
+ ***/
+static double
+prt_htmlfm_SpaceBelow(pPrtObjStream area)
+    {
+    double bottom = prt_htmlfm_ContentBottom(area);
+
+	if (area->ContentTail == NULL) return 0.0;
+
+	/** Find the bottom of the content in the row's cells. **/
+	pPrtObjStream cell = area->Parent;
+	if (cell != NULL && cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL && cell->Parent != NULL)
+	    {
+	    for (pPrtObjStream sibling = cell->Parent->ContentHead; sibling != NULL; sibling = sibling->Next)
+		{
+		if (sibling->ObjType->TypeID != PRT_OBJ_T_TABLECELL) continue;
+		for (pPrtObjStream child = sibling->ContentHead; child != NULL; child = child->Next)
+		    {
+		    const double child_bottom = (child->ObjType->TypeID == PRT_OBJ_T_AREA)
+			? child->Y + prt_htmlfm_ContentBottom(child)
+			: child->Y + child->Height;
+		    bottom = max(bottom, sibling->Y + child_bottom - cell->Y - area->Y);
+		    }
+		}
+	    }
+
+    return (bottom + 0.01 < area->Height) ? area->Height - bottom : 0.0;
+    }
+
+
 /*** prt_htmlfm_IsBareArea() - checks whether an area can be written straight
  *** into its table cell, without a table of its own.  This holds when the
  *** area is the cell's only content and is one line with no tabstops,
@@ -177,7 +212,7 @@ prt_htmlfm_IsBareArea(pPrtHTMLfmInf context, pPrtObjStream area, int* justificat
 	    }
 
 	/** Check for empty space below the line. **/
-	if (prt_htmlfm_ContentBottom(area) + 0.01 < area->Height) return false;
+	if (prt_htmlfm_SpaceBelow(area) > 0.0) return false;
 
 	/** Find the first non-empty object, which sets the justification. **/
 	if (justification != NULL)
@@ -520,12 +555,12 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 
 	/** Pad from the content bottom to the area bottom with a trailing spacer row. **/
-	const double content_bottom = prt_htmlfm_ContentBottom(area);
-	if (area->ContentTail && (content_bottom + 0.01 < area->Height))
+	const double space_below = prt_htmlfm_SpaceBelow(area);
+	if (space_below > 0.0)
 	    {
 	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
 		"<tr><td style=\"height: %dpx;line-height:0;mso-line-height-rule:exactly;\">&nbsp;</td></tr>",
-		(int)((area->Height - content_bottom + 0.001) * PRT_HTMLFM_YPIXEL)
+		(int)((space_below + 0.001) * PRT_HTMLFM_YPIXEL)
 	    ) < 0))
 		{
 		mssError(0, "PRT", "Failed to write trailing spacer row.");
