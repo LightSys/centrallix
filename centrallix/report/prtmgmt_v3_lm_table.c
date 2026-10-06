@@ -1267,11 +1267,11 @@ prt_tablm_Finalize(pPrtObjStream this)
 		    {
 		    rowtop = NULL;
 		    }
-		if (lm_inf->LeftBorder.nLines > 0 && this->MarginLeft == 0.0)
+		if (lm_inf->LeftBorder.nLines > 0 && this->MarginLeft == 0.0 && lm_inf->LeftBorder.TotalWidth >= row_inf->LeftBorder.TotalWidth)
 		    rowleft = &(lm_inf->LeftBorder);
 		else
 		    rowleft = NULL;
-		if (lm_inf->RightBorder.nLines > 0 && this->MarginRight == 0.0)
+		if (lm_inf->RightBorder.nLines > 0 && this->MarginRight == 0.0 && lm_inf->RightBorder.TotalWidth >= row_inf->RightBorder.TotalWidth)
 		    rowright = &(lm_inf->RightBorder);
 		else
 		    rowright = NULL;
