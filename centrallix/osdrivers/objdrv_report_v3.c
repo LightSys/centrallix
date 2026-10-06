@@ -44,7 +44,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -3243,34 +3243,54 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
     }
 
 
-/*** Generate value strings
+/*** rpt_internal_FindSeries() - finds a series in a chart value set.
+ ***
+ *** @param values The value set.
+ *** @param targetSer The series to find.
+ *** @returns The index of the series in the value set, or -1 if it is missing.
+ ***/
+static int
+rpt_internal_FindSeries(pRptChartValues values, int targetSer)
+    {
+
+	for (int j = 0; j < values->nItems; j++)
+	    if (values->Series[j] == targetSer) return j;
+
+    return -1;
+    }
+
+
+/*** Generate value strings, showing each value, its percentage of the series
+ *** total, or both.
  ***/
 pXArray
-rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int targetSer)
+rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_value, int show_pct, int targetSer)
     {
     pXArray labels;
-    char str[32];
-    int i,j;
+    char str[64];
+    char valstr[32];
+    int i;
     double val;
     int prec;
-    int indexSer = -1;
+    int indexSer;
+    double total = 0.0;
 
 	labels = xaNew(n_vals);
 	if (!labels)
 	    return NULL;
 
+	/** Total the series for percentages **/
+	for(i=startval; i<startval+n_vals && show_pct; i++)
+	    {
+	    indexSer = rpt_internal_FindSeries((pRptChartValues)ctx->values->Items[i], targetSer);
+	    if (indexSer != -1) total += ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
+	    }
+
 	/** Format the label strings **/
 	for(i=startval; i<startval+n_vals; i++)
 	    {
 	    /** see if the serries is in the item. Skip if not. **/
-	    for(j=0; j<((pRptChartValues)ctx->values->Items[i])->nItems; j++)
-		{
-		if(targetSer == ((pRptChartValues)ctx->values->Items[i])->Series[j])
-		    {
-		    indexSer = j;
-		    break;
-		    }
-		}
+	    indexSer = rpt_internal_FindSeries((pRptChartValues)ctx->values->Items[i], targetSer);
 	    if(indexSer == -1) continue; /* the series was missing from the value set */
 
 	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
@@ -3279,15 +3299,21 @@ rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int
 	    if (prec == 0)
 		{
 		/** Integer **/
-		snprintf(str, sizeof(str), "%d%s", (int)round(val), show_pct?"%":"");
+		snprintf(valstr, sizeof(valstr), "%d", (int)round(val));
 		}
 	    else
 		{
 		/** Double **/
-		snprintf(str, sizeof(str), "%.*f%s", prec, val, show_pct?"%":"");
+		snprintf(valstr, sizeof(valstr), "%.*f", prec, val);
 		}
+	    const int pct = (total != 0.0) ? (int)round(val / total * 100.0) : 0;
+	    if (show_value && show_pct)
+		snprintf(str, sizeof(str), "%s (%d%%)", valstr, pct);
+	    else if (show_pct)
+		snprintf(str, sizeof(str), "%d%%", pct);
+	    else
+		snprintf(str, sizeof(str), "%s", valstr);
 	    xaAddItem(labels, nmSysStrdup(str));
-	    indexSer = -1;
 	    }
 
     return labels;
@@ -3313,7 +3339,7 @@ rpt_internal_FreeValueStrings(pXArray labels)
 /*** Line/Bar Labels
  ***/
 int
-rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int targetSer, int n_ser, int bar, double fontsize, int show_pct, double offset)
+rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int targetSer, int n_ser, int bar, double fontsize, int show_value, int show_pct, double offset)
     {
     int i,j;
     double val, valoffset;
@@ -3323,7 +3349,7 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
     int indexSer = -1;
     int labelIndex = 0;
 
-	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, targetSer);
+	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_value, show_pct, targetSer);
 	if (!labels)
 	    return -1;
 
@@ -3553,9 +3579,9 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
 #ifdef HAVE_MGL2
-		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 1.0);
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_value, show_percent, 1.0);
 #else
-		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
+		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_value, show_percent, 0.0);
 #endif
 	    /** Generate the legend **/
 	    if(ctx->show_legend)
@@ -3695,7 +3721,7 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
-		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent, 0.0);
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_value, show_percent, 0.0);
 	    /** Generate the legend **/
 	    if(ctx->show_legend)
 		{
@@ -3812,7 +3838,7 @@ rpt_internal_PieChart_Generate(pRptChartContext ctx)
 	pcolor = ":bgrhBGRHWcmywpCMYkPlenuqLENUQ"; 
 	for(i=0; i<reccnt; i++)
 	    sumValues += ((pRptChartValues)ctx->values->Items[i])->Values[0];
-	labels = rpt_internal_GetValueStrings(ctx, 0, reccnt, 0, 0);
+	labels = rpt_internal_GetValueStrings(ctx, 0, reccnt, 1, 0, 0);
 	if (!labels)
 	    return -1;
 
