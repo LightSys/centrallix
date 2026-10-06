@@ -27,11 +27,6 @@
 /* Creation:	May 29, 2014						*/
 /* Description:	Provides an email interface for Centrallix through the	*/
 /*		ObjectSystem.						*/
-/*									*/
-/*		Current Shortcomings:					*/
-/*		  - All functionality is perfect... There is no		*/
-/*		  functionality.					*/
-/*									*/
 /************************************************************************/
 
 #ifdef HAVE_CONFIG_H
