@@ -108,12 +108,21 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 	if (table->Parent != NULL && prtInnerWidth(table->Parent) > 0.0)
 	    width_pct = min(100, (int)(table->Width / prtInnerWidth(table->Parent) * 100.0 + 0.5));
 
+	/** Hold the table's height only if it is taller than its rows, which size to their content. **/
+	double rows_bottom = 0.0;
+	for(row = table->ContentHead; row; row=row->Next)
+	    {
+	    if (row->Flags & PRT_OBJ_F_MARGINRELEASE) continue;
+	    rows_bottom = max(rows_bottom, row->Y + row->Height);
+	    }
+	const bool hold_height = (rows_bottom + 0.01 < prtInnerHeight(table));
+
 	/** Write the container HTML with borders. **/
-	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
-	    "<table width=\"%d%%\" cellpadding=\"0\" style=\"height: %dpx;",
-	    width_pct,
-	    (int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5)
-	) < 0
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<table width=\"%d%%\" cellpadding=\"0\" style=\"", width_pct) < 0
+	    || (hold_height && prt_htmlfm_OutputPrintf(context,
+		"height: %dpx;",
+		(int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5)
+	    ) < 0)
 	    || prt_htmlfm_OutputBorder(context, "top", lm_data->TopBorder.Width[0], lm_data->TopBorder.Color[0]) < 0
 	    || prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]) < 0
 	    || prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]) < 0
