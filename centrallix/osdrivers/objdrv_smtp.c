@@ -78,8 +78,8 @@
 /** Minimum seconds between throttled reloads of one open email. **/
 #define SMTP_RELOAD_INTERVAL	5
 
-/** Minimum seconds between throttled reads of the mail log by one spool directory. **/
-#define SMTP_LOG_READ_INTERVAL	60
+/** Minimum seconds between throttled reads of the mail log by one spool directory (1 hour). **/
+#define SMTP_DEFAULT_LOG_READ_INTERVAL	(60 * 60)
 
 /** Seconds to wait for sendmail before killing it. **/
 #define SMTP_SENDMAIL_TIMEOUT	60
@@ -1583,6 +1583,7 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "ratelimit_time",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "domlimit_time",		DATA_T_INTEGER,	5,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "expire_time",		DATA_T_INTEGER,	SMTP_DEFAULT_EXPIRE_TIME,	NULL) < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_read_interval",	DATA_T_INTEGER,	SMTP_DEFAULT_LOG_READ_INTERVAL,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "content_has_headers",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 
 	/** Add all the required email attributes. Behold the hard code; standeth it against all but the hardest hammer. **/
@@ -2262,7 +2263,7 @@ smtp_internal_ReloadStruct(pSmtpData inf)
  ***
  *** @param inf The email.  Other objects are skipped.
  *** @param readLog Whether to first record the results in the mail log, if
- ***   the spool directory has not read it in the last SMTP_LOG_READ_INTERVAL
+ ***   the spool directory has not read it in the last log_read_interval
  ***   seconds.
  *** @param throttle Whether to skip the reload if the attributes were
  ***   loaded in the last SMTP_RELOAD_INTERVAL seconds.
@@ -4210,7 +4211,7 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, pFile log, cha
  *** @param spoolDir The spool directory.
  *** @param rootAttributes The attributes of the SMTP node.
  *** @param throttle Whether to skip the read if one started in the last
- ***   SMTP_LOG_READ_INTERVAL seconds.
+ ***   log_read_interval seconds.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
@@ -4232,6 +4233,8 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool thr
     pFile rotatedLog = NULL;
     off_t offset;
     off_t rotatedOffset;
+    pSmtpAttribute intervalAttr = NULL;
+    int interval = SMTP_DEFAULT_LOG_READ_INTERVAL;
     bool sameLog;
     bool changed;
     bool applied = false;
@@ -4244,8 +4247,25 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool thr
 	spool = smtp_internal_GetSpool(spoolDir);
 	if (UNLIKELY(spool == NULL))
 	    return -1; /* Skip error handler, which unlocks the spool directory. */
-	if (throttle && time(NULL) - spool->LastRead < SMTP_LOG_READ_INTERVAL)
-	    return 0; /* Skip error handler, which unlocks the spool directory. */
+	if (throttle)
+	    {
+	    intervalAttr = SMTP_ATTR(xhLookup(rootAttributes, "log_read_interval"));
+	    ASSERTMAGIC(intervalAttr, MGK_SMTP_ATTRIBUTE);
+	    if (intervalAttr != NULL)
+		{
+		if (UNLIKELY(intervalAttr->Type != DATA_T_INTEGER))
+		    {
+		    mssError(1, "SMTP",
+			"Attribute 'log_read_interval' must be an integer (got %s).",
+			objTypeToStr(intervalAttr->Type)
+		    );
+		    return -1; /* Skip error handler, which unlocks the spool directory. */
+		    }
+		interval = intervalAttr->Value.Integer;
+		}
+	    if (time(NULL) - spool->LastRead < interval)
+		return 0; /* Skip error handler, which unlocks the spool directory. */
+	    }
 
 	/** Keep other threads and processes out until the read is done. **/
 	spool = smtp_internal_LockSpool(spoolDir);

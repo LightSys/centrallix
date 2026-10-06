@@ -68,7 +68,7 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  When an email is sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  Opening an email or using its attributes also reads the log, if the spool directory has not read it in the last minute.  To read it sooner, call the `read_mail_log` method of the SMTP node.  Centrallix processes that share a spool directory take turns using it by locking `.spool_lock`.  An email that is still Pending 6 days after `last_try_date` becomes Error, or 2 minutes after it if sendmail never reported a result and Postfix never logged it.  Writing the content or setting the attributes of a Pending email fails.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  When an email is sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  Opening an email or using its attributes also reads the log, if the spool directory has not read it in the last `log_read_interval` seconds.  To read it sooner, call the `read_mail_log` method of the SMTP node.  Centrallix processes that share a spool directory take turns using it by locking `.spool_lock`.  An email that is still Pending 6 days after `last_try_date` becomes Error, or 2 minutes after it if sendmail never reported a result and Postfix never logged it.  Writing the content or setting the attributes of a Pending email fails.
 
 Sent means the next mail server accepted the email for every recipient.
 
@@ -110,7 +110,7 @@ Internally, the SMTP driver opens objects as follows:
     - `smtp_internal_OpenEml()`:
         1.  Attempt to open the email file.
         2.  Create the email object (a struct and a MIME file) with default attributes.
-        3.  Record the results Postfix logged since the spool directory last read the mail log, if it has not read it in the last minute.
+        3.  Record the results Postfix logged since the spool directory last read the mail log, if it has not read it in the last `log_read_interval` seconds.
         4.  Open the email struct file, update its send status if it is Pending, and fill out the attribute array.
 
 The `Close()` routine simply cleans up the structures used to store the SMTP object's attributes after opening as per normal ObjectSystem close.
@@ -155,6 +155,7 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | *ratelimit_time*\*  | The minimum number of seconds between each email sent.  This can be a floating-point value and so can be fractional (such as 0.5 to send at most two emails per second).  This defaults to 1 second (60 emails per minute).  Since it is not relevant to sendmail, it is not functional.
 | *domlimit_time*\*   | The minimum number of seconds between each email sent to recipients at a given domain name.  This defaults to 5 seconds (12 emails per minute).
 | expire_time         | The number of seconds to keep a sent or failed email (default 3 days).  Negative values keep it forever.
+| log_read_interval   | The minimum number of seconds between reads of the mail log when emails are opened or their attributes are used (default 1 hour).  See [Usage](#ii-usage).
 | content_has_headers | Whether the content written to an email begins with its own headers (default 1).  When 0, the driver adds a blank line after the headers it writes when sending, so the whole content is treated as the body.
 | local_host_name     | The host name used in generated Message-IDs (default: this machine's host name).
 
@@ -194,7 +195,7 @@ When the email is sent, `message_id` and each non-empty `header_*` attribute are
 
 
 ### G. Managing Object Methods
-The SMTP node has a `read_mail_log` method, which reads the mail log even if its spool directory read it in the last minute.
+The SMTP node has a `read_mail_log` method, which reads the mail log even if its spool directory read it in the last `log_read_interval` seconds.
 
 
 
