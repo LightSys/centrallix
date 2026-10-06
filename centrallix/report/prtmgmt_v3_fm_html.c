@@ -1104,6 +1104,65 @@ prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor)
     }
 
 
+/*** prt_htmlfm_OutputPaddingRule() - write a CSS padding declaration in its
+ *** shortest form, such as "padding:4px 3px;".
+ ***
+ *** @param context The report formatter context.
+ *** @param top The top padding, in pixels.
+ *** @param right The right padding, in pixels.
+ *** @param bottom The bottom padding, in pixels.
+ *** @param left The left padding, in pixels.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+prt_htmlfm_OutputPaddingRule(pPrtHTMLfmInf context, int top, int right, int bottom, int left)
+    {
+    const int sides[4] = { top, right, bottom, left };
+    char rule[64];
+    size_t len = 0;
+    bool truncated = false;
+
+	/** Leave off each side that matches its opposite side. **/
+	int n_sides = 4;
+	if (left == right)
+	    {
+	    n_sides = 3;
+	    if (bottom == top) n_sides = (right == top) ? 1 : 2;
+	    }
+
+	/** Build the rule, leaving the unit off zeros. **/
+	truncated |= (strtcatf(rule, sizeof(rule), &len, "padding:") < 0);
+	for (int i = 0; i < n_sides; i++)
+	    {
+	    if (i > 0) truncated |= (strtcatf(rule, sizeof(rule), &len, " ") < 0);
+	    truncated |= ((sides[i] == 0)
+		? strtcatf(rule, sizeof(rule), &len, "0")
+		: strtcatf(rule, sizeof(rule), &len, "%dpx", sides[i])) < 0;
+	    }
+	truncated |= (strtcatf(rule, sizeof(rule), &len, ";") < 0);
+	if (UNLIKELY(truncated))
+	    {
+	    mssError(1, "PRT",
+		"Padding %dpx %dpx %dpx %dpx overflowed %zu-byte buffer.",
+		top, right, bottom, left, sizeof(rule)
+	    );
+	    return -1;
+	    }
+
+	/** Write the rule. **/
+	if (UNLIKELY(prt_htmlfm_Output(context, rule, len) < 0))
+	    {
+	    mssError(0, "PRT",
+		"Failed to write padding %dpx %dpx %dpx %dpx.",
+		top, right, bottom, left
+	    );
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_htmlfm_OutputPadding() - write a style attribute that pads an
  *** element by the given prt object's margins, skipping it if they are zero.
  ***/
@@ -1115,12 +1174,11 @@ prt_htmlfm_OutputPadding(pPrtHTMLfmInf context, pPrtObjStream obj)
 	const int bottom = (int)(obj->MarginBottom * PRT_HTMLFM_YPIXEL + 0.5);
 	const int left   = (int)(obj->MarginLeft   * PRT_HTMLFM_XPIXEL + 0.5);
 	if (top == 0 && right == 0 && bottom == 0 && left == 0) return 0;
-	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
-	    " style=\"padding:%dpx %dpx %dpx %dpx;\"",
-	    top, right, bottom, left
-	) < 0))
-	    {
-	    mssError(0, "PRT", "Failed to write padding %dpx %dpx %dpx %dpx.", top, right, bottom, left);
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, " style=\"") < 0
+	    || prt_htmlfm_OutputPaddingRule(context, top, right, bottom, left) < 0
+	    || prt_htmlfm_OutputStrLiteral(context, "\"") < 0
+	))  {
+	    mssError(0, "PRT", "Failed to write padding style attribute.");
 	    return -1;
 	    }
 

@@ -179,7 +179,8 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			 *** cells have no side padding.  Pad above and below by the row and cell margins.
 			 ***/
 			const int half_sep = (int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2);
-			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, " style=\"padding:%dpx %dpx %dpx %dpx;",
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, " style=\"") < 0
+			    || prt_htmlfm_OutputPaddingRule(context,
 				(int)((row->MarginTop + cell->MarginTop) * PRT_HTMLFM_YPIXEL + 0.5),
 				(cur_col == n_cols) ? 0 : half_sep,
 				(int)((row->MarginBottom + cell->MarginBottom) * PRT_HTMLFM_YPIXEL + 0.5),
