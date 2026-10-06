@@ -1340,6 +1340,7 @@ smtp_internal_LockSpool(char* spoolDir)
     char path[PATH_MAX];
     char buf[SMTP_SERIAL_LEN + 1];
     struct flock lock;
+    struct stat st;
     unsigned long long serial = 0;
     char* end;
     int polls = 0;
@@ -1387,6 +1388,18 @@ smtp_internal_LockSpool(char* spoolDir)
 		mssErrorErrno(1, "SMTP", "Failed to open spool lock \"%s\".", path);
 		goto end;
 		}
+
+	    /** Let every user open the lock file, regardless of it's creator's umask. **/
+	    if (UNLIKELY(fstat(spool->LockFd, &st) != 0))
+		{
+		mssErrorErrno(1, "SMTP", "Failed to check spool lock \"%s\".", path);
+		goto end;
+		}
+	    if ((st.st_mode & 0666) != 0666 && (st.st_uid == geteuid() || geteuid() == 0) && UNLIKELY(fchmod(spool->LockFd, 0666) != 0))
+		fprintf(stderr,
+		    "Warning: Failed to let every user open spool lock \"%s\" (mode %04o): %s.\n",
+		    path, (unsigned int)(st.st_mode & 07777), strerror(errno)
+		);
 	    }
 
 	/** Wait for other processes. **/
