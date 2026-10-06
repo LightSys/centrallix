@@ -7,6 +7,7 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -248,10 +249,10 @@ prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    }
 	if (!(new_child_obj->Flags & PRT_OBJ_F_YSET))
 	    {
-	    if (!this->ContentTail)
-		new_child_obj->Y = 0;
-	    else
-		new_child_obj->Y = this->ContentTail->Y + this->ContentTail->Height;
+	    /** Place it below the lowest object on the page. **/
+	    new_child_obj->Y = 0;
+	    for (pPrtObjStream child = this->ContentHead; child != NULL; child = child->Next)
+		new_child_obj->Y = max(new_child_obj->Y, child->Y + child->Height);
 	    }
 
 	/** Break required? **/
