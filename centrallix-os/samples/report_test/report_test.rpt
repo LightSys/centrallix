@@ -533,8 +533,8 @@ report_test "system/report"
 	    {
 	    margintop=0; marginbottom=0;
 	    innerborder=0.02;
-	    leftborder=0.1;
-	    rightborder=0.1;
+	    leftborder=0.2;
+	    rightborder=0.2;
 	    height=2;
 	    fixedsize=yes;
 	    s9a_r10c1 "report/table-cell" { value=runserver("row innerborder,"); }
