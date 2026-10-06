@@ -78,6 +78,9 @@
 /** Minimum seconds between throttled reloads of one open email. **/
 #define SMTP_RELOAD_INTERVAL	5
 
+/** Minimum seconds between throttled reads of the mail log by one spool directory. **/
+#define SMTP_LOG_READ_INTERVAL	60
+
 /** Seconds to wait for sendmail before killing it. **/
 #define SMTP_SENDMAIL_TIMEOUT	60
 
@@ -197,6 +200,7 @@ typedef struct
     Magic_t	Magic;
     char*	Path;
     time_t	LastSweep;
+    time_t	LastRead;	/* When the last read of the mail log started. */
     bool	Loaded;		/* Log position and indexes below are in memory. */
     bool	HasCursor;	/* A log position is known from a prior read. */
     dev_t	LogDev;		/* Device of the file that the cursor points into. */
@@ -286,7 +290,7 @@ struct
 
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
-int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes);
+int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool throttle);
 void smtp_internal_UnloadSpool(pSmtpSpool spool);
 void smtp_internal_UnlockSpool(pSmtpSpool spool);
 int smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed);
@@ -2257,7 +2261,9 @@ smtp_internal_ReloadStruct(pSmtpData inf)
  *** then update the send status of a Pending email.
  ***
  *** @param inf The email.  Other objects are skipped.
- *** @param readLog Whether to first record the results in the mail log.
+ *** @param readLog Whether to first record the results in the mail log, if
+ ***   the spool directory has not read it in the last SMTP_LOG_READ_INTERVAL
+ ***   seconds.
  *** @param throttle Whether to skip the reload if the attributes were
  ***   loaded in the last SMTP_RELOAD_INTERVAL seconds.
  *** @returns 0 on success, or -1 on failure.
@@ -2297,7 +2303,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
 	    goto end;
 
 	/** Update the struct with results from the Postfix logs. **/
-	if (UNLIKELY(readLog && smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
+	if (UNLIKELY(readLog && smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Reload a replaced struct. **/
@@ -2723,7 +2729,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	/*** Read the mail log first, so any lines from earlier tries are not
 	 *** discovered later and applied to this one after we've cleared it.
 	 ***/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, false) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Refuse to send an email that is already Pending, even from another open. **/
@@ -4203,10 +4209,12 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, pFile log, cha
  ***
  *** @param spoolDir The spool directory.
  *** @param rootAttributes The attributes of the SMTP node.
+ *** @param throttle Whether to skip the read if one started in the last
+ ***   SMTP_LOG_READ_INTERVAL seconds.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
+smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool throttle)
     {
     pSmtpSpool spool = NULL;
     SmtpLogBatch batch;
@@ -4232,10 +4240,18 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
     int i;
     int rval = -1;
 
+	/** Throttle reads. **/
+	spool = smtp_internal_GetSpool(spoolDir);
+	if (UNLIKELY(spool == NULL))
+	    return -1; /* Skip error handler, which unlocks the spool directory. */
+	if (throttle && time(NULL) - spool->LastRead < SMTP_LOG_READ_INTERVAL)
+	    return 0; /* Skip error handler, which unlocks the spool directory. */
+
 	/** Keep other threads and processes out until the read is done. **/
 	spool = smtp_internal_LockSpool(spoolDir);
 	if (UNLIKELY(spool == NULL))
 	    return -1; /* Skip error handler, which unlocks the spool directory. */
+	spool->LastRead = time(NULL);
 
 	/** Load the spool directory. **/
 	if (!spool->Loaded && UNLIKELY(smtp_internal_LoadSpool(spool) != 0))
@@ -5141,7 +5157,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    }
 
 	/** Record the results Postfix logged since the last read. **/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Open the email structure file. **/
