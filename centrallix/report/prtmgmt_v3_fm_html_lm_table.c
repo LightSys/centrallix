@@ -217,10 +217,14 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", cell->BorderLeft, -1) < 0)) goto err_cell;
 			} else if(cur_col != 1) {
 			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]) < 0)) goto err_cell;
+			} else if (row->BorderLeft != 0) {
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", row->BorderLeft, -1) < 0)) goto err_cell;
 			}
 			/* right border */
 			if (cell->BorderRight != 0) {
 			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1) < 0)) goto err_cell;
+			} else if (cur_col == n_cols && row->BorderRight != 0) {
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", row->BorderRight, -1) < 0)) goto err_cell;
 			}
 			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "\"") < 0)) goto err_cell;
 
