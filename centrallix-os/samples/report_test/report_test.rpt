@@ -747,6 +747,7 @@ report_test "system/report"
 	s11f_r "report/table-row"
 	    {
 	    margintop=0; marginbottom=0;
+	    allowbreak=no;
 	    s11f_c1 "report/table-cell"
 		{
 		s11f_c1d1 "report/data" { style=bold; value=runserver(:regions_qy:region + "\n"); }
