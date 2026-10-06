@@ -203,8 +203,6 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			    } else {
 				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", row->BorderTop, -1) < 0)) goto err_cell;
 			    }
-			} else if(cur_row != 1) {
-			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]) < 0)) goto err_cell;
 			}
 			/* bottom border */
 			if (cell->BorderBottom != 0 || row->BorderBottom != 0) {
