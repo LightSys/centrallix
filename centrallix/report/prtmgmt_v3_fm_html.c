@@ -98,8 +98,8 @@
     "--%s\n" \
     "Content-Type: %s\n" \
     "Content-Transfer-Encoding: base64\n" \
-    "Content-Disposition: inline; filename=image_%d.%s\n" \
-    "Content-ID: <image_%d>\n" \
+    "Content-Disposition: inline; filename=image_%lu.%s\n" \
+    "Content-ID: <image_%lu>\n" \
     "\n"
 
 #define PRT_HTMLFM_IMG_HEADER_VALUES(boundary, id, mime_type, ext) boundary, mime_type, id, ext, id
@@ -691,6 +691,75 @@ prt_htmlfm_GetCharacterBaseline(void* context_v, pPrtTextStyle style)
     }
 
 
+/*** prt_htmlfm_WriteImage() - writes an email report's image attachment as
+ *** a MIME part.
+ ***
+ *** @param context The report formatter context.
+ *** @param image The image to write.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+prt_htmlfm_WriteImage(pPrtHTMLfmInf context, pPrtHTMLfmImage image)
+    {
+    const char* mime_type = (image->IsPng) ? "image/png" : "image/svg+xml";
+    const char* extension = (image->IsPng) ? "png"       : "svg";
+
+	/** Write the part header. **/
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+	    PRT_HTMLFM_IMG_HEADER_FORMAT,
+	    PRT_HTMLFM_IMG_HEADER_VALUES(context->Boundary, image->ID, mime_type, extension)
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write header for image %lu.", image->ID);
+	    return -1;
+	    }
+
+	/** Write the base64 image with line wrap. **/
+	const size_t b64_len = image->Base64Size - 1;
+	for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
+	    {
+	    const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
+	    if (UNLIKELY(prt_htmlfm_Output(context, image->Base64 + off, line_len) < 0
+		|| prt_htmlfm_OutputStrLiteral(context, "\n") < 0
+	    ))  {
+		mssError(0, "PRT",
+		    "Failed to write base64 line at offset %zu/%zu of image %lu.",
+		    off, b64_len, image->ID
+		);
+		return -1;
+		}
+	    }
+
+	/** Write the part footer. **/
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_IMG_FOOTER) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write footer for image %lu.", image->ID);
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** prt_htmlfm_FreeImage() - frees an email report's image attachment.  Takes
+ *** the arguments of an xaClear() free function.
+ ***
+ *** @param image_v The image to free.
+ *** @param arg Unused.
+ *** @returns 0.
+ ***/
+static int
+prt_htmlfm_FreeImage(void* image_v, void* arg)
+    {
+    pPrtHTMLfmImage image = (pPrtHTMLfmImage)image_v;
+
+	nmFree(image->Base64, image->Base64Size);
+	nmFree(image, sizeof(PrtHTMLfmImage));
+
+    return 0;
+    }
+
+
 /*** prt_htmlfm_Close() - end a printing session and destroy the context
  *** structure.
  ***/
@@ -733,27 +802,15 @@ prt_htmlfm_Close(void* context_v)
 	    const int n_attachments = xaCount(context->Attachments);
 	    for (int i = 0; i < n_attachments; i++)
 		{
-		pXString attachment_xstring = xaGetItem(context->Attachments, i);
-		if (UNLIKELY(attachment_xstring == NULL))
+		pPrtHTMLfmImage image = xaGetItem(context->Attachments, i);
+		if (UNLIKELY(image == NULL))
 		    {
-		    mssError(1, "PRT",
-			"Failed to get attachment string for attachment #%d/%d.",
-			i + 1, n_attachments
-		    );
+		    mssError(1, "PRT", "Failed to get attachment #%d/%d.", i + 1, n_attachments);
 		    goto end;
 		    }
-		char* attachment_string = xsString(attachment_xstring);
-		if (UNLIKELY(attachment_string == NULL))
+		if (UNLIKELY(prt_htmlfm_WriteImage(context, image) < 0))
 		    {
-		    mssError(1, "PRT", "xsString() failed.");
-		    goto end;
-		    }
-		if (UNLIKELY(prt_htmlfm_Output(context, attachment_string, -1) < 0))
-		    {
-		    mssError(0, "PRT",
-			"Failed to write attachment #%d/%d: \"%.*s\".",
-			i + 1, n_attachments, PRT_HTMLFM_ERR_MAXLEN, attachment_string
-		    );
+		    mssError(0, "PRT", "Failed to write attachment #%d/%d.", i + 1, n_attachments);
 		    goto end;
 		    }
 		}
@@ -782,7 +839,7 @@ prt_htmlfm_Close(void* context_v)
 	    {
 	    if (LIKELY(context->Attachments != NULL))
 		{
-		xaClear(context->Attachments, (void*)xsFree, NULL);
+		xaClear(context->Attachments, prt_htmlfm_FreeImage, NULL);
 		xaFree(context->Attachments);
 		}
 	    nmFree(context, sizeof(PrtHTMLfmInf));
@@ -1315,8 +1372,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 			}
 		    }
 
-		/** Get image id, width, and height. **/
-		const unsigned long id = PRT_HTMLFM.ImageID++;
+		/** Get image width and height. **/
 		const int w = max(obj->Width * PRT_HTMLFM_XPIXEL, 1);
 		const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
 
@@ -1374,63 +1430,51 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		/** Write image src (based on how we have to embed it). **/
 		if (context->Flags & PRT_HTMLFM_F_EMAIL)
 		    { /* Email: Use embedded attachment. */
-		    char* mime_type = (is_png) ? "image/png" : "image/svg+xml";
-		    char* extension = (is_png) ? "png"       : "svg";
-
-		    /** Write the src value. **/
-		    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "cid:image_%lu", id) < 0))
+		    /** Reuse the attachment of an identical image, if there is one. **/
+		    pPrtHTMLfmImage image = NULL;
+		    const int n_attachments = xaCount(context->Attachments);
+		    for (int i = 0; i < n_attachments; i++)
 			{
-			mssError(0, "PRT", "Failed to write image source.");
-			goto error_image;
-			}
-
-		    /** Allocate a new attachment and write the headers. **/
-		    pXString attachment = xsNew();
-		    if (UNLIKELY(attachment == NULL))
-			{
-			mssError(1, "PRT", "xsNew() failed.");
-			goto error_image;
-			}
-		    if (UNLIKELY(xsConcatPrintf(attachment,
-			PRT_HTMLFM_IMG_HEADER_FORMAT,
-			PRT_HTMLFM_IMG_HEADER_VALUES(context->Boundary, id, mime_type, extension)
-		    ) < 0))
-			{
-			mssError(1, "PRT", "Failed to write image header format.");
-			xsFree(attachment);
-			goto error_image;
-			}
-		    
-		    /** Write the base64 image with line wrap. **/
-		    size_t b64_len = strlen(base64Image);
-		    for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
-			{
-			const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
-			if (UNLIKELY(xsConcatenate(attachment, base64Image + off, line_len) < 0
-			    || xsConcatenate(attachment, "\n", 1) < 0
-			))  {
-			    mssError(1, "PRT",
-				"Failed to write base64 image line at offset #%zu/%zu.",
-				off, b64_len
-			    );
-			    xsFree(attachment);
+			pPrtHTMLfmImage attached = xaGetItem(context->Attachments, i);
+			if (UNLIKELY(attached == NULL))
+			    {
+			    mssError(1, "PRT", "Failed to get attachment #%d/%d.", i + 1, n_attachments);
 			    goto error_image;
+			    }
+			if (attached->IsPng == is_png && attached->Base64Size == base64Size
+			    && memcmp(attached->Base64, base64Image, base64Size) == 0)
+			    {
+			    image = attached;
+			    break;
 			    }
 			}
 
-		    /** Write the attachment footer. **/
-		    if (xsConcatenate(attachment, PRT_HTMLFM_IMG_FOOTER, sizeof(PRT_HTMLFM_IMG_FOOTER) - 1) < 0)
+		    /** Otherwise, attach this image. **/
+		    if (image == NULL)
 			{
-			mssError(1, "PRT", "Failed to write image footer.");
-			xsFree(attachment);
-			goto error_image;
+			image = nmMalloc(sizeof(PrtHTMLfmImage));
+			if (UNLIKELY(image == NULL))
+			    {
+			    mssError(1, "PRT", "nmMalloc(%zu) failed.", sizeof(PrtHTMLfmImage));
+			    goto error_image;
+			    }
+			image->ID = PRT_HTMLFM.ImageID++;
+			image->IsPng = is_png;
+			image->Base64 = base64Image;
+			image->Base64Size = base64Size;
+			if (UNLIKELY(xaAddItem(context->Attachments, image) < 0))
+			    {
+			    mssError(1, "PRT", "Failed to add image %lu to the attachments.", image->ID);
+			    nmFree(image, sizeof(PrtHTMLfmImage));
+			    goto error_image;
+			    }
+			base64Image = NULL; /* The attachment owns it now. */
 			}
 
-		    /** Add the attachment string to the context. **/
-		    if (xaAddItem(context->Attachments, attachment) < 0)
+		    /** Write the src value. **/
+		    if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "cid:image_%lu", image->ID) < 0))
 			{
-			mssError(1, "PRT", "Failed to add the attachment string to the context.");
-			xsFree(attachment);
+			mssError(0, "PRT", "Failed to write image source.");
 			goto error_image;
 			}
 		    }
@@ -1464,7 +1508,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Clean up. **/
-		nmFree(base64Image, base64Size);
+		if (base64Image != NULL) nmFree(base64Image, base64Size);
 		base64Image = NULL;
 
 		/** Success. **/

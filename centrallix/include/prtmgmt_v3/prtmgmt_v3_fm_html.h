@@ -2,6 +2,7 @@
 #define _PRTMGMT_V3_FM_HTML_H
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "prtmgmt_v3/prtmgmt_v3.h"
 
@@ -94,7 +95,7 @@ typedef struct _PSFI
     SessionFlags	Flags;
     StyleFlags		StyleFlags;
     int			BGColor;	/* The current background color showing through. */
-    pXArray		Attachments;
+    pXArray		Attachments;	/* Images (pPrtHTMLfmImage) to attach to an email report. */
     char		Boundary[PRT_HTMLFM_EMAIL_BOUNDARY_SIZE];
     int			QPEncode;	/* Whether email output is quoted-printable (the HTML part). */
     int			QPLineLen;	/* Characters on the current quoted-printable line. */
@@ -102,6 +103,17 @@ typedef struct _PSFI
     int			WroteHeader;	/* Whether the document header has been written. */
     }
     PrtHTMLfmInf, *pPrtHTMLfmInf;
+
+
+/** An image attached to an email report, written when the report closes. **/
+typedef struct
+    {
+    unsigned long	ID;		/* Content-ID number, referenced as "cid:image_<ID>". */
+    bool		IsPng;		/* Whether the image is a PNG (or else an SVG). */
+    char*		Base64;		/* The image data, base64 encoded. */
+    size_t		Base64Size;	/* Allocated size of Base64, including the null. */
+    }
+    PrtHTMLfmImage, *pPrtHTMLfmImage;
 
 
 /** Snapshot of the style rendering state, including the text style and dirty flags. **/
