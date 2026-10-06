@@ -69,6 +69,7 @@
 #define SMTP_DEFAULT_LOG_PATH		"/var/log/maillog"
 #define SMTP_DEFAULT_EXPIRE_TIME	(3 * 24 * 60 * 60)
 #define SMTP_DEFAULT_LOG_READ_INTERVAL	(60 * 60)
+#define SMTP_DEFAULT_SWEEP_INTERVAL	(60 * 60)
 
 /** Define file names. **/
 #define SMTP_CURSOR_FILE        ".mail_log_cursor" /* Stores a spool dir's mail log position. */
@@ -84,7 +85,6 @@
 /** Define timeouts & intervals. **/
 #define SMTP_LOCK_POLL_INTERVAL	 50                /* Milliseconds between tries to get a spool dir lock. */
 #define SMTP_LOCK_TIMEOUT	 60                /* Seconds to wait for a spool dir lock before failing. */
-#define SMTP_SWEEP_INTERVAL	(60 * 60)          /* Seconds between spool dir sweeps for expired emails. */
 #define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60) /* Seconds to wait before a Pending email times out to Error. */
 #define SMTP_SENDMAIL_TIMEOUT	 60                /* Seconds to wait for sendmail before killing it. */
 #define SMTP_RESULT_TIMEOUT	(2 * SMTP_SENDMAIL_TIMEOUT) /* Seconds a Pending email waits for the sendmail supervisor
@@ -1553,6 +1553,7 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "domlimit_time",		DATA_T_INTEGER,	5,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "expire_time",		DATA_T_INTEGER,	SMTP_DEFAULT_EXPIRE_TIME,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_read_interval",	DATA_T_INTEGER,	SMTP_DEFAULT_LOG_READ_INTERVAL,	NULL) < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "sweep_interval",	DATA_T_INTEGER,	SMTP_DEFAULT_SWEEP_INTERVAL,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "content_has_headers",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 
 	/** Add all the required email attributes. Behold the hard code; standeth it against all but the hardest hammer. **/
@@ -1812,14 +1813,17 @@ smtp_internal_RemoveEmail(char* emailPath, char* structPath, char* resultPath)
 
 
 /*** smtp_internal_SweepSpool - Deletes expired emails from a spool
- *** directory, at most once per SMTP_SWEEP_INTERVAL.  Callers continue
+ *** directory, at most once per sweep_interval seconds.  Callers continue
  *** without the sweep, so it resolves its own errors with a warning.
  *** @param spoolDir The spool directory to sweep.
+ *** @param rootAttributes The attributes of the SMTP node.
  ***/
 void
-smtp_internal_SweepSpool(char* spoolDir)
+smtp_internal_SweepSpool(char* spoolDir, pXHashTable rootAttributes)
     {
     pSmtpSpool spool = NULL;
+    pSmtpAttribute intervalAttr = NULL;
+    int interval = SMTP_DEFAULT_SWEEP_INTERVAL;
     DIR* dir = NULL;
     struct dirent* entry = NULL;
     char emailPath[PATH_MAX];
@@ -1838,7 +1842,21 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    goto end;
 
 	/** Throttle sweeps. **/
-	if (curTime - spool->LastSweep < SMTP_SWEEP_INTERVAL)
+	intervalAttr = SMTP_ATTR(xhLookup(rootAttributes, "sweep_interval"));
+	ASSERTMAGIC(intervalAttr, MGK_SMTP_ATTRIBUTE);
+	if (intervalAttr != NULL)
+	    {
+	    if (UNLIKELY(intervalAttr->Type != DATA_T_INTEGER))
+		{
+		mssError(1, "SMTP",
+		    "Attribute 'sweep_interval' must be an integer (got %s).",
+		    objTypeToStr(intervalAttr->Type)
+		);
+		goto end;
+		}
+	    interval = intervalAttr->Value.Integer;
+	    }
+	if (curTime - spool->LastSweep < interval)
 	    {
 	    /** No sweep needed, we're done. **/
 	    successful = true;
@@ -5068,7 +5086,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    if (inf->Obj->Mode & OBJ_O_CREAT)
 		{
 		/** Sweep the spool dir to clean up expired emails. **/
-		smtp_internal_SweepSpool(spoolDir->Value.String);
+		smtp_internal_SweepSpool(spoolDir->Value.String, inf->RootAttributes);
 
 		/** Create the requested email. **/
 		if (UNLIKELY(smtp_internal_CreateEmail(inf) < 0))
@@ -5668,7 +5686,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    spoolPath = attr->Value.String;
 
 	    /** Sweep the spool dir to clean up expired emails. **/
-	    smtp_internal_SweepSpool(spoolPath);
+	    smtp_internal_SweepSpool(spoolPath, inf->Attributes);
 
 	    qy->Directory = opendir(spoolPath);
 	    if (UNLIKELY(qy->Directory == NULL))

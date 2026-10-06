@@ -156,6 +156,7 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | *domlimit_time*\*   | The minimum number of seconds between each email sent to recipients at a given domain name.  This defaults to 5 seconds (12 emails per minute).
 | expire_time         | The number of seconds to keep a sent or failed email (default 3 days).  Negative values keep it forever.
 | log_read_interval   | The minimum number of seconds between reads of the mail log when emails are opened or their attributes are used (default 1 hour).  See [Usage](#ii-usage).
+| sweep_interval      | The minimum number of seconds between deletions of expired emails from the spool directory (default 1 hour).  See `expire_date` in [Email Attributes](#email-attributes).
 | content_has_headers | Whether the content written to an email begins with its own headers (default 1).  When 0, the driver adds a blank line after the headers it writes when sending, so the whole content is treated as the body.
 | local_host_name     | The host name used in generated Message-IDs (default: this machine's host name).
 
@@ -184,7 +185,7 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | is_ready                     | Set to 1 to send the email (default 0).  Setting it to 1 again after the email is Sent or Error sends it again.  Fails while the email is Pending or if `message_id` is empty.
 | first_try_date               | The date/time of the first attempt to send this email (01 Jan 1900 until then).  Read-only.
 | try_count                    | The number of attempts to send this email.  Read-only.
-| expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after it becomes Sent or Error.  01 Jan 1900 means never, and Draft and Pending emails never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per hour.  Read-only.
+| expire_date                  | When a sent or failed email expires, set to `expire_time` seconds after it becomes Sent or Error.  01 Jan 1900 means never, and Draft and Pending emails never expire.  Expired emails are deleted when the spool directory is queried or an email is created, at most once per `sweep_interval` seconds.  Read-only.
 | last_try_date                | The date/time of the most recent attempt to send this email (01 Jan 1900 until then).  Read-only.
 | last_try_status              | The result of the most recent attempt to send this email: None (not tried, or no failures), TempFail (a temporary failure, which Postfix retries while the email is Pending), or Fail (a permanent failure, set as soon as any recipient fails, even while the email is Pending).  Read-only.
 | queue_id                     | The Postfix queue ID of the most recent attempt, recorded from the mail log once Postfix queues the email.  Read-only.
