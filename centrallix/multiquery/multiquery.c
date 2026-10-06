@@ -330,6 +330,76 @@ mq_internal_ExprToPresentation(pExpression exp, char* pres, int maxlen)
     }
 
 
+/*** mq_internal_ContentRef - return the property node of a SELECT item that
+ *** is a plain reference to objcontent, such as ":objcontent" or
+ *** ":report:objcontent".  Returns NULL for any other item.
+ ***/
+pExpression
+mq_internal_ContentRef(pExpression exp)
+    {
+
+	if (!exp)
+	    return NULL;
+
+	/** Unwrap :object:property **/
+	if (exp->NodeType == EXPR_N_OBJECT && exp->Children.nItems == 1)
+	    exp = (pExpression)exp->Children.Items[0];
+	if (exp->NodeType == EXPR_N_PROPERTY && !strcmp(exp->Name, "objcontent"))
+	    return exp;
+
+    return NULL;
+    }
+
+
+/*** mq_internal_ContentSource - find the object whose content a plain
+ *** objcontent reference names (see mq_internal_ContentRef).  Returns NULL
+ *** when the item is not such a reference or the object is not in the list.
+ ***/
+pObject
+mq_internal_ContentSource(pExpression exp, pParamObjects objlist)
+    {
+    int id;
+
+	exp = mq_internal_ContentRef(exp);
+	if (!exp || !objlist)
+	    return NULL;
+
+	/** Leave pathname references and permission checks to the evaluator **/
+	if (exp->ObjID == -1 || (objlist->MainFlags & (EXPR_MO_NOCURRENT | EXPR_MO_NOPARENT | EXPR_MO_NOOBJECT)))
+	    return NULL;
+
+	/** Only a real object in the list has content to read **/
+	id = expObjID(exp, objlist);
+	if (id < 0 || id >= objlist->nObjects || objlist->GetAttrFn[id] != objGetAttrValue)
+	    return NULL;
+
+    return objlist->Objects[id];
+    }
+
+
+/*** mq_internal_CopyContent - replace the content of dst with a stream of the
+ *** content of src, so the copy is not capped by the textsize limit on reading
+ *** objcontent as a string.  Returns the byte count, or -1 on failure.
+ ***/
+int
+mq_internal_CopyContent(pObject src, pObject dst)
+    {
+    int rval;
+
+	/** Start both at the beginning, emptying dst **/
+	if (objSeek(src, 0) < 0)
+	    return -1;
+	if (objWrite(dst, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE) < 0)
+	    return -1;
+
+	rval = objTransfer(src, objRead, dst, objWrite, -1);
+	if (rval < 0)
+	    mssError(0, "MQ", "Failed to copy objcontent between objects");
+
+    return rval;
+    }
+
+
 /*** mq_internal_SetCoverage - walk the QE tree and determine what parts
  *** of the tree contain various object references.
  ***/

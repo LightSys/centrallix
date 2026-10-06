@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2008 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -118,6 +118,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pObject reopen_obj;
     pObject old_newobj;
     pObject parent_obj = NULL;
+    pObject src_obj;
     int old_newobj_id;
     int is_started = 0;
     int attrid, astobjid;
@@ -261,6 +262,17 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    }
 		else
 		    {
+		    /** Stream objcontent from its object **/
+		    src_obj = NULL;
+		    if (!strcmp(attrname, "objcontent"))
+			src_obj = mq_internal_ContentSource((pExpression)sel->AttrCompiledExpr.Items[attrid], stmt->Query->ObjList);
+		    if (src_obj)
+			{
+			if (mq_internal_CopyContent(src_obj, new_obj) < 0)
+			    goto error;
+			continue;
+			}
+
 		    /** attr available through SELECT item list **/
 		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[attrid], stmt->Query->ObjList) < 0)
 			goto error;
