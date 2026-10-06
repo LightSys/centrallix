@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdbool.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -1115,6 +1116,29 @@ prt_tablm_SetValue(pPrtObjStream this, char* attrname, va_list va)
     }
 
 
+/*** prt_tablm_CellStartsAt() - checks whether a cell in a table row starts
+ *** at the given column.
+ ***
+ *** @param row The table row.
+ *** @param col The column index.
+ *** @returns true if a cell starts at the column, or false otherwise.
+ ***/
+static bool
+prt_tablm_CellStartsAt(pPrtObjStream row, int col)
+    {
+    int cur_col = 0;
+
+	for (pPrtObjStream cell = row->ContentHead; cell != NULL && cur_col <= col; cell = cell->Next)
+	    {
+	    if (cell->ObjType->TypeID != PRT_OBJ_T_TABLECELL) continue;
+	    if (cur_col == col) return true;
+	    cur_col += ((pPrtTabLMData)(cell->LMData))->ColSpan;
+	    }
+
+    return false;
+    }
+
+
 /*** prt_tablm_Finalize() - puts the finishing touches on a table just before
  *** the page is printed.  This mainly means adding the nice graphics for the
  *** table's borders and shadow now that the geometry of the table is stable.
@@ -1170,15 +1194,40 @@ prt_tablm_Finalize(pPrtObjStream this)
 		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->RightBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 
-	/** Inner table borders (between columns) **/
+	/** Inner table borders (between columns), only beside rows with a cell starting at the column **/
 	if (lm_inf->InnerBorder.nLines > 0)
 	    {
-	    for(i=0;i<lm_inf->nColumns-1;i++)
+	    pPrtObjStream first_row = NULL, last_row = NULL;
+	    for(row=this->ContentHead;row;row=row->Next)
 		{
-		prt_internal_MakeBorder(this, this->MarginLeft + this->BorderLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep, 0.0,
-			this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
-			PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
-			&(lm_inf->InnerBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
+		if (row->ObjType->TypeID != PRT_OBJ_T_TABLEROW) continue;
+		if (!first_row) first_row = row;
+		last_row = row;
+		}
+	    for(i=0;i<lm_inf->nColumns-1 && first_row;i++)
+		{
+		/** Draw one line per run of rows that have the column edge. **/
+		const double x = this->MarginLeft + this->BorderLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep;
+		double run_top = -1.0;
+		for(row=first_row;row;row=row->Next)
+		    {
+		    if (row->ObjType->TypeID != PRT_OBJ_T_TABLEROW) continue;
+		    const double row_top = (row == first_row) ? 0.0 : this->MarginTop + this->BorderTop + row->Y;
+		    const double row_bottom = (row == last_row) ? this->Height : this->MarginTop + this->BorderTop + row->Y + row->Height;
+		    const bool has_edge = prt_tablm_CellStartsAt(row, i+1);
+		    if (has_edge && run_top < 0.0) run_top = row_top;
+		    if (run_top >= 0.0 && (!has_edge || row == last_row))
+			{
+			const double run_bottom = (has_edge) ? row_bottom : row_top;
+			prt_internal_MakeBorder(this, x, run_top, run_bottom - run_top,
+				PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+				&(lm_inf->InnerBorder),
+				(run_top == 0.0) ? &(lm_inf->TopBorder) : NULL,
+				(run_bottom == this->Height) ? &(lm_inf->BottomBorder) : NULL);
+			run_top = -1.0;
+			}
+		    if (row == last_row) break;
+		    }
 		}
 	    }
 
