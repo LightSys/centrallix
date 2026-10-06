@@ -135,7 +135,7 @@ objTransfer(void* src, int (*src_read)(), void* dst, int (*dst_write)(), int max
     }
 
 
-/*** objSeek -- seek to a location in an object.  This actually just calls
+/*** objSeek - seek to a location in an object.  This actually just calls
  *** objRead(), but this is a separate API call just so that the calling
  *** code has greater clarity.
  ***/

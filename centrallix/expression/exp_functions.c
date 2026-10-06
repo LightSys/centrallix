@@ -4520,6 +4520,11 @@ int exp_fn_path_element(pExpression tree, pParamObjects objlist, pExpression i0,
 	    return -1;
 	    }
 	}
+
+    /** Free the previous result. **/
+    if (tree->Alloc && tree->String)
+	nmSysFree(tree->String);
+
     tree->DataType = DATA_T_STRING;
     tree->Flags &= ~EXPR_F_NULL;
     tree->Alloc = 0;

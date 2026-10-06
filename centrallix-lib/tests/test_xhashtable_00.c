@@ -51,7 +51,7 @@ test(char** tname)
 
 	for (i = 0; i < iter; i++)
 	    {
-	    /** Initialize the test array. **/
+	    /** Initialize the test hash table. **/
 	    xhInit(&testHash, 7, 4);
 
 	    xhAdd(&testHash, "key1", "contents1");

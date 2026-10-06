@@ -211,7 +211,7 @@ ptodCreateString(char* data, int flags)
 	    datPtod->Flags = flags;
 	    }
 
-	/** Generic copying of the string **/
+	/** Point to the caller's string without managing it **/
 	else
 	    {
 	    datPtod = ptodAllocate();

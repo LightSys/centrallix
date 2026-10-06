@@ -35,7 +35,7 @@ int WarnPrintEnabled = 1;
  *** 
  *** @param error_code The error code number returned by a failing C function (or -1 if not applicable).
  *** @param c_str The C statement/value that failed, usually a function call.
- *** @param file_name The name of the file in which error occurred.
+ *** @param file_name The name of the file in which the error occurred.
  *** @param line_number The line number in the file at which the error occurred.
  ***/
 void

@@ -84,7 +84,7 @@
 #define SMTP_SENDMAIL_TIMEOUT	 60                /* Seconds to wait for sendmail before asking it to stop. */
 #define SMTP_SENDMAIL_KILL_DELAY 10                /* Seconds to wait after asking sendmail to stop before killing it. */
 /** Seconds a Pending email waits for the sendmail supervisor or Postfix Queue ID before timing out to Error. **/
-#define SMTP_RESULT_TIMEOUT	(2 * (SMTP_SENDMAIL_TIMEOUT + SMTP_SENDMAIL_KILL_DELAY)) 
+#define SMTP_RESULT_TIMEOUT	(2 * (SMTP_SENDMAIL_TIMEOUT + SMTP_SENDMAIL_KILL_DELAY))
 
 /** Define the group type of a recipient result in an email struct. **/
 #define SMTP_RCPT_TYPE		"system/smtp-recipient"
@@ -1369,7 +1369,7 @@ smtp_internal_LockSpool(char* spoolDir)
 		goto end;
 		}
 
-	    /** Let every user open the lock file, regardless of it's creator's umask. **/
+	    /** Let every user open the lock file, regardless of its creator's umask. **/
 	    if (UNLIKELY(fstat(spool->LockFd, &st) != 0))
 		{
 		mssErrorErrno(1, "SMTP", "Failed to check spool lock \"%s\".", path);
