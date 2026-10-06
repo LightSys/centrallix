@@ -6656,17 +6656,28 @@ smtpOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree oxt)
     }
 
 
-/*** smtpGetFirstMethod -- there are no methods yet, so this just always
- *** fails.
+/*** smtpGetFirstMethod - get the first method name for this object.  The
+ *** root node has read_mail_log, and emails have no methods.
  ***/
 char*
 smtpGetFirstMethod(void* inf_v, pObjTrxTree oxt)
     {
-    return NULL;
+    pSmtpData inf = SMTP(inf_v);
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to get first method from NULL smtp object.");
+	    return NULL;
+	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+
+    return (inf->Type == SMTP_T_ROOT) ? "read_mail_log" : NULL;
     }
 
 
-/*** smtpGetNextMethod -- same as above.  Always fails.
+/*** smtpGetNextMethod - get the next method name for this object.  No
+ *** object has more than one method, so this always returns NULL.
  ***/
 char*
 smtpGetNextMethod(void* inf_v, pObjTrxTree oxt)
@@ -6675,12 +6686,48 @@ smtpGetNextMethod(void* inf_v, pObjTrxTree oxt)
     }
 
 
-/*** smtpExecuteMethod - No methods to execute, so this fails.
+/*** smtpExecuteMethod - execute a method of this object.  The root node's
+ *** read_mail_log records the results in the lines added to the mail log
+ *** since its spool directory last read it, even if it read it recently.
+ ***
+ *** @param methodname The method to execute.
+ *** @param param Unused.
+ *** @returns 0 on success, or -1 on failure.
  ***/
 int
 smtpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
-    return -1;
+    pSmtpData inf = SMTP(inf_v);
+    pSmtpAttribute spoolDir = NULL;
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL || methodname == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to execute a method: the smtp object or method name is NULL.");
+	    return -1;
+	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Type != SMTP_T_ROOT || strcmp(methodname, "read_mail_log") != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to execute method '%s' of \"%s\": no such method.", methodname, inf->Name);
+	    return -1;
+	    }
+
+	/** Read the mail log now. **/
+	spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
+	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
+	if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
+	    {
+	    mssError(1, "SMTP", "Failed to read the mail log for \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
+	    return -1;
+	    }
+	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->Attributes, false) != 0))
+	    {
+	    mssError(0, "SMTP", "Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
