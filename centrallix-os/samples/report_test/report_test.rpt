@@ -750,7 +750,8 @@ report_test "system/report"
 	    s11f_c1 "report/table-cell"
 		{
 		s11f_c1d1 "report/data" { style=bold; value=runserver(:regions_qy:region + "\n"); }
-		s11f_c1d2 "report/data" { nullformat="(no manager)"; value=runserver(condition(char_length(:regions_qy:manager) > 0, :regions_qy:manager, null) + "\n"); }
+		s11f_c1d2 "report/data" { nullformat="(no manager)"; value=runserver(condition(char_length(:regions_qy:manager) > 0, :regions_qy:manager, null)); }
+		s11f_c1nl "report/data" { value=runserver("\n"); }
 		s11f_c1d3 "report/data" { value=runserver(:regions_qy:target); }
 		}
 	    s11f_c2 "report/table-cell"
