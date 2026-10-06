@@ -298,8 +298,12 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 	else if (!bare) /* A bare area's table cell holds its content directly. */
 	    {
-	    /** No border: Draw the background directly, wrapped in a cell padded by any margins. **/
-	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\"") < 0
+	    /*** No border: Draw the background directly, wrapped in a cell padded by any margins.
+	     *** An area narrower than its container takes its width from its cells.
+	     ***/
+	    const bool fill = (area->Parent == NULL || area->Width + 0.01 >= prtInnerWidth(area->Parent));
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" cellpadding=\"0\"") < 0
+		|| (fill && prt_htmlfm_OutputStrLiteral(context, " width=\"100%\"") < 0)
 		|| prt_htmlfm_OutputBGColor(context, area->BGColor) < 0
 		|| (pad_wrap && (prt_htmlfm_OutputStrLiteral(context, "><tr><td") < 0
 		    || prt_htmlfm_OutputPadding(context, area) < 0
