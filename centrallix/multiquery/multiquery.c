@@ -379,12 +379,17 @@ mq_internal_ContentSource(pExpression exp, pParamObjects objlist)
 
 /*** mq_internal_CopyContent - replace the content of dst with a stream of the
  *** content of src, so the copy is not capped by the textsize limit on reading
- *** objcontent as a string.  Returns the byte count, or -1 on failure.
+ *** objcontent as a string.  Leaves the content alone when src and dst are
+ *** the same object.  Returns the byte count, or -1 on failure.
  ***/
 int
 mq_internal_CopyContent(pObject src, pObject dst)
     {
     int rval;
+
+	/** Copying content onto itself would truncate it before reading **/
+	if (src == dst)
+	    return 0;
 
 	/** Start both at the beginning, emptying dst **/
 	if (objSeek(src, 0) < 0)
