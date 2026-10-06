@@ -53,6 +53,148 @@
 
 
 
+/*** prt_htmlfm_LineTail() - finds the last object on the line of an area
+ *** that starts with the given object.
+ ***
+ *** @param scan The first object on the line.
+ *** @param line_top Set to the top of the line's content.
+ *** @param line_bottom Set to the bottom of the line's content, or -1.0 if
+ *** 	the line only has margin release objects.
+ *** @param needs_cols Set to 1 if an object on the line was placed at an x
+ *** 	position, or 0 otherwise.
+ *** @returns The last object on the line.
+ ***/
+static pPrtObjStream
+prt_htmlfm_LineTail(pPrtObjStream scan, double* line_top, double* line_bottom, int* needs_cols)
+    {
+    pPrtObjStream linetail = scan;
+
+	*needs_cols = 0;
+	*line_top = scan->Y;
+	*line_bottom = -1.0;
+	while(1)
+	    {
+	    if (linetail->Flags & PRT_OBJ_F_XSET) *needs_cols = 1;
+	    if (!(linetail->Flags & PRT_OBJ_F_MARGINRELEASE))
+		{
+		*line_top = min(*line_top, linetail->Y);
+		*line_bottom = max(*line_bottom, linetail->Y + linetail->Height);
+		}
+	    if ((linetail->Flags & PRT_OBJ_F_NEWLINE) || !linetail->Next) break;
+
+	    /** An object placed below this line (e.g. by ypos) starts a new line. **/
+	    if ((linetail->Next->Flags & PRT_OBJ_F_YSET) && *line_bottom >= 0.0 && linetail->Next->Y >= *line_bottom - 0.001) break;
+
+	    linetail = linetail->Next;
+	    }
+
+    return linetail;
+    }
+
+
+/*** prt_htmlfm_IsMarkersOnly() - checks whether a line holds only style
+ *** changes (empty strings), which is not a line when it ends the area.
+ ***
+ *** @param scan The first object on the line.
+ *** @param linetail The last object on the line.
+ *** @returns true if the line has only style changes, or false otherwise.
+ ***/
+static bool
+prt_htmlfm_IsMarkersOnly(pPrtObjStream scan, pPrtObjStream linetail)
+    {
+
+	for (pPrtObjStream marker = scan; ; marker = marker->Next)
+	    {
+	    if (marker->ObjType->TypeID != PRT_OBJ_T_STRING || ((char*)marker->Content)[0] != '\0'
+		|| (marker->Flags & PRT_OBJ_F_NEWLINE))
+		return false;
+	    if (marker == linetail) break;
+	    }
+
+    return true;
+    }
+
+
+/*** prt_htmlfm_ContentBottom() - finds the bottom of an area's rendered
+ *** content, ignoring border decorations.
+ ***
+ *** @param area The text area.
+ *** @returns The bottom of the content, or 0.0 if the area is empty.
+ ***/
+static double
+prt_htmlfm_ContentBottom(pPrtObjStream area)
+    {
+    double content_bottom = 0.0;
+
+	for (pPrtObjStream scan = area->ContentHead; scan != NULL; scan = scan->Next)
+	    {
+	    if (scan->Flags & PRT_OBJ_F_MARGINRELEASE) continue;
+	    if (scan->Y + scan->Height > content_bottom)
+		content_bottom = scan->Y + scan->Height;
+	    }
+
+    return content_bottom;
+    }
+
+
+/*** prt_htmlfm_IsBareArea() - checks whether an area can be written straight
+ *** into its table cell, without a table of its own.  This holds when the
+ *** area is the cell's only content and is one line with no tabstops,
+ *** border, margins, background, or empty space below it.
+ ***
+ *** @param context The report formatter context, whose background must be
+ *** 	the cell's.
+ *** @param area The object to check, which need not be an area.
+ *** @param justification Set to the line's justification, if the area is bare.
+ *** 	May be NULL.
+ *** @returns true if the area is bare, or false otherwise.
+ ***/
+bool
+prt_htmlfm_IsBareArea(pPrtHTMLfmInf context, pPrtObjStream area, int* justification)
+    {
+    double line_top, line_bottom;
+    int needs_cols;
+
+	/** Check the area's place in the cell. **/
+	if (area->ObjType->TypeID != PRT_OBJ_T_AREA) return false;
+	if (area->Parent == NULL || area->Parent->ObjType->TypeID != PRT_OBJ_T_TABLECELL) return false;
+	if (area->Prev != NULL || area->Next != NULL) return false;
+
+	/** Check the area's decorations. **/
+	pPrtTextLMData lm_inf = (pPrtTextLMData)(area->LMData);
+	if (lm_inf->AreaBorder.nLines > 0 || area->BGColor != context->BGColor) return false;
+	if (area->MarginTop != 0.0 || area->MarginBottom != 0.0 || area->MarginLeft != 0.0 || area->MarginRight != 0.0) return false;
+
+	/** Check for one line, plus an optional last line of style changes. **/
+	if (area->ContentHead == NULL) return false;
+	pPrtObjStream linetail = prt_htmlfm_LineTail(area->ContentHead, &line_top, &line_bottom, &needs_cols);
+	if (needs_cols) return false;
+	if (linetail->Next != NULL)
+	    {
+	    pPrtObjStream markers = linetail->Next;
+	    pPrtObjStream markers_tail = prt_htmlfm_LineTail(markers, &line_top, &line_bottom, &needs_cols);
+	    if (markers_tail->Next != NULL || !prt_htmlfm_IsMarkersOnly(markers, markers_tail)) return false;
+	    }
+
+	/** Check for empty space below the line. **/
+	if (prt_htmlfm_ContentBottom(area) + 0.01 < area->Height) return false;
+
+	/** Find the first non-empty object, which sets the justification. **/
+	if (justification != NULL)
+	    {
+	    pPrtObjStream justif_subscan = area->ContentHead;
+	    while(justif_subscan != linetail &&
+		justif_subscan->ObjType->TypeID == PRT_OBJ_T_STRING && ! (strlen((char*) justif_subscan->Content)))
+		{
+		justif_subscan = justif_subscan->Next;
+		}
+	    *justification = justif_subscan->Justification;
+	    }
+
+    return true;
+    }
+
+
 /*** prt_htmlfm_GenerateArea() - generates the html to represent a
  *** textflow area.
  ***/
@@ -102,6 +244,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    goto err;
 	    }
 	int saved_bg = context->BGColor;
+	const bool bare = prt_htmlfm_IsBareArea(context, area, NULL);
 	const bool pad_wrap = (lm_inf->AreaBorder.nLines == 0
 	    && (area->MarginTop != 0.0 || area->MarginBottom != 0.0 || area->MarginLeft != 0.0 || area->MarginRight != 0.0));
 	if (lm_inf->AreaBorder.nLines > 0)
@@ -118,7 +261,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		goto err;
 		}
 	    }
-	else
+	else if (!bare) /* A bare area's table cell holds its content directly. */
 	    {
 	    /** No border: Draw the background directly, wrapped in a cell padded by any margins. **/
 	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\"") < 0
@@ -172,36 +315,10 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    {
 	    /** Find the tail of this line, and figure out if we need to use columns **/
 	    cur_xset = 0;
-	    linetail = scan;
-	    cur_needs_cols = 0;
-	    line_top = scan->Y;
-	    line_bottom = -1.0;
-	    while(1)
-		{
-		if (linetail->Flags & PRT_OBJ_F_XSET) cur_needs_cols = 1;
-		if (!(linetail->Flags & PRT_OBJ_F_MARGINRELEASE))
-		    {
-		    line_top = min(line_top, linetail->Y);
-		    line_bottom = max(line_bottom, linetail->Y + linetail->Height);
-		    }
-		if ((linetail->Flags & PRT_OBJ_F_NEWLINE) || !linetail->Next) break;
-
-		/** An object placed below this line (e.g. by ypos) starts a new line. **/
-		if ((linetail->Next->Flags & PRT_OBJ_F_YSET) && line_bottom >= 0.0 && linetail->Next->Y >= line_bottom - 0.001) break;
-
-		linetail = linetail->Next;
-		}
+	    linetail = prt_htmlfm_LineTail(scan, &line_top, &line_bottom, &cur_needs_cols);
 
 	    /** A last line of only style changes (empty strings) is not a line. **/
-	    bool markers_only = (linetail->Next == NULL && scan != area->ContentHead);
-	    for (pPrtObjStream marker = scan; markers_only; marker = marker->Next)
-		{
-		if (marker->ObjType->TypeID != PRT_OBJ_T_STRING || ((char*)marker->Content)[0] != '\0'
-		    || (marker->Flags & PRT_OBJ_F_NEWLINE))
-		    markers_only = false;
-		if (marker == linetail) break;
-		}
-	    if (markers_only) break;
+	    if (linetail->Next == NULL && scan != area->ContentHead && prt_htmlfm_IsMarkersOnly(scan, linetail)) break;
 
 	    /** Leave a vertical gap (e.g. from ypos or lineheight) before this line? **/
 	    const double gap = (prev_bottom >= 0.0 && line_bottom >= 0.0) ? line_top - prev_bottom : 0.0;
@@ -244,7 +361,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		}
 	    if (!in_tr)
 		{
-		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<tr>") < 0))
+		if (UNLIKELY(!bare && prt_htmlfm_OutputStrLiteral(context, "<tr>") < 0))
 		    {
 		    mssError(0, "PRT", "Failed to write row opening tag.");
 		    goto err;
@@ -320,7 +437,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		     *** to reduce HTML size.  These cells are written very often.
 		     **/
 		    const int n_cols = next_xset - cur_xset;
-		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<td") < 0
+		    if (UNLIKELY(!bare && (prt_htmlfm_OutputStrLiteral(context, "<td") < 0
 			|| (justif_subscan->Justification != PRT_JUST_T_LEFT
 			    && prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justif_subscan->Justification]) < 0)
 			|| (n_cols > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_cols) < 0)
@@ -328,7 +445,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 			    " width=\"%d\">",
 			    (int)(w*PRT_HTMLFM_XPIXEL+0.001)
 			) < 0
-		    ))  {
+		    )))  {
 			mssError(0, "PRT", "Failed to write cell opening tag.");
 			goto err;
 			}
@@ -385,7 +502,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	if (in_td)
 	    {
 	    if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
-	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
+	    if (UNLIKELY(!bare && prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
 		{
 		mssError(0, "PRT", "Failed to write final cell closing tag.");
 		goto err;
@@ -394,7 +511,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 	if (in_tr)
 	    {
-	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr>\n") < 0))
+	    if (UNLIKELY(!bare && prt_htmlfm_OutputStrLiteral(context, "</tr>\n") < 0))
 		{
 		mssError(0, "PRT", "Failed to write final row closing tag.");
 		goto err;
@@ -402,16 +519,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    in_tr = 0;
 	    }
 
-	/** Detect the bottom of the rendered content, ignoring border decorations. **/
-	double content_bottom = 0.0;
-	for (scan = area->ContentHead; scan != NULL; scan = scan->Next)
-	    {
-	    if (scan->Flags & PRT_OBJ_F_MARGINRELEASE) continue;
-	    if (scan->Y + scan->Height > content_bottom)
-		content_bottom = scan->Y + scan->Height;
-	    }
-
 	/** Pad from the content bottom to the area bottom with a trailing spacer row. **/
+	const double content_bottom = prt_htmlfm_ContentBottom(area);
 	if (area->ContentTail && (content_bottom + 0.01 < area->Height))
 	    {
 	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
@@ -425,7 +534,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    }
 
 	/** Output the area epilogue **/
-	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</table>\n") < 0
+	if (UNLIKELY((!bare && prt_htmlfm_OutputStrLiteral(context, "</table>\n") < 0)
 	    || (pad_wrap && prt_htmlfm_OutputStrLiteral(context, "</td></tr></table>\n") < 0)
 	))  {
 	    mssError(0, "PRT", "Failed to write area table closing tag.");

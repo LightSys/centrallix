@@ -1,6 +1,8 @@
 #ifndef _PRTMGMT_V3_FM_HTML_H
 #define _PRTMGMT_V3_FM_HTML_H
 
+#include <stdbool.h>
+
 #include "prtmgmt_v3/prtmgmt_v3.h"
 
 /************************************************************************/
@@ -138,6 +140,7 @@ int prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream
 int prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area);
 int prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table);
 int prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section);
+bool prt_htmlfm_IsBareArea(pPrtHTMLfmInf context, pPrtObjStream area, int* justification);
 
 
 /*** prt_htmlfm_OutputStrLiteral() - Helper function to output a statically

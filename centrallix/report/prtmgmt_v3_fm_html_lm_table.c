@@ -214,8 +214,16 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			if (cell->BorderRight != 0) {
 			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1) < 0)) goto err_cell;
 			}
-			
-			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "\">") < 0)) goto err_cell;
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "\"") < 0)) goto err_cell;
+
+			/** Align a bare area's content, since it has no cell of its own. **/
+			int justification = PRT_JUST_T_LEFT;
+			if (UNLIKELY(cell->ContentHead != NULL
+			    && prt_htmlfm_IsBareArea(context, cell->ContentHead, &justification)
+			    && justification != PRT_JUST_T_LEFT
+			    && prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[justification]) < 0
+			))  goto err_cell;
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, ">") < 0)) goto err_cell;
 			if (UNLIKELY(prt_htmlfm_InitStyle(context, &(cell->TextStyle)) < 0)) goto err_cell;
 			prt_htmlfm_SetKeepSpaces(context);
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
