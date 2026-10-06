@@ -68,7 +68,7 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time an email is opened or sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  An email that is still Pending 6 days after `last_try_date` becomes Error, or 2 minutes after it if sendmail never reported a result and Postfix never logged it.  Writing the content or setting the attributes of a Pending email fails.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  Each time an email is opened or sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  Centrallix processes that share a spool directory take turns using it by locking `.spool_lock`.  An email that is still Pending 6 days after `last_try_date` becomes Error, or 2 minutes after it if sendmail never reported a result and Postfix never logged it.  Writing the content or setting the attributes of a Pending email fails.
 
 Sent means the next mail server accepted the email for every recipient.
 
@@ -199,9 +199,8 @@ The SMTP driver does not support getting, calling, or adding methods.
 
 
 ## IV Limitations
-- Running multiple Centrallix processes on the same spool directory is undefined behavior.
 - After the mail log rotates, the driver finds the rest of the old log by its inode (such as `maillog-20261001`), then reads each log rotated after it, oldest first.  If logrotate compresses a rotated log before the driver reads it (`compress` without `delaycompress`), or deletes it before the attributes of an email are reloaded (when it is opened, read, or sent), the results logged there after the last read are missed, so those emails become Error with an unknown send status after the timeout expires (even if they sent successfully).
-- While a spool directory reads the mail log, opening its emails, reading their attributes, or sending them waits for the read to finish.  This might be noticeable if the mail log has many new lines (such as on the first read).
+- While a thread or process uses a spool directory, other uses of it wait, and fail after 60 seconds if another process still has it locked.  This might be noticeable while it reads a mail log with many new lines (such as on the first read).
 - Keep Postfix's `maximal_queue_lifetime` (5 days by default) under 6 days, or an email Postfix is still retrying becomes Error with an unknown send status.
 - If Postfix uses a relay host, Sent means the relay accepted the email, so failures after the relay are not tracked.
 - A deferred email cannot be resent or cancelled until Postfix gives up on it (`maximal_queue_lifetime`), because setting `is_ready` fails while the email is Pending.

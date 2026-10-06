@@ -40,6 +40,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -99,6 +100,21 @@
  *** mail log has been read and processed.
  ***/
 #define SMTP_CURSOR_FILE	".mail_log_cursor"
+
+/*** The name of the file in each spool directory that processes lock to take
+ *** turns using it.  It holds a serial that a process bumps before changing
+ *** the Pending emails.
+ ***/
+#define SMTP_LOCK_FILE		".spool_lock"
+
+/** Bytes of the serial in the lock file, including the newline. **/
+#define SMTP_SERIAL_LEN		21
+
+/** Milliseconds between tries to lock a spool directory that another process has locked. **/
+#define SMTP_LOCK_POLL_INTERVAL	50
+
+/** Seconds to wait for the spool directory unlock before failing. **/
+#define SMTP_LOCK_TIMEOUT	60
 
 /** Bytes of the mail log to read before letting other threads run. **/
 #define SMTP_LOG_READ_SIZE	(64 * 1024)
@@ -188,9 +204,11 @@ typedef struct
     off_t	LogOffset;	/* Position of the cursor in its file. */
     XHashTable	ByMessageID;	/* Hash (Message-ID -> pSmtpIndexEntry): For Pending emails without a queue ID. */
     XHashTable	ByQueueID;	/* Hash (Postfix Queue ID -> pSmtpIndexEntry): For Pending emails with a queue ID. */
-    bool	Reading;	/* A read of the mail log is in progress. */
-    int		nWaiting;	/* Threads waiting for that read to finish. */
-    pSemaphore	ReadDone;	/* Posted once for each waiting thread when the read finishes. */
+    unsigned long long Serial;	/* The serial of the last change to the Pending emails that this process knows of. */
+    int		LockFd;		/* The open lock file, or -1. */
+    pSemaphore	LockSem;	/* Held by the thread that has the spool directory locked. */
+    pThread	LockOwner;	/* The thread that has the spool directory locked, or NULL. */
+    int		LockDepth;	/* Nesting depth of smtp_internal_LockSpool() in LockOwner. */
     }
     SmtpSpool, *pSmtpSpool;
 
@@ -262,7 +280,6 @@ struct
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
     XHashTable		Spools;				/* Hash of spool_dir to pSmtpSpool */
     char		LogPath[PATH_MAX];		/* Path of the mail log */
-    int			LockDepth;			/* Nesting depth of smtp_internal_Lock() */
     }
     SMTP_INF;
 
@@ -270,6 +287,8 @@ struct
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
 int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes);
+void smtp_internal_UnloadSpool(pSmtpSpool spool);
+void smtp_internal_UnlockSpool(pSmtpSpool spool);
 int smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed);
 int smtp_internal_ReadResult(char* resultPath, char* header, pXString output);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
@@ -817,35 +836,6 @@ smtp_internal_AddDefault(pXArray defaults, char* name, int type, int intVal, cha
     }
 
 
-/*** smtp_internal_Lock - stop other threads from running until the matching
- *** smtp_internal_Unlock().  File I/O lets other threads run, so this keeps
- *** them from changing a struct or the mail log cursor while the current
- *** thread reads and writes it.  Calls may nest.  Never sleep or wait for
- *** another thread or process while locked.
- ***/
-void
-smtp_internal_Lock(void)
-    {
-	if (SMTP_INF.LockDepth++ == 0)
-	    thLock();
-
-    return;
-    }
-
-
-/*** smtp_internal_Unlock - let other threads run again, once every
- *** smtp_internal_Lock() has a matching unlock.
- ***/
-void
-smtp_internal_Unlock(void)
-    {
-	if (--SMTP_INF.LockDepth == 0)
-	    thUnlock();
-
-    return;
-    }
-
-
 /*** smtp_internal_SpoolPath - build the path of a file of an email in a
  *** spool directory, by replacing the extension of the email name.
  ***
@@ -1118,7 +1108,7 @@ smtp_internal_SetRcpt(pStructInf emailStruct, char* address, int status, char* r
 
 
 /*** smtp_internal_ClearRcpts - remove the recipient results from the
- *** struct file of an email.
+ *** struct file of an email in a locked spool directory.
  ***
  *** @param structPath The path of the struct file.
  *** @returns 0 on success, or -1 on failure.
@@ -1132,8 +1122,7 @@ smtp_internal_ClearRcpts(char* structPath)
     int i;
     int rval = -1;
 
-	/** Read the struct, keeping other threads out until it is written. **/
-	smtp_internal_Lock();
+	/** Read the struct. **/
 	found = smtp_internal_ReadStruct(structPath, &emailStruct);
 	if (UNLIKELY(found == 0))
 	    mssError(1, "SMTP", "Failed to clear the recipient results of missing email struct \"%s\".", structPath);
@@ -1157,7 +1146,6 @@ smtp_internal_ClearRcpts(char* structPath)
 	rval = 0;
 
     end:
-	smtp_internal_Unlock();
 	if (emailStruct != NULL) stFreeInf(emailStruct);
 
 	return rval;
@@ -1288,6 +1276,7 @@ smtp_internal_GetSpool(char* spoolDir)
 	    }
 	memset(spool, 0, sizeof(SmtpSpool));
 	SETMAGIC(spool, MGK_SMTP_SPOOL);
+	spool->LockFd = -1;
 	spool->Path = nmSysStrdup(spoolDir);
 	if (UNLIKELY(spool->Path == NULL))
 	    {
@@ -1306,10 +1295,10 @@ smtp_internal_GetSpool(char* spoolDir)
 	    goto error;
 	    }
 	queueIdsInitialized = true;
-	spool->ReadDone = syCreateSem(0, 0);
-	if (UNLIKELY(spool->ReadDone == NULL))
+	spool->LockSem = syCreateSem(1, 0);
+	if (UNLIKELY(spool->LockSem == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to create the mail log read semaphore of spool directory \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to create the lock semaphore of spool directory \"%s\".", spoolDir);
 	    goto error;
 	    }
 	if (UNLIKELY(xhAdd(&SMTP_INF.Spools, spool->Path, (char*)spool) != 0))
@@ -1325,12 +1314,210 @@ smtp_internal_GetSpool(char* spoolDir)
 	    {
 	    if (messageIdsInitialized) xhDeInit(&spool->ByMessageID);
 	    if (queueIdsInitialized) xhDeInit(&spool->ByQueueID);
-	    if (spool->ReadDone != NULL) syDestroySem(spool->ReadDone, 0);
+	    if (spool->LockSem != NULL) syDestroySem(spool->LockSem, 0);
 	    if (spool->Path != NULL) nmSysFree(spool->Path);
 	    nmFree(spool, sizeof(SmtpSpool));
 	    }
 
 	return NULL;
+    }
+
+
+/*** smtp_internal_LockSpool - keep other threads and processes from using a
+ *** spool directory until the matching smtp_internal_UnlockSpool(), waiting
+ *** while they use it.  Calls may nest.  If another process changed the
+ *** Pending emails since this one loaded them, they are reloaded at the
+ *** next read of the mail log.
+ ***
+ *** @param spoolDir The spool directory, or NULL if the SMTP node has none.
+ *** @returns The locked spool directory, or NULL on failure.
+ ***/
+pSmtpSpool
+smtp_internal_LockSpool(char* spoolDir)
+    {
+    pSmtpSpool spool = NULL;
+    pThread self = thCurrent();
+    char path[PATH_MAX];
+    char buf[SMTP_SERIAL_LEN + 1];
+    struct flock lock;
+    unsigned long long serial = 0;
+    char* end;
+    int polls = 0;
+    int n;
+    bool semHeld = false;
+    bool fileLocked = false;
+    pSmtpSpool rval = NULL;
+
+	/** Edge cases. **/
+	if (UNLIKELY(spoolDir == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to lock the spool directory: the SMTP node does not have a 'spool_dir' string.");
+	    return NULL; /* Skip error handler, which expects a spool. */
+	    }
+	spool = smtp_internal_GetSpool(spoolDir);
+	if (UNLIKELY(spool == NULL))
+	    return NULL; /* Skip error handler, which expects a spool. */
+
+	/** Nest in a lock this thread holds. **/
+	if (spool->LockOwner == self)
+	    {
+	    spool->LockDepth++;
+	    return spool;
+	    }
+
+	/** Wait for other threads. **/
+	if (UNLIKELY(syGetSem(spool->LockSem, 1, 0) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to wait for other threads to use spool directory \"%s\".", spoolDir);
+	    goto end;
+	    }
+	semHeld = true;
+
+	/** Open the lock file and keep it open to hold the process lock. **/
+	if (spool->LockFd < 0)
+	    {
+	    if (UNLIKELY(snprintf(path, sizeof(path), "%s/%s", spoolDir, SMTP_LOCK_FILE) >= (int)sizeof(path)))
+		{
+		mssError(1, "SMTP", "Failed to build the spool lock path: \"%s/%s\" is too long.", spoolDir, SMTP_LOCK_FILE);
+		goto end;
+		}
+	    spool->LockFd = open(path, O_RDWR | O_CREAT, 0666);
+	    if (UNLIKELY(spool->LockFd < 0))
+		{
+		mssErrorErrno(1, "SMTP", "Failed to open spool lock \"%s\".", path);
+		goto end;
+		}
+	    }
+
+	/** Wait for other processes. **/
+	memset(&lock, 0, sizeof(lock));
+	lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	while (fcntl(spool->LockFd, F_SETLK, &lock) != 0)
+	    {
+	    if (UNLIKELY(errno != EACCES && errno != EAGAIN && errno != EINTR))
+		{
+		mssErrorErrno(1, "SMTP", "Failed to lock spool directory \"%s/%s\".", spoolDir, SMTP_LOCK_FILE);
+		goto end;
+		}
+	    if (UNLIKELY(polls++ >= SMTP_LOCK_TIMEOUT * 1000 / SMTP_LOCK_POLL_INTERVAL))
+		{
+		mssError(1, "SMTP",
+		    "Failed to lock spool directory \"%s/%s\": another process held it for %d seconds.",
+		    spoolDir, SMTP_LOCK_FILE, SMTP_LOCK_TIMEOUT
+		);
+		goto end;
+		}
+	    thSleep(SMTP_LOCK_POLL_INTERVAL);
+	    }
+	fileLocked = true;
+	spool->LockOwner = self;
+	spool->LockDepth = 1;
+
+	/** Read the serial, which is empty until the first change. **/
+	n = pread(spool->LockFd, buf, SMTP_SERIAL_LEN, 0);
+	if (UNLIKELY(n < 0))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to read the serial of spool directory \"%s/%s\".", spoolDir, SMTP_LOCK_FILE);
+	    goto end;
+	    }
+	buf[n] = '\0';
+	if (n > 0)
+	    {
+	    errno = 0;
+	    serial = strtoull(buf, &end, 10);
+	    if (UNLIKELY(errno != 0 || end == buf || *end != '\n'))
+		{
+		mssError(1, "SMTP", "Failed to read the serial of spool directory \"%s/%s\": \"%s\" is invalid.", spoolDir, SMTP_LOCK_FILE, buf);
+		goto end;
+		}
+	    }
+
+	/** Reload the Pending emails if another process changed them. **/
+	if (serial != spool->Serial)
+	    {
+	    smtp_internal_UnloadSpool(spool);
+	    spool->Serial = serial;
+	    }
+
+	/** Success. **/
+	rval = spool;
+
+    end:
+	if (UNLIKELY(rval == NULL))
+	    {
+	    if (fileLocked)
+		smtp_internal_UnlockSpool(spool);
+	    else if (semHeld && UNLIKELY(syPostSem(spool->LockSem, 1, 0) != 0))
+		fprintf(stderr, "Warning: Failed to let other threads use spool directory \"%s\".\n", spoolDir);
+	    }
+
+	return rval;
+    }
+
+
+/*** smtp_internal_UnlockSpool - let other threads and processes use a spool
+ *** directory again, once every smtp_internal_LockSpool() has a matching
+ *** unlock.
+ ***
+ *** @param spool The locked spool directory.
+ ***/
+void
+smtp_internal_UnlockSpool(pSmtpSpool spool)
+    {
+    struct flock lock;
+
+	ASSERTMAGIC(spool, MGK_SMTP_SPOOL);
+	if (--spool->LockDepth > 0)
+	    return;
+
+	/** Let other processes in. **/
+	memset(&lock, 0, sizeof(lock));
+	lock.l_type = F_UNLCK;
+	lock.l_whence = SEEK_SET;
+	if (UNLIKELY(fcntl(spool->LockFd, F_SETLK, &lock) != 0))
+	    fprintf(stderr,
+		"Warning: Failed to unlock spool directory \"%s/%s\": %s.\n",
+		spool->Path, SMTP_LOCK_FILE, strerror(errno)
+	    );
+
+	/** Let other threads in. **/
+	spool->LockOwner = NULL;
+	if (UNLIKELY(syPostSem(spool->LockSem, 1, 0) != 0))
+	    fprintf(stderr, "Warning: Failed to let other threads use spool directory \"%s\".\n", spool->Path);
+
+    return;
+    }
+
+
+/*** smtp_internal_BumpSerial - tell other processes to reload the Pending
+ *** emails of a spool directory, before this one changes them.
+ ***
+ *** @param spool The locked spool directory.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_BumpSerial(pSmtpSpool spool)
+    {
+    char buf[SMTP_SERIAL_LEN + 1];
+    int n;
+
+	snprintf(buf, sizeof(buf), "%0*llu\n", SMTP_SERIAL_LEN - 1, spool->Serial + 1);
+	n = pwrite(spool->LockFd, buf, SMTP_SERIAL_LEN, 0);
+	if (UNLIKELY(n != SMTP_SERIAL_LEN))
+	    {
+	    if (n < 0)
+		mssErrorErrno(1, "SMTP", "Failed to write serial %llu to \"%s/%s\".", spool->Serial + 1, spool->Path, SMTP_LOCK_FILE);
+	    else
+		mssError(1, "SMTP",
+		    "Failed to write serial %llu to \"%s/%s\": wrote only %d of %d bytes.",
+		    spool->Serial + 1, spool->Path, SMTP_LOCK_FILE, n, SMTP_SERIAL_LEN
+		);
+	    return -1;
+	    }
+	spool->Serial++;
+
+    return 0;
     }
 
 
@@ -1655,6 +1842,7 @@ smtp_internal_SweepSpool(char* spoolDir)
     time_t curTime = time(NULL);
     int nameLen;
     int expired;
+    bool locked = false;
     bool successful = false;
 
 	/** Track each spool directory. **/
@@ -1670,6 +1858,11 @@ smtp_internal_SweepSpool(char* spoolDir)
 	    goto end;
 	    }
 	spool->LastSweep = curTime;
+
+	/** Keep other threads and processes out until the sweep is done. **/
+	if (UNLIKELY(smtp_internal_LockSpool(spoolDir) == NULL))
+	    goto end;
+	locked = true;
 
 	/** Open the spool directory. **/
 	if (UNLIKELY(objCurrentDate(&now) != 0))
@@ -1739,6 +1932,7 @@ smtp_internal_SweepSpool(char* spoolDir)
 
     end:
 	if (dir != NULL) closedir(dir);
+	if (locked) smtp_internal_UnlockSpool(spool);
 
 	/** Resolve sweep errors. **/
 	if (UNLIKELY(!successful))
@@ -2050,8 +2244,7 @@ smtp_internal_ReloadStruct(pSmtpData inf)
  *** then update the send status of a Pending email.
  ***
  *** @param inf The email.  Other objects are skipped.
- *** @param readLog Whether to first record the results in the mail log,
- ***   waiting for a read already in progress.  Must be false while locked.
+ *** @param readLog Whether to first record the results in the mail log.
  *** @param throttle Whether to skip the reload if the attributes were
  ***   loaded in the last SMTP_RELOAD_INTERVAL seconds.
  *** @returns 0 on success, or -1 on failure.
@@ -2061,6 +2254,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
     {
     time_t curTime = time(NULL);
     pSmtpAttribute spoolDir;
+    pSmtpSpool spool = NULL;
     pStructInf emailStruct = NULL;
     char* status;
     bool changed = false;
@@ -2077,19 +2271,21 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
 	    return 0;
 	inf->LastLoad = curTime;
 
-	/** Update the struct with results from the Postfix logs. **/
-	if (readLog)
+	/** Keep other threads and processes out until the attributes are loaded. **/
+	spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
+	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
+	if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
 	    {
-	    spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
-	    ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
-	    if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
-		{
-		mssError(1, "SMTP", "Failed to read the mail log for \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
-		goto end;
-		}
-	    if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
-		mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	    mssError(1, "SMTP", "Failed to reload the attributes of \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
+	    goto end;
 	    }
+	spool = smtp_internal_LockSpool(spoolDir->Value.String);
+	if (UNLIKELY(spool == NULL))
+	    goto end;
+
+	/** Update the struct with results from the Postfix logs. **/
+	if (UNLIKELY(readLog && smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
+	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
 	/** Reload a replaced struct. **/
 	if (UNLIKELY(smtp_internal_ReloadStruct(inf) != 0))
@@ -2104,7 +2300,6 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
 	    }
 
 	/** For Pending emails, update the send status from the sendmail result/timeout. **/
-	smtp_internal_Lock();
 	found = smtp_internal_ReadStruct(inf->EmailStructPath.String, &emailStruct);
 	if (found == 1)
 	    {
@@ -2116,7 +2311,6 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
 		found = -1;
 		}
 	    }
-	smtp_internal_Unlock();
 	if (UNLIKELY(found < 0))
 	    mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
 
@@ -2129,6 +2323,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog, bool throttle)
 
     end:
 	if (emailStruct != NULL) stFreeInf(emailStruct);
+	if (spool != NULL) smtp_internal_UnlockSpool(spool);
 
 	return rval;
     }
@@ -2489,7 +2684,6 @@ smtp_internal_SendEmail(pSmtpData inf)
     char* tryMsgStr = "";
     ObjData pod;
     bool recordFailed = false;
-    bool locked = false;
     int pending;
     int rval = -1;
 
@@ -2508,15 +2702,16 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
 
+	/** Keep other threads and processes out until this try is recorded. **/
+	spool = smtp_internal_LockSpool(spoolDir->Value.String);
+	if (UNLIKELY(spool == NULL))
+	    return -1; /* Skip error handler, which records a failed try. */
+
 	/*** Read the mail log first, so any lines from earlier tries are not
 	 *** discovered later and applied to this one after we've cleared it.
 	 ***/
 	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
-
-	/** Keep other threads out until this try is recorded. **/
-	smtp_internal_Lock();
-	locked = true;
 
 	/** Refuse to send an email that is already Pending, even from another open. **/
 	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
@@ -2526,12 +2721,16 @@ smtp_internal_SendEmail(pSmtpData inf)
 		mssError(1, "SMTP", "Failed to send \"%s\": it is already Pending.", inf->Name);
 	    else
 		mssError(0, "SMTP", "Failed to check whether \"%s\" is already Pending.", inf->Name);
-	    smtp_internal_Unlock();
+	    smtp_internal_UnlockSpool(spool);
 	    return -1; /* Skip error handler, which records a failed try. */
 	    }
 
 	/** Load the results of earlier tries, which other opens may have recorded. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, false, false) != 0))
+	    goto end;
+
+	/** Tell other processes that the Pending emails are changing. **/
+	if (UNLIKELY(smtp_internal_BumpSerial(spool) != 0))
 	    goto end;
 
 	/** Mark the email Pending before handing it off, so other sends refuse it. **/
@@ -2588,15 +2787,8 @@ smtp_internal_SendEmail(pSmtpData inf)
 
 	/** Track the email by its Message-ID until Postfix queues it. **/
 	messageId = smtp_internal_GetString(inf->Attributes, "message_id");
-	spool = smtp_internal_GetSpool(spoolDir->Value.String);
-	if (UNLIKELY(spool == NULL))
-	    goto end;
 	if (spool->Loaded && messageId != NULL && UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, messageId, inf->Name) != 0))
 	    goto end;
-
-	/** Let other threads run while sendmail runs. **/
-	smtp_internal_Unlock();
-	locked = false;
 
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
@@ -2647,7 +2839,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 		mssError(1, "SMTP", "Failed to send \"%s\": %s", inf->Name, tryMsgStr);
 		}
 	    }
-	if (locked) smtp_internal_Unlock();
+	smtp_internal_UnlockSpool(spool);
 
 	if (tryMsg != NULL) xsFree(tryMsg);
 
@@ -3993,11 +4185,8 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, pFile log, cha
 
 /*** smtp_internal_UpdateFromLog - record the results in the lines added to the
  *** mail log since a spool directory last read it in the structs of its
- *** Pending emails, then save where it stopped.  The log is read without
- *** the lock, keeping only the lines about Pending emails, then the lock is
- *** held while those lines are recorded.  Only one read of a spool runs at
- *** a time, so a call first waits for a read already in progress.  Must not
- *** be called while locked.
+ *** Pending emails, then save where it stopped.  The spool directory stays
+ *** locked throughout, so other uses of it wait for the read.
  ***
  *** @param spoolDir The spool directory.
  *** @param rootAttributes The attributes of the SMTP node.
@@ -4022,38 +4211,18 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
     pFile rotatedLog = NULL;
     off_t offset;
     off_t rotatedOffset;
-    int nWake;
     bool sameLog;
     bool changed;
-    bool locked = false;
     bool applied = false;
     bool written = false;
     int found;
     int i;
     int rval = -1;
 
-	/** Edge cases. **/
-	if (UNLIKELY(SMTP_INF.LockDepth > 0))
-	    {
-	    mssError(1, "SMTP", "Failed to read the mail log for \"%s\": called while locked.", spoolDir);
-	    return -1; /* Skip error handler, which ends a read in progress. */
-	    }
-	spool = smtp_internal_GetSpool(spoolDir);
+	/** Keep other threads and processes out until the read is done. **/
+	spool = smtp_internal_LockSpool(spoolDir);
 	if (UNLIKELY(spool == NULL))
-	    return -1; /* Skip error handler, which ends a read in progress. */
-
-	/** Wait for a read already in progress. **/
-	while (spool->Reading)
-	    {
-	    spool->nWaiting++;
-	    if (UNLIKELY(syGetSem(spool->ReadDone, 1, 0) != 0))
-		{
-		spool->nWaiting--;
-		mssError(1, "SMTP", "Failed to wait for the mail log read of \"%s\".", spoolDir);
-		return -1; /* Skip error handler, which ends a read in progress. */
-		}
-	    }
-	spool->Reading = true;
+	    return -1; /* Skip error handler, which unlocks the spool directory. */
 
 	/** Load the spool directory. **/
 	if (!spool->Loaded && UNLIKELY(smtp_internal_LoadSpool(spool) != 0))
@@ -4133,9 +4302,9 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	if (UNLIKELY(smtp_internal_ReadLogLines(spool, &batch, log, SMTP_INF.LogPath, &offset) != 0))
 	    goto end;
 
-	/** Keep other threads out while the lines are recorded. **/
-	smtp_internal_Lock();
-	locked = true;
+	/** Tell other processes that the Pending emails are changing. **/
+	if (batch.Lines.nItems > 0 && UNLIKELY(smtp_internal_BumpSerial(spool) != 0))
+	    goto end;
 
 	/** Record each line in its email. **/
 	applied = true;
@@ -4186,7 +4355,6 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	/** Reload the indexes from the structs if recording failed partway. **/
 	if (UNLIKELY(rval != 0 && applied && !written))
 	    smtp_internal_UnloadSpool(spool);
-	if (locked) smtp_internal_Unlock();
 
 	if (log != NULL) fdClose(log, 0);
 	if (rotatedLog != NULL) fdClose(rotatedLog, 0);
@@ -4196,13 +4364,7 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes)
 	    xaDeInit(&rotatedLogs);
 	    }
 	if (batchInitialized) smtp_internal_FreeLogBatch(&batch);
-
-	/** End the read, waking the threads waiting for it. **/
-	spool->Reading = false;
-	nWake = spool->nWaiting;
-	spool->nWaiting = 0; /* Before waking, so threads that wait for a later read are counted for it. */
-	if (nWake > 0 && UNLIKELY(syPostSem(spool->ReadDone, nWake, 0) != 0))
-	    fprintf(stderr, "Warning: Failed to wake %d threads waiting for the mail log read of \"%s\".\n", nWake, spoolDir);
+	smtp_internal_UnlockSpool(spool);
 
 	return rval;
     }
@@ -4822,9 +4984,9 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     pFile fd = NULL;
     pFile emailStructureFile = NULL;
     pStructInf emailStructure = NULL;
+    pSmtpSpool spool = NULL;
     char* status = NULL;
     bool changed;
-    bool locked = false;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -4882,6 +5044,11 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    mssError(1, "SMTP", "Failed to append email name \"%s\" to email path.", inf->Name);
 	    goto end;
 	    }
+
+	/** Keep other threads and processes out until the email is loaded. **/
+	spool = smtp_internal_LockSpool(spoolDir->Value.String);
+	if (UNLIKELY(spool == NULL))
+	    goto end;
 
 	/** Check that the email file exists. **/
 	fd = fdOpen(inf->EmailPath.String, 0, 0);
@@ -4964,10 +5131,6 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes) != 0))
 	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
 
-	/** Keep other threads out until the struct is updated. **/
-	smtp_internal_Lock();
-	locked = true;
-
 	/** Open the email structure file. **/
 	emailStructureFile = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
 	if (UNLIKELY(emailStructureFile == NULL))
@@ -5013,8 +5176,6 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 		goto end;
 		}
 	    }
-	smtp_internal_Unlock();
-	locked = false;
 
 	/** Get the structure's attributes **/
 	if (UNLIKELY(smtp_internal_GetStructAttributes(emailStructure, inf->Attributes, inf->AttributeNames) != 0))
@@ -5036,7 +5197,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	if (UNLIKELY(fd != NULL)) fdClose(fd, 0);
 	if (LIKELY(emailStructureFile != NULL)) fdClose(emailStructureFile, 0);
 	if (LIKELY(emailStructure != NULL)) stFreeInf(emailStructure);
-	if (locked) smtp_internal_Unlock();
+	if (spool != NULL) smtp_internal_UnlockSpool(spool);
 
 	return rval;
     }
@@ -5283,6 +5444,7 @@ int
 smtpDelete(pObject obj, pObjTrxTree* oxt)
     {
     pSmtpData inf = NULL;
+    pSmtpSpool spool = NULL;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -5308,6 +5470,11 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	    }
 	else if (inf->Type == SMTP_T_EML)
 	    {
+	    /** Keep other threads and processes out until the email is deleted. **/
+	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    if (UNLIKELY(spool == NULL))
+		goto end;
+
 	    /** Delete the email's files. **/
 	    if (UNLIKELY(smtp_internal_RemoveEmail(
 		inf->EmailPath.String,
@@ -5326,6 +5493,7 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	rval = 0;
 
     end:
+	if (spool != NULL) smtp_internal_UnlockSpool(spool);
 	if (LIKELY(inf != NULL) && UNLIKELY(smtp_internal_Close(inf) != 0))
 	    rval = -1;
 
@@ -5342,6 +5510,7 @@ int
 smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+    pSmtpSpool spool;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -5366,12 +5535,18 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    return -1;
 	    }
 
+	/** Keep other threads and processes from changing the email while it is read. **/
+	spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	if (UNLIKELY(spool == NULL))
+	    return -1;
+
 	rval = fdRead(inf->ContentFile, buffer, maxcnt, offset, flags);
 	if (UNLIKELY(rval < 0))
 	    mssErrorErrno(1, "SMTP",
 		"Failed to read %d bytes at offset %d from email file (%s).",
 		maxcnt, offset, inf->EmailPath.String
 	    );
+	smtp_internal_UnlockSpool(spool);
 
 	return rval;
     }
@@ -5383,6 +5558,7 @@ int
 smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+    pSmtpSpool spool;
     int pending;
     int rval = -1;
 
@@ -5408,8 +5584,12 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    return -1;
 	    }
 
+	/** Keep other threads and processes out until the content is written. **/
+	spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	if (UNLIKELY(spool == NULL))
+	    return -1;
+
 	/** Refuse to change a Pending email, which sendmail may be reading. **/
-	smtp_internal_Lock();
 	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
 	if (UNLIKELY(pending != 0))
 	    {
@@ -5417,7 +5597,7 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 		mssError(1, "SMTP", "Failed to write to \"%s\": it is Pending.", inf->Name);
 	    else
 		mssError(0, "SMTP", "Failed to check whether \"%s\" is Pending.", inf->Name);
-	    smtp_internal_Unlock();
+	    smtp_internal_UnlockSpool(spool);
 	    return -1;
 	    }
 
@@ -5427,7 +5607,7 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 		"Failed to write %d bytes at offset %d to email file (%s).",
 		cnt, offset, inf->EmailPath.String
 	    );
-	smtp_internal_Unlock();
+	smtp_internal_UnlockSpool(spool);
 
 	return rval;
     }
@@ -5888,7 +6068,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 
     pFile emlStructFileRead = NULL;
     pStructInf emlStruct = NULL;
-    bool locked = false;
+    pSmtpSpool spool = NULL;
 
     int rval = -1;
 
@@ -6017,9 +6197,10 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    }
 	else if (inf->Type == SMTP_T_EML)
 	    {
-	    /** Keep other threads out until the struct is written. **/
-	    smtp_internal_Lock();
-	    locked = true;
+	    /** Keep other threads and processes out until the struct is written. **/
+	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    if (UNLIKELY(spool == NULL))
+		goto end;
 
 	    /** Open the email structure file. **/
 	    emlStructFileRead = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
@@ -6066,8 +6247,8 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	    /** Write changes to the email struct file. **/
 	    if (UNLIKELY(smtp_internal_WriteStruct(inf->EmailStructPath.String, emlStruct) != 0))
 		goto end;
-	    smtp_internal_Unlock();
-	    locked = false;
+	    smtp_internal_UnlockSpool(spool);
+	    spool = NULL;
 
 	    /** If the email is ready to send, send it. **/
 	    if (strcmp(attrname, "is_ready") == 0 && val->Integer == 1)
@@ -6092,7 +6273,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	/** Free appropriate memory and close appropriate files. **/
 	if (UNLIKELY(emlStructFileRead != NULL)) fdClose(emlStructFileRead, 0);
 	if (emlStruct != NULL) stFreeInf(emlStruct);
-	if (locked) smtp_internal_Unlock();
+	if (spool != NULL) smtp_internal_UnlockSpool(spool);
 
 	return rval;
     }
@@ -6105,6 +6286,7 @@ int
 smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
+    pSmtpSpool spool;
     int pending;
     int rval = -1;
 
@@ -6150,7 +6332,9 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Refuse to change a Pending email.  Sending checks is_ready itself. **/
 	if (inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") != 0)
 	    {
-	    smtp_internal_Lock();
+	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    if (UNLIKELY(spool == NULL))
+		return -1;
 	    pending = smtp_internal_IsPending(inf->EmailStructPath.String);
 	    if (LIKELY(pending == 0))
 		rval = smtp_internal_SetAttrValue(inf_v, attrname, datatype, val, oxt);
@@ -6161,7 +6345,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		);
 	    else
 		mssError(0, "SMTP", "Failed to check whether \"%s\" is Pending.", inf->Name);
-	    smtp_internal_Unlock();
+	    smtp_internal_UnlockSpool(spool);
 	    return rval;
 	    }
 
@@ -6182,7 +6366,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
     pSnNode rootNode = NULL;
     pFile emlStructFileRead = NULL;
     pStructInf emlStruct = NULL;
-    bool locked = false;
+    pSmtpSpool spool = NULL;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -6312,9 +6496,10 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	    }
 	else if (inf->Type == SMTP_T_EML)
 	    {
-	    /** Keep other threads out until the struct is written. **/
-	    smtp_internal_Lock();
-	    locked = true;
+	    /** Keep other threads and processes out until the struct is written. **/
+	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    if (UNLIKELY(spool == NULL))
+		goto end;
 
 	    /** Open the email structure file. **/
 	    emlStructFileRead = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
@@ -6389,7 +6574,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	if (UNLIKELY(unstoredAttr != NULL)) smtp_internal_ClearAttribute((char*)unstoredAttr, NULL);
 	if (emlStructFileRead != NULL) fdClose(emlStructFileRead, 0);
 	if (emlStruct != NULL) stFreeInf(emlStruct);
-	if (locked) smtp_internal_Unlock();
+	if (spool != NULL) smtp_internal_UnlockSpool(spool);
 
 	return rval;
     }
