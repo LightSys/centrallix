@@ -4170,6 +4170,43 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     }
 
 
+/*** mq_internal_PseudoContentSource - find the object whose content a
+ *** result row passes through, when the row's objcontent item is a plain
+ *** reference to it (see mq_internal_ContentRef).  Returns NULL otherwise.
+ ***/
+pObject
+mq_internal_PseudoContentSource(pPseudoObject p)
+    {
+    int i;
+
+	if (!(p->Stmt->Flags & MQ_TF_OBJCONTENT))
+	    return NULL;
+	for(i=0;i<p->Stmt->Tree->AttrNames.nItems;i++)
+	    if (!strcmp(p->Stmt->Tree->AttrNames.Items[i], "objcontent"))
+		return mq_internal_ContentSource((pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[i], p->ObjList);
+
+    return NULL;
+    }
+
+
+/*** mqInfo - describe a result row.  Content passed through from a plain
+ *** objcontent reference is only as seekable as its source.
+ ***/
+int
+mqInfo(void* inf_v, pObjectInfo info)
+    {
+    pPseudoObject p = (pPseudoObject)inf_v;
+    pObject src;
+    pObjectInfo src_info;
+
+	src = mq_internal_PseudoContentSource(p);
+	if (src && (src_info = objInfo(src)) != NULL)
+	    info->Flags |= (src_info->Flags & OBJ_INFO_F_CANT_SEEK);
+
+    return 0;
+    }
+
+
 /*** mqRead - reads from the object.  We do this simply by trying the 
  *** objRead functionality in the objects comprising the query, in order of
  *** specificity (childmost object first; object on many side of a one-to
@@ -4183,10 +4220,16 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
     int objid;
     char* content;
     int n;
+    pObject src;
 
 	/** If an "objcontent" attribute is explicitly SELECTed... **/
 	if (p->Stmt->Flags & MQ_TF_OBJCONTENT)
 	    {
+	    /** Pass a plain content reference straight through to its object **/
+	    src = mq_internal_PseudoContentSource(p);
+	    if (src)
+		return objRead(src, buffer, maxcnt, offset, flags);
+
 	    /** "Read" the content from an attribute **/
 	    if (mqGetAttrValue(inf_v, "objcontent", DATA_T_STRING, POD(&content), NULL) == 0)
 		{
@@ -4966,6 +5009,7 @@ mqInitialize()
 	drv->QueryClose = mqQueryClose;
 	drv->Read = mqRead;
 	drv->Write = mqWrite;
+	drv->Info = mqInfo;
 	drv->GetAttrType = mqGetAttrType;
 	drv->GetAttrValue = mqGetAttrValue;
 	drv->GetFirstAttr = mqGetFirstAttr;
