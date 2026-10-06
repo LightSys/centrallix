@@ -207,7 +207,7 @@
  *** the report's most common font. This is set on the body's wrapper element,
  *** so that later styling can skip setting it, reducing HTML size.
  ***/
-static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,fixed", "Arial,Helvetica,MS Sans Serif", "Times New Roman,Times,MS Serif"};
+static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,monospace", "Arial,Helvetica,sans-serif", "Times New Roman,Times,serif"};
 #define PRT_HTMLFM_MINFONTSTYLE	(0)
 #define PRT_HTMLFM_MAXFONTSTYLE	(sizeof(prt_htmlfm_fontstyles) / sizeof(prt_htmlfm_fontstyles[0]) - 1)
 #define PRT_HTMLFM_DEFAULT_FONTSTYLE	(0)
