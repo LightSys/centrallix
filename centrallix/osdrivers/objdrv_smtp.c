@@ -81,9 +81,10 @@
 #define SMTP_LOCK_POLL_INTERVAL	 50                /* Milliseconds between tries to get a spool dir lock. */
 #define SMTP_LOCK_TIMEOUT	 60                /* Seconds to wait for a spool dir lock before failing. */
 #define SMTP_PENDING_TIMEOUT	(6 * 24 * 60 * 60) /* Seconds to wait before a Pending email times out to Error. */
-#define SMTP_SENDMAIL_TIMEOUT	 60                /* Seconds to wait for sendmail before killing it. */
-#define SMTP_RESULT_TIMEOUT	(2 * SMTP_SENDMAIL_TIMEOUT) /* Seconds a Pending email waits for the sendmail supervisor
-							     * or Postfix Queue ID before timing out to Error. */
+#define SMTP_SENDMAIL_TIMEOUT	 60                /* Seconds to wait for sendmail before asking it to stop. */
+#define SMTP_SENDMAIL_KILL_DELAY 10                /* Seconds to wait after asking sendmail to stop before killing it. */
+/** Seconds a Pending email waits for the sendmail supervisor or Postfix Queue ID before timing out to Error. **/
+#define SMTP_RESULT_TIMEOUT	(2 * (SMTP_SENDMAIL_TIMEOUT + SMTP_SENDMAIL_KILL_DELAY)) 
 
 /** Define the group type of a recipient result in an email struct. **/
 #define SMTP_RCPT_TYPE		"system/smtp-recipient"
@@ -496,7 +497,7 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 		    }
 		else
 		    {
-		    /** Wait for sendmail, killing it after the timeout. **/
+		    /** Wait for sendmail, stopping it after the timeout. **/
 		    polls = 0;
 		    while ((wait_rval = waitpid(pid, &wstatus, WNOHANG)) == 0 && polls < SMTP_SENDMAIL_TIMEOUT * 10)
 			{
@@ -505,8 +506,19 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 			}
 		    if (wait_rval == 0)
 			{
-			kill(pid, SIGKILL);
-			waitpid(pid, &wstatus, 0);
+			/** Ask sendmail to stop, then kill it if it does not. **/
+			kill(pid, SIGTERM);
+			polls = 0;
+			while ((wait_rval = waitpid(pid, &wstatus, WNOHANG)) == 0 && polls < SMTP_SENDMAIL_KILL_DELAY * 10)
+			    {
+			    nanosleep(&pollInterval, NULL);
+			    polls++;
+			    }
+			if (wait_rval == 0)
+			    {
+			    kill(pid, SIGKILL);
+			    waitpid(pid, &wstatus, 0);
+			    }
 			snprintf(result, sizeof(result), "timeout");
 			}
 		    else if (UNLIKELY(wait_rval < 0))
@@ -2996,7 +3008,7 @@ smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expir
 	    else if (sscanf(header, "signal %d", &code) == 1)
 		printed = xsPrintf(&tryMsg, "Sendmail was killed by signal %d", code);
 	    else if (strcmp(header, "timeout") == 0)
-		printed = xsPrintf(&tryMsg, "Sendmail was killed after %d seconds", SMTP_SENDMAIL_TIMEOUT);
+		printed = xsPrintf(&tryMsg, "Sendmail timed out after %d seconds", SMTP_SENDMAIL_TIMEOUT);
 	    else if (strcmp(header, "error") == 0)
 		printed = xsPrintf(&tryMsg, "Failed to run sendmail");
 	    else
