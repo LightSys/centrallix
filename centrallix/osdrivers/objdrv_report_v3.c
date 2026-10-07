@@ -3379,14 +3379,19 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
 	    if(indexSer == -1) continue;
 	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
 	    valoffset = (ctx->max - ctx->min)*0.02;
+
+	    /** A line chart's end points sit on the plot edges, so align their labels inward. **/
+	    const char* align = "";
+	    if (!bar && i == 0) align = ":L";
+	    else if (!bar && i == total_n_vals - 1) align = ":R";
 #ifdef HAVE_MGL2
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.022;
-	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor);
+	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], align, fs * ctx->font_scale_factor);
 #else
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.013;
-	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor, '\0');
+	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], align, fs * ctx->font_scale_factor, '\0');
 #endif
 	    /** reset the index of the series and move on to the next label **/
 	    indexSer = -1;
