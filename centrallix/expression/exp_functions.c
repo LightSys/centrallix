@@ -232,12 +232,13 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 			{
 			const size_t new_len = ret_len*2;
 			/** reallocate to twice the length **/
-			ret_buf = nmSysRealloc(ret_buf, new_len);
-			if(ret_buf == NULL)
+			char* realloc_buf = nmSysRealloc(ret_buf, new_len);
+			if(realloc_buf == NULL)
 			    {
 			    mssError(1,"EXP","convert(): Out of memory");
 			    goto error;
 			    }
+			ret_buf = realloc_buf;
 			out_buf = ret_buf + (ret_len - out_len);
 			out_len += new_len - ret_len;
 			ret_len = new_len;

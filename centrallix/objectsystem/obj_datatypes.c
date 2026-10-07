@@ -2956,7 +2956,13 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 	    }
 
 	/** reallocate the final buffer to size, and assign output pointer and size **/
-	*dest = nmSysRealloc(buf, buf_len);
+	char* realloc_buf = nmSysRealloc(buf, buf_len);
+	if(realloc_buf == NULL)
+	    {
+	    mssError(1, "OBJ", "Out of memory");
+	    goto error;
+	    }
+	*dest = realloc_buf;
 	*dest_len = buf_len;
 
 	return 0;
