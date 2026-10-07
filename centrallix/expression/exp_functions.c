@@ -1870,6 +1870,7 @@ int exp_fn_eval(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    if (strchr(i1->String, 'D') == NULL) newpermflags |= EXPR_MO_NODIRECT;
 	    if (strchr(i1->String, 'S') == NULL) newpermflags |= EXPR_MO_NOSUBQUERY;
 	    if (strchr(i1->String, 'E') == NULL) newpermflags |= EXPR_MO_NOEVAL;
+	    if (strchr(i1->String, 'L') == NULL) newpermflags |= EXPR_MO_NOLINKSIGN;
 	    }
 	else
 	    {
@@ -4478,6 +4479,56 @@ int exp_fn_argon2id(pExpression tree, pParamObjects objlist, pExpression passwor
     return 0;
 }
 
+int exp_fn_linksign(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
+    {
+    pXString xs = NULL;
+
+	/** NULL result because 1st param is null? **/
+	if (i0 && i0->Flags & EXPR_F_NULL)
+	    {
+	    tree->DataType = DATA_T_STRING;
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+
+	/** Not allowed? **/
+	if (!objlist || (objlist->MainFlags & EXPR_MO_NOLINKSIGN))
+	    {
+	    mssError(1,"EXP","Cannot use linksign() in this context");
+	    return -1;
+	    }
+
+	/** Usage **/
+	if (!i0 || i0->DataType != DATA_T_STRING)
+	    {
+	    mssError(1,"EXP","linksign() first parameter must be a string");
+	    return -1;
+	    }
+	tree->DataType = DATA_T_STRING;
+
+	/** Try to sign it **/
+	xs = cxssLinkSign(i0->String);
+
+	/** Signed? **/
+	if (xs)
+	    {
+	    if (tree->Alloc && tree->String)
+		nmSysFree(tree->String);
+	    tree->String = nmSysStrdup(xsString(xs));
+	    xsFree(xs);
+	    xs = NULL;
+	    if (!tree->String)
+		return -1;
+	    tree->Alloc = 1;
+	    }
+	else
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    }
+
+    return 0;
+    }
+
 
 /*** exp_fn_path_element() - implements the "path_element" function which constrains a
  *** string to only be a valid path element.
@@ -4702,6 +4753,7 @@ int exp_internal_DefineFunctions()
 	xhAdd(&EXP.Functions, "argon2id",(char*)exp_fn_argon2id);
 	xhAdd(&EXP.Functions, "path_element",(char*)exp_fn_path_element);
 	xhAdd(&EXP.Functions, "path_params",(char*)exp_fn_path_params);
+	xhAdd(&EXP.Functions, "linksign",(char*)exp_fn_linksign);
 
 	/** Windowing **/
 	xhAdd(&EXP.Functions, "row_number", (char*)exp_fn_row_number);
