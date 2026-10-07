@@ -362,10 +362,15 @@ static int
 prt_htmlfm_EndQP(pPrtHTMLfmInf context)
     {
 
+	/*** We don't know if WriteFn() will call mssError() on failure, so
+	 *** clear the error stack while we know there is no error yet.
+	 ***/
+	mssClearError();
+
 	/** Write the held character as if a line break follows it. **/
 	if (context->QPPending != '\0' && prt_htmlfm_WriteEmail(context, "\n", 1, 0, FD_U_PACKET) < 0)
 	    {
-	    mssError(1, "PRT", "Failed to end the quoted-printable HTML part of the email report.");
+	    mssError(0, "PRT", "Failed to end the quoted-printable HTML part of the email report.");
 	    return -1;
 	    }
 	context->QPEncode = 0;
@@ -417,6 +422,11 @@ prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...)
     va_list va;
     int rval;
 
+	/*** We don't know if WriteFn() will call mssError() on failure, so
+	 *** clear the error stack while we know there is no error yet.
+	 ***/
+	mssClearError();
+
 	/** Write formatted output. **/
 	va_start(va, fmt);
 	rval = (context->Flags & PRT_HTMLFM_F_EMAIL)
@@ -427,7 +437,7 @@ prt_htmlfm_OutputPrintf(pPrtHTMLfmInf context, char* fmt, ...)
 	/** Print error message, if needed. **/
 	if (UNLIKELY(rval < 0))
 	    {
-	    mssError(1, "PRT",
+	    mssError(0, "PRT",
 		"xsGenPrintf_va() failed to output format: \"%s\".",
 		fmt
 	    );
