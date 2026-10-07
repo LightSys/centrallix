@@ -646,7 +646,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		subtree->Flags |= MQ_SF_ASTERISK;
 		if (subtree->ObjCnt == 0)
 		    {
-		    mssError(0,"MQ","Cannot use 'SELECT *' without at least one 'FROM' data source", subtree->RawData.String);
+		    mssError(0,"MQ","Cannot use 'SELECT *' without at least one 'FROM' data source in '%s'", subtree->RawData.String);
 		    return -1;
 		    }
 		for(j=stmt->Query->nProvidedObjects;j<stmt->Query->ObjList->nObjects;j++)
