@@ -33,12 +33,12 @@ test(char** tname)
     long long iter;
     int j, i, k;
 
-	*tname = "mtlexer-22 OFFSET test (LINEONLY + NODISCARD)";
+	*tname = "mtlexer-25 OFFSET test (LINEONLY + NODISCARD)";
 
 	mssInitialize("system", "", "", 0, "test");
 
 	/** Open file for initial parsing. **/
-	fd = fdOpen("tests/test_mtlexer_22.txt", O_RDONLY, 0600);
+	fd = fdOpen("tests/test_mtlexer_25.txt", O_RDONLY, 0600);
 	assert(fd != NULL);
 	lex = mlxOpenSession(fd, MLX_F_LINEONLY | MLX_F_NODISCARD);
 	assert(lex != NULL);
@@ -83,7 +83,7 @@ test(char** tname)
 	for(j=0;j<iter;j++)
 	    {
 	    /** Open a new lexer session on the file. **/
-	    fd = fdOpen("tests/test_mtlexer_22.txt", O_RDONLY, 0600);
+	    fd = fdOpen("tests/test_mtlexer_25.txt", O_RDONLY, 0600);
 	    assert(fd != NULL);
 	    lex = mlxOpenSession(fd, MLX_F_LINEONLY | MLX_F_NODISCARD);
 	    assert(lex != NULL);
