@@ -2707,6 +2707,7 @@ int
 objStringToEncoding(char* code_str)
     {
     int num_lists = sizeof(obj_encoding_names)/sizeof(EncodingNames);
+
 	int i;
 	for(i = 0 ; i < num_lists ; i++)
 	    {
@@ -2741,6 +2742,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
     int state = 0;
     unsigned char buf_char = 0; /* used to store code point from multi-byte characters */
     char* buf = NULL;
+
 	/** shortcut if the data is empty **/
 	if(src_len == 0)
 	    {
@@ -2943,6 +2945,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** multibyte character is finished. Start a new one **/
 		    state = 0;
 		    break;
+
 		default:
 		    mssError(1, "OBJ", "Error: unknown UTF-8 parsing state %d.", state);
 		    goto error;
@@ -2966,10 +2969,12 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 	*dest_len = buf_len;
 
 	return 0;
+
     error: 
 	if(buf != NULL) nmSysFree(buf);
 	/** ensure caller does not attempt to read unallocated memory **/
 	*dest = NULL;
 	*dest_len = 0;
+
     return -1;
     }
