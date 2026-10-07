@@ -173,15 +173,18 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 		break;
 
 	    case PRT_OBJ_T_TABLE:
-		/** Table.  We need to break it, but also include the header if there is one. **/
+		/** Table.  We need to break it, but also include the header rows if there are any. **/
 		new_obj = prt_internal_Duplicate(this,0);
 		new_lm_inf = (pPrtTabLMData)(new_obj->LMData);
 		cur_parent = this->Parent;
 		prtUpdateHandleByPtr(this, new_obj);
-		if (lm_inf->HeaderRow)
+		new_lm_inf->HeaderRow = NULL;
+		for (search_obj = lm_inf->HeaderRow; search_obj != NULL; search_obj = search_obj->Next)
 		    {
-		    new_lm_inf->HeaderRow = prt_internal_Duplicate(lm_inf->HeaderRow, 1);
-		    prt_internal_Add(new_obj, new_lm_inf->HeaderRow);
+		    if (!(((pPrtTabLMData)(search_obj->LMData))->Flags & PRT_TABLM_F_ISHEADER)) break;
+		    pPrtObjStream new_header = prt_internal_Duplicate(search_obj, 1);
+		    if (!new_lm_inf->HeaderRow) new_lm_inf->HeaderRow = new_header;
+		    prt_internal_Add(new_obj, new_header);
 		    }
 		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
 		    {
@@ -566,7 +569,9 @@ prt_tablm_DetermineGeometry(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Check for a header/footer **/
 	    if (lm_inf->Flags & PRT_TABLM_F_ISHEADER)
-		parent_lm_inf->HeaderRow = new_child_obj;
+		{
+		if (!parent_lm_inf->HeaderRow) parent_lm_inf->HeaderRow = new_child_obj;
+		}
 	    else if (lm_inf->Flags & PRT_TABLM_F_ISFOOTER)
 		parent_lm_inf->FooterRow = new_child_obj;
 	    }

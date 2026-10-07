@@ -56,7 +56,7 @@ typedef struct _PTB
     int                 nColumns;       /* number of columns in table */
     int                 CurColID;       /* next cell inserted is this col. */
     int			ColSpan;	/* number of columns used by a cell */
-    pPrtObjStream       HeaderRow;      /* row that is the table header */
+    pPrtObjStream       HeaderRow;      /* first of the table's header rows */
     pPrtObjStream       FooterRow;      /* table footer row */
     int                 Flags;
     PrtBorder           TopBorder;
