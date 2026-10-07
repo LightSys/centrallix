@@ -95,8 +95,8 @@ int exp_fn_user_name(pExpression tree, pParamObjects objlist, pExpression i0, pE
     }
 
 
-/*** exp_fn_internal_encoding_convert - Convert a string from one encoding to another. 
- *** If a character in the provided data is unsupported in the target encoding, it 
+/*** exp_fn_internal_encoding_convert - Convert a string from one encoding to another.
+ *** If a character in the provided data is unsupported in the target encoding, it
  *** attempts to transliterate the data. If this fails, the character is dropped.
  ***   @param tree The expression tree node to store the results in
  ***   @param data_exp The expression with the data to be converted
@@ -119,7 +119,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	    goto error;
 	    }
 
-	/* If the string is null, just return NULL and exit */
+	/** If the string is null, just return NULL and exit **/
 	if( data_exp == NULL || (data_exp->Flags & EXPR_F_NULL) != 0 )
 	    {
 	    tree->Flags |= EXPR_F_NULL;
@@ -161,7 +161,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 		mssError(1,"EXP","convert(): Cannot convert from character encoding '%s'", from_code_exp->String);
 		goto error;
 	    }
-	
+
 	/** Assign the encoding to translate to **/
 	char* to_code;
 	switch(objStringToEncoding(to_code_exp->String))
@@ -182,8 +182,8 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 		mssError(1,"EXP","convert(): Cannot convert to character encoding '%s'", to_code_exp->String);
 		goto error;
 	    }
-	
-	
+
+
 	/** Open a session to handle the conversion **/
 	conv_desc = iconv_open(to_code, from_code);
 	if(conv_desc == (iconv_t)-1)
@@ -192,7 +192,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	    conv_desc = (iconv_t)0;
 	    goto error;
 	    }
-	
+
 	/** assign variables for output and to track the conversion progress **/
 	size_t in_len = data_len;
 	size_t out_len = in_len;
@@ -203,7 +203,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	    goto error;
 	    }
 	char* out_buf = ret_buf;
-	
+
 	/** Keep going until the conversion is complete **/
 	while(in_len > 0)
 	    {
@@ -213,19 +213,19 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 		switch (errno)
 		    {
 		    case EILSEQ:
-			if(data_exp->DataType == DATA_T_BINARY) 
+			if(data_exp->DataType == DATA_T_BINARY)
 			    mssError(1,"EXP","convert(): Invalid multibyte sequence or character in binary data from encoding '%s'",
 				from_code);
 			else
-			    mssError(1,"EXP","convert(): Invalid multibyte sequence or character in string '%s' from encoding '%s'", 
+			    mssError(1,"EXP","convert(): Invalid multibyte sequence or character in string '%s' from encoding '%s'",
 				data_exp->String, from_code);
 			break;
-		    case EINVAL: 
-			if(data_exp->DataType == DATA_T_BINARY) 
+		    case EINVAL:
+			if(data_exp->DataType == DATA_T_BINARY)
 			    mssError(1,"EXP","convert(): Binary data ends with an incomplete multibyte sequence from encoding '%s'",
 				from_code);
 			else
-			    mssError(1,"EXP","convert(): String '%s' ends with an incomplete multibyte sequence from encoding '%s'", 
+			    mssError(1,"EXP","convert(): String '%s' ends with an incomplete multibyte sequence from encoding '%s'",
 				data_exp->String, from_code);
 			break;
 		    case E2BIG:
@@ -245,11 +245,11 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 			}
 			continue;
 		    default:
-			if(data_exp->DataType == DATA_T_BINARY) 
-			    mssError(1,"EXP","convert(): Unknown error converting binary data from '%s' to '%s'. errno = %d", 
+			if(data_exp->DataType == DATA_T_BINARY)
+			    mssError(1,"EXP","convert(): Unknown error converting binary data from '%s' to '%s'. errno = %d",
 				from_code, to_code, errno);
 			else
-			    mssError(1,"EXP","convert(): Unknown error converting string '%s' from '%s' to '%s'. errno = %d", 
+			    mssError(1,"EXP","convert(): Unknown error converting string '%s' from '%s' to '%s'. errno = %d",
 				data_exp->String, from_code, to_code, errno);
 		    }
 		goto error;
@@ -259,7 +259,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	/** close the session **/
 	iconv_close(conv_desc);
 	conv_desc = (iconv_t)0;
-	
+
 	/** if the encoding required preprocessing, need to free the buffer */
 	if(pre_buf != NULL)
 	    {
@@ -300,7 +300,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	    }
 
 	/** If the data was empty, could have NULL here **/
-	tree->String = (ret_buf != NULL)? ret_buf : tree->Types.StringBuf;
+	tree->String = (ret_buf != NULL) ? ret_buf : tree->Types.StringBuf;
 	tree->Alloc = (ret_buf != NULL);
 	tree->Size = ret_len;
 
@@ -311,6 +311,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	if(conv_desc != (iconv_t)0) iconv_close(conv_desc);
 	if(pre_buf != NULL) nmSysFree(pre_buf);
 	errno = 0;
+
     return -1;
     }
 
@@ -327,12 +328,13 @@ int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpre
     void* vptr;
     char* ptr;
     Binary b;
+
 	if (!data_type || !data || data_type->DataType != DATA_T_STRING || (data_type->Flags & EXPR_F_NULL))
 	    {
 	    mssError(1,"EXP","convert() requires data type and value to be converted");
 	    return -1;
 	    }
-	
+
     switch(data->DataType)
         {
 	case DATA_T_INTEGER: vptr = &(data->Integer); break;
@@ -352,7 +354,7 @@ int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpre
     if (!strcmp(data_type->String,"integer"))
         {
 	tree->DataType = DATA_T_INTEGER;
-	if (data->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
@@ -362,7 +364,7 @@ int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpre
     else if (!strcmp(data_type->String,"string"))
         {
 	tree->DataType = DATA_T_STRING;
-	if (data->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
@@ -387,7 +389,7 @@ int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpre
     else if (!strcmp(data_type->String,"double"))
         {
 	tree->DataType = DATA_T_DOUBLE;
-	if (data->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
@@ -397,7 +399,7 @@ int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpre
     else if (!strcmp(data_type->String,"money"))
         {
 	tree->DataType = DATA_T_MONEY;
-	if (data->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
@@ -411,7 +413,7 @@ int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpre
     else if (!strcmp(data_type->String,"datetime"))
         {
 	tree->DataType = DATA_T_DATETIME;
-	if (data->Flags & EXPR_F_NULL) 
+	if (data->Flags & EXPR_F_NULL)
 	    {
 	    tree->Flags |= EXPR_F_NULL;
 	    return 0;
@@ -430,13 +432,14 @@ int exp_fn_internal_type_convert(pExpression tree, pExpression data_type, pExpre
     return 0;
     }
 
- 
+
 int exp_fn_convert(pExpression tree, pParamObjects objlist, pExpression i0, pExpression i1, pExpression i2)
     {
 	/** Determine if this is a type or encoding conversion **/
 	if (tree->Children.nItems == 2) return exp_fn_internal_type_convert(tree, i0, i1);
 	else if(tree->Children.nItems == 3) return exp_fn_internal_encoding_convert(tree, i0, i1, i2);
 	else mssError(1,"EXP","convert(): valid forms are (type, data) or (data, to_encoding, from_encoding)");
+
     return -1;
     }
 
