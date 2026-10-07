@@ -184,7 +184,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	    }
 	
 	
-	/** Open a session to hanlde the conversion **/
+	/** Open a session to handle the conversion **/
 	conv_desc = iconv_open(to_code, from_code);
 	if(conv_desc == (iconv_t)-1)
 	    {
@@ -214,10 +214,10 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 		    {
 		    case EILSEQ:
 			if(data_exp->DataType == DATA_T_BINARY) 
-			    mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in binary data from encoding '%s'",
+			    mssError(1,"EXP","convert(): Invalid multibyte sequence or character in binary data from encoding '%s'",
 				from_code);
 			else
-			    mssError(1,"EXP","convert(): Invalid multibyte sequnece or character in string '%s' from encoding '%s'", 
+			    mssError(1,"EXP","convert(): Invalid multibyte sequence or character in string '%s' from encoding '%s'", 
 				data_exp->String, from_code);
 			break;
 		    case EINVAL: 
