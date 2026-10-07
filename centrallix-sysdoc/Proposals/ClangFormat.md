@@ -14,7 +14,7 @@ Using clang-format to 1) reformat all existing Centrallix C and JavaScript code,
 2. How to initially reformat the repository in a way that won't make Git blames unusable
 
 ## Choosing a .clang-format file
-Different versions of clang-format support different style options. Here is a sample `.clang-format` for C and JavaScript which works with newer versions of clang-format, such as the one bundled with the VSCode C extension. It's adapted from the centrallix-sysdoc/BeeleyCodingStyle.md docs.
+Different versions of clang-format support different style options. Here is a sample `.clang-format` for C and JavaScript which works with newer versions of clang-format, such as the one bundled with the VSCode C extension. It's adapted from the centrallix-sysdoc/CentrallixCodingStyle.md docs.
 
 ```
 ---
