@@ -2750,7 +2750,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 	    }
 	
 	buf = nmSysMalloc(src_len);
-	if(buf == NULL)
+	if(UNLIKELY(buf == NULL))
 	    {
 	    mssError(1, "OBJ", "Out of memory");
 	    goto error;
@@ -2803,7 +2803,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			 ***/
 			
 			/** check for overlong form **/
-			if(cur < 0xC2u)
+			if(UNLIKELY(cur < 0xC2u))
 			    {
 			    mssError(1, "OBJ", "Error: overlong encoding found at 2 byte header %02hhX at index %zu.", cur, i);
 			    goto error;
@@ -2834,13 +2834,13 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			 ***/
 
 			/** check for overlong form **/
-			if(cur == 0xE0u && peek < 0xA0u)
+			if(UNLIKELY(cur == 0xE0u && peek < 0xA0u))
 			    {
 			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
 			/** check for surrogate bytes */
-			if(cur == 0xEDu && peek >= 0xA0U)
+			if(UNLIKELY(cur == 0xEDu && peek >= 0xA0U))
 			    {
 			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible surrogate starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
@@ -2869,13 +2869,13 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			 ***/
 
 			/** check for overlong form **/
-			if(cur == 0xF0u && peek < 0x90u)
+			if(UNLIKELY(cur == 0xF0u && peek < 0x90u))
 			    {
 			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
 			/** check for an over-sized value **/
-			if(cur == 0xF4 && peek >= 0x90 && peek != 0xFFu)
+			if(UNLIKELY(cur == 0xF4 && peek >= 0x90 && peek != 0xFFu))
 			    {
 			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible out of range encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
@@ -2896,7 +2896,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 
 		case 3: /* continuation byte, 3 remaining */
 		    /** continuation 3:  1  0 c5 c4 c3 c2 c1 c0 **/
-		    if((cur & 0b11000000u) != 0b10000000u)
+		    if(UNLIKELY((cur & 0b11000000u) != 0b10000000u))
 			{
 			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
@@ -2913,7 +2913,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 
 		case 2: /* continuation byte, 2 remaining */
 		    /** continuation 2:  1  0 b5 b4 b3 b2 b1 b0 **/
-		    if((cur & 0b11000000u) != 0b10000000u)
+		    if(UNLIKELY((cur & 0b11000000u) != 0b10000000u))
 			{
 			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
@@ -2931,7 +2931,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 
 		case 1: /* continuation byte, 1 remaining */
 		    /** continuation 1:  1  0 a5 a4 a3 a2 a1 a0 **/
-		    if((cur & 0b11000000u) != 0b10000000u)
+		    if(UNLIKELY((cur & 0b11000000u) != 0b10000000u))
 			{
 			mssError(1, "OBJ", "Error: expected continuation byte, found %02hhX instead at index %zu.", cur, i);
 			goto error;
@@ -2949,7 +2949,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		}
 	    }
 
-	if(state != 0)
+	if(UNLIKELY(state != 0))
 	    {
 	    mssError(1, "OBJ", "Error: truncated multibyte character found at end of string.");
 	    goto error;
@@ -2957,7 +2957,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 
 	/** reallocate the final buffer to size, and assign output pointer and size **/
 	char* realloc_buf = nmSysRealloc(buf, buf_len);
-	if(realloc_buf == NULL)
+	if(UNLIKELY(realloc_buf == NULL))
 	    {
 	    mssError(1, "OBJ", "Out of memory");
 	    goto error;
