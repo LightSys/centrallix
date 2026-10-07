@@ -3438,9 +3438,6 @@ nhtInitialize()
 	    /** Allowed file upload extensions **/
 	    for(i=0; stAttrValue(stLookup(my_config, "upload_extensions"), NULL, &strval, i) >= 0; i++)
 		xaAddItem(&NHT.AllowedUploadExts, nmSysStrdup(strval));
-
-	    /** Link signing key **/
-	    cxLinkSigningSetup(my_config);
 	    }
 
 	/** Start the watchdog timer thread **/
