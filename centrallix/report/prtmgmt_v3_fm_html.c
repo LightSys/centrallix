@@ -2042,7 +2042,7 @@ prt_htmlfm_Initialize()
 
     err_type:
 	    mssError(0, "PRT",
-		"Failed to add subtype #%d/%zu: \"%s\"",
+		"Failed to add subtype #%d/%zu: \"%s\".",
 		i + 1, PRT_HTMLFM_N_SUBTYPES, prt_htmlfm_subtypes[i].MimeType
 	    );
 	    goto err;

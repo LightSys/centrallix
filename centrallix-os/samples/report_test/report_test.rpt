@@ -1020,9 +1020,9 @@ report_test "system/report"
 	    }
 	}
 
-    // 16. Table inside an area, long enough to cross a page break.
     s15_note "report/data" { value=runserver("Expect: bar chart with blue and dark red series; orange line chart labeled with values and their share of the total, such as 248 (27%); pie with percents on the slices and values in the legend; auto-series bars in four different colors for East, North, South, and West.\n"); }
 
+    // 16. Table inside an area, long enough to cross a page break.
     s16 "report/area"
 	{
 	height=0;
