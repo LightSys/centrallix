@@ -205,7 +205,7 @@ typedef struct _ENN
     EncodingNames, *pEncodingNames;
 
 const char* obj_ascii_names[] =	{"ascii"};
-const char* obj_latin_1_names[] = {"latin1", "latin-1", "ISO 8859-1", "ISO-8859-1","EIC 8859-1", "EIC-8859-1", "ISO/IEC 8859-1"};
+const char* obj_latin_1_names[] = {"latin1", "latin-1", "ISO 8859-1", "ISO-8859-1","IEC 8859-1", "IEC-8859-1", "ISO/IEC 8859-1"};
 const char* obj_utf_8_names[] = {"utf8", "utf-8", "unicode"};
 const char* obj_cp1252_names[] = {"cp1252", "windows-1252", "windows1252"};
 const char* obj_vanco_names[] = {"vanco"};
