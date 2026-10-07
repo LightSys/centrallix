@@ -232,6 +232,39 @@ prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
     }
 
 
+/*** prt_tablm_FitToRows() - shrinks a table to fit its rows, such as after
+ *** a row moves to the next page.  The table keeps at least its configured
+ *** height.
+ ***
+ *** @param table The table.
+ ***/
+static void
+prt_tablm_FitToRows(pPrtObjStream table)
+    {
+    double height = 0.0;
+
+	if (table->Flags & PRT_OBJ_F_FIXEDSIZE) return;
+
+	/** Find the height the rows need. **/
+	for (pPrtObjStream row = table->ContentHead; row != NULL; row = row->Next)
+	    {
+	    if (row->Flags & PRT_OBJ_F_MARGINRELEASE) continue;
+	    if (row->Y + row->Height > height) height = row->Y + row->Height;
+	    }
+	height += table->MarginTop + table->MarginBottom + table->BorderTop + table->BorderBottom;
+	if (height < table->ConfigHeight) height = table->ConfigHeight;
+	if (height >= table->Height) return;
+
+	/** Shrink the table. **/
+	const double old_height = table->Height;
+	table->Height = height;
+	if (table->Parent != NULL)
+	    table->Parent->LayoutMgr->ChildResized(table->Parent, table, table->Width, old_height);
+
+    return;
+    }
+
+
 /*** prt_tablm_ChildResizeReq() - this is called when a child object
  *** within this one is about to be resized.  This method gives this
  *** layout manager a chance to prevent the resize operation (return -1).  
@@ -329,6 +362,7 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		{
 		table_obj = this->Parent;
 		prt_internal_MakeOrphan(this);
+		prt_tablm_FitToRows(table_obj);
 		new_parent = table_obj;
 		if (table_obj->LayoutMgr->Break(table_obj, &new_parent) >= 0)
 		    {
