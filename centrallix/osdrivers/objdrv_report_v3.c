@@ -283,6 +283,8 @@ typedef struct
     int		rend_y_pixels;
     int		rotation;
     double	zoom;
+    int		auto_escape;	/* whether to escape the chart engine's markup in text */
+    pXArray	texts;		/* escaped copies of text, freed with the context */
     }
     RptChartContext, *pRptChartContext;
 
@@ -3243,6 +3245,47 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
     }
 
 
+/*** rpt_internal_ChartText() - prepares text for the chart engine, escaping
+ *** the characters it reads as markup unless the chart disables that.
+ ***
+ *** @param ctx The chart context, which frees the escaped text when done.
+ *** @param text The text to draw.
+ *** @returns The text to pass to the chart engine, or NULL on failure.
+ ***/
+static char*
+rpt_internal_ChartText(pRptChartContext ctx, char* text)
+    {
+    char* escaped;
+    size_t len = 0;
+
+	if (!ctx->auto_escape) return text;
+
+	/** Put a backslash before each markup character. **/
+	escaped = nmSysMalloc(strlen(text) * 2 + 1);
+	if (!escaped)
+	    {
+	    mssError(1, "RPT", "nmSysMalloc(%zu) failed.", strlen(text) * 2 + 1);
+	    return NULL;
+	    }
+	for (const char* scan = text; *scan; scan++)
+	    {
+	    if (strchr("\\_^{}", *scan)) escaped[len++] = '\\';
+	    escaped[len++] = *scan;
+	    }
+	escaped[len] = '\0';
+
+	/** Keep it for freeing with the context. **/
+	if (xaAddItem(ctx->texts, escaped) < 0)
+	    {
+	    mssError(1, "RPT", "Failed to keep escaped chart text \"%s\".", text);
+	    nmSysFree(escaped);
+	    return NULL;
+	    }
+
+    return escaped;
+    }
+
+
 /*** rpt_internal_FindSeries() - finds a series in a chart value set.
  ***
  *** @param values The value set.
@@ -3593,6 +3636,8 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 		{
 		snprintf(lineStyle, sizeof(lineStyle), "%s-9", color); /* make the line in the legend appear thicker*/
 		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		ptr = rpt_internal_ChartText(ctx, ptr);
+		if (!ptr) return -1;
 		mgl_add_legend(ctx->gr, ptr, lineStyle);
 		}
 	    }
@@ -3731,6 +3776,8 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 	    if(ctx->show_legend)
 		{
 		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		ptr = rpt_internal_ChartText(ctx, ptr);
+		if (!ptr) return -1;
 		mgl_add_legend(ctx->gr, ptr, lineStyle);
 		}
 	    }
@@ -4258,6 +4305,10 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
 	ctx->show_legend = rpt_internal_GetBool(inf, chart, "show_legend", false, 0);
+	ctx->auto_escape = !rpt_internal_GetBool(inf, chart, "disable_auto_escaping", false, 0);
+	ctx->texts = xaNew(8);
+	if (!ctx->texts)
+	    goto error;
 	/** Determine axis/series counts **/
 	ctx->series = xaNew(4);
 
@@ -4343,6 +4394,11 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	rpt_internal_GetString(inf, chart, "title", &title, "", 0);
 	rpt_internal_GetString(inf, ctx->x_axis, "label", &x_axis_label, "", 0);
 	rpt_internal_GetString(inf, ctx->y_axis, "label", &y_axis_label, "", 0);
+	title = rpt_internal_ChartText(ctx, title);
+	x_axis_label = rpt_internal_ChartText(ctx, x_axis_label);
+	y_axis_label = rpt_internal_ChartText(ctx, y_axis_label);
+	if (!title || !x_axis_label || !y_axis_label)
+	    goto error;
 
 	/** Start the query to get the chart values. **/
 	if ((ac = rpt_internal_Activate(inf, chart, rs)) == NULL)
@@ -4393,7 +4449,9 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	for(i=0; i<ctx->values->nItems; i++)
 	    {
 	    value = (pRptChartValues)ctx->values->Items[i];
-	    ctx->x_labels[i] = value->Label;
+	    ctx->x_labels[i] = rpt_internal_ChartText(ctx, value->Label);
+	    if (!ctx->x_labels[i])
+		goto error;
 	    /* auto series can be sparsely pupolated and thus require initialization */
 	    if(isAuto)
 		{
@@ -4604,6 +4662,12 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    mgl_delete_graph(ctx->gr);
 	if (img)
 	    prtFreeImage(img);
+	if (ctx && ctx->texts)
+	    {
+	    for(i=0; i<ctx->texts->nItems; i++)
+		nmSysFree(ctx->texts->Items[i]);
+	    xaFree(ctx->texts);
+	    }
 	if (ctx)
 	    nmFree(ctx, sizeof(RptChartContext));
 	return errval;
