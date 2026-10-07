@@ -312,6 +312,7 @@ cxInitialize(void* v)
     {
     pFile cxconf;
     pStructInf mss_conf;
+    pStructInf http_conf;
     char* authmethod;
     char* authmethodfile;
     char* logmethod;
@@ -430,6 +431,17 @@ cxInitialize(void* v)
 	RAND_add(&pid, 4, (double)0.25);
 	tm = time(NULL);
 	RAND_add(&tm, 4, (double)0.125);
+
+	/** Init link signing capabilities.  This is primarily a feature
+	 ** of net_http, but the signing mechanism is used outside of
+	 ** the running server as well, so we do that init here.
+	 **/
+	http_conf = stLookup(CxGlobals.ParsedConfig, "net_http");
+	if (http_conf)
+	    {
+	    /** Link signing key **/
+	    cxLinkSigningSetup(http_conf);
+	    }
 
     return 0;
     }
