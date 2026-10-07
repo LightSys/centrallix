@@ -519,7 +519,12 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 			    kill(pid, SIGKILL);
 			    waitpid(pid, &wstatus, 0);
 			    }
-			snprintf(result, sizeof(result), "timeout");
+
+			/** A clean exit during the grace period means sendmail accepted the email. **/
+			if (wait_rval > 0 && WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == 0)
+			    snprintf(result, sizeof(result), "exit 0");
+			else
+			    snprintf(result, sizeof(result), "timeout");
 			}
 		    else if (UNLIKELY(wait_rval < 0))
 			{
