@@ -55,4 +55,3 @@ csv SELECT "one byte to multi" = to_hex(convert(from_hex('92'), 'utf8', 'cp1252'
 
 # convert multiple bytes into single 
 csv SELECT "multi to one byte" = to_hex(convert('’', 'cp1252', 'utf8'))
-

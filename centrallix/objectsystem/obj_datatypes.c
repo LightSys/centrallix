@@ -2731,7 +2731,7 @@ objStringToEncoding(char* code_str)
  ***   @param src_len the length of the data coming in.
  ***   @param dest a pointer to redirect to the generated output. The initial pointer will be overwritten, 
  ***      and the output is allocated with nmSysMalloc. The pointer will be `malloc(0)` if src_len was 0
- ***   @param dest_len a pointer to where the final output length should be stored. The inital value is ignored
+ ***   @param dest_len a pointer to where the final output length should be stored. The initial value is ignored
  ***   @returns 0 success or -1 on failure
  ***/
 int
@@ -2756,7 +2756,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 	    goto error;
 	    }
 
-	/** unwraping UTF-8 always makes the result the same length or shorter **/
+	/** unwrapping UTF-8 always makes the result the same length or shorter **/
 	size_t i;
 	for(i = 0 ; i < src_len ; i++ )
 	    {
@@ -2805,7 +2805,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			/** check for overlong form **/
 			if(cur < 0xC2u)
 			    {
-			    mssError(1, "OBJ", "Error: overlong encoding found at 2 bit header %02hhX at index %zu.", cur, i);
+			    mssError(1, "OBJ", "Error: overlong encoding found at 2 byte header %02hhX at index %zu.", cur, i);
 			    goto error;
 			    }
 
@@ -2839,7 +2839,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
-			/** check for surogate bytes */
+			/** check for surrogate bytes */
 			if(cur == 0xEDu && peek >= 0xA0U)
 			    {
 			    mssError(1, "OBJ", "Error: Invalid 3 byte character. Possible surrogate starting with %02hhX %02hhX at index %zu.", cur, peek, i);
@@ -2874,7 +2874,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible overlong encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
 			    goto error;
 			    }
-			/** check for an oversied value **/
+			/** check for an over-sized value **/
 			if(cur == 0xF4 && peek >= 0x90 && peek != 0xFFu)
 			    {
 			    mssError(1, "OBJ", "Error: Invalid 4 byte character. Possible out of range encoding starting with %02hhX %02hhX at index %zu.", cur, peek, i);
@@ -2904,7 +2904,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** write first 2 bits alongside stored bits **/
 		    buf[buf_len++] = buf_char | ((0b00110000u & cur) >> 4);
 		    
-		    /** store the remaining 4 bytes **/
+		    /** store the remaining 4 bits **/
 		    buf_char = (0b00001111u & cur) << 4;
 		    
 		    /** expect 2 more continuation bytes **/
@@ -2944,7 +2944,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    state = 0;
 		    break;
 		default:
-		    mssError(1, "OBJ", "Error: unkown UTF-8 parsing state %d.", state);
+		    mssError(1, "OBJ", "Error: unknown UTF-8 parsing state %d.", state);
 		    goto error;
 		}
 	    }
