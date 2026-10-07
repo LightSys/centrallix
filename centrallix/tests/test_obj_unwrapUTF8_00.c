@@ -37,7 +37,7 @@ test_unwrap_fail(char* in_buf, size_t in_len)
     size_t out_len = 0;
     char* out_buf = NULL;
 
-    /** test normal **/
+    /** test failure **/
     if(objUnwrapUTF8(in_buf, in_len, &out_buf, &out_len) != -1) return -1;
     if(out_len != 0) return -2;
     if(out_buf != NULL) return -3;
@@ -145,7 +145,7 @@ test(char** name)
 
     /** Truncated multibyte continuation bytes */
     
-    in_buf = "\xC2" "AB"; /* 2-byte character: leading byte only, nothing else in the string */
+    in_buf = "\xC2" "AB"; /* 2-byte character: leading byte only */
     assert(test_unwrap_fail(in_buf, 3) == 0);
 
     in_buf = "A\xC2"; /* 2-byte character truncated at the very end of the string */
