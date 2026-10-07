@@ -294,7 +294,7 @@ outerForm "report/form"
 		</properties>
 		<children>
 			<child type="report/table-row">
-				<childproperty name="allowbreak" type="yes/no">Whether to allow the row to span multiple pages in the report.</childproperty>
+				<childproperty name="allowbreak" type="yes/no">Whether a row taller than a page may split across pages.  A row that fits on a page always moves to the next page whole.  Default "yes".</childproperty>
 				<childproperty name="fixedsize" type="yes/no">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the table row is allowed to grow vertically to fit its contents.</childproperty>
 				<childproperty name="header" type="yes/no">Whether the row is a header row (repeated on subsequent pages).</childproperty>
 				<childproperty name="innerborder" type="double">Width of the inside borders between cells in the row.</childproperty>
