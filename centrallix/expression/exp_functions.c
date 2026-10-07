@@ -113,12 +113,12 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	/** check the params are valid **/
 	if ( from_code_exp == NULL || (from_code_exp->Flags & EXPR_F_NULL) != 0 || from_code_exp->DataType != DATA_T_STRING
 	    || to_code_exp == NULL || (to_code_exp->Flags   & EXPR_F_NULL) != 0 || to_code_exp->DataType   != DATA_T_STRING
-	    || (data_exp != NULL && data_exp->DataType != DATA_T_STRING && data_exp->DataType != DATA_T_BINARY) )
+	    || (data_exp != NULL && (data_exp->Flags & EXPR_F_NULL) == 0 && data_exp->DataType != DATA_T_STRING && data_exp->DataType != DATA_T_BINARY) )
 	    {
 	    mssError(1, "EXP", "convert(): conversion to character encoding requires (STRING|BINARY, STRING, STRING)");
 	    goto error;
 	    }
-	
+
 	/* If the string is null, just return NULL and exit */
 	if( data_exp == NULL || (data_exp->Flags & EXPR_F_NULL) != 0 )
 	    {
