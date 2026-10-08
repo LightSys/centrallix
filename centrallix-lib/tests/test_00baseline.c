@@ -13,7 +13,7 @@ static bool
 doTest(void)
     {
     int i;
-    int array[2] = {0};
+    volatile int array[2] = {0};
 
 	for(i=0;i<OPS_PER_PASS;i++) array[0] = array[1];
 
