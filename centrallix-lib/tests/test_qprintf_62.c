@@ -49,5 +49,5 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-62 %STR&DB64 integrity test";
-    return loopTest(doTest) * 6;
+    return loopTest(doTest) * 5;
     }
