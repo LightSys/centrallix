@@ -48,7 +48,7 @@ static unsigned int err_buf_size;
 
 static int mockErrorFn(char* error_msg)
     {
-    const size_t len = strlen(error_msg) + 1lu;
+    const size_t len = strlen(error_msg) + 4lu; /* "> " + message + "\n" + NUL */
 
 	/** Ensure enough space to store the error. **/
 	while (len > err_buf_size - err_buf_i)
