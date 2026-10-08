@@ -53,9 +53,10 @@ static int mockErrorFn(char* error_msg)
 	/** Ensure enough space to store the error. **/
 	while (len > err_buf_size - err_buf_i)
 	    {
+	    char* new_buf = realloc(err_buf, err_buf_size * 2);
+	    if (!ASSERT_NOT_NULL(new_buf)) return -1;
+	    err_buf = new_buf;
 	    err_buf_size *= 2;
-	    err_buf = realloc(err_buf, err_buf_size);
-	    if (!ASSERT_NOT_NULL(err_buf)) return -1;
 	    }
 
 	err_buf_i += snprintf(
@@ -78,9 +79,29 @@ static void* randomInit(void* ptr, size_t size)
 	return ptr;
     }
 
+/** Free the bulk data arrays and the entries allocated so far. **/
+static void freeBulk(void** data, void** test)
+    {
+	for (size_t i = 1lu; i < TEST_LIMIT; i++)
+	    {
+	    if (data != NULL) free(data[i]);
+	    if (test != NULL && test[i] != NULL) nmSysFree(test[i]);
+	    }
+	free(data);
+	free(test);
+    }
+
 static bool doTest(void)
     {
     bool success = true;
+    bool finished = false;
+    char* str1 = NULL;
+    char* str2 = NULL;
+    void** data = NULL;
+    void** test = NULL;
+    char* str_dup1 = NULL;
+    char* str_dup2 = NULL;
+    void* large_buf = NULL;
 
 	/** Set a consistent, distinct seed for each test iteration. **/
 	srand(seed_counter++);
@@ -88,29 +109,25 @@ static bool doTest(void)
 	/** Initialize the mock error function. **/
 	err_buf_size = 256;
 	err_buf = malloc(err_buf_size);
-	if (!ASSERT_NOT_NULL(err_buf)) return false;
+	if (!ASSERT_NOT_NULL(err_buf)) goto end;
 	err_buf_i = snprintf(err_buf, err_buf_size, "%s", "");
 	nmSetErrFunction(mockErrorFn);
 
 	/** Basic string data. **/
-	char* str1;
-	if (!ASSERT_NOT_NULL(str1 = nmSysMalloc(16))) return false;
+	if (!ASSERT_NOT_NULL(str1 = nmSysMalloc(16))) goto end;
 	snprintf(str1, 16, "ThisIsSomeData!");
-	char* str2;
-	if (!ASSERT_NOT_NULL(str2 = nmSysMalloc(32))) return false;
+	if (!ASSERT_NOT_NULL(str2 = nmSysMalloc(32))) goto end;
 	snprintf(str2, 32, "ThisDataIsDifferentStringData.\n");
 	success &= ASSERT_STR_EQL(str1, "ThisIsSomeData!");
 	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Random data, varying sizes. **/
-	void** data = malloc(TEST_LIMIT * sizeof(void*));
-	void** test = malloc(TEST_LIMIT * sizeof(void*));
-	if (!ASSERT_NOT_NULL(data)) return false;
-	if (!ASSERT_NOT_NULL(test)) return false;
+	if (!ASSERT_NOT_NULL(data = calloc(TEST_LIMIT, sizeof(void*)))) goto end;
+	if (!ASSERT_NOT_NULL(test = calloc(TEST_LIMIT, sizeof(void*)))) goto end;
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    {
-	    if (!ASSERT_NOT_NULL(test[i] = nmSysMalloc(i))) return false;
-	    if (!ASSERT_NOT_NULL(data[i] = randomInit(malloc(i), i))) return false;
+	    if (!ASSERT_NOT_NULL(test[i] = nmSysMalloc(i))) goto end;
+	    if (!ASSERT_NOT_NULL(data[i] = randomInit(malloc(i), i))) goto end;
 	    memcpy(test[i], data[i], i); /* Write test data into test memory. */
 	    }
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
@@ -122,7 +139,11 @@ static bool doTest(void)
 
 	/** Reallocate all variably sized memory to a different size. **/
 	for (size_t i = TEST_LIMIT - 1lu; i > 0lu; i--)
-	    if (!ASSERT_NOT_NULL(test[i] = nmSysRealloc(test[i], TEST_LIMIT - i))) return false;
+	    {
+	    void* new_ptr = nmSysRealloc(test[i], TEST_LIMIT - i);
+	    if (!ASSERT_NOT_NULL(new_ptr)) goto end;
+	    test[i] = new_ptr;
+	    }
 	for (size_t i = 1lu; i < TEST_LIMIT; i++)
 	    success &= ASSERT_EQL(memcmp(data[i], test[i], min(i, TEST_LIMIT - i)), 0, "%d");
 
@@ -131,10 +152,8 @@ static bool doTest(void)
 	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Testing strdup. **/
-	char* str_dup1;
-	char* str_dup2;
-	if (!ASSERT_NOT_NULL(str_dup1 = nmSysStrdup(str1))) return false;
-	if (!ASSERT_NOT_NULL(str_dup2 = nmSysStrdup(str2))) return false;
+	if (!ASSERT_NOT_NULL(str_dup1 = nmSysStrdup(str1))) goto end;
+	if (!ASSERT_NOT_NULL(str_dup2 = nmSysStrdup(str2))) goto end;
 	success &= ASSERT_STR_EQL(str_dup1, "ThisIsSomeData!");
 	success &= ASSERT_STR_EQL(str_dup2, "ThisDataIsDifferentStringData.\n");
 	str_dup1[12] = '\0';
@@ -148,13 +167,9 @@ static bool doTest(void)
 	success &= ASSERT_STR_EQL(str2, "ThisDataIsDifferentStringData.\n");
 
 	/** Free random data, varying sizes. **/
-	for (size_t i = 1lu; i < TEST_LIMIT; i++)
-	    {
-	    free(data[i]);
-	    nmSysFree(test[i]);
-	    }
-	free(data);
-	free(test);
+	freeBulk(data, test);
+	data = NULL;
+	test = NULL;
 
 	/** Basic string data is unharmed. **/
 	success &= ASSERT_STR_EQL(str1, "ThisIsSomeData!");
@@ -162,15 +177,16 @@ static bool doTest(void)
 
 	/** Free data. **/
 	nmSysFree(str1);
+	str1 = NULL;
 	nmSysFree(str2);
+	str2 = NULL;
 
 	/** Dup string data is unharmed. **/
 	success &= ASSERT_STR_EQL(str_dup1, "ThisIsSomeDa");
 	success &= ASSERT_STR_EQL(str_dup2, "ThatDataIsDifferentStringData.\n");
 
 	/** Large singular allocation. **/
-	void* large_buf;
-	if (!ASSERT_NOT_NULL(large_buf = nmSysMalloc(LARGE_BUF_SIZE))) return false;
+	if (!ASSERT_NOT_NULL(large_buf = nmSysMalloc(LARGE_BUF_SIZE))) goto end;
 	for (size_t i = LARGE_BUF_SIZE - 1lu; i > 0lu; i--)
 	    *((unsigned char*)large_buf + i) = (unsigned char)(i % 255lu);
 	*(unsigned char*)large_buf = 0u;
@@ -185,18 +201,34 @@ static bool doTest(void)
 
 	/** Free dups. **/
 	nmSysFree(str_dup1);
+	str_dup1 = NULL;
 	nmSysFree(str_dup2);
+	str_dup2 = NULL;
 
 	/** Free large allocation. **/
 	nmSysFree(large_buf);
+	large_buf = NULL;
 
 	/** Expect no captured errors. **/
 	success &= ASSERT_STR_EQL(err_buf, "");
 
-	/** Clean up. **/
-	free(err_buf);
+	finished = true;
 
-    return success;
+    end:
+	/** Clean up whatever is still allocated. **/
+	if (large_buf != NULL) nmSysFree(large_buf);
+	if (str_dup2 != NULL) nmSysFree(str_dup2);
+	if (str_dup1 != NULL) nmSysFree(str_dup1);
+	freeBulk(data, test);
+	if (str2 != NULL) nmSysFree(str2);
+	if (str1 != NULL) nmSysFree(str1);
+
+	/** Unregister the mock error function before freeing its buffer. **/
+	nmSetErrFunction(NULL);
+	free(err_buf);
+	err_buf = NULL;
+
+    return finished && success;
     }
 
 long long test(char** tname)
