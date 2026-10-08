@@ -632,6 +632,21 @@ typedef struct
 #define OBJ_MQ_F_NOUPDATE	(1<<1)		/* disallow any updates in this query */
 #define	OBJ_MQ_F_ONEROW		(1<<2)		/* only need first row from results */
 
+/*** An array of the names of the general attributes that must be implemented
+ *** for every object system driver.  See `OSDriver_Authoring.md` for more
+ *** information.
+ ***/
+#define DRIVER_ATTRIBUTE_NAMES \
+    ((char*[]){ \
+    "name", \
+    "annotation", \
+    "content_type", \
+    "inner_type", \
+    "outer_type", \
+    "last_modification", \
+    })
+#define N_DRIVER_ATTRIBUTE_NAMES ((unsigned int)(sizeof(DRIVER_ATTRIBUTE_NAMES) / sizeof(DRIVER_ATTRIBUTE_NAMES[0])))
+
 
 /** objectsystem main functions **/
 int objInitialize();
@@ -663,6 +678,9 @@ int objDeleteObj(pObject this);
 pObject objLinkTo(pObject this);
 pObjectInfo objInfo(pObject this);
 char* objGetPathname(pObject this);
+char* objFileName(pObject this);
+char* objFilePath(pObject this);
+char* objResetPathname(pObject this);
 int objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len);
 pContentType objTypeFromName(char* name);
 int objIsRelatedType(char* type1, char* type2);
@@ -741,6 +759,7 @@ int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
 double objDataToDouble(int data_type, void* data_ptr);
 int objDataToInteger(int data_type, void* data_ptr, char* format);
+int objDataToBoolean(int data_type, void* data_ptr, int default_value);
 int objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format);
 int objDataToMoney(int data_type, void* data_ptr, pMoneyType m);
 char* objDataToStringTmp(int data_type, void* data_ptr, int flags);
@@ -748,6 +767,8 @@ int objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* dat
 char* objDataToWords(int data_type, void* data_ptr);
 int objCopyData(pObjData src, pObjData dst, int type);
 int objTypeID(char* name);
+int objTypeFromStr(const char* str);
+char* objTypeToStr(const int type);
 int objDebugDate(pDateTime dt);
 int objDataFromString(pObjData pod, int type, char* str);
 int objDataFromStringAlloc(pObjData pod, int type, char* str);
