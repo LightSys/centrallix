@@ -9,78 +9,89 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
+#include <stdbool.h>
+#include "test_utils.h"
 
-long long
-test(char** tname)
+/** Blocks handed from the parent to the child in each pass. **/
+#define N_BLOCKS	2000
+
+/** Region and message queue shared by every pass; created and destroyed by test(). **/
+static pSmRegion region = NULL;
+static int msg_id = -1;
+
+static bool
+doTest(void)
     {
     int i;
-    pSmRegion r;
-    int iter;
     char* ptr;
-    int pipefd[2];
     int childpid;
-    int msg_id;
     struct my_msgbuf { long mtype; char mtext[sizeof(char*)]; } buf;
     int status;
 
-	smInitialize();
-
-	*tname = "smmalloc-09 2 process, A:malloc -> B:free";
-	srand(time(NULL));
-	iter = 20000;
-	r = smCreate(1024*1024);
-
-	pipe(pipefd);
-	msg_id = msgget(IPC_PRIVATE, IPC_CREAT | IPC_EXCL | 0600);
-
 	childpid = fork();
-	if (childpid < 0)
-	    {
-	    smDestroy(r);
-	    return -1;
-	    }
+	if (childpid < 0) return false;
 
 	if (childpid == 0)
 	    {
 	    /** in child **/
-	    close(pipefd[1]);
-	    for(i=0;i<iter;i++)
+	    for(i=0;i<N_BLOCKS;i++)
 		{
-		/*read(pipefd[0], &ptr, sizeof(ptr));*/
 		msgrcv(msg_id, (struct msgbuf*)&buf, sizeof(char*), 1, 0);
 		memcpy(&ptr, buf.mtext, sizeof(char*));
-		ptr = smToAbs(r, ptr);
+		ptr = smToAbs(region, ptr);
 		smFree(ptr);
 		}
 	    exit(0);
 	    }
-	else
+
+	/** in parent **/
+	for(i=0;i<N_BLOCKS;i++)
 	    {
-	    /** in parent **/
-	    close(pipefd[0]);
-	    for(i=0;i<iter;i++)
+	    ptr = smMalloc(region, 1024 + (rand()%1025));
+	    if (!ptr)
 		{
-		ptr = smMalloc(r, 1024 + (rand()%1025));
-		if (!ptr)
-		    {
-		    /** memory full; wait 1ms and try again **/
-		    i--;
-		    usleep(1000);
-		    /*write(0,".\b",2);*/
-		    continue;
-		    }
-		ptr = smToRel(r,ptr);
-		/*write(pipefd[1], &ptr, sizeof(ptr));*/
-		memcpy(buf.mtext, &ptr, sizeof(char*));
-		buf.mtype = 1;
-		msgsnd(msg_id, (struct msgbuf*)&buf, sizeof(char*), 0);
+		/** memory full; wait 1ms and try again **/
+		i--;
+		usleep(1000);
+		continue;
 		}
-	    wait(&status);
+	    ptr = smToRel(region, ptr);
+	    memcpy(buf.mtext, &ptr, sizeof(char*));
+	    buf.mtype = 1;
+	    msgsnd(msg_id, (struct msgbuf*)&buf, sizeof(char*), 0);
 	    }
-	
-	smDestroy(r);
+	if (waitpid(childpid, &status, 0) != childpid) return false;
+
+    return (WIFEXITED(status) && WEXITSTATUS(status) == 0);
+    }
+
+long long
+test(char** tname)
+    {
+    long long rval;
+
+	*tname = "smmalloc-09 2 process, A:malloc -> B:free";
+
+	smInitialize();
+	srand(time(NULL));
+	region = smCreate(1024*1024);
+	if (!region) return -1;
+	msg_id = msgget(IPC_PRIVATE, IPC_CREAT | IPC_EXCL | 0600);
+	if (msg_id < 0)
+	    {
+	    smDestroy(region);
+	    region = NULL;
+	    return -1;
+	    }
+
+	rval = loopTest(doTest);
+
+	if (rval > 0) rval *= N_BLOCKS;
 
 	msgctl(msg_id, IPC_RMID, NULL);
+	msg_id = -1;
+	smDestroy(region);
+	region = NULL;
 
-    return iter;
+    return rval;
     }

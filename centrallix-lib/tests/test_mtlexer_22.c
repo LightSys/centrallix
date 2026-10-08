@@ -1,5 +1,8 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <string.h>
+
+#include "test_utils.h"
 
 #include "mtsession.h"
 #include "newmalloc.h"
@@ -43,66 +46,69 @@ static Case cases[] =
 	{ "/;;;",		{ T_FILE, T_SEMI, T_SEMI, T_SEMI, T_EOF },	{ "/" } },
     };
 
-long long
-test(char** tname)
+/** Number of cases run per call to doTest(), counting the long path. **/
+#define NCASES	((int)(sizeof(cases) / sizeof(Case)) + 1)
+
+/** Path longer than the token buffer, followed by a semicolon. **/
+static char long_path[MLX_STRVAL * 2 + 2];
+
+/*** This test verifies that a semicolon ends an unquoted path, both when the
+ *** path fits in the token buffer and when it is read in pieces, and that a
+ *** quoted path can still contain one.
+ ***/
+static bool
+doTest(void)
     {
-    int i, c, j;
-    int iter;
-    int ncases = sizeof(cases) / sizeof(Case);
+    int c, j;
     int alloc;
     pLxSession lxs;
     char* str;
-    char longpath[MLX_STRVAL * 2 + 2];
 
-	/*** This test verifies that a semicolon ends an unquoted path, both
-	 *** when the path fits in the token buffer and when it is read in
-	 *** pieces, and that a quoted path can still contain one.
-	 ***/
+	for(c=0;c<NCASES-1;c++)
+	    {
+	    lxs = mlxStringSession((char*)cases[c].Input, MLX_F_EOF | MLX_F_FILENAMES);
+	    assert(lxs != NULL);
+	    for(j=0;j<NTOK;j++)
+		{
+		/** Token type matches, stopping at the end of input. **/
+		assert(mlxNextToken(lxs) == cases[c].Tok[j]);
+		if (cases[c].Tok[j] == T_EOF) break;
 
+		/** String value matches where one is expected. **/
+		if (cases[c].Str[j])
+		    assert(!strcmp(mlxStringVal(lxs, NULL), cases[c].Str[j]));
+		}
+	    mlxCloseSession(lxs);
+	    }
+
+	/** Long path stops before the semicolon. **/
+	lxs = mlxStringSession(long_path, MLX_F_EOF | MLX_F_FILENAMES);
+	assert(lxs != NULL);
+	assert(mlxNextToken(lxs) == T_FILE);
+	alloc = 0;
+	str = mlxStringVal(lxs, &alloc);
+	assert(str != NULL);
+	assert(strlen(str) == sizeof(long_path) - 2);  /* path without ';' */
+	assert(!strncmp(str, long_path, sizeof(long_path) - 2));
+	if (alloc) nmSysFree(str);
+	assert(mlxNextToken(lxs) == T_SEMI);
+	assert(mlxNextToken(lxs) == T_EOF);
+	mlxCloseSession(lxs);
+
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
 	*tname = "mtlexer-22 semicolon ends a filename";
 
 	mssInitialize("system", "", "", 0, "test");
 
-	/** Path longer than the token buffer, followed by a semicolon. **/
-	longpath[0] = '/';
-	memset(longpath + 1, 'a', sizeof(longpath) - 3);
-	longpath[sizeof(longpath) - 2] = ';';
-	longpath[sizeof(longpath) - 1] = '\0';
+	long_path[0] = '/';
+	memset(long_path + 1, 'a', sizeof(long_path) - 3);
+	long_path[sizeof(long_path) - 2] = ';';
+	long_path[sizeof(long_path) - 1] = '\0';
 
-	iter = 20000;
-	for(i=0;i<iter;i++)
-	    {
-	    for(c=0;c<ncases;c++)
-		{
-		lxs = mlxStringSession((char*)cases[c].Input, MLX_F_EOF | MLX_F_FILENAMES);
-		assert(lxs != NULL);
-		for(j=0;j<NTOK;j++)
-		    {
-		    /** Token type matches, stopping at the end of input. **/
-		    assert(mlxNextToken(lxs) == cases[c].Tok[j]);
-		    if (cases[c].Tok[j] == T_EOF) break;
-
-		    /** String value matches where one is expected. **/
-		    if (cases[c].Str[j])
-			assert(!strcmp(mlxStringVal(lxs, NULL), cases[c].Str[j]));
-		    }
-		mlxCloseSession(lxs);
-		}
-
-	    /** Long path stops before the semicolon. **/
-	    lxs = mlxStringSession(longpath, MLX_F_EOF | MLX_F_FILENAMES);
-	    assert(lxs != NULL);
-	    assert(mlxNextToken(lxs) == T_FILE);
-	    alloc = 0;
-	    str = mlxStringVal(lxs, &alloc);
-	    assert(str != NULL);
-	    assert(strlen(str) == sizeof(longpath) - 2);  /* path without ';' */
-	    assert(!strncmp(str, longpath, sizeof(longpath) - 2));
-	    if (alloc) nmSysFree(str);
-	    assert(mlxNextToken(lxs) == T_SEMI);
-	    assert(mlxNextToken(lxs) == T_EOF);
-	    mlxCloseSession(lxs);
-	    }
-
-    return (long long)iter * (ncases + 1);
+    return loopTest(doTest) * NCASES;
     }
