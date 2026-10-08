@@ -28,29 +28,17 @@
 #define TXT_SIZE 1024
 #define RANGE    500000
 
-/** Values from the sweep converted per call to doTest(). **/
-#define CHUNK	 10000
-
-/** Next value in the sweep, advanced by CHUNK and wrapped at the end. **/
-static int sweep = -RANGE;
-
 static bool
 doTest(void)
     {
     int i;
-    int end;
     char text[TXT_SIZE]="";
 
-	if (sweep >= RANGE) sweep = -RANGE;
-	end = sweep + CHUNK;
-	if (end > RANGE) end = RANGE;
-
-	for(i=sweep; i<end; i++)
+	for(i=-RANGE; i<RANGE; i++)
 	    {
 	    snprintf(text,TXT_SIZE,"%d",i);
 	    assert(strtoi(text,NULL,0)==i);
 	    }
-	sweep = end;
 
 	/** Long too big for int. **/
 	snprintf(text,TXT_SIZE,"%lld",INT_MAX+7LL);
@@ -69,5 +57,5 @@ long long
 test(char** tname)
     {
     *tname = "util-00 convertion from strings to integers";
-    return loopTest(doTest) * (CHUNK+4);
+    return loopTest(doTest) * (2*RANGE+4);
     }
