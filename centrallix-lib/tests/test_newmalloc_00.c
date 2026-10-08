@@ -233,7 +233,7 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
-    *tname = "newmalloc-00 nmSysMalloc(), nmSysFree(), nmSysRealloc(), & nmSysStrdup()";
+    *tname = "newmalloc-00 nmSysMalloc/Free/Realloc/Strdup()";
     return loopTest(doTest) * ((long long)TEST_LIMIT + 3ll);
     }
 
