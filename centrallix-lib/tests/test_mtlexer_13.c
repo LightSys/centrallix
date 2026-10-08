@@ -39,11 +39,11 @@ doTest(void)
 	str[i+1] = ' ';
 	str[i+2] = '2';
 	str[i+3] = '\0';
-	iv = iv*10 + 1;
 	lxs = mlxStringSession(str, 0);
 	assert(lxs != NULL);
 	if ((i+1) <= 10)
 	    {
+	    iv = iv*10 + 1;
 	    assert(mlxNextToken(lxs) == MLX_TOK_INTEGER);
 	    n = mlxIntVal(lxs);
 	    assert(n == iv);
