@@ -30,7 +30,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -419,7 +419,8 @@ prtCreateImageFromPNG(int (*read_fn)(), void* read_arg)
 	png_set_swap(libpng_png_ptr);
 	png_set_bgr(libpng_png_ptr);
 	png_set_packswap(libpng_png_ptr);
-	png_set_palette_to_rgb(libpng_png_ptr);
+	if (color_type == PNG_COLOR_TYPE_PALETTE)
+	    png_set_palette_to_rgb(libpng_png_ptr);
 	if (bit_depth == 8 && color_type == PNG_COLOR_TYPE_RGB) 
 	    png_set_filler(libpng_png_ptr, 0, PNG_FILLER_AFTER);
 
@@ -513,7 +514,7 @@ prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width
 	/** build a new image object **/
 	image_obj = prt_internal_AllocObjByID(PRT_OBJ_T_IMAGE);
 	if (!image_obj) return -ENOMEM;
-	prt_internal_CopyAttrs((obj->ContentTail)?(obj->ContentTail):obj,image_obj);
+	prt_internal_CopyAttrs(prt_internal_GetStyleObj(obj),image_obj);
 	image_obj->Flags = flags & PRT_OBJ_UFLAGMASK;
 	image_obj->X = x;
 	image_obj->Y = y;
@@ -718,8 +719,10 @@ prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, 
 		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 	png_write_info(libpng_png_ptr, libpng_info_ptr);
 	png_set_bgr(libpng_png_ptr);
-	if (img->Hdr.ColorMode == PRT_COLOR_T_FULL) 
+	if (img->Hdr.ColorMode == PRT_COLOR_T_FULL)
 	    png_set_filler(libpng_png_ptr, 0, PNG_FILLER_AFTER);
+	if (img->Hdr.ColorMode == PRT_COLOR_T_MONO)
+	    png_set_packswap(libpng_png_ptr);
 
 	/** Allocate and setup row pointer **/
 	row_pointer = (png_byte*)nmSysMalloc(bytes_per_row);
@@ -869,10 +872,7 @@ prtWriteSvgToContainer(int handle_id, pPrtSvg svg, double x, double y,
     if (!svg_obj) return -ENOMEM;
     
     /* Copy attributes inherited from parent */
-    if (obj->ContentTail) 
-        prt_internal_CopyAttrs(obj->ContentTail, svg_obj);
-    else 
-        prt_internal_CopyAttrs(obj, svg_obj);
+    prt_internal_CopyAttrs(prt_internal_GetStyleObj(obj), svg_obj);
 
     /* Set other relevant attributes */
     svg_obj->Flags = flags & PRT_OBJ_UFLAGMASK;
@@ -1069,7 +1069,16 @@ prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg,
         goto error;
     }
 
+    /* Flush any deferred output so write errors are detected here */
     cairo_destroy(cr);
+    cr = NULL;
+    cairo_surface_finish(surface);
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
+    {
+        mssError(1, "PRT", "Error writing SVG image data");
+        goto error;
+    }
+
     cairo_surface_destroy(surface);
     g_object_unref(rsvg);
     return 0;

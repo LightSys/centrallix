@@ -21,7 +21,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -824,16 +824,26 @@ prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page)
 
 	/** First, give the layout managers a chance to 'finalize' **/
 	if (prt_internal_Finalize_r(page) < 0)
+	    {
+	    s->Flags |= PRT_SESSION_F_ERROR;
 	    return -1;
+	    }
 
 	/** Next, y-sort the page **/
 	/*first = prt_internal_YSort(page);*/
 	first = prt_internal_YMergeSort(page);
 	if (!first)
+	    {
+	    s->Flags |= PRT_SESSION_F_ERROR;
 	    return -1;
+	    }
 
 	/** Now, send it to the formatter **/
-	s->Formatter->Generate(s->FormatterData, page);
+	if (s->Formatter->Generate(s->FormatterData, page) < 0)
+	    {
+	    s->Flags |= PRT_SESSION_F_ERROR;
+	    return -1;
+	    }
 
     return 0;
     }
@@ -907,14 +917,27 @@ prt_internal_AddEmptyObj(pPrtObjStream container)
 	    }
 	else
 	    {
-	    /** no - point to container or tail of container's content **/
-	    if (container->ContentTail)
-		obj = container->ContentTail;
-	    else
-		obj = container;
+	    /** no - point to the object holding the container's style **/
+	    obj = prt_internal_GetStyleObj(container);
 	    }
 
     return obj;
+    }
+
+
+/*** prt_internal_GetStyleObj() - returns the object holding the current text
+ *** style of a container: the page itself for a page, whose last child may be
+ *** a table or area with a style of its own, or else the container's last
+ *** child, if it has one.
+ ***/
+pPrtObjStream
+prt_internal_GetStyleObj(pPrtObjStream container)
+    {
+
+	if (container->ObjType->TypeID == PRT_OBJ_T_PAGE || !container->ContentTail)
+	    return container;
+
+    return container->ContentTail;
     }
 
 
