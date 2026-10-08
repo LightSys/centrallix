@@ -161,6 +161,9 @@ static bool doTest(void)
 	str1 = NULL;
 	nmFree(str2, 32);
 	str2 = NULL;
+#ifndef NO_BLK_CACHE
+	success &= ASSERT_TRUE(lists[32] != NULL);
+#endif
 
 	/** Free large allocation. **/
 	nmFree(large_buf, LARGE_BUF_SIZE);
@@ -168,6 +171,10 @@ static bool doTest(void)
 
 	/** Clear cache. **/
 	nmClear();
+	size_t cached = 0lu;
+	for (size_t i = MIN_SIZE; i <= MAX_SIZE; i++)
+	    if (lists[i] != NULL) cached++;
+	success &= ASSERT_EQL(cached, 0lu, "%zu");
 
 	/** Expect no captured errors. **/
 	success &= ASSERT_STR_EQL(err_buf, "");
