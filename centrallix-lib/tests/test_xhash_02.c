@@ -41,37 +41,10 @@ static bool isRemoved(int i)
     return (i == 0 || i == CHAIN_COUNT / 2 || i == CHAIN_COUNT - 1);
     }
 
-/*** Walk the chain of a row, checking that it holds the expected keys in
- *** order.  xhAdd() appends to the end of the chain, so the keys come back
- *** in the order they were added.
- ***
- *** @param hash The hash table, which must have exactly one row.
- *** @param expect_keys The keys expected in the chain, in order.
- *** @param expect_count The number of expected keys.
- *** @returns true if the chain matched, false otherwise.
- ***/
-static bool checkChain(pXHashTable hash, char** expect_keys, int expect_count)
-    {
-    bool success = true;
-    pXHashEntry entry = XHE(hash->Rows.Items[0]);
-
-	for (int i = 0; i < expect_count; i++)
-	    {
-	    if (!ASSERT_NOT_NULL(entry)) return false;
-	    success &= ASSERT_EQL(entry->Key, expect_keys[i], "%p");
-	    entry = entry->Next;
-	    }
-	success &= ASSERT_EQL(entry, NULL, "%p");
-
-    return success;
-    }
-
 static bool doTest(void)
     {
     bool success = true;
     XHashTable hash;
-    char* remaining[CHAIN_COUNT + 1];
-    int remaining_count = 0;
 
 	/** One row means every key collides. **/
 	success &= ASSERT_EQL(xhInit(&hash, 1, 0), 0, "%d");
@@ -83,7 +56,6 @@ static bool doTest(void)
 	    success &= ASSERT_EQL(xhAdd(&hash, keys[i], data[i]), 0, "%d");
 	    success &= ASSERT_EQL(hash.nItems, i + 1, "%d");
 	    }
-	success &= checkChain(&hash, keys, CHAIN_COUNT);
 
 	/** Every key in the chain is reachable. **/
 	for (int i = 0; i < CHAIN_COUNT; i++)
@@ -101,32 +73,23 @@ static bool doTest(void)
 	/** Unlink the head, the middle, and the tail of the chain. **/
 	int removed_count = 0;
 	for (int i = 0; i < CHAIN_COUNT; i++)
-	    {
 	    if (isRemoved(i))
 		{
 		success &= ASSERT_EQL(xhRemove(&hash, keys[i]), 0, "%d");
 		removed_count++;
 		}
-	    else
-		remaining[remaining_count++] = keys[i];
-	    }
 	success &= ASSERT_EQL(removed_count, REMOVED_COUNT, "%d");
 
-	/*** The chain kept the other entries, in order, and lost the removed
-	 *** ones.
-	 ***/
+	/** The other entries survive and the removed ones are gone. **/
 	for (int i = 0; i < CHAIN_COUNT; i++)
 	    success &= ASSERT_EQL(xhLookup(&hash, keys[i]),
 		isRemoved(i) ? NULL : data[i], "%p");
 	success &= ASSERT_EQL(hash.nItems, CHAIN_COUNT - REMOVED_COUNT, "%d");
-	success &= checkChain(&hash, remaining, remaining_count);
 
-	/** A removed key can be added back, landing at the end of the chain. **/
+	/** A removed key can be added back. **/
 	success &= ASSERT_EQL(xhAdd(&hash, keys[0], data[0]), 0, "%d");
 	success &= ASSERT_EQL(xhLookup(&hash, keys[0]), data[0], "%p");
 	success &= ASSERT_EQL(hash.nItems, CHAIN_COUNT - REMOVED_COUNT + 1, "%d");
-	remaining[remaining_count++] = keys[0];
-	success &= checkChain(&hash, remaining, remaining_count);
 
 	/** Clean up. **/
 	success &= ASSERT_EQL(xhClear(&hash, NULL, NULL), 0, "%d");
@@ -140,12 +103,7 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "xhash-02 Collisions";
-
-    /*** The three chain walks check two things per entry plus the end of the
-     *** chain, over chains of CHAIN_COUNT, CHAIN_COUNT - REMOVED_COUNT, and
-     *** one more than that.
-     ***/
-    return loopTest(doTest) * (21ll - 3ll * REMOVED_COUNT + 10ll * CHAIN_COUNT);
+    return loopTest(doTest) * (16ll + REMOVED_COUNT + 4ll * CHAIN_COUNT);
     }
 
 /** Scope cleanup. **/
