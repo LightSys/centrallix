@@ -6741,11 +6741,59 @@ smtpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt
     }
 
 
-/*** smtpInfo - Return the capabilities of the object
+/*** smtpInfo - Return the capabilities of the object.
+ ***
+ *** @param inf_v The smtp object to describe.
+ *** @param info The struct to fill with OBJ_INFO_F_xxx flags.
+ *** @returns 0 on success, or -1 on failure.
  ***/
 int
 smtpInfo(void* inf_v, pObjectInfo info)
     {
+    pSmtpData inf = SMTP(inf_v);
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL || info == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to get info: the smtp object or info struct is NULL.");
+	    return -1;
+	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to get info for \"%s\": the smtp object has a NULL object.", inf->Name);
+	    return -1;
+	    }
+	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
+
+	/** Clear the info. **/
+	info->Flags = 0;
+	info->nSubobjects = 0;
+
+	/** Describe the object. **/
+	switch (inf->Type)
+	    {
+	    case SMTP_T_ROOT:
+		/** The root holds emails, but has no content and never counts them. **/
+		info->Flags |= OBJ_INFO_F_CAN_HAVE_SUBOBJ;
+		info->Flags |= OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT;
+		info->Flags |= OBJ_INFO_F_CANT_SEEK;
+		info->Flags |= OBJ_INFO_F_CAN_ADD_ATTR;
+		break;
+
+	    case SMTP_T_EML:
+		/** Emails have content, but no subobjects. **/
+		info->Flags |= OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN;
+		info->Flags |= OBJ_INFO_F_CAN_HAVE_CONTENT | OBJ_INFO_F_HAS_CONTENT;
+		info->Flags |= OBJ_INFO_F_CAN_SEEK_FULL;
+		info->Flags |= ((inf->Obj->Mode & O_ACCMODE) == O_RDONLY) ? OBJ_INFO_F_CANT_ADD_ATTR : OBJ_INFO_F_CAN_ADD_ATTR;
+		break;
+
+	    default:
+		mssError(1, "SMTP", "Failed to get info for \"%s\": invalid smtp object type %d.", inf->Name, inf->Type);
+		return -1;
+	    }
+
     return 0;
     }
 
