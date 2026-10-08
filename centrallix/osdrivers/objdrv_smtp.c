@@ -53,6 +53,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
 #include "cxss/cxss.h"
+#include "expression.h"
 #include "obj.h"
 #include "st_node.h"
 
@@ -145,6 +146,21 @@ typedef struct
     SmtpData, *pSmtpData;
 
 #define SMTP(x) ((pSmtpData)(x))
+
+
+/*** Structure for the presentation hints of an attribute. ***/
+typedef struct
+    {
+    char*	Name;
+    char*	FriendlyName;
+    int		VisualLength;
+    int		Lines;		/* Lines of a multiline string, or 0. */
+    int		Length;		/* Maximum length of a string, or 0 if unlimited. */
+    char*	MinValue;
+    char*	MaxValue;
+    char**	EnumList;	/* NULL-terminated. */
+    }
+    SmtpAttrHints, *pSmtpAttrHints;
 
 
 /*** Structure used by queries in this driver. ***/
@@ -6798,6 +6814,272 @@ smtpInfo(void* inf_v, pObjectInfo info)
     }
 
 
+/*** smtpPresentationHints - Return the presentation hints for an attribute.
+ ***
+ *** @param inf_v The smtp object that has the attribute.
+ *** @param attrname The attribute name.
+ *** @param oxt Unused.
+ *** @returns The hints, or NULL on failure.
+ ***/
+pObjPresentationHints
+smtpPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
+    {
+    static char* sendMethods[] = { "sendmail", NULL };
+    static char* statuses[] = { "Draft", "Pending", "Sent", "Error", NULL };
+    static char* tryStatuses[] = { "None", "TempFail", "Fail", NULL };
+
+    /** Attributes of every object. **/
+    static SmtpAttrHints commonHints[] =
+	{
+	/* Name                            FriendlyName               VisualLength, other fields */
+	{ "name",                         "Name",                     32 },
+	{ "content_type",                 "Content Type",             24 },
+	{ "inner_type",                   "Inner Type",               24 },
+	{ "outer_type",                   "Outer Type",               24 },
+	{ "annotation",                   "Annotation",               32 },
+	{ NULL }
+	};
+
+    /** Root attributes. **/
+    static SmtpAttrHints rootHints[] =
+	{
+	/* Name                            FriendlyName               VisualLength, other fields */
+	{ "local_host_name",              "Local Host Name",          32 },
+	{ "send_method",                  "Send Method",              16, .EnumList = sendMethods },
+	{ "server",                       "Server",                   32 },
+	{ "port",                         "Port",                      6, .MinValue = "1", .MaxValue = "65535" },
+	{ "spool_dir",                    "Spool Directory",          64 },
+	{ "log_dir",                      "Log Directory",            64 },
+	{ "log_date_attr",                "Log Date Attribute",       32 },
+	{ "log_msgid_attr",               "Log Message-ID Attribute", 32 },
+	{ "log_info_attr",                "Log Info Attribute",       32 },
+	{ "ratelimit_time",               "Rate Limit Time",           8, .MinValue = "0" },
+	{ "domlimit_time",                "Domain Limit Time",         8, .MinValue = "0" },
+	{ "expire_time",                  "Expire Time",              10 },
+	{ "log_read_interval",            "Log Read Interval",        10, .MinValue = "0" },
+	{ "sweep_interval",               "Sweep Interval",           10, .MinValue = "0" },
+	{ "content_has_headers",          "Content Has Headers",       2, .MinValue = "0", .MaxValue = "1" },
+	{ NULL }
+	};
+
+    /** Email attributes. **/
+    static SmtpAttrHints emailHints[] =
+	{
+	/* Name                            FriendlyName               VisualLength, other fields */
+	{ "envelope_from",                "Envelope From",            48 },
+	{ "envelope_to",                  "Envelope To",              64 },
+	{ "tag",                          "Tag",                      32 },
+	{ "header_date",                  "Date",                     20 },
+	{ "header_from",                  "From",                     48 },
+	{ "header_to",                    "To",                       64 },
+	{ "header_cc",                    "Cc",                       64 },
+	{ "header_bcc",                   "Bcc",                      64 },
+	{ "header_reply_to",              "Reply-To",                 48 },
+	{ "header_list_unsubscribe",      "List-Unsubscribe",         64 },
+	{ "header_list_unsubscribe_post", "List-Unsubscribe-Post",    32 },
+	{ "header_subject",               "Subject",                  64 },
+	{ "header_user_agent",            "User-Agent",               32 },
+	{ "header_mime_version",          "MIME-Version",              8 },
+	{ "status",                       "Status",                    8, .EnumList = statuses },
+	{ "is_ready",                     "Ready to Send",             2, .MinValue = "0", .MaxValue = "1" },
+	{ "try_count",                    "Try Count",                 6, .MinValue = "0" },
+	{ "first_try_date",               "First Try Date",           20 },
+	{ "last_try_date",                "Last Try Date",            20 },
+	{ "last_try_status",              "Last Try Status",           8, .EnumList = tryStatuses },
+	{ "last_try_msg",                 "Last Try Message",         64, .Lines = 4 },
+	{ "message_id",                   "Message-ID",               64 },
+	{ "queue_id",                     "Queue ID",                 16, .Length = SMTP_QUEUE_ID_SIZE - 1 },
+	{ "rcpt_count",                   "Recipient Count",           6, .MinValue = "0" },
+	{ "expire_date",                  "Expire Date",              20 },
+	{ NULL }
+	};
+
+    pSmtpAttrHints typeHints = NULL;
+    pSmtpAttrHints attrHints = NULL;
+    bool isCommon;
+    pSmtpData inf = SMTP(inf_v);
+    pSmtpAttribute attr = NULL;
+    pSmtpAttribute defaultAttr = NULL;
+    pXArray defaults = NULL;
+    pObjPresentationHints hints = NULL;
+    pObjPresentationHints rval = NULL;
+    pParamObjects objlist = NULL;
+    char* status = NULL;
+    char* friendlyName = NULL;
+    char* enumValue = NULL;
+    bool readOnly;
+    int i;
+
+	/** Edge cases. **/
+	if (UNLIKELY(inf == NULL || attrname == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to get presentation hints: the smtp object or attribute name is NULL.");
+	    return NULL; /* Skip error handler, which expects a valid object. */
+	    }
+	ASSERTMAGIC(inf, MGK_SMTP_DATA);
+	if (UNLIKELY(inf->Obj == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to get presentation hints for '%s' of \"%s\": the smtp object has a NULL object.", attrname, inf->Name);
+	    return NULL; /* Skip error handler, which expects a valid object. */
+	    }
+	ASSERTMAGIC(inf->Obj, MGK_OBJECT);
+
+	/** Reload the attributes if the struct was replaced. **/
+	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
+	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+
+	/** Find the attribute. **/
+	for (i = 0; attrHints == NULL && commonHints[i].Name != NULL; i++)
+	    if (strcmp(commonHints[i].Name, attrname) == 0) attrHints = &commonHints[i];
+	isCommon = (attrHints != NULL);
+	typeHints = (inf->Type == SMTP_T_ROOT) ? rootHints : emailHints;
+	for (i = 0; attrHints == NULL && typeHints[i].Name != NULL; i++)
+	    if (strcmp(typeHints[i].Name, attrname) == 0) attrHints = &typeHints[i];
+	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
+
+	/** Allocate the hints. **/
+	hints = nmMalloc(sizeof(ObjPresentationHints));
+	if (UNLIKELY(hints == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate %zu bytes for presentation hints.", sizeof(ObjPresentationHints));
+	    goto end;
+	    }
+	memset(hints, 0, sizeof(ObjPresentationHints));
+	if (UNLIKELY(xaInit(&hints->EnumList, 4) != 0))
+	    {
+	    mssError(1, "SMTP", "Failed to initialize the enum list.");
+	    nmFree(hints, sizeof(ObjPresentationHints));
+	    hints = NULL;
+	    goto end;
+	    }
+	hints->GroupID = -1;
+	hints->VisualLength2 = 1;
+
+	/** Determine whether the attribute can be set. **/
+	if (isCommon)
+	    readOnly = true;
+	else if (inf->Type != SMTP_T_EML)
+	    readOnly = false;
+	else if (smtp_internal_IsReadOnly(attrname))
+	    readOnly = true;
+	else
+	    {
+	    status = smtp_internal_GetString(inf->Attributes, "status");
+	    readOnly = (status != NULL && strcmp(status, "Pending") == 0 && strcmp(attrname, "is_ready") != 0);
+	    }
+	if (readOnly) hints->Style |= OBJ_PH_STYLE_READONLY;
+	hints->StyleMask |= OBJ_PH_STYLE_READONLY;
+
+	/** Attributes cannot be set to NULL. **/
+	hints->Style     |= OBJ_PH_STYLE_NOTNULL;
+	hints->StyleMask |= OBJ_PH_STYLE_NOTNULL;
+
+	/** Use the value given to new objects as the default. **/
+	defaults = (inf->Type == SMTP_T_ROOT) ? &SMTP_INF.DefaultRootAttributes : &SMTP_INF.DefaultEmailAttributes;
+	for (i = 0; i < defaults->nItems; i++)
+	    {
+	    defaultAttr = SMTP_ATTR(defaults->Items[i]);
+	    ASSERTMAGIC(defaultAttr, MGK_SMTP_ATTRIBUTE);
+	    if (strcmp(defaultAttr->Name, attrname) != 0 || (attr != NULL && defaultAttr->Type != attr->Type))
+		continue;
+	    hints->DefaultExpr = expPodToExpression(&defaultAttr->Value, defaultAttr->Type, NULL);
+	    if (UNLIKELY(hints->DefaultExpr == NULL))
+		{
+		mssError(1, "SMTP",
+		    "Failed to create the default value expression for '%s' (%s).",
+		    attrname, objTypeToStr(defaultAttr->Type)
+		);
+		goto end;
+		}
+	    break;
+	    }
+
+	/** Attributes outside the table have no other hints. **/
+	if (attrHints == NULL)
+	    {
+	    rval = hints;
+	    goto end;
+	    }
+
+	/** Describe the attribute. **/
+	hints->Length = attrHints->Length;
+	hints->VisualLength = attrHints->VisualLength;
+	if (attrHints->Lines > 0)
+	    {
+	    hints->VisualLength2 = attrHints->Lines;
+	    hints->Style     |= OBJ_PH_STYLE_MULTILINE;
+	    hints->StyleMask |= OBJ_PH_STYLE_MULTILINE;
+	    }
+	friendlyName = nmSysStrdup(attrHints->FriendlyName);
+	if (UNLIKELY(friendlyName == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to copy the friendly name \"%s\".", attrHints->FriendlyName);
+	    goto end;
+	    }
+	hints->FriendlyName = friendlyName;
+
+	/** List the valid values. **/
+	for (i = 0; attrHints->EnumList != NULL && attrHints->EnumList[i] != NULL; i++)
+	    {
+	    enumValue = nmSysStrdup(attrHints->EnumList[i]);
+	    if (UNLIKELY(enumValue == NULL))
+		{
+		mssError(1, "SMTP", "Failed to copy the enum value \"%s\".", attrHints->EnumList[i]);
+		goto end;
+		}
+	    if (UNLIKELY(xaAddItem(&hints->EnumList, enumValue) < 0))
+		{
+		mssError(1, "SMTP", "Failed to add the enum value \"%s\".", enumValue);
+		nmSysFree(enumValue);
+		goto end;
+		}
+	    }
+
+	/** Compile the range. **/
+	if (attrHints->MinValue != NULL || attrHints->MaxValue != NULL)
+	    {
+	    objlist = expCreateParamList();
+	    if (UNLIKELY(objlist == NULL))
+		{
+		mssError(1, "SMTP", "Failed to create a parameter list.");
+		goto end;
+		}
+	    }
+	if (attrHints->MinValue != NULL)
+	    {
+	    hints->MinValue = expCompileExpression(attrHints->MinValue, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+	    if (UNLIKELY(hints->MinValue == NULL))
+		{
+		mssError(0, "SMTP", "Failed to compile the minimum value \"%s\".", attrHints->MinValue);
+		goto end;
+		}
+	    }
+	if (attrHints->MaxValue != NULL)
+	    {
+	    hints->MaxValue = expCompileExpression(attrHints->MaxValue, objlist, MLX_F_ICASE | MLX_F_FILENAMES, 0);
+	    if (UNLIKELY(hints->MaxValue == NULL))
+		{
+		mssError(0, "SMTP", "Failed to compile the maximum value \"%s\".", attrHints->MaxValue);
+		goto end;
+		}
+	    }
+
+	/** Success. **/
+	rval = hints;
+
+    end:
+	if (UNLIKELY(rval == NULL))
+	    {
+	    mssError(0, "SMTP", "Failed to get presentation hints for '%s' of \"%s\".", attrname, inf->Name);
+	    if (hints != NULL) objFreeHints(hints);
+	    }
+	if (objlist != NULL) expFreeParamList(objlist);
+
+	return rval;
+    }
+
+
 /*** smtpInitialize - initialize this driver, which also causes it to
  *** register itself with the objectsystem.
  ***/
@@ -6859,7 +7141,7 @@ smtpInitialize()
 	drv->GetFirstMethod = smtpGetFirstMethod;
 	drv->GetNextMethod = smtpGetNextMethod;
 	drv->ExecuteMethod = smtpExecuteMethod;
-	drv->PresentationHints = NULL;
+	drv->PresentationHints = smtpPresentationHints;
 	drv->Info = smtpInfo;
 
 	/** Register structs for debugging. **/
