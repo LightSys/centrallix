@@ -386,7 +386,8 @@ VERSION=$(shell cat .version)
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
 #CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
-CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wformat-nonliteral -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+TCFLAGS=$(CFLAGS) -DCX_TESTING
 
 #LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
 #STATIC_LIBS=@STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
@@ -533,7 +534,10 @@ tests/centrallix.conf-test: tests/centrallix.conf-test.in
 	$(SED) -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##LOGMETHOD##|@LOGMETHOD@|g" tests/centrallix.conf-test.in > tests/centrallix.conf-test
 
 tests/t_driver.o: tests/t_driver.c 
-	$(CC) $(CFLAGS) $< -c -o $@
+	$(CC) $(TCFLAGS) $< -c -o $@
+
+tests/test_%.o: tests/test_%.c
+	$(CC) $(TCFLAGS) $< -c -o $@
 
 tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
@@ -643,9 +647,9 @@ etc/centrallix.init: etc/centrallix.init.in
 	$(SED) -e "s|##SBINDIR##|$$RUNSBINDIR|g" -e "s|##SYSCONFDIR##|$$RUNSYSCONFDIR|g" -e "s|##LOCALSTATEDIR##|$$RUNLOCALSTATEDIR|g" -e "s|##LIBDIR##|$$RUNLIBDIR|g" -e "s|##CXLIBDIR##|$$RUNCXLIBDIR|g" etc/centrallix.init.in > etc/centrallix.init
 
 clean:
-	@rm -f */*.o
-	@rm -f */*.so
-	@rm -f centrallix test_obj lsclient sfedit test_prt
+	@rm -f */*.o */*/*.o
+	@rm -f */*.so */*/*.so
+	@rm -f centrallix test_obj lsclient sfedit test_prt cxpasswd linksign
 	@rm -f *.o
 	@rm -f etc/centrallix.conf etc/rootnode
 	@rm -f etc/centrallix.init
@@ -653,15 +657,16 @@ clean:
 	@rm -f tests/*.to.tmp tests/*.out
 	@rm -f tests/*.o tests/*.bin
 	@rm -rf thirdparty/*-inst
-	@rm -f *.gcov */*.gcov
-	@rm -f *.gcda */*.gcda
-	@rm -f *.gcno */*.gcno
+	@rm -f *.gcov */*.gcov */*/*.gcov
+	@rm -f *.gcda */*.gcda */*/*.gcda
+	@rm -f *.gcno */*.gcno */*/*.gcno
 
 distclean: clean
 	@rm -f config.status config.cache config.log
-	@rm -rf autom4te-*.cache/
+	@rm -rf autom4te-*.cache/ autom4te.cache/
 	@rm -f config.h
 	@rm -f Makefile stamp-h
+	@rm -f etc/centrallix.conf.mk
 	@rm -f .depend
 	@rm -f thirdparty/*/Makefile
 
