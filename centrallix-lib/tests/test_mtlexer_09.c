@@ -70,7 +70,7 @@ doTest(void)
 		}
 	    mlxCloseSession(lxs);
 
-	    /** Put the line breaks back, ready for the next pass. **/
+	    /** Remove the line breaks to clean up for the next pass. **/
 	    str[i+1] = 'a';
 	    str[i+2] = 'a';
 	    tokstr[0][i] = 'a';

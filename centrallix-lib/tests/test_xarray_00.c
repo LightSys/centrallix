@@ -13,8 +13,8 @@
 /* Creation:	November 25th, 2025					*/
 /* Description:	Test all the functions in the xarray library, except	*/
 /* 		xaInit() and xaDeInit() because testing xaNew() and	*/
-/* 		xaFree() should cover them, and xaAddItemSorted() and	*/
-/* 		xaAddItemSortedInt32().					*/
+/* 		xaFree() should cover them, and xaAddItemSorted(),	*/
+/* 		xaAddItemSortedInt32(), and xaClearR().			*/
 /************************************************************************/
 
 #include <math.h>
@@ -29,7 +29,7 @@
 /** Tested module. **/
 #include "xarray.h"
 
-/** Helper used by xaClear/xaClearR to free allocated items and count them. **/
+/** Helper used by xaClear() to free allocated items and count them. **/
 static int test_free(void* p, void* arg)
     {
 	if (p == NULL) return 0;

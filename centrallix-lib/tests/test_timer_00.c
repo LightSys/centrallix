@@ -116,5 +116,7 @@ long long test(char** tname)
 	
 	/** Return failure. **/
 	fail:
+	timerDeInit(timer1);
+	timerFree(timer2);
 	return -1;
     }

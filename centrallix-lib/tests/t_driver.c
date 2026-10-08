@@ -58,7 +58,7 @@ start(void* v)
     clock_t start,end;
     long long rval;
 
-	/** Setup handlers for signals that may occur during a test. **/
+	/** Set up handlers for signals that may occur during a test. **/
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
