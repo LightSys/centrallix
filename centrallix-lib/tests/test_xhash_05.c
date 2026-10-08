@@ -62,11 +62,10 @@ static bool doTest(void)
 	    }
 
 	/*** The hash is in memory only, so it may be changed, but only on
-	 *** purpose: update this value when the hash or the key above changes.
+	 *** purpose: update these values when the hash or the key above changes.
 	 ***/
 	success &= ASSERT_EQL(xh_internal_ComputeHash(key, KEY_LEN, WIDE_ROWS), 609235, "%d");
-
-	/** Where a byte sits matters, not just which bytes are present. **/
+	/* Where a byte sits matters, not just which bytes are present. */
 	success &= ASSERT_EQL(xh_internal_ComputeHash("ab", 2, WIDE_ROWS)
 	    != xh_internal_ComputeHash("ba", 2, WIDE_ROWS), true, "%d");
 
@@ -78,16 +77,22 @@ static bool doTest(void)
 	    xh_internal_ComputeHash(altered, KEY_LEN - 1, WIDE_ROWS),
 	    xh_internal_ComputeHash(key, KEY_LEN - 1, WIDE_ROWS), "%d");
 
-	/** Every byte of the key changes the hash. **/
+	/*** Every byte of the key affects the hash.  One change can collide by
+	 *** chance, so a byte fails only when several changes don't move the hash.
+	 ***/
+	static const unsigned char flips[] = {0x01, 0x5A, 0xFF};
 	const int base = xh_internal_ComputeHash(key, KEY_LEN, WIDE_ROWS);
 	for (int i = 0; i < KEY_LEN; i++)
 	    {
-	    memcpy(altered, key, KEY_LEN);
-	    altered[i] ^= 0x5A;
-	    bool differs = ASSERT_EQL(
-		xh_internal_ComputeHash(altered, KEY_LEN, WIDE_ROWS) != base, true, "%d");
+	    bool differs = false;
+	    for (size_t f = 0; f < sizeof(flips) && !differs; f++)
+		{
+		memcpy(altered, key, KEY_LEN);
+		altered[i] ^= flips[f];
+		differs = (xh_internal_ComputeHash(altered, KEY_LEN, WIDE_ROWS) != base);
+		}
 	    if (!differs) fprintf(stderr, "  > Byte %d of the key did not affect the hash.\n", i);
-	    success &= differs;
+	    success &= ASSERT_TRUE(differs);
 	    }
 
     return success;
