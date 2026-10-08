@@ -100,7 +100,8 @@ test(char** tname)
 	memset(tokstr[0], 'a', MAX_LEN+1);
 	tokstr[0][MAX_LEN+1] = '\0';
 
-	rval = loopTest(doTest);
+	/** Each pass lexes about (MAX_LEN-20) / N_PASS of the strings. **/
+	rval = loopTest(doTest) * (MAX_LEN-20) / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;
