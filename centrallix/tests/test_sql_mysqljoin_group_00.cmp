@@ -1,0 +1,104 @@
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"cl","n","nloc"
+"CHU",12,11
+"IND",122,108
+"ORG",22,19
+"cl","n","nloc"
+"CHU",12,11
+"IND",122,108
+"ORG",22,19
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"cl","n","mx","sm"
+"CHU",11,3,17
+"IND",108,3,164
+"ORG",19,3,29
+"cl","n","mx","sm"
+"CHU",11,3,17
+"IND",108,3,164
+"ORG",19,3,29
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_location/rows'.
+"st","n","cls"
+,23,"ORG"
+"",18,"ORG"
+"CA",8,"ORG"
+"CO",54,"ORG"
+"DE",10,"IND"
+"NL",8,"ORG"
+"NM",8,"ORG"
+"ON",9,"ORG"
+"st","n","cls"
+,23,"ORG"
+"",18,"ORG"
+"CA",8,"ORG"
+"CO",54,"ORG"
+"DE",10,"IND"
+"NL",8,"ORG"
+"NM",8,"ORG"
+"ON",9,"ORG"
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"cl","lt","n"
+"CHU","H",5
+"IND",,15
+"IND","H",48
+"IND","V",23
+"IND","W",11
+"IND","X",11
+"ORG","H",9
+"ORG","V",4
+"cl","lt","n"
+"CHU","H",5
+"IND",,15
+"IND","H",48
+"IND","V",23
+"IND","W",11
+"IND","X",11
+"ORG","H",9
+"ORG","V",4
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_location/rows'.
+"st","n"
+,23
+"",18
+"CO",54
+"DE",10
+"st","n"
+,23
+"",18
+"CO",54
+"DE",10
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"cl","n","c1","mx"
+"CHU",13,10,4
+"IND",155,140,4
+"ORG",27,24,4
+"cl","n","c1","mx"
+"CHU",13,10,4
+"IND",155,140,4
+"ORG",27,24,4
+MQJ: Joining 3 sources in their driver, starting with '/tests/Test_DB/a_fund/rows'.
+"fc","ty","total","n"
+"GEN","A",$7500.00,6
+"GEN","R",-$1573.50,6
+"GEN","X",-$5547.00,6
+"fc","ty","total","n"
+"GEN","A",$7500.00,6
+"GEN","R",-$1573.50,6
+"GEN","X",-$5547.00,6
+MQJ: Joining 3 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"n","mn","mx","cnt_c"
+272,1,"Toronto",272
+"n","mn","mx","cnt_c"
+272,1,"Toronto",272
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"cl","n","nl"
+"CHU",12,11
+"IND",122,108
+"ORG",22,19
+"cl","n","nl"
+"CHU",12,11
+"IND",122,108
+"ORG",22,19
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"n","nl","sm","mn","mx","av"
+152,136,207,"Berlin","ON",1
+"n","nl","sm","mn","mx","av"
+152,136,207,"Berlin","ON",1

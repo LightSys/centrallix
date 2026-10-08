@@ -1,0 +1,56 @@
+##NAME Outer join shapes
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# outer_leaf_p_l
+csv select :p:p_partner_key, :p:p_surname, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_surname, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_matches_nothing_nondup
+csv select :p:p_partner_key, nd = :n:p_nondup_partner_key from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_nondup/rows n where :p:p_partner_key *= :n:p_partner_key and :p:p_partner_key >= '100008' and :p:p_partner_key < '100022' order by :p:p_partner_key, :n:p_nondup_partner_key
+csv set passthrough 0 select :p:p_partner_key, nd = :n:p_nondup_partner_key from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_nondup/rows n where :p:p_partner_key *= :n:p_partner_key and :p:p_partner_key >= '100008' and :p:p_partner_key < '100022' order by :p:p_partner_key, :n:p_nondup_partner_key
+
+# outer_empty_table_p_staff
+csv select :p:p_partner_key, st = :s:p_kardia_login from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_staff/rows s where :p:p_partner_key *= :s:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key
+csv set passthrough 0 select :p:p_partner_key, st = :s:p_kardia_login from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_staff/rows s where :p:p_partner_key *= :s:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key
+
+# chained_outer_p_l_c
+csv select :p:p_partner_key, loc = :l:p_location_id, con = :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :l:p_partner_key and :l:p_partner_key *= :c:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, con = :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :l:p_partner_key and :l:p_partner_key *= :c:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# outer_with_inner_dependent
+csv select :p:p_partner_key, loc = :l:p_location_id, con = :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :l:p_partner_key and :l:p_partner_key = :c:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, con = :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :l:p_partner_key and :l:p_partner_key = :c:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# outer_two_leaf_star
+csv select :p:p_partner_key, loc = :l:p_location_id, con = :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key *= :c:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, con = :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key *= :c:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# outer_leaf_then_inner_lookup_country
+csv select :l:p_partner_key, :l:p_location_id, ltype = :lt:text, cn = :co:p_country_name from /tests/Test_DB/p_location/rows l, /tests/Test_DB/_p_location_type/rows lt, /tests/Test_DB/p_country/rows co where :l:p_location_type *= :lt:tag and :co:p_country_code = :l:p_country_code and :l:p_partner_key >= '100000' and :l:p_partner_key < '100020' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :l:p_partner_key, :l:p_location_id, ltype = :lt:text, cn = :co:p_country_name from /tests/Test_DB/p_location/rows l, /tests/Test_DB/_p_location_type/rows lt, /tests/Test_DB/p_country/rows co where :l:p_location_type *= :lt:tag and :co:p_country_code = :l:p_country_code and :l:p_partner_key >= '100000' and :l:p_partner_key < '100020' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_inner_p_l_then_outer_donor
+csv select :p:p_partner_key, :l:p_location_id, don = :d:p_partner_key, :d:p_is_daf from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_donor/rows d where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key *= :d:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, don = :d:p_partner_key, :d:p_is_daf from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_donor/rows d where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key *= :d:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_reverse_eqstar
+csv select :p:p_partner_key, :p:p_surname, loc = :l:p_location_id from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :l:p_partner_key =* :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_surname, loc = :l:p_location_id from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :l:p_partner_key =* :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_then_inner_not_dependent
+csv select :p:p_partner_key, loc = :l:p_location_id, ct = :ct:tag from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/_p_contact_type/rows ct where :p:p_partner_key *= :l:p_partner_key and :ct:tag in ('E', 'P') and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :ct:tag
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, ct = :ct:tag from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/_p_contact_type/rows ct where :p:p_partner_key *= :l:p_partner_key and :ct:tag in ('E', 'P') and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :ct:tag
+
+# outer_both_sides_p_dup
+csv select :p:p_partner_key, dk = :d:p_dup_partner_key, q = :d:p_match_quality from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_dup/rows d where :p:p_partner_key *= :d:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key, :d:p_dup_partner_key
+csv set passthrough 0 select :p:p_partner_key, dk = :d:p_dup_partner_key, q = :d:p_match_quality from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_dup/rows d where :p:p_partner_key *= :d:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key, :d:p_dup_partner_key
+
+# outer_double_alias_same_table
+csv select :p:p_partner_key, e = :e:p_contact_data, ph = :ph:p_contact_data from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows e, /tests/Test_DB/p_contact_info/rows ph where :p:p_partner_key *= :e:p_partner_key and :p:p_partner_key *= :ph:p_partner_key and :e:p_contact_type = 'E' and :ph:p_contact_type = 'P' and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key, :e:p_contact_id, :ph:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, e = :e:p_contact_data, ph = :ph:p_contact_data from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows e, /tests/Test_DB/p_contact_info/rows ph where :p:p_partner_key *= :e:p_partner_key and :p:p_partner_key *= :ph:p_partner_key and :e:p_contact_type = 'E' and :ph:p_contact_type = 'P' and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key, :e:p_contact_id, :ph:p_contact_id
+
+# outer_star_lookups_l_lt_co_p
+csv select :p:p_partner_key, :l:p_location_id, ltype = :lt:text, cn = :co:p_country_name from /tests/Test_DB/p_location/rows l, /tests/Test_DB/_p_location_type/rows lt, /tests/Test_DB/p_country/rows co, /tests/Test_DB/p_partner/rows p where :l:p_location_type *= :lt:tag and :l:p_country_code *= :co:p_country_code and :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100014' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, ltype = :lt:text, cn = :co:p_country_name from /tests/Test_DB/p_location/rows l, /tests/Test_DB/_p_location_type/rows lt, /tests/Test_DB/p_country/rows co, /tests/Test_DB/p_partner/rows p where :l:p_location_type *= :lt:tag and :l:p_country_code *= :co:p_country_code and :p:p_partner_key = :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100014' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id

@@ -1,0 +1,28 @@
+##NAME Non-equi and cross joins
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# nonequi_loc_lt_selfjoin
+csv select k = :l1:p_partner_key, a = :l1:p_location_id, b = :l2:p_location_id from /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :l1:p_partner_key = :l2:p_partner_key and :l1:p_location_id < :l2:p_location_id and :l1:p_revision_id = 0 and :l2:p_revision_id = 0 and :l1:p_partner_key >= '100000' and :l1:p_partner_key < '100050' order by :l1:p_partner_key, :l1:p_location_id, :l2:p_location_id
+csv set passthrough 0 select k = :l1:p_partner_key, a = :l1:p_location_id, b = :l2:p_location_id from /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :l1:p_partner_key = :l2:p_partner_key and :l1:p_location_id < :l2:p_location_id and :l1:p_revision_id = 0 and :l2:p_revision_id = 0 and :l1:p_partner_key >= '100000' and :l1:p_partner_key < '100050' order by :l1:p_partner_key, :l1:p_location_id, :l2:p_location_id
+
+# nonequi_partner_keys_ge
+csv select k1 = :p1:p_partner_key, k2 = :p2:p_partner_key from /tests/Test_DB/p_partner/rows p1, /tests/Test_DB/p_partner/rows p2 where :p1:p_partner_key >= :p2:p_partner_key and :p1:p_partner_key < '100018' and :p2:p_partner_key >= '100010' and :p2:p_partner_key < '100040' order by :p1:p_partner_key, :p2:p_partner_key
+csv set passthrough 0 select k1 = :p1:p_partner_key, k2 = :p2:p_partner_key from /tests/Test_DB/p_partner/rows p1, /tests/Test_DB/p_partner/rows p2 where :p1:p_partner_key >= :p2:p_partner_key and :p1:p_partner_key < '100018' and :p2:p_partner_key >= '100010' and :p2:p_partner_key < '100040' order by :p1:p_partner_key, :p2:p_partner_key
+
+# nonequi_ne_small_lookups
+csv select ct = :ct:tag, lt = :lt:tag from /tests/Test_DB/_p_contact_type/rows ct, /tests/Test_DB/_p_location_type/rows lt where :ct:tag != :lt:tag order by :ct:tag, :lt:tag
+csv set passthrough 0 select ct = :ct:tag, lt = :lt:tag from /tests/Test_DB/_p_contact_type/rows ct, /tests/Test_DB/_p_location_type/rows lt where :ct:tag != :lt:tag order by :ct:tag, :lt:tag
+
+# nonequi_gt_string_keys_narrow
+csv select k1 = :p1:p_partner_key, k2 = :p2:p_partner_key, :p2:p_partner_class from /tests/Test_DB/p_partner/rows p1, /tests/Test_DB/p_partner/rows p2 where :p2:p_partner_key > :p1:p_partner_key and :p1:p_partner_key = '100005' and :p2:p_partner_key < '100030' order by :p2:p_partner_key
+csv set passthrough 0 select k1 = :p1:p_partner_key, k2 = :p2:p_partner_key, :p2:p_partner_class from /tests/Test_DB/p_partner/rows p1, /tests/Test_DB/p_partner/rows p2 where :p2:p_partner_key > :p1:p_partner_key and :p1:p_partner_key = '100005' and :p2:p_partner_key < '100030' order by :p2:p_partner_key
+
+# cross_small_lookups
+csv select ct = :ct:tag, lt = :lt:tag from /tests/Test_DB/_p_contact_type/rows ct, /tests/Test_DB/_p_location_type/rows lt order by :ct:tag, :lt:tag
+csv set passthrough 0 select ct = :ct:tag, lt = :lt:tag from /tests/Test_DB/_p_contact_type/rows ct, /tests/Test_DB/_p_location_type/rows lt order by :ct:tag, :lt:tag
+
+# cross_partner_const_x_lookup
+csv select :p:p_partner_key, ct = :ct:tag, lt = :lt:tag from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/_p_contact_type/rows ct, /tests/Test_DB/_p_location_type/rows lt where :p:p_partner_key = '100005' and :lt:tag in ('H', 'W') order by :ct:tag, :lt:tag
+csv set passthrough 0 select :p:p_partner_key, ct = :ct:tag, lt = :lt:tag from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/_p_contact_type/rows ct, /tests/Test_DB/_p_location_type/rows lt where :p:p_partner_key = '100005' and :lt:tag in ('H', 'W') order by :ct:tag, :lt:tag

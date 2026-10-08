@@ -1,0 +1,48 @@
+##NAME CSV sources, inner joins
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# csv_first_states_loc_partner
+csv select :s:full_name, :p:p_partner_key, :l:p_location_id, :l:p_city from /tests/States.csv/rows s, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :s:full_name = 'Colorado' and :s:abbrev = :l:p_state_province and :p:p_partner_key = :l:p_partner_key and :l:p_revision_id = 0 and :p:p_partner_class = 'ORG' order by :p:p_partner_key, :l:p_location_id
+csv set passthrough 0 select :s:full_name, :p:p_partner_key, :l:p_location_id, :l:p_city from /tests/States.csv/rows s, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :s:full_name = 'Colorado' and :s:abbrev = :l:p_state_province and :p:p_partner_key = :l:p_partner_key and :l:p_revision_id = 0 and :p:p_partner_class = 'ORG' order by :p:p_partner_key, :l:p_location_id
+
+# csv_first_testdata_contact_partner
+csv select :a:f_id, :a:f_desc, :c:p_partner_key, :c:p_contact_id, :p:p_surname from /tests/Testdata1.csv/rows a, /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_partner/rows p where :a:f_id = :c:p_contact_id and :p:p_partner_key = :c:p_partner_key and :c:p_partner_key >= '100000' and :c:p_partner_key < '100017' order by :c:p_partner_key, :c:p_contact_id, :a:f_id
+csv set passthrough 0 select :a:f_id, :a:f_desc, :c:p_partner_key, :c:p_contact_id, :p:p_surname from /tests/Testdata1.csv/rows a, /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_partner/rows p where :a:f_id = :c:p_contact_id and :p:p_partner_key = :c:p_partner_key and :c:p_partner_key >= '100000' and :c:p_partner_key < '100017' order by :c:p_partner_key, :c:p_contact_id, :a:f_id
+
+# csv_middle_between_kardia
+csv select :p:p_partner_key, :a:f_desc, :c:p_contact_id, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c, /tests/Testdata1.csv/rows a, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :p:p_partner_key and :a:f_id = :c:p_contact_id and :l:p_partner_key = :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :c:p_contact_id, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :a:f_desc, :c:p_contact_id, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c, /tests/Testdata1.csv/rows a, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :p:p_partner_key and :a:f_id = :c:p_contact_id and :l:p_partner_key = :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100011' order by :p:p_partner_key, :c:p_contact_id, :l:p_location_id, :l:p_revision_id
+
+# csv_value_feeds_kardia_selfjoin
+csv select :s:abbrev, k1 = :l1:p_partner_key, k2 = :l2:p_partner_key, id2 = :l2:p_location_id from /tests/States.csv/rows s, /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :s:full_name = 'Colorado' and :l1:p_state_province = :s:abbrev and :l2:p_state_province = :s:abbrev and :l2:p_partner_key = :l1:p_partner_key and :l2:p_location_id != :l1:p_location_id and :l1:p_revision_id = 0 and :l2:p_revision_id = 0 order by :l1:p_partner_key, :l1:p_location_id, :l2:p_location_id
+csv set passthrough 0 select :s:abbrev, k1 = :l1:p_partner_key, k2 = :l2:p_partner_key, id2 = :l2:p_location_id from /tests/States.csv/rows s, /tests/Test_DB/p_location/rows l1, /tests/Test_DB/p_location/rows l2 where :s:full_name = 'Colorado' and :l1:p_state_province = :s:abbrev and :l2:p_state_province = :s:abbrev and :l2:p_partner_key = :l1:p_partner_key and :l2:p_location_id != :l1:p_location_id and :l1:p_revision_id = 0 and :l2:p_revision_id = 0 order by :l1:p_partner_key, :l1:p_location_id, :l2:p_location_id
+
+# csv_pair_then_kardia
+csv select :a:f_id, :b:f_desc, :c:p_partner_key, :c:p_contact_type from /tests/Testdata1.csv/rows a, /tests/Testdata2.csv/rows b, /tests/Test_DB/p_contact_info/rows c where :b:f_id = :a:f_id and :c:p_contact_id = :b:f_id and :c:p_partner_key >= '100000' and :c:p_partner_key < '100017' order by :a:f_id, :c:p_partner_key
+csv set passthrough 0 select :a:f_id, :b:f_desc, :c:p_partner_key, :c:p_contact_type from /tests/Testdata1.csv/rows a, /tests/Testdata2.csv/rows b, /tests/Test_DB/p_contact_info/rows c where :b:f_id = :a:f_id and :c:p_contact_id = :b:f_id and :c:p_partner_key >= '100000' and :c:p_partner_key < '100017' order by :a:f_id, :c:p_partner_key
+
+# csv_states_vs_country_string
+csv select :s:abbrev, :s:full_name, :co:p_country_name from /tests/States.csv/rows s, /tests/Test_DB/p_country/rows co where :s:abbrev = :co:p_country_code order by :s:abbrev
+csv set passthrough 0 select :s:abbrev, :s:full_name, :co:p_country_name from /tests/States.csv/rows s, /tests/Test_DB/p_country/rows co where :s:abbrev = :co:p_country_code order by :s:abbrev
+
+# csv_first_int_lt_kardia
+csv select :a:f_id, pk = :c:p_partner_key, cid = :c:p_contact_id from /tests/Testdata1.csv/rows a, /tests/Test_DB/p_contact_info/rows c where :a:f_id < :c:p_contact_id and :c:p_partner_key >= '100002' and :c:p_partner_key < '100005' and :a:f_id < 3 order by :a:f_id, :c:p_partner_key, :c:p_contact_id
+csv set passthrough 0 select :a:f_id, pk = :c:p_partner_key, cid = :c:p_contact_id from /tests/Testdata1.csv/rows a, /tests/Test_DB/p_contact_info/rows c where :a:f_id < :c:p_contact_id and :c:p_partner_key >= '100002' and :c:p_partner_key < '100005' and :a:f_id < 3 order by :a:f_id, :c:p_partner_key, :c:p_contact_id
+
+# csv_both_around_kardia_pair
+csv select :a:f_id, :b:f_desc, :p:p_partner_key, :c:p_contact_id from /tests/Testdata1.csv/rows a, /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c, /tests/Testdata2.csv/rows b where :c:p_partner_key = :p:p_partner_key and :a:f_id = :c:p_contact_id and :b:f_id = :a:f_id and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :c:p_contact_id, :a:f_id
+csv set passthrough 0 select :a:f_id, :b:f_desc, :p:p_partner_key, :c:p_contact_id from /tests/Testdata1.csv/rows a, /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c, /tests/Testdata2.csv/rows b where :c:p_partner_key = :p:p_partner_key and :a:f_id = :c:p_contact_id and :b:f_id = :a:f_id and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :c:p_contact_id, :a:f_id
+
+# csv_string_literal_from_csv_to_kardia
+csv select :s:abbrev, :co:p_country_code, :co:p_country_name, :l:p_partner_key from /tests/States.csv/rows s, /tests/Test_DB/p_country/rows co, /tests/Test_DB/p_location/rows l where :s:abbrev = :co:p_country_code and :l:p_country_code = :co:p_country_code and :l:p_partner_key >= '100000' and :l:p_partner_key < '102000' and :l:p_revision_id = 0 order by :s:abbrev, :l:p_partner_key, :l:p_location_id
+csv set passthrough 0 select :s:abbrev, :co:p_country_code, :co:p_country_name, :l:p_partner_key from /tests/States.csv/rows s, /tests/Test_DB/p_country/rows co, /tests/Test_DB/p_location/rows l where :s:abbrev = :co:p_country_code and :l:p_country_code = :co:p_country_code and :l:p_partner_key >= '100000' and :l:p_partner_key < '102000' and :l:p_revision_id = 0 order by :s:abbrev, :l:p_partner_key, :l:p_location_id
+
+# two_groups_csv_between_runs
+csv select :p:p_partner_key, :l:p_location_id, :s:abbrev, :c:p_contact_id, :ct:text from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/States.csv/rows s, /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/_p_contact_type/rows ct where :l:p_partner_key = :p:p_partner_key and :s:abbrev = :l:p_state_province and :c:p_partner_key = :p:p_partner_key and :ct:tag = :c:p_contact_type and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, :s:abbrev, :c:p_contact_id, :ct:text from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/States.csv/rows s, /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/_p_contact_type/rows ct where :l:p_partner_key = :p:p_partner_key and :s:abbrev = :l:p_state_province and :c:p_partner_key = :p:p_partner_key and :ct:tag = :c:p_contact_type and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# csv_state_then_second_loc_same_state
+csv select :s:abbrev, :p:p_partner_key, :l:p_location_id, k2 = :l2:p_partner_key from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/States.csv/rows s, /tests/Test_DB/p_location/rows l2 where :l:p_partner_key = :p:p_partner_key and :s:abbrev = :l:p_state_province and :l2:p_state_province = :s:abbrev and :l2:p_partner_key != :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100003' and :l2:p_partner_key < '100030' and :l:p_revision_id = 0 and :l2:p_revision_id = 0 order by :p:p_partner_key, :l:p_location_id, :l2:p_partner_key, :l2:p_location_id
+csv set passthrough 0 select :s:abbrev, :p:p_partner_key, :l:p_location_id, k2 = :l2:p_partner_key from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/States.csv/rows s, /tests/Test_DB/p_location/rows l2 where :l:p_partner_key = :p:p_partner_key and :s:abbrev = :l:p_state_province and :l2:p_state_province = :s:abbrev and :l2:p_partner_key != :p:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '100003' and :l2:p_partner_key < '100030' and :l:p_revision_id = 0 and :l2:p_revision_id = 0 order by :p:p_partner_key, :l:p_location_id, :l2:p_partner_key, :l2:p_location_id
