@@ -1,0 +1,76 @@
+#ifndef RANGE_H
+#define	RANGE_H
+
+/************************************************************************/
+/* Centrallix Application Server System                                 */
+/* Centrallix Base Library                                              */
+/*                                                                      */
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
+/*                                                                      */
+/* You may use these files and this library under the terms of the      */
+/* GNU Lesser General Public License, Version 2.1, contained in the     */
+/* included file "COPYING".                                             */
+/*                                                                      */
+/* Module:      range.c, range.h                                        */
+/* Author:      Israel Fuller                                           */
+/* Date:        October 13, 2025                                        */
+/* Description: Adds some useful numerical range functions/macros that  */
+/*              C does not provide by default.                          */
+/************************************************************************/
+
+/** Rounds a double value to the given number of decimal places. **/
+double roundTo(double value, int decimals);
+
+/*** The macros below are built on statement expressions and __typeof__, which
+ *** are GNU C extensions that C++ does not accept, and min/max/clamp collide
+ *** with std::min/std::max besides.  Leave them out of C++ translation units.
+ ***/
+#ifndef __cplusplus
+
+#ifndef min
+/*** Returns the smaller of two values.
+ *** 
+ *** @param a The first value.
+ *** @param b The second value.
+ *** @return The smaller of the two values.
+ ***/
+#define min(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a < _b) ? _a : _b; \
+    })
+#endif
+
+#ifndef max
+/*** Returns the larger of two values.
+ *** 
+ *** @param a The first value.
+ *** @param b The second value.
+ *** @return The larger of the two values.
+ ***/
+#define max(a, b) \
+    ({ \
+    __typeof__ (a) _a = (a); \
+    __typeof__ (b) _b = (b); \
+    (_a > _b) ? _a : _b; \
+    })
+#endif
+
+#ifndef clamp
+/*** Clamps the value between a minimum and maximum bound.
+ *** 
+ *** If minimum > maximum, always returns minimum.
+ *** 
+ *** @param minimum The smallest allowed value.
+ *** @param value   The value to clamp.
+ *** @param maximum The largest allowed value.
+ *** @return The value clamped within the range [minimum, maximum].
+ ***/
+#define clamp(minimum, value, maximum) \
+    max(minimum, min(value, maximum))
+#endif
+
+#endif	/* not __cplusplus */
+
+#endif	/* RANGE_H */
