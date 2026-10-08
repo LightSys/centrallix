@@ -1652,9 +1652,9 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
     return 0;
     }
 
-/*** mysd_internal_ClauseTable() - find which of the tables a property in an
- *** expression refers to.  A query on one table has no aliases, so every
- *** property is in that table.  Returns the table's index, or -1 if none.
+/*** mysd_internal_ClauseTable() - find the table that an expression property
+ *** refers to.  A query on one table has no aliases, so every property is in
+ *** that table.  Returns the table's index, or -1 if no table is found.
  ***/
 int
 mysd_internal_ClauseTable(pMysdClauseTables tables, pExpression prop)
@@ -1671,9 +1671,9 @@ mysd_internal_ClauseTable(pMysdClauseTables tables, pExpression prop)
     }
 
 
-/*** mysd_internal_ColumnID() - find a column of a table by name.  A name
- *** that the driver or the OSML answers itself, such as "name", is never a
- *** column.  Returns the column's index, or -1 if none.
+/*** mysd_internal_ColumnID() - find a table column by name.  A name that the
+ *** driver or the OSML answers itself, such as "name", is never a column.
+ *** Returns the column's index, or -1 if none.
  ***/
 int
 mysd_internal_ColumnID(pMysdTable tdata, char* colname)
@@ -1706,11 +1706,11 @@ mysd_internal_CollationCharset(char* collation, char* buf, int buflen)
     }
 
 
-/*** mysd_internal_CharsetHolds() - check whether a character set has every
- *** character of another, so converting to it loses nothing.
+/*** mysd_internal_IsCharsetSuperset() - check whether a character set has
+ *** every character of another, so converting to it loses nothing.
  ***/
 int
-mysd_internal_CharsetHolds(char* charset, char* other)
+mysd_internal_IsCharsetSuperset(char* charset, char* other)
     {
 
 	if (!strcmp(charset, other) || !strcmp(other, "ascii") || !strcmp(charset, "utf8mb4"))
@@ -1732,30 +1732,46 @@ mysd_internal_IsFrozenConst(pExpression prop)
 	if (!(prop->Flags & EXPR_F_FREEZEEVAL) && !(prop->Parent && (prop->Parent->Flags & EXPR_F_FREEZEEVAL)))
 	    return 0;
 
-    return ((prop->Flags & EXPR_F_NULL) || prop->DataType == DATA_T_INTEGER || prop->DataType == DATA_T_STRING ||
-	    prop->DataType == DATA_T_DATETIME || prop->DataType == DATA_T_MONEY || prop->DataType == DATA_T_DOUBLE);
+    return (prop->Flags & EXPR_F_NULL)
+	|| prop->DataType == DATA_T_INTEGER
+	|| prop->DataType == DATA_T_STRING
+	|| prop->DataType == DATA_T_DATETIME
+	|| prop->DataType == DATA_T_MONEY
+	|| prop->DataType == DATA_T_DOUBLE;
     }
 
 
-/*** mysd_internal_JoinColumns() - check that a property is a column of an
+/*** mysd_internal_FindJoinColumns() - check that a property is a column of an
  *** earlier table compared directly with a column of this table, and find
  *** both columns.  Returns the earlier table's index, or -1 if not.
  ***/
 int
-mysd_internal_JoinColumns(pMysdClauseTables tables, pExpression prop, int* col, int* this_col)
+mysd_internal_FindJoinColumns(pMysdClauseTables tables, pExpression prop, int* col, int* this_col)
     {
-    pExpression other;
-    int table;
+    pExpression parent, other;
+    int table, this_table;
 
+	this_table = tables->ThisTable;
+	parent = prop->Parent;
+
+	/** Check the property is from an earlier table (two-sided comparison) **/
 	table = mysd_internal_ClauseTable(tables, prop);
-	if (table < 0 || table >= tables->ThisTable || !prop->Parent || prop->Parent->NodeType != EXPR_N_COMPARE || prop->Parent->Children.nItems != 2)
-	    return -1;
-	other = (pExpression)(prop->Parent->Children.Items[(prop->Parent->Children.Items[0] == (void*)prop)?1:0]);
+	if (table < 0 || table >= this_table
+	    || !parent || parent->NodeType != EXPR_N_COMPARE
+	    || parent->Children.nItems != 2
+	)   return -1;
+
+	/** Check the other side is a column of this table **/
+	other = (pExpression)parent->Children.Items[0];
+	if (other == prop)
+	    other = (pExpression)parent->Children.Items[1];
 	if (other->NodeType != EXPR_N_PROPERTY || other->ObjID == -1 || mysd_internal_IsFrozenConst(other) ||
-		mysd_internal_ClauseTable(tables, other) != tables->ThisTable)
+		mysd_internal_ClauseTable(tables, other) != this_table)
 	    return -1;
+
+	/** Find both columns **/
 	*col = mysd_internal_ColumnID(tables->TData[table], prop->Name);
-	*this_col = mysd_internal_ColumnID(tables->TData[tables->ThisTable], other->Name);
+	*this_col = mysd_internal_ColumnID(tables->TData[this_table], other->Name);
 	if (*col < 0 || *this_col < 0)
 	    return -1;
 
@@ -1763,12 +1779,16 @@ mysd_internal_JoinColumns(pMysdClauseTables tables, pExpression prop, int* col, 
     }
 
 
-/*** mysd_internal_JoinCollation() - find the collation that makes a column
- *** of an earlier table compare like the literal a query on this table alone
- *** would get: the value read through the connection's character set, in
- *** this column's collation.  Sets *conn_charset when the value must first
- *** pass through the connection's character set.  Returns NULL if the
- *** column compares as is.
+/*** mysd_internal_JoinCollation() - make a join compare a column of an
+ *** earlier table the way a query on this table alone would.  That query
+ *** got the column's value as a literal, which MySQL read through the
+ *** connection's character set and compared using the collation of this
+ *** table's column.
+ ***
+ *** Returns the collation to convert the column to, or NULL if it already
+ *** compares this way.  Sets *conn_charset when the column must first pass
+ *** through the connection's character set, because the connection cannot
+ *** carry all of its characters.
  ***/
 char*
 mysd_internal_JoinCollation(pMysdClauseTables tables, pExpression prop, char** conn_charset)
@@ -1778,7 +1798,7 @@ mysd_internal_JoinCollation(pMysdClauseTables tables, pExpression prop, char** c
     int col, this_col, table;
 
 	*conn_charset = NULL;
-	table = mysd_internal_JoinColumns(tables, prop, &col, &this_col);
+	table = mysd_internal_FindJoinColumns(tables, prop, &col, &this_col);
 	if (table < 0)
 	    return NULL;
 	tdata = tables->TData[table];
@@ -1788,7 +1808,7 @@ mysd_internal_JoinCollation(pMysdClauseTables tables, pExpression prop, char** c
 
 	/** Characters the connection cannot carry are lost **/
 	mysd_internal_CollationCharset(tdata->ColCollations[col], charset, sizeof(charset));
-	if (!mysd_internal_CharsetHolds(tables->ConnCharset, charset))
+	if (!mysd_internal_IsCharsetSuperset(tables->ConnCharset, charset))
 	    *conn_charset = tables->ConnCharset;
 	if (!*conn_charset && !strcmp(tdata->ColCollations[col], this_tdata->ColCollations[this_col]))
 	    return NULL;
@@ -2996,7 +3016,7 @@ mysd_internal_ColumnsComparable(pMysdTable tdata1, int col1, pMysdTable tdata2, 
 		mysd_internal_CollationCharset(tdata2->ColCollations[col2], charset2, sizeof(charset2));
 
 		/** A literal that this column cannot hold is an error, not a match **/
-		return (mysd_internal_CharsetHolds(charset2, conn_charset) || mysd_internal_CharsetHolds(charset2, charset1));
+		return (mysd_internal_IsCharsetSuperset(charset2, conn_charset) || mysd_internal_IsCharsetSuperset(charset2, charset1));
 
 	    case DATA_T_DATETIME:
 		/** Literals carry whole seconds only **/
@@ -3051,7 +3071,7 @@ mysd_internal_JoinTreeOk(pExpression tree, pMysdClauseTables tables)
 		return 1;
 
 	    /** Earlier table: must be compared with a column of this one **/
-	    table = mysd_internal_JoinColumns(tables, tree, &col, &this_col);
+	    table = mysd_internal_FindJoinColumns(tables, tree, &col, &this_col);
 	    if (table < 0)
 		return 0;
 
@@ -3135,13 +3155,16 @@ mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuer
 	tables.nTables = n_sources;
 	tables.Qualify = 1;
 
-	/** Connection to run it on **/
+	/** Get the connection to run this **/
 	conn = mysd_internal_GetConn(MYSD(inf_v[0])->Node);
 	if (!conn)
 	    goto end;
 
-	/** Literals were read and written in the session's character sets, which must agree **/
-	result = mysd_internal_RunQuery_conn(conn, MYSD(inf_v[0])->Node, "SELECT @@character_set_client, @@character_set_connection, @@character_set_results");
+	/** Session character sets must agree **/
+	result = mysd_internal_RunQuery_conn(conn,
+	    MYSD(inf_v[0])->Node,
+	    "SELECT @@character_set_client, @@character_set_connection, @@character_set_results"
+	);
 	if (!result || result == MYSD_RUNQUERY_ERROR)
 	    {
 	    mssError(0, "MYSD", "Failed to read the connection's character sets (%s)", mysql_error(&conn->Handle));
@@ -3159,7 +3182,7 @@ mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuer
 	    }
 	tables.ConnCharset = conn_charset;
 
-	/** Every expression must keep its meaning **/
+	/** Every expression must keep its meaning during the database join **/
 	for(i=0; i<n_sources; i++)
 	    {
 	    tables.ThisTable = i;
@@ -3194,12 +3217,14 @@ mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuer
 	    qy->Join->Sources[i] = MYSD(inf_v[i]);
 	qy->Join->nSources = n_sources;
 
-	/** Columns of every table, in Centrallix's join order **/
+	/** Begin writing the query. **/
+
+	/** Select columns of every table, in Centrallix's join order **/
 	xsConcatenate(&qy->Clause, "SELECT STRAIGHT_JOIN ", -1);
 	for(i=0; i<n_sources; i++)
 	    xsConcatQPrintf(&qy->Clause, (i == 0)?"`t%POS`.*":", `t%POS`.*", i);
 
-	/** Tables, each joined on its criteria **/
+	/** From tables, each joined on its criteria **/
 	xsConcatenate(&qy->Clause, " FROM ", -1);
 	for(i=0; i<n_sources; i++)
 	    {
@@ -3227,7 +3252,7 @@ mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuer
 		goto end;
 	    }
 
-	/** Sort by each table's sort items in turn **/
+	/** Order by each table's sort items in turn **/
 	n_sort = 0;
 	for(i=0; i<n_sources; i++)
 	    {
@@ -3240,7 +3265,7 @@ mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuer
 		}
 	    }
 
-	/** Run it **/
+	/** Run the query **/
 	qy->Join->Result = mysd_internal_RunQuery_conn(conn, qy->Data->Node, "?q", qy->Clause.String);
 	if (!qy->Join->Result || qy->Join->Result == MYSD_RUNQUERY_ERROR)
 	    {
@@ -3250,7 +3275,10 @@ mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuer
 	    }
 	if (mysql_num_fields(qy->Join->Result) != n_cols)
 	    {
-	    mssError(1, "MYSD", "Joined query returned %d columns, but its tables have %d", (int)mysql_num_fields(qy->Join->Result), n_cols);
+	    mssError(1, "MYSD",
+		"Joined query returned %d columns, but its tables have %d",
+		(int)mysql_num_fields(qy->Join->Result), n_cols
+	    );
 	    goto end;
 	    }
 
@@ -3262,8 +3290,10 @@ mysdOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuer
 		{
 		if (strcmp(fields[k].org_name, tables.TData[i]->Cols[j]) != 0)
 		    {
-		    mssError(1, "MYSD", "Joined query returned column '%s' where table '%s' has column '%s'",
-			    fields[k].org_name, tables.TData[i]->Name, tables.TData[i]->Cols[j]);
+		    mssError(1, "MYSD",
+			"Joined query returned column '%s' where table '%s' has column '%s'",
+			fields[k].org_name, tables.TData[i]->Name, tables.TData[i]->Cols[j]
+		    );
 		    goto end;
 		    }
 		}
@@ -3348,12 +3378,14 @@ mysdQueryFetchJoin(void* qy_v, pObject objs[], void* data[], int mode, pObjTrxTr
 		strcat(name_buf, key);
 		}
 
-	    /** Set up the row object **/
+	    /** Allocate the row object **/
 	    inf = (pMysdData)nmMalloc(sizeof(MysdData));
 	    if (!inf)
 		goto end;
 	    memset(inf, 0, sizeof(MysdData));
 	    data[i] = (void*)inf;
+
+	    /** Initialize the row object **/
 	    inf->Type = MYSD_T_ROW;
 	    inf->Row = mysd_internal_DupRowPart(row, offset, tdata->nCols);
 	    if (!inf->Row)
@@ -3370,6 +3402,7 @@ mysdQueryFetchJoin(void* qy_v, pObject objs[], void* data[], int mode, pObjTrxTr
 	    offset += tdata->nCols;
 	    }
 
+	/** Success **/
 	rval = 1;
 
     end:
