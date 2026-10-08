@@ -24,10 +24,10 @@
 
 #define ERR_BUF_SIZE 1024
 
-/*** Set to zero to silence warnings.  The test drivers clear this so that
- *** test output is not buried in warning noise.  A compile-time check cannot
- *** do this job: the library is built once, without CX_TESTING, and the test
- *** binaries just link the result.
+/*** Set to zero to silence warnings, such as to keep test output from being
+ *** buried in warning noise.  A compile-time check cannot do this job: the
+ *** library is built once, without CX_TESTING, and the test binaries just
+ *** link the result.
  ***/
 int WarnPrintEnabled = 1;
 
