@@ -136,14 +136,15 @@ static bool doTest(void)
 
 	/** Count non-NULL items prior to clearing. **/
 	int count_before = xaCount(xa);
-	int nonnull = 0;
-	for (unsigned int i = 0; i < count_before; i++)
+	success &= ASSERT_RANGE(count_before, 0u, (unsigned int)__INT_MAX__, "%u");
+	unsigned int nonnull = 0;
+	for (unsigned int i = 0; i < (unsigned int)count_before; i++)
 	    if (xaGetItem(xa, i) != NULL) nonnull++;
 
 	/** Clear and verify free was called for each non-NULL item. **/
 	unsigned int freed_count = 0;
 	success &= ASSERT_EQL(xaClear(xa, test_free, &freed_count), 0, "%d");
-	success &= ASSERT_EQL(freed_count, nonnull, "%d");
+	success &= ASSERT_EQL(freed_count, nonnull, "%u");
 	success &= ASSERT_EQL(xaCount(xa), 0, "%d");
 
 	/** Clean up. **/
