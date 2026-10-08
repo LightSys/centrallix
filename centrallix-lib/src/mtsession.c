@@ -518,7 +518,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	 ***/
 	if (UNLIKELY(err_msg == NULL))
 	    {
-	    fprintf(stderr, "%s:%d: %s: Failed to format the error message with an XString.\n", file, line, module);
+	    fprintf(stderr, "Warning: %s:%d: %s: Failed to format the error message with an XString.\n", file, line, module);
 
 	    /** Write the source location and the module in front of the message. **/
 	    int prefix_len = snprintf(fallback_msg, sizeof(fallback_msg), "%s:%d: %s: ", file, line, module);
@@ -535,7 +535,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	/** Fallback: If all formatting fails, just use the unformatted message. **/
 	if (UNLIKELY(err_msg == NULL))
 	    {
-	    fprintf(stderr, "Failed to format the error message at all.\n");
+	    fprintf(stderr, "Warning: Failed to format the error message at all.\n");
 	    err_msg = message;
 	    }
 
@@ -571,14 +571,14 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    char* allocated_err_msg = warnNull(nmSysStrdup(err_msg));
 	    if (UNLIKELY(allocated_err_msg == NULL))
 		{
-		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
+		fprintf(stderr, "Warning: Failed to store error message: %s\n", err_msg);
 		goto end; /* Give up. */
 		}
 
 	    /** Store the error. **/
 	    if (warnNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
-		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
+		fprintf(stderr, "Warning: Failed to add error message to session error list: %s\n", err_msg);
 		nmSysFree(allocated_err_msg);
 		goto end; /* Give up. */
 		}
