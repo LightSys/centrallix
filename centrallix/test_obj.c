@@ -1340,7 +1340,7 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
     pObjQuery query = NULL;
     pObject row = NULL;
     char* attrnames[CSV_MAX_ATTRS];
-    int n_attrs = -1;
+    int n_attrs = 0;
     int n_rows = 0;
     bool present[CSV_MAX_ATTRS];
     bool unused_present;
@@ -1378,47 +1378,49 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 	    goto end;
 	    }
 
-	while ((row = objQueryFetch(query, O_RDONLY)) != NULL)
+	/** Print the header from the first row. **/
+	row = objQueryFetch(query, O_RDONLY);
+	if (row == NULL)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+	for (char* attrname = objGetFirstAttr(row); attrname != NULL; attrname = objGetNextAttr(row))
+	    {
+	    if (n_attrs >= CSV_MAX_ATTRS) continue;
+	    attrnames[n_attrs] = nmSysStrdup(attrname);
+	    if (UNLIKELY(attrnames[n_attrs] == NULL))
+		{
+		mssError(1, "TESTOBJ", "Failed to copy attribute name \"%s\".", attrname);
+		goto end;
+		}
+	    n_attrs++;
+	    if (UNLIKELY(xhAdd(columns, attrnames[n_attrs - 1], (char*)&present[n_attrs - 1]) < 0))
+		{
+		mssError(1, "TESTOBJ", "Failed to add csv column \"%s\".", attrname);
+		goto end;
+		}
+	    if (UNLIKELY(fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", n_attrs > 1, attrname) < 0))
+		{
+		mssError(1, "TESTOBJ",
+		    "Failed to write csv header \"%s\" to output file \"%s\".",
+		    attrname, TESTOBJ.OutputFilename
+		);
+		goto end;
+		}
+	    }
+	if (UNLIKELY(fdPrintf(TESTOBJ.Output, "\n") < 0))
+	    {
+	    mssError(1, "TESTOBJ",
+		"Failed to write the end of the csv header to output file \"%s\".",
+		TESTOBJ.OutputFilename
+	    );
+	    goto end;
+	    }
+
+	while (row != NULL)
 	    {
 	    n_rows++;
-
-	    /** Print the header from the first row. **/
-	    if (n_attrs < 0)
-		{
-		n_attrs = 0;
-		for (char* attrname = objGetFirstAttr(row); attrname != NULL; attrname = objGetNextAttr(row))
-		    {
-		    if (n_attrs >= CSV_MAX_ATTRS) continue;
-		    attrnames[n_attrs] = nmSysStrdup(attrname);
-		    if (UNLIKELY(attrnames[n_attrs] == NULL))
-			{
-			mssError(1, "TESTOBJ", "Failed to copy attribute name \"%s\".", attrname);
-			goto end;
-			}
-		    n_attrs++;
-		    if (UNLIKELY(xhAdd(columns, attrnames[n_attrs - 1], (char*)&present[n_attrs - 1]) < 0))
-			{
-			mssError(1, "TESTOBJ", "Failed to add csv column \"%s\".", attrname);
-			goto end;
-			}
-		    if (UNLIKELY(fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", n_attrs > 1, attrname) < 0))
-			{
-			mssError(1, "TESTOBJ",
-			    "Failed to write csv header \"%s\" to output file \"%s\".",
-			    attrname, TESTOBJ.OutputFilename
-			);
-			goto end;
-			}
-		    }
-		if (UNLIKELY(fdPrintf(TESTOBJ.Output, "\n") < 0))
-		    {
-		    mssError(1, "TESTOBJ",
-			"Failed to write the end of the csv header to output file \"%s\".",
-			TESTOBJ.OutputFilename
-		    );
-		    goto end;
-		    }
-		}
 
 	    /** Find the columns this row has. **/
 	    memset(present, 0, sizeof(present));
@@ -1472,7 +1474,7 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 		}
 
 	    warnNeg(objClose(row));
-	    row = NULL;
+	    row = objQueryFetch(query, O_RDONLY);
 	    }
 
 	rval = 0;
