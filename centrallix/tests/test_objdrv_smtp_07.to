@@ -1,5 +1,6 @@
 ##NAME Open an email by its path
 ##UNDO /tests/smtp/Sent/Sent.struct
 ##UNDO /tests/smtp/Sent/.mail_log_cursor
+##UNDO /tests/smtp/Sent/.spool_lock
 
 query select :name, :status, :last_try_status, :envelope_from, :Subject from object /tests/smtp/Sent.smtp/Sent.eml

@@ -1,5 +1,6 @@
 ##NAME Restarted while deferred
 ##UNDO /tests/smtp/Restarted/Restarted.struct
 ##UNDO /tests/smtp/Restarted/.mail_log_cursor
+##UNDO /tests/smtp/Restarted/.spool_lock
 
 query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/Restarted.smtp
