@@ -47,7 +47,7 @@ AC_DEFUN(CHECK_BUILTIN_EXPECT,
 		AC_DEFINE([HAVE_BUILTIN_EXPECT], [1], [Define if __builtin_expect is available])
 		AC_MSG_RESULT([yes])
 	    ],
-	    [AC_MSG_RESULT([no])],
+	    [AC_MSG_RESULT([no])]
 	)
     ]
 )
