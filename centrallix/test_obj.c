@@ -1,40 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <errno.h>
-#include <limits.h>
-#include "cxlib/mtask.h"
-#include "cxlib/mtlexer.h"
-#include "cxlib/strtcpy.h"
-#include "cxlib/expect.h"
-#include "cxlib/util.h"
-#include "cxlib/warn.h"
-#include "obj.h"
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-#include "centrallix.h"
-#ifdef HAVE_READLINE
-/* Some versions of readline get upset if HAVE_CONFIG_H is defined! */
-#ifdef HAVE_CONFIG_H
-#undef HAVE_CONFIG_H
-#include <readline/readline.h>
-#define HAVE_CONFIG_H
-#else
-#include <readline/readline.h>
-#endif
-#include <readline/history.h>
-#endif
-#ifndef CENTRALLIX_CONFIG
-#define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
-#endif
-#include "obfuscate.h"
-#include "application.h"
-#include "cxss/cxss.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
@@ -72,6 +35,50 @@
 /*		IN PRODUCTION WHERE THE DEVELOPER IS NOT CONTROLLING	*/
 /*		ALL ASPECTS OF INPUTS AND DATA BEING HANDLED.  FIXME ;)	*/
 /************************************************************************/
+
+#ifdef HAVE_CONFIG_H
+ #include "config.h"
+#endif
+
+#ifndef CENTRALLIX_CONFIG
+ #define CENTRALLIX_CONFIG /usr/local/etc/centrallix.conf
+#endif
+
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "application.h"
+#include "centrallix.h"
+#include "cxlib/expect.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtlexer.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/util.h"
+#include "cxlib/warn.h"
+#include "cxss/cxss.h"
+#include "obfuscate.h"
+#include "obj.h"
+
+/*** The readline.h files assume some other .h files were included first,
+ *** so they should be included last.
+ ***/
+#ifdef HAVE_READLINE
+ /* Some versions of readline get upset if HAVE_CONFIG_H is defined! */
+ #ifdef HAVE_CONFIG_H
+  #undef HAVE_CONFIG_H
+  #include <readline/readline.h>
+  #define HAVE_CONFIG_H
+ #else
+  #include <readline/readline.h>
+ #endif
+ #include <readline/history.h>
+#endif
 
 
 void* my_ptr;
