@@ -32,10 +32,10 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "cxlib/check.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/warn.h"
 #include "cxlib/xarray.h"
 #include "ht_render.h"
 #include "wgtr.h"
@@ -270,10 +270,10 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	}
     
     /** Search child array for radio buttons. **/
-    if (check(xaInit(&radio_buttons, tree->Children.nItems)) != 0) goto end_free;
+    if (warnFail(xaInit(&radio_buttons, tree->Children.nItems)) != 0) goto end_free;
     for (int i = 0; i < tree->Children.nItems; i++)
 	{
-	pWgtrNode child = checkPtr(tree->Children.Items[i]);
+	pWgtrNode child = warnNull(tree->Children.Items[i]);
 	if (child == NULL)
 	    {
 	    mssError(1, "HTRB", "Child widget #%d/%d is NULL.", i + 1, tree->Children.nItems);
@@ -287,7 +287,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	wgtrGetPropertyValue(child, "outer_type", DATA_T_STRING, POD(&ptr));
 	if (strcmp(ptr, "widget/radiobutton") == 0)
 	    {
-	    if (checkPos(xaAddItem(&radio_buttons, child)) < 0) goto end_free;
+	    if (warnNeg(xaAddItem(&radio_buttons, child)) < 0) goto end_free;
 	    }
 	else if (htrRenderWidget(s, child, z + 1) != 0) goto end_free;
 	}

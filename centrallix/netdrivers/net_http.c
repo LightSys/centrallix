@@ -4,7 +4,7 @@
 #include "cxlib/strtcpy.h"
 #include "json/json.h"
 #include "ht_render.h"
-#include "cxlib/check.h"
+#include "cxlib/warn.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -776,10 +776,10 @@ nht_i_ErrorExit(pNhtConn conn, int code, char* text)
 	/** Display error info **/
 	mssError(0, "NHT", "Net HTTP driver failed (error code: %d): %s", code, text);
 	char* error_title = "Error!";
-	char* error_html = checkPtr(htrGetErrorHTML(error_title));
+	char* error_html = warnNull(htrGetErrorHTML(error_title));
 	if (UNLIKELY(error_html == NULL)) error_html = error_title;
-	checkPos(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
-	check(mssClearError()); /* Failure ignored. */
+	warnNeg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
+	mssClearError();
 
 	/** Shutdown the connection and free memory **/
 	if (LIKELY(error_html != error_title)) nmSysFree(error_html);
@@ -1146,9 +1146,9 @@ nht_i_ErrorHandler(pNhtConn net_conn)
 	net_conn->NoCache = 1;
 	nht_i_WriteResponse(net_conn, 200, "OK", NULL);
 	char* error_title = "An error occurred!";
-	char* error_html = checkPtr(htrGetErrorHTMLMsg(error_title, errmsg->String));
+	char* error_html = warnNull(htrGetErrorHTMLMsg(error_title, errmsg->String));
 	if (UNLIKELY(error_html == NULL)) error_html = error_title; /* Plaintext fallback. */
-	checkPos(nht_i_WriteConn(net_conn, error_html, -1, 0)); /* Failure ignored. */
+	warnNeg(nht_i_WriteConn(net_conn, error_html, -1, 0)); /* Failure ignored. */
 	if (LIKELY(error_html != error_title)) nmSysFree(error_html);
 
 	/** Discard the string **/
@@ -2222,10 +2222,10 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 		    /** Render an error page to gracefully recover from the error. **/
 		    char* error_title = "An error occurred while constructing the application.";
-		    char* error_html = checkPtr(htrGetErrorHTML(error_title));
+		    char* error_html = warnNull(htrGetErrorHTML(error_title));
 		    if (UNLIKELY(error_html == NULL)) error_html = error_title;
-		    checkPos(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
-		    check(mssClearError()); /* Failure ignored. */
+		    warnNeg(nht_i_WriteConn(conn, error_html, -1, 0)); /* Failure ignored. */
+		    mssClearError();
 
 		    /** Clean up. **/
 		    if (LIKELY(error_html != error_title)) nmSysFree(error_html);

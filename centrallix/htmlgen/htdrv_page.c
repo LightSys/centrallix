@@ -35,11 +35,11 @@
 #include <time.h>
 
 #include "centrallix.h"
-#include "cxlib/check.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/warn.h"
 #include "cxlib/xarray.h"
 #include "cxss/cxss.h"
 #include "ht_render.h"
@@ -401,12 +401,12 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Allocate and init endorsement xarrays. **/
 	XArray endorsements_buf;
-	if (check(xaInit(&endorsements_buf, 16)) != 0) goto end;
+	if (warnFail(xaInit(&endorsements_buf, 16)) != 0) goto end;
 	endorsements = &endorsements_buf;
 	XArray contexts_buf;
-	if (check(xaInit(&contexts_buf, 16)) != 0) goto end;
+	if (warnFail(xaInit(&contexts_buf, 16)) != 0) goto end;
 	contexts = &contexts_buf;
-	if (checkPos(cxssGetEndorsementList(endorsements, contexts)) < 0) goto end;
+	if (warnNeg(cxssGetEndorsementList(endorsements, contexts)) < 0) goto end;
 
 	/** Write endorsements. **/
 	bool error = false;

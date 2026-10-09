@@ -34,11 +34,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cxlib/check.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/warn.h"
 #include "ht_render.h"
 #include "obj.h"
 #include "wgtr.h"
@@ -275,7 +275,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Allocate a buffer for reading HTML content. **/
 	    const size_t page_buf_len = BUFSIZ;
-	    page_buf = checkPtr(nmSysMalloc(page_buf_len * sizeof(char)));
+	    page_buf = warnNull(nmSysMalloc(page_buf_len * sizeof(char)));
 	    if (page_buf == NULL) goto end_reading;
 	    
 	    /* read content until we run out.*/

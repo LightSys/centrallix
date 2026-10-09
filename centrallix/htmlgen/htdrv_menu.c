@@ -31,10 +31,10 @@
 
 #include <string.h>
 
-#include "cxlib/check.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/warn.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "expression.h"
@@ -503,7 +503,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    }
 
 	/** Add menu items and dropdowns. **/
-	xs = checkPtr(xsNew());
+	xs = warnNull(xsNew());
 	if (xs == NULL) goto end;
 	mcnt=0;
 	if (htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"left\" valign=\"middle\">\n") != 0) goto end;

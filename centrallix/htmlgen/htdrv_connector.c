@@ -33,10 +33,10 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "cxlib/check.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/warn.h"
 #include "cxlib/xstring.h"
 #include "expression.h"
 #include "ht_render.h"
@@ -122,13 +122,13 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Build the param list **/
-	if (check(xsInit(&xs)) != 0) goto end;
+	if (warnFail(xsInit(&xs)) != 0) goto end;
 	bool first = true;
 	for(ptr = wgtrFirstPropertyName(tree); ptr; ptr = wgtrNextPropertyName(tree))
 	    {
 	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action") || !strcmp(ptr, "source") || !strcmp(ptr, "condition")) continue;
 	    const int property_type = wgtrGetPropertyType(tree, ptr);
-	    if (!first && check(xsConcatenate(&xs, ",", 1)) != 0) goto err_param;
+	    if (!first && warnFail(xsConcatenate(&xs, ",", 1)) != 0) goto err_param;
 	    first = false;
 	    switch (property_type)
 		{
@@ -256,7 +256,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Clean up. **/
-	if (xs.AllocLen != 0) check(xsDeInit(&xs)); /** Failure ignored. **/
+	if (xs.AllocLen != 0) warnFail(xsDeInit(&xs)); /** Failure ignored. **/
 	
 	return rval;
     }
