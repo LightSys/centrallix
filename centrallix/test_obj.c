@@ -95,6 +95,7 @@ struct
     char		OutputFilename[256];
     char		Command[1024];
     unsigned int	WaitSecs;
+    bool		StopOnError;
     pObfSession		ObfuscationSession;
     char		ObfRuleFile[256];
     char		ObfKey[256];
@@ -3225,7 +3226,8 @@ testobj_i_readPassword(void)
 /*** start - the main thread.  Initializes Centrallix, logs in, and runs the
  *** -C command, the -f command file, or the interactive prompt.  Never
  *** returns: exits with status 1 if startup or the command file fails.
- *** Failed commands print a warning and do not stop the run.
+ *** Failed commands print a warning and do not stop the run, unless -e
+ *** was given.
  ***
  *** @param unused Unused.
  ***/
@@ -3375,6 +3377,11 @@ start(void* unused)
 	    {
 	    if (UNLIKELY(testobj_do_cmd(s, TESTOBJ.Command, 1, NULL) < 0))
 		{
+		if (TESTOBJ.StopOnError)
+		    {
+		    mssError(0, "TESTOBJ", "Failed to run command \"%s\".", TESTOBJ.Command);
+		    goto end;
+		    }
 		mssWarnError("Failed to run command \"%s\".", TESTOBJ.Command);
 		}
 	    }
@@ -3420,7 +3427,14 @@ start(void* unused)
 		    goto end;
 		    }
 		const int cmd_rval = testobj_do_cmd(s, line, 1, cmd_lx);
-		if (UNLIKELY(cmd_rval < 0))
+		if (UNLIKELY(cmd_rval < 0 && TESTOBJ.StopOnError))
+		    {
+		    mssError(0, "TESTOBJ",
+			"Failed to run command \"%.*s\".",
+			(int)strcspn(line, "\r\n"), line
+		    );
+		    }
+		else if (UNLIKELY(cmd_rval < 0))
 		    {
 		    mssWarnError(
 			"Failed to run command \"%.*s\".",
@@ -3428,6 +3442,7 @@ start(void* unused)
 		    );
 		    }
 		nmSysFree(line);
+		if (UNLIKELY(cmd_rval < 0 && TESTOBJ.StopOnError)) goto end;
 		if (cmd_rval == 1) break;
 		}
 	    }
@@ -3509,9 +3524,10 @@ show_usage()
     printf("Usage:  test_obj [-c <config-file>] [-f <command-file>] [-C <command>]\n"
 	   "                 [-u <user>] [-p <password>] [-P <read-password-from-file>]\n"
 	   "                 [-o <output file>] [-O obfkey[,obfrulefile] ]\n"
-	   "                 [-i <wait-seconds>] [-t id,... ] [-h] [-q]\n"
+	   "                 [-i <wait-seconds>] [-t id,... ] [-e] [-h] [-q]\n"
 	   "        -c file       Specify configuration file\n"
 	   "        -C command    Run a single command\n"
+	   "        -e            Stop at the first failed command and exit with status 1\n"
 	   "        -f file       Run commands from a file\n"
 	   "        -h            Show this message\n"
 	   "        -i secs       Terminate test_obj after secs with SIGALRM (for test suite purposes)\n"
@@ -3571,7 +3587,7 @@ main(int argc, char* argv[])
 
 	/** Read the options, printing errors directly since mss is not initialized yet. **/
 	int ch;
-	while ((ch = getopt(argc, argv, "ho:c:qu:p:f:C:i:O:t:P:")) > 0)
+	while ((ch = getopt(argc, argv, "ho:c:qu:p:f:C:i:O:t:P:e")) > 0)
 	    {
 	    switch (ch)
 		{
@@ -3631,6 +3647,11 @@ main(int argc, char* argv[])
 		case 'q':
 		    {
 		    CxGlobals.QuietInit = 1;
+		    break;
+		    }
+		case 'e':
+		    {
+		    TESTOBJ.StopOnError = true;
 		    break;
 		    }
 		case 'o':
