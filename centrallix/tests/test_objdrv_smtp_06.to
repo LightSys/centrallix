@@ -1,5 +1,6 @@
 ##NAME Bounce while Pending
 ##UNDO /tests/smtp/PartialBounce/PartialBounce.struct
 ##UNDO /tests/smtp/PartialBounce/.mail_log_cursor
+##UNDO /tests/smtp/PartialBounce/.spool_lock
 
 query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/PartialBounce.smtp
