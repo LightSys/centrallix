@@ -44,6 +44,9 @@ centrallix "system/config"
 	condense_js = 1; // true
 	dir_index = "index.app","index.html","index.htm","index.rpt";
 	access_log = "/var/log/cx_access_log";
+
+	// Test-only link signing key; never reuse outside of tests.
+	link_signing_key = "9c6bb6dc466bcd444f39fb7f4bf87ad71feda12386d3614f0bc4e3fc337db2cd";
 	}
 
     // The BDQS network interface module.
@@ -99,4 +102,3 @@ centrallix "system/config"
 	pop3 "system/config-module" { enable_module=no; path="##LIBDIR##/centrallix/objdrv_pop3_v3.so"; type="osdriver"; }
 	}
     }
-
