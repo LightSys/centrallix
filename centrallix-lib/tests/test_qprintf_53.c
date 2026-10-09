@@ -44,5 +44,9 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-53 Bugtest: &nbsp; following %STR&HTE";
+
+    /* this format string intentionally warns; keep the log quiet */
+    freopen("/dev/null", "w", stderr);
+
     return loopTest(doTest) * 4;
     }
