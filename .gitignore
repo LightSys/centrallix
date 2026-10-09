@@ -56,7 +56,6 @@ centrallix/missing
 centrallix/ltmain.sh
 centrallix/test-driver
 centrallix-ui-test/tests/config.toml
-centrallix-ui-test/tests/__pycache__
 .gdb_history
 *.gcno
 *.gcov
@@ -69,3 +68,6 @@ perf.data.old
 centrallix-os/tmp/*
 centrallix-os/datasets/
 *.swp
+centrallix-doc/Widgets/doc-report/report.json
+centrallix-doc/Widgets/doc-report/report.md
+__pycache__/
