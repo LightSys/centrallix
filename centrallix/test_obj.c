@@ -766,7 +766,7 @@ testobj_i_hasChildren(char* path, bool* has_children)
 	/** Assume no children. **/
 	*has_children = false;
 
-	/** Open the object. **/
+	/** Open the object and get its info. **/
 	obj = objOpen(s, path, O_RDONLY, 0400, NULL);
 	if (UNLIKELY(obj == NULL))
 	    {
@@ -779,8 +779,22 @@ testobj_i_hasChildren(char* path, bool* has_children)
 	    mssError(0, "TESTOBJ", "Failed to get info for \"%s\".", path);
 	    goto end;
 	    }
-	if (UNLIKELY((info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)) != 0))
+
+	/** Use the driver's info, if it answers the question. **/
+	if ((info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)) != 0)
 	    {
+	    rval = 0;
+	    goto end;
+	    }
+	if ((info->Flags & OBJ_INFO_F_HAS_SUBOBJ) != 0)
+	    {
+	    *has_children = true;
+	    rval = 0;
+	    goto end;
+	    }
+	if ((info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) != 0)
+	    {
+	    *has_children = (info->nSubobjects > 0);
 	    rval = 0;
 	    goto end;
 	    }
@@ -907,22 +921,24 @@ handle_tab(int unused_1, int unused_2)
 	char* const partial = xsString(path) + last_slash + 1;
 	const int partial_len = strlen(partial);
 
+	/** Skip a directory with no children. **/
+	bool dir_has_children = false;
+	if (UNLIKELY(testobj_i_hasChildren(xsString(dir), &dir_has_children) < 0))
+	    {
+	    mssError(0, "TESTOBJ", "Failed to check \"%s\" for children.", xsString(dir));
+	    goto end;
+	    }
+	if (!dir_has_children)
+	    {
+	    successful = true; /* Nothing to complete. */
+	    goto end;
+	    }
+
 	/** Open the directory. **/
 	obj = objOpen(s, xsString(dir), O_RDONLY, 0400, NULL);
 	if (UNLIKELY(obj == NULL))
 	    {
 	    mssError(0, "TESTOBJ", "Failed to open directory \"%s\".", xsString(dir));
-	    goto end;
-	    }
-	const pObjectInfo info = objInfo(obj);
-	if (UNLIKELY(info == NULL))
-	    {
-	    mssError(0, "TESTOBJ", "Failed to get info for \"%s\".", xsString(dir));
-	    goto end;
-	    }
-	if (UNLIKELY((info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)) != 0))
-	    {
-	    successful = true; /* Nothing to complete. */
 	    goto end;
 	    }
 
