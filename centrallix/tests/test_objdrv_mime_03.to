@@ -1,0 +1,4 @@
+##NAME Listed header and parameter names
+
+query select * from /tests/MimeHeaderParams.eml
+query select cte = :"content-transfer-encoding", charset = :"CONTENT-TYPE.CHARSET", filename = :"Content-Disposition.FileName" from /tests/MimeHeaderParams.eml

@@ -1,0 +1,15 @@
+##NAME MimeTest content types
+
+query select :name, :outer_type, :inner_type from object /tests/mimetest/M3-1.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/M3-2.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/M4.1.4.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/M5.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM1.2.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM2.1.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM2.2.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM2.3.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM3.1.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM4.1.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM4.2.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM6.1-1.eml
+query select :name, :outer_type, :inner_type from object /tests/mimetest/EM7.1.eml

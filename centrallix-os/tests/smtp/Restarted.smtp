@@ -1,0 +1,6 @@
+$Version=2$
+Restarted "system/smtp"
+    {
+    spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/Restarted";
+    expire_time = -1;
+    }

@@ -1,0 +1,3 @@
+##NAME Folded headers
+
+query select subject = :Subject, note = :"X-Note" from object /tests/MimeFoldedHeader.eml

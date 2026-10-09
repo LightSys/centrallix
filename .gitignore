@@ -68,3 +68,4 @@ perf.data.old
 .vscode/
 centrallix-os/tmp/*
 centrallix-os/datasets/
+*.swp

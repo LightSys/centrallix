@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2008 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -434,6 +434,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     int need_update;
     int did_update;
     pObject ins_obj, upd_obj, refresh_obj;
+    pObject src_obj, dst_obj;
     int id;
     char* path;
     pObjectInfo info;
@@ -494,8 +495,20 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 		    exp = update_qs->Expr;
 		    assign_exp = update_qs->AssignExpr;
 
-		    /** Get the value to be assigned **/
+		    /** Stream content between objects **/
 		    expBindExpression(exp, stmt->Query->ObjList, EXPR_CMP_REVERSE);
+		    expBindExpression(assign_exp, stmt->Query->ObjList, EXPR_CMP_REVERSE);
+		    src_obj = mq_internal_ContentSource(exp, stmt->Query->ObjList);
+		    dst_obj = mq_internal_ContentSource(assign_exp, stmt->Query->ObjList);
+		    if (src_obj && dst_obj)
+			{
+			if (mq_internal_CopyContent(src_obj, dst_obj) < 0)
+			    goto error;
+			did_update = 1;
+			continue;
+			}
+
+		    /** Get the value to be assigned **/
 		    if (expEvalTree(exp, stmt->Query->ObjList) < 0)
 			{
 			mssError(0,"MQUS","Could not evaluate UPDATE SET expression's value");

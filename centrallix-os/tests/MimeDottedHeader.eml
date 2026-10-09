@@ -1,0 +1,11 @@
+From: tester@example.com
+Subject: Header names that contain dots
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+X.Tag: dotted value
+X.Opts: on; level=2
+Content-Type: text/plain; charset=us-ascii
+
+Body.
+--b1--
