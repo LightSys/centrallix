@@ -1,8 +1,11 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "test_utils.h"
 
 #include "strtcpy.h"
 
@@ -103,13 +106,23 @@ wrapper(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
     return rval;
     }
 
-long long
-test(char** tname)
+/** Number of chains run per call to doTest(). **/
+#define NCHAINS	((int)(sizeof(chains) / sizeof(Chain)))
+
+/*** This test verifies strtcatf_va() reached through a caller's own varargs
+ *** wrapper, which is the reason the _va entry point exists.  Chains of
+ *** appends run through both entry points, and each append is checked against
+ *** its own expected return value and position as well as against the other
+ *** entry point, so that a fault common to both cannot hide.  Chain lengths
+ *** run from one append to eight, and DstLen varies per chain, so that a
+ *** buffer can fill up early in a chain, exactly at its end, or not at all.
+ *** The chains also cover resuming onto text already in dst, formats
+ *** contributing no text, and empty appends at the front and back of a chain.
+ ***/
+static bool
+doTest(void)
     {
-    int i, c, a;
-    int iter;
-    int nchains = sizeof(chains) / sizeof(Chain);
-    int nops;
+    int c, a;
     size_t prefixlen;
     unsigned char raw_direct[RAW];
     unsigned char raw_va[RAW];
@@ -119,74 +132,70 @@ test(char** tname)
     int rval_direct, rval_va;
     size_t n;
 
-	/*** This test verifies strtcatf_va() reached through a caller's own
-	 *** varargs wrapper, which is the reason the _va entry point exists.
-	 *** Chains of appends run through both entry points, and each append
-	 *** is checked against its own expected return value and position as
-	 *** well as against the other entry point, so that a fault common to
-	 *** both cannot hide.  Chain lengths run from one append to eight, and
-	 *** DstLen varies per chain, so that a buffer can fill up early in a
-	 *** chain, exactly at its end, or not at all.  The chains also cover
-	 *** resuming onto text already in dst, formats contributing no text,
-	 *** and empty appends at the front and back of a chain.
-	 ***/
-
-	*tname = "strtcpy-12 strtcatf_va() parity and chained appends";
-	iter = 40000;
-	nops = 0;
-	for(i=0;i<iter;i++)
+	for(c=0;c<NCHAINS;c++)
 	    {
-	    for(c=0;c<nchains;c++)
+	    /** Seed both buffers with the chain's starting text. **/
+	    prefixlen = strlen(chains[c].Prefix);
+	    memset(raw_direct, 0xAA, RAW);
+	    memset(raw_va, 0xAA, RAW);
+	    memcpy(direct, chains[c].Prefix, prefixlen + 1);
+	    memcpy(through_va, chains[c].Prefix, prefixlen + 1);
+	    pos_direct = prefixlen;
+	    pos_va = prefixlen;
+
+	    for(a=0;a<MAXAPP && chains[c].Appends[a].Fmt;a++)
 		{
-		/** Seed both buffers with the chain's starting text. **/
-		prefixlen = strlen(chains[c].Prefix);
-		memset(raw_direct, 0xAA, RAW);
-		memset(raw_va, 0xAA, RAW);
-		memcpy(direct, chains[c].Prefix, prefixlen + 1);
-		memcpy(through_va, chains[c].Prefix, prefixlen + 1);
-		pos_direct = prefixlen;
-		pos_va = prefixlen;
+		rval_direct = strtcatf(direct, chains[c].DstLen, &pos_direct,
+		    chains[c].Appends[a].Fmt, chains[c].Appends[a].StrArg,
+		    chains[c].Appends[a].IntArg);
+		rval_va = wrapper(through_va, chains[c].DstLen, &pos_va,
+		    chains[c].Appends[a].Fmt, chains[c].Appends[a].StrArg,
+		    chains[c].Appends[a].IntArg);
 
-		for(a=0;a<MAXAPP && chains[c].Appends[a].Fmt;a++)
-		    {
-		    rval_direct = strtcatf(direct, chains[c].DstLen, &pos_direct,
-			chains[c].Appends[a].Fmt, chains[c].Appends[a].StrArg,
-			chains[c].Appends[a].IntArg);
-		    rval_va = wrapper(through_va, chains[c].DstLen, &pos_va,
-			chains[c].Appends[a].Fmt, chains[c].Appends[a].StrArg,
-			chains[c].Appends[a].IntArg);
+		/** Each append matches its own expected result. **/
+		assert(rval_direct == chains[c].Appends[a].ExpRval);
+		assert(rval_va == chains[c].Appends[a].ExpRval);
+		assert(pos_direct == chains[c].Appends[a].ExpPos);
+		assert(pos_va == chains[c].Appends[a].ExpPos);
 
-		    /** Each append matches its own expected result. **/
-		    assert(rval_direct == chains[c].Appends[a].ExpRval);
-		    assert(rval_va == chains[c].Appends[a].ExpRval);
-		    assert(pos_direct == chains[c].Appends[a].ExpPos);
-		    assert(pos_va == chains[c].Appends[a].ExpPos);
+		/** Both entry points produced the same bytes. **/
+		assert(!strcmp(direct, through_va));
 
-		    /** Both entry points produced the same bytes. **/
-		    assert(!strcmp(direct, through_va));
+		/** Position stays on the terminating null. **/
+		assert(pos_va == strlen(through_va));
+		}
 
-		    /** Position stays on the terminating null. **/
-		    assert(pos_va == strlen(through_va));
+	    /** The chain as a whole produced the expected string. **/
+	    assert(!strcmp(through_va, chains[c].ExpFinal));
 
-		    if (i == 0) nops++;
-		    }
-
-		/** The chain as a whole produced the expected string. **/
-		assert(!strcmp(through_va, chains[c].ExpFinal));
-
-		/** Neither call wrote outside the DstLen it was given. **/
-		for(n=0;n<GUARD;n++)
-		    {
-		    assert(raw_direct[n] == 0xAA);
-		    assert(raw_va[n] == 0xAA);
-		    }
-		for(n=GUARD+chains[c].DstLen;n<RAW;n++)
-		    {
-		    assert(raw_direct[n] == 0xAA);
-		    assert(raw_va[n] == 0xAA);
-		    }
+	    /** Neither call wrote outside the DstLen it was given. **/
+	    for(n=0;n<GUARD;n++)
+		{
+		assert(raw_direct[n] == 0xAA);
+		assert(raw_va[n] == 0xAA);
+		}
+	    for(n=GUARD+chains[c].DstLen;n<RAW;n++)
+		{
+		assert(raw_direct[n] == 0xAA);
+		assert(raw_va[n] == 0xAA);
 		}
 	    }
 
-    return (long long)iter * nops * 2;
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
+    int c, a;
+    int nops = 0;
+
+	*tname = "strtcpy-12 strtcatf_va() parity and chained appends";
+
+	/** Count the appends one pass of doTest() performs. **/
+	for(c=0;c<NCHAINS;c++)
+	    for(a=0;a<MAXAPP && chains[c].Appends[a].Fmt;a++)
+		nops++;
+
+    return loopTest(doTest) * nops * 2;
     }
