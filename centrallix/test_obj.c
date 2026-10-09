@@ -73,7 +73,7 @@
  #ifdef HAVE_CONFIG_H
   #undef HAVE_CONFIG_H
   #include <readline/readline.h>
-  #define HAVE_CONFIG_H
+  #define HAVE_CONFIG_H 1
  #else
   #include <readline/readline.h>
  #endif
