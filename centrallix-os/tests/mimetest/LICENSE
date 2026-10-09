@@ -1,0 +1,15 @@
+This folder contains the Internet Mail Consortium's MIME test suite.
+
+These files were provided free of charge online by the IMC.  They did not
+apparently explicitly specify a license, so the license is implied.  This
+file is just to document where these test suite items came from.
+
+Their notes: The mimetest suite originated with Patrik Fältström. Patrik
+handed over control of the suite to IMC but still helps with the
+maintenance.
+
+The Internet Mail Consortium no longer exists.
+
+Originally retrieved from:  http://www.imc.org/mimetest/MimeBack.tgz
+
+"mimeback.pl" is the only file not included here from MimeBack.tgz.

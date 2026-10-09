@@ -1,0 +1,16 @@
+From: tester@example.com
+Subject: Reply-To and Sender addresses
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Reply-To: Replies <replies@example.com>
+Sender: sender@example.com
+Content-Type: text/plain
+
+Valid addresses.
+--b1
+Reply-To: a>b <replies@example.com
+Content-Type: text/plain
+
+An unclosed address.
+--b1--

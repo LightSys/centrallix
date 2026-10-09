@@ -33,6 +33,9 @@
 /*		the Centrallix application platform.			*/
 /************************************************************************/
 
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+
 
 /*** Globals for the AML ***/
 typedef struct
@@ -81,4 +84,3 @@ void* appLookupAppData(char* datakey);
 
 
 #endif /* not defined _APPLICATION_H */
-

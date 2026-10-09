@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -336,6 +336,11 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		xsConcatenate(this->ContentPtr, readbuf, readcnt);
 		bytes += readcnt;
 		}
+
+	    /** Say so when the cap cut the content short **/
+	    if (bytes >= maxbytes && objRead(this, readbuf, 1, 0, 0) > 0)
+		fprintf(stderr, "Warning: objcontent of \"%s\" truncated to %d bytes (textsize).\n", obj_internal_PathPart(this->Pathname, 0, 0), maxbytes);
+
 	    val->String = this->ContentPtr->String;
 	    is_system_attr = 1;
 	    }
@@ -511,17 +516,35 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 		{
 		/** String value **/
 		if (!val)
+		    {
 		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    }
 		else
+		    {
 		    rval = this->Driver->Write(this->Data, val->String, strlen(val->String), 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    if (rval >= 0 && rval < strlen(val->String))
+			{
+			mssError(1, "OSML", "Incomplete write of attribute 'objcontent'");
+			return -1;
+			}
+		    }
 		}
 	    else if (data_type == DATA_T_BINARY)
 		{
 		/** Binary value **/
 		if (!val || !val->Binary.Data)
+		    {
 		    rval = this->Driver->Write(this->Data, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    }
 		else
+		    {
 		    rval = this->Driver->Write(this->Data, val->Binary.Data, val->Binary.Size, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE | OBJ_U_PACKET, &(this->Session->Trx));
+		    if (rval >= 0 && rval < val->Binary.Size)
+			{
+			mssError(1, "OSML", "Incomplete write of attribute 'objcontent'");
+			return -1;
+			}
+		    }
 		}
 	    else
 		{
