@@ -2823,6 +2823,18 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    {
 	    if (UNLIKELY(testobj_i_cmdCreate(s, arg) < 0)) goto end;
 	    }
+	else if (strcmp(cmdname, "echo") == 0)
+	    {
+	    char* const text = (arg != NULL) ? cmd + 5 : "";
+	    if (UNLIKELY(fdPrintf(TESTOBJ.Output, "%.*s\n", (int)strcspn(text, "\r\n"), text) < 0))
+		{
+		mssError(1, "TESTOBJ",
+		    "Failed to write \"%.*s\" to output file \"%s\".",
+		    (int)strcspn(text, "\r\n"), text, TESTOBJ.OutputFilename
+		);
+		goto end;
+		}
+	    }
 	else if (strcmp(cmdname, "quit") == 0 || strcmp(cmdname, "exit") == 0)
 	    {
 	    rval = 1;
@@ -2944,6 +2956,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  create    - Create a new object.\n");
 	    printf("  csv       - Run a SQL query and print the results in CSV format.\n");
 	    printf("  delete    - Delete an object.\n");
+	    printf("  echo      - Print a line of text.\n");
 	    printf("  exec      - Call a method on an object.\n");
 	    printf("  hints     - Show the presentation hints of an attribute (or object)\n");
 	    printf("  help      - Displays this help screen.\n");
