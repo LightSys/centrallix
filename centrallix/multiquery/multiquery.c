@@ -330,6 +330,81 @@ mq_internal_ExprToPresentation(pExpression exp, char* pres, int maxlen)
     }
 
 
+/*** mq_internal_ContentRef - return the property node of a SELECT item that
+ *** is a plain reference to objcontent, such as ":objcontent" or
+ *** ":report:objcontent".  Returns NULL for any other item.
+ ***/
+pExpression
+mq_internal_ContentRef(pExpression exp)
+    {
+
+	if (!exp)
+	    return NULL;
+
+	/** Unwrap :object:property **/
+	if (exp->NodeType == EXPR_N_OBJECT && exp->Children.nItems == 1)
+	    exp = (pExpression)exp->Children.Items[0];
+	if (exp->NodeType == EXPR_N_PROPERTY && !strcmp(exp->Name, "objcontent"))
+	    return exp;
+
+    return NULL;
+    }
+
+
+/*** mq_internal_ContentSource - find the object whose content a plain
+ *** objcontent reference names (see mq_internal_ContentRef).  Returns NULL
+ *** when the item is not such a reference or the object is not in the list.
+ ***/
+pObject
+mq_internal_ContentSource(pExpression exp, pParamObjects objlist)
+    {
+    int id;
+
+	exp = mq_internal_ContentRef(exp);
+	if (!exp || !objlist)
+	    return NULL;
+
+	/** Leave pathname references and permission checks to the evaluator **/
+	if (exp->ObjID == -1 || (objlist->MainFlags & (EXPR_MO_NOCURRENT | EXPR_MO_NOPARENT | EXPR_MO_NOOBJECT)))
+	    return NULL;
+
+	/** Only a real object in the list has content to read **/
+	id = expObjID(exp, objlist);
+	if (id < 0 || id >= objlist->nObjects || objlist->GetAttrFn[id] != objGetAttrValue)
+	    return NULL;
+
+    return objlist->Objects[id];
+    }
+
+
+/*** mq_internal_CopyContent - replace the content of dst with a stream of the
+ *** content of src, so the copy is not capped by the textsize limit on reading
+ *** objcontent as a string.  Leaves the content alone when src and dst are
+ *** the same object.  Returns the byte count, or -1 on failure.
+ ***/
+int
+mq_internal_CopyContent(pObject src, pObject dst)
+    {
+    int rval;
+
+	/** Copying content onto itself would truncate it before reading **/
+	if (src == dst)
+	    return 0;
+
+	/** Start both at the beginning, emptying dst **/
+	if (objSeek(src, 0) < 0)
+	    return -1;
+	if (objWrite(dst, "", 0, 0, OBJ_U_SEEK | OBJ_U_TRUNCATE) < 0)
+	    return -1;
+
+	rval = objTransfer(src, objRead, dst, objWrite, -1);
+	if (rval < 0)
+	    mssError(0, "MQ", "Failed to copy objcontent between objects");
+
+    return rval;
+    }
+
+
 /*** mq_internal_SetCoverage - walk the QE tree and determine what parts
  *** of the tree contain various object references.
  ***/
@@ -4100,6 +4175,43 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     }
 
 
+/*** mq_internal_PseudoContentSource - find the object whose content a
+ *** result row passes through, when the row's objcontent item is a plain
+ *** reference to it (see mq_internal_ContentRef).  Returns NULL otherwise.
+ ***/
+pObject
+mq_internal_PseudoContentSource(pPseudoObject p)
+    {
+    int i;
+
+	if (!(p->Stmt->Flags & MQ_TF_OBJCONTENT))
+	    return NULL;
+	for(i=0;i<p->Stmt->Tree->AttrNames.nItems;i++)
+	    if (!strcmp(p->Stmt->Tree->AttrNames.Items[i], "objcontent"))
+		return mq_internal_ContentSource((pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[i], p->ObjList);
+
+    return NULL;
+    }
+
+
+/*** mqInfo - describe a result row.  Content passed through from a plain
+ *** objcontent reference is only as seekable as its source.
+ ***/
+int
+mqInfo(void* inf_v, pObjectInfo info)
+    {
+    pPseudoObject p = (pPseudoObject)inf_v;
+    pObject src;
+    pObjectInfo src_info;
+
+	src = mq_internal_PseudoContentSource(p);
+	if (src && (src_info = objInfo(src)) != NULL)
+	    info->Flags |= (src_info->Flags & OBJ_INFO_F_CANT_SEEK);
+
+    return 0;
+    }
+
+
 /*** mqRead - reads from the object.  We do this simply by trying the 
  *** objRead functionality in the objects comprising the query, in order of
  *** specificity (childmost object first; object on many side of a one-to
@@ -4113,10 +4225,16 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
     int objid;
     char* content;
     int n;
+    pObject src;
 
 	/** If an "objcontent" attribute is explicitly SELECTed... **/
 	if (p->Stmt->Flags & MQ_TF_OBJCONTENT)
 	    {
+	    /** Pass a plain content reference straight through to its object **/
+	    src = mq_internal_PseudoContentSource(p);
+	    if (src)
+		return objRead(src, buffer, maxcnt, offset, flags);
+
 	    /** "Read" the content from an attribute **/
 	    if (mqGetAttrValue(inf_v, "objcontent", DATA_T_STRING, POD(&content), NULL) == 0)
 		{
@@ -4896,6 +5014,7 @@ mqInitialize()
 	drv->QueryClose = mqQueryClose;
 	drv->Read = mqRead;
 	drv->Write = mqWrite;
+	drv->Info = mqInfo;
 	drv->GetAttrType = mqGetAttrType;
 	drv->GetAttrValue = mqGetAttrValue;
 	drv->GetFirstAttr = mqGetFirstAttr;

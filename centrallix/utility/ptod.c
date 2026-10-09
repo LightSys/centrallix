@@ -4,6 +4,7 @@
 #include <string.h>
 #include "cxlib/datatypes.h"
 #include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
 #include "cxlib/mtsession.h"
 #include "ptod.h"
 #include "obj.h"
@@ -13,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2004-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -50,10 +51,15 @@
 pTObjData
 ptodAllocate()
     {
-    pTObjData ptod;
+    pTObjData ptod = NULL;
 
 	/** Allocate the memory **/
 	ptod = (pTObjData)nmMalloc(sizeof(TObjData));
+	if (!ptod)
+	    {
+	    mssError(1, "PTOD", "Failed to allocate the ptod.");
+	    return NULL;
+	    }
 
 	/** Init data type, etc. **/
 	ptod->Data.Generic = NULL;
@@ -142,6 +148,101 @@ ptodLink(pTObjData ptod)
 	ptod->LinkCnt++;
 
     return ptod;
+    }
+
+
+/*** ptodCreateInt() - create a ptod that contains an integer
+ ***/
+pTObjData
+ptodCreateInt(int data)
+    {
+    pTObjData datPtod;
+
+	datPtod = ptodAllocate();
+	if (!datPtod)
+	    return NULL;
+	datPtod->Data.Integer = data;
+	datPtod->DataType = DATA_T_INTEGER;
+
+    return datPtod;
+    }
+
+
+/*** ptodCreateString() - create a ptod object that contains a cstring
+ *** according to given flags
+ ***/
+pTObjData
+ptodCreateString(char* data, int flags)
+    {
+    pTObjData datPtod;
+
+	/** If attached, shove it onto the end of the ptod **/
+	if (flags & DATA_TF_ATTACHED)
+	    {
+	    /** Allocate the ptod (+1 for null char) **/
+	    const size_t strSize = strlen(data) * sizeof(char) + 1;
+	    datPtod = (pTObjData)nmSysMalloc(sizeof(TObjData) + strSize);
+	    if (!datPtod)
+		{
+		mssError(1, "PTOD", "Failed to allocate string ptod object.");
+		return NULL;
+		}
+	    memset(datPtod, 0, sizeof(TObjData) + strSize);
+
+	    /** Point it to the attached buffer **/
+	    datPtod->Data.String = (char*) datPtod + sizeof(TObjData);
+	    strtcpy(datPtod->Data.String, data, strSize);
+
+	    datPtod->DataType = DATA_T_STRING;
+	    datPtod->LinkCnt = 1;
+	    datPtod->AttachedLen = strSize;
+	    datPtod->Flags = flags;
+	    }
+
+	/** We are to manage the string **/
+	else if (!(flags & DATA_TF_UNMANAGED))
+	    {
+	    datPtod = ptodAllocate();
+	    if (!datPtod)
+		return NULL;
+
+	    datPtod->Data.String = nmSysStrdup(data);
+	    datPtod->DataType = DATA_T_STRING;
+	    datPtod->Flags = flags;
+	    }
+
+	/** Point to the caller's string without managing it **/
+	else
+	    {
+	    datPtod = ptodAllocate();
+	    if (!datPtod)
+		return NULL;
+
+	    datPtod->Data.String = data;
+	    datPtod->DataType = DATA_T_STRING;
+	    datPtod->Flags = flags;
+	    }
+
+    return datPtod;
+    }
+
+
+/*** ptodCreate() - create a ptod object given certain parameters.
+ ***/
+pTObjData
+ptodCreate(void* data, int datatype)
+    {
+    pTObjData datPtod;
+
+	datPtod = ptodAllocate();
+	if (!datPtod)
+	    return NULL;
+
+	datPtod->Data.Generic = data;
+	datPtod->DataType = datatype;
+	datPtod->Flags = DATA_TF_UNMANAGED;
+
+    return datPtod;
     }
 
 

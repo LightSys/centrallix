@@ -97,6 +97,11 @@ void mss_i_error(int clr, char* module, char* file, int line, char* message, ...
     mss_i_error(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
 void mssClearError();
 int mssPrintError(pFile fd);
+void mssWarnError(char* message, ...)
+    #ifdef __GNUC__
+    __attribute__ ((format(printf, 1, 2)))
+    #endif
+;
 int mssStringError(pXString str);
 int mssUserError(pXString str);
 

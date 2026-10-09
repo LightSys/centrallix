@@ -1,0 +1,8 @@
+Attribute [charset]:   string   "us-ascii" 
+Attribute [transfer_encoding]:   string   "8bit" 
+Attribute [mime_version]:   string   "1.0" 
+Attribute [subject]:   string  NULL
+Attribute [charset]:   string  NULL
+Attribute [transfer_encoding]:   string   "7bit" 
+Attribute [mime_version]:   string  NULL
+Attribute [subject]:   string   "A part whose headers have parameters" 

@@ -1,0 +1,11 @@
+From: tester@example.com
+Subject: Part with a Content-ID and a filename
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain
+Content-ID: <img1@example.com>
+Content-Disposition: attachment; filename="photo.txt"
+
+Photo.
+--b1--

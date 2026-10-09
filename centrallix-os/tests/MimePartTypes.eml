@@ -1,0 +1,22 @@
+From: tester@example.com
+Subject: Parts of different types
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain
+
+Plain text.
+--b1
+Content-Type: image/gif
+Content-Transfer-Encoding: base64
+
+R0lGODlhAQABAAAAACw=
+--b1
+Content-Type: multipart/alternative; boundary="b2"
+
+--b2
+Content-Type: text/plain
+
+Alternative text.
+--b2--
+--b1--

@@ -1,0 +1,6 @@
+##NAME Deferred then sent
+##UNDO /tests/smtp/DeferredSent/DeferredSent.struct
+##UNDO /tests/smtp/DeferredSent/.mail_log_cursor
+##UNDO /tests/smtp/DeferredSent/.spool_lock
+
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/DeferredSent.smtp
