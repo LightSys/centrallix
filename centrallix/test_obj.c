@@ -1893,10 +1893,11 @@ testobj_i_copyStringAttr(pObject obj, char* attrname)
  ***
  *** @param obj The object to print.
  *** @param dir_path The directory being listed.
+ *** @param indent The number of spaces to indent the row.
  *** @returns 0 on success, or -1 if writing the output fails.
  ***/
 static int
-testobj_i_printListRow(pObject obj, char* dir_path)
+testobj_i_printListRow(pObject obj, char* dir_path, int indent)
     {
     int rval = -1;
     char* name = NULL;
@@ -1914,7 +1915,7 @@ testobj_i_printListRow(pObject obj, char* dir_path)
 	    goto end;
 	    }
 
-	if (UNLIKELY(fdPrintf(TESTOBJ.Output, "%-32.32s  %-32.32s    %s\n", name, annotation, type) < 0))
+	if (UNLIKELY(fdPrintf(TESTOBJ.Output, "%*s%-32.32s  %-32.32s    %s\n", indent, "", name, annotation, type) < 0))
 	    {
 	    mssError(1, "TESTOBJ",
 		"Failed to write \"%s\" in the listing of \"%s\" to output file \"%s\".",
@@ -1934,10 +1935,135 @@ testobj_i_printListRow(pObject obj, char* dir_path)
     }
 
 
+/*** testobj_i_listDir - prints the objects in a directory, each followed by
+ *** the listing of its own subobjects, down to a given depth.  A
+ *** subdirectory that cannot be listed gets a warning instead.
+ ***
+ *** @param s The OSML session.
+ *** @param dir_path The directory to list.
+ *** @param where The criteria for the objects to list, or NULL for all.
+ *** @param order_by The order to list them in, or NULL for any order.
+ *** @param levels The number of levels to list, or 0 for all.
+ *** @param indent The number of spaces to indent each row.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+testobj_i_listDir(pObjSession s, char* dir_path, char* where, char* order_by, int levels, int indent)
+    {
+    int rval = -1;
+    pObject dir = NULL;
+    pObjQuery query = NULL;
+    pObject child = NULL;
+    pXString child_path = NULL;
+
+	if (UNLIKELY(thExcessiveRecursion()))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to list \"%s\": resource exhaustion occurred.", dir_path);
+	    goto end;
+	    }
+
+	/** Query the directory. **/
+	dir = objOpen(s, dir_path, O_RDONLY, 0600, "system/directory");
+	if (UNLIKELY(dir == NULL))
+	    {
+	    mssError(0, "TESTOBJ", "Failed to open directory \"%s\".", dir_path);
+	    goto end;
+	    }
+	char* criteria = "";
+	if (where != NULL)
+	    {
+	    criteria = where;
+	    }
+	else if (order_by != NULL)
+	    {
+	    criteria = NULL;
+	    }
+	query = objOpenQuery(dir, criteria, order_by, NULL, NULL, 0);
+	if (UNLIKELY(query == NULL))
+	    {
+	    mssError(0, "TESTOBJ",
+		"Failed to query directory \"%s\" with where \"%s\" and orderby \"%s\".",
+		dir_path, (where != NULL) ? where : "", (order_by != NULL) ? order_by : ""
+	    );
+	    goto end;
+	    }
+	if (levels != 1)
+	    {
+	    child_path = xsNew();
+	    if (UNLIKELY(child_path == NULL))
+		{
+		mssError(1, "TESTOBJ", "Failed to allocate a string for the children of \"%s\".", dir_path);
+		goto end;
+		}
+	    }
+
+	/** Print the children. **/
+	while ((child = objQueryFetch(query, O_RDONLY)) != NULL)
+	    {
+	    if (UNLIKELY(testobj_i_printListRow(child, dir_path, indent) < 0)) goto end;
+
+	    /** Build the child's path. The row printed a warning if the name is unreadable. **/
+	    bool has_path = false;
+	    if (levels != 1)
+		{
+		char* name = NULL;
+		if (objGetAttrValue(child, "name", DATA_T_STRING, POD(&name)) == 0)
+		    {
+		    const size_t dir_len = strlen(dir_path);
+		    const bool add_slash = (dir_len > 0 && dir_path[dir_len - 1] != '/');
+		    if (UNLIKELY(xsPrintf(child_path, "%s%s%s", dir_path, (add_slash) ? "/" : "", name) < 0))
+			{
+			mssError(1, "TESTOBJ",
+			    "Failed to build a path from \"%s\" and \"%s\".",
+			    dir_path, name
+			);
+			goto end;
+			}
+		    has_path = true;
+		    }
+		else
+		    {
+		    mssClearError();
+		    }
+		}
+	    warnNeg(objClose(child));
+	    child = NULL;
+
+	    /** List the child's subobjects. **/
+	    if (has_path)
+		{
+		bool has_children = false;
+		if (UNLIKELY(testobj_i_hasChildren(xsString(child_path), &has_children) < 0))
+		    {
+		    mssWarnError("Failed to check \"%s\" for children, skipping them.", xsString(child_path));
+		    }
+		else if (has_children)
+		    {
+		    const int next_levels = (levels == 0) ? 0 : levels - 1;
+		    if (UNLIKELY(testobj_i_listDir(s, xsString(child_path), where, order_by, next_levels, indent + 2) < 0))
+			{
+			mssWarnError("Failed to list \"%s\", skipping it.", xsString(child_path));
+			}
+		    }
+		}
+	    }
+
+	rval = 0;
+
+    end:
+	if (child_path != NULL) xsFree(child_path);
+	if (child != NULL) warnNeg(objClose(child));
+	if (query != NULL) warnNeg(objQueryClose(query));
+	if (dir != NULL) warnNeg(objClose(dir));
+
+	return rval;
+    }
+
+
 /*** testobj_i_cmdList - lists the objects in a directory.
  ***
  *** @param s The OSML session.
- *** @param first_arg The first argument (a directory, "where", or
+ *** @param first_arg The first argument (-r, a directory, "where", or
  *** 	"orderby"), or NULL if none was given.
  *** @param ls The lexer for the rest of the command, positioned after
  *** 	first_arg.
@@ -1947,13 +2073,67 @@ static int
 testobj_i_cmdList(pObjSession s, char* first_arg, pLxSession ls)
     {
     int rval = -1;
-    char* const usage = "Usage: list [<directory>] [where \"<criteria>\"] [orderby \"<order>\"]";
+    char* const usage = "Usage: list [-r[<depth>]] [<directory>] [where \"<criteria>\"] [orderby \"<order>\"]";
     char* dir_path = "";
+    char* dir_arg = NULL;
     char* where = NULL;
     char* order_by = NULL;
-    pObject dir = NULL;
-    pObjQuery query = NULL;
-    pObject child = NULL;
+
+	/** Read the depth. **/
+	int levels = 1;
+	if (first_arg != NULL && strncmp(first_arg, "-r", 2) == 0)
+	    {
+	    levels = 0;
+	    char* const depth = first_arg + 2;
+	    if (depth[0] != '\0')
+		{
+		char* num_end = NULL;
+		levels = strtoi(depth, &num_end, 10);
+		if (UNLIKELY(num_end == depth || *num_end != '\0' || levels < 1 || levels == INT_MAX))
+		    {
+		    mssError(1, "TESTOBJ",
+			"Failed to parse depth \"%s\" as a whole number from 1 to %d. %s",
+			depth, INT_MAX - 1, usage
+		    );
+		    goto end;
+		    }
+		}
+
+	    /** Read the next argument the same way as the first. **/
+	    if (UNLIKELY(mlxSetOptions(ls, MLX_F_IFSONLY) < 0))
+		{
+		mssError(1, "TESTOBJ", "Failed to set lexer options to read the directory.");
+		goto end;
+		}
+	    const int token = mlxNextToken(ls);
+	    if (UNLIKELY(mlxUnsetOptions(ls, MLX_F_IFSONLY) < 0))
+		{
+		mssError(1, "TESTOBJ", "Failed to unset lexer options after reading the directory.");
+		goto end;
+		}
+	    if (UNLIKELY(token == MLX_TOK_ERROR))
+		{
+		mssError(0, "TESTOBJ", "Failed to read the argument after \"%s\".", first_arg);
+		goto end;
+		}
+	    first_arg = NULL;
+	    if (token == MLX_TOK_STRING)
+		{
+		char* const arg_text = mlxStringVal(ls, NULL);
+		if (UNLIKELY(arg_text == NULL))
+		    {
+		    mssError(0, "TESTOBJ", "Failed to read the argument after \"-r\".");
+		    goto end;
+		    }
+		dir_arg = nmSysStrdup(arg_text);
+		if (UNLIKELY(dir_arg == NULL))
+		    {
+		    mssError(1, "TESTOBJ", "Failed to copy argument \"%s\".", arg_text);
+		    goto end;
+		    }
+		first_arg = dir_arg;
+		}
+	    }
 
 	/** Read the directory. **/
 	char* keyword = NULL;
@@ -1987,48 +2167,14 @@ testobj_i_cmdList(pObjSession s, char* first_arg, pLxSession ls)
 	    goto end;
 	    }
 
-	/** Query the directory. **/
-	dir = objOpen(s, dir_path, O_RDONLY, 0600, "system/directory");
-	if (UNLIKELY(dir == NULL))
-	    {
-	    mssError(0, "TESTOBJ", "Failed to open directory \"%s\".", dir_path);
-	    goto end;
-	    }
-	char* criteria = "";
-	if (where != NULL)
-	    {
-	    criteria = where;
-	    }
-	else if (order_by != NULL)
-	    {
-	    criteria = NULL;
-	    }
-	query = objOpenQuery(dir, criteria, order_by, NULL, NULL, 0);
-	if (UNLIKELY(query == NULL))
-	    {
-	    mssError(0, "TESTOBJ",
-		"Failed to query directory \"%s\" with where \"%s\" and orderby \"%s\".",
-		dir_path, (where != NULL) ? where : "", (order_by != NULL) ? order_by : ""
-	    );
-	    goto end;
-	    }
-
-	/** Print the children. **/
-	while ((child = objQueryFetch(query, O_RDONLY)) != NULL)
-	    {
-	    if (UNLIKELY(testobj_i_printListRow(child, dir_path) < 0)) goto end;
-	    warnNeg(objClose(child));
-	    child = NULL;
-	    }
+	if (UNLIKELY(testobj_i_listDir(s, dir_path, where, order_by, levels, 0) < 0)) goto end;
 
 	rval = 0;
 
     end:
-	if (child != NULL) warnNeg(objClose(child));
-	if (LIKELY(query != NULL)) warnNeg(objQueryClose(query));
-	if (LIKELY(dir != NULL)) warnNeg(objClose(dir));
 	if (order_by != NULL) nmSysFree(order_by);
 	if (where != NULL) nmSysFree(where);
+	if (dir_arg != NULL) nmSysFree(dir_arg);
 
 	return rval;
     }
@@ -3025,6 +3171,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  hints     - Show the presentation hints of an attribute (or object)\n");
 	    printf("  help      - Displays this help screen.\n");
 	    printf("  list, ls  - Lists the objects in the current \"directory\" in the objectsystem.\n");
+	    printf("              -r lists all subobjects, -r<depth> only that many levels; where filters each level.\n");
 	    printf("  mem       - Print memory statistics and the allocation changes since the last mem.\n");
 	    printf("  mlquery   - Runs a SQL query, reading in multiple lines until a blank line.\n");
 	    printf("  obfuscate - Begins obfuscation of CSV and query output, given an obfuscation key and optional rule file\n");
