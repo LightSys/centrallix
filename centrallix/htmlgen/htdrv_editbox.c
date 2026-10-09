@@ -1,21 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -41,6 +28,15 @@
 /* Description:	HTML Widget driver for a single-line editbox.		*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
 
 /** globals **/
 static struct
@@ -61,23 +57,23 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
     char descfg[64];
     char descr[128];
     int x=-1,y=-1,w,h;
-    int id, i;
+    int rval = -1;
     int is_readonly = 0;
     int is_raised = 0;
-    char* tooltip;
-    int maxchars;
+    char* tooltip = NULL;
+    int max_chars;
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
-    int box_offset;
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom0IE && !s->Capabilities.Dom2Events)
+	/** Get an id for this. **/
+	const int id = (HTEB.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTEB","Netscape, IE, or Dom2Events support required");
-	    return -1;
+	    mssError(1, "HTEB", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto end;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTEB.idcnt++);
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -85,26 +81,30 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0)
 	    {
 	    mssError(1,"HTEB","Editbox widget must have a 'width' property");
-	    return -1;
+	    goto end;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
 	    mssError(1,"HTEB","Editbox widget must have a 'height' property");
-	    return -1;
+	    goto end;
 	    }
 
-	/** Maximum characters to accept from the user **/
-	if (wgtrGetPropertyValue(tree,"maxchars",DATA_T_INTEGER,POD(&maxchars)) != 0) maxchars=255;
+	/** Maximum characters to accept from the user.  Negative means no limit. **/
+	if (wgtrGetPropertyValue(tree,"max_chars",DATA_T_INTEGER,POD(&max_chars)) != 0) max_chars = -1;
 
 	/** Readonly flag **/
-	if (wgtrGetPropertyValue(tree,"readonly",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"yes")) is_readonly = 1;
+	is_readonly = htrGetBoolean(tree, "readonly", 0);
 
 	/** Background color/image **/
 	strcpy(main_bg,"");
 	htrGetBackground(tree, NULL, s->Capabilities.CSS2?1:0, main_bg, sizeof(main_bg));
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0)
+	    {
+	    mssError(1,"HTEB","Editbox widget must have a 'name' property");
+	    goto end;
+	    }
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Get description color **/
@@ -137,72 +137,191 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    tooltip=nmSysStrdup(ptr);
 	else
 	    tooltip=nmSysStrdup("");
+	if (tooltip == NULL)
+	    {
+	    mssError(1, "HTEB", "Failed to allocate tooltip.");
+	    goto end;
+	    }
 
 	if (wgtrGetPropertyValue(tree,"form",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(form,ptr,sizeof(form));
 	else
 	    form[0]='\0';
 
-	if (s->Capabilities.CSSBox)
-	    box_offset = 1;
-	else
-	    box_offset = 0;
-
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#eb%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; overflow:hidden; }\n",id,x,y,w-2*box_offset,z);
-	htrAddStylesheetItem_va(s,"\t#eb%POScon1 { VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; border:none; }\n",id,5,0,w-10,z+1);
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"overflow:hidden; "
+		/** border-box: the border below is drawn inside the width/height. **/
+		"box-sizing:border-box; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex(x, ht_get_parent_w(tree), ht_get_fl_x(tree)),
+	    ht_flex(y, ht_get_parent_h(tree), ht_get_fl_y(tree)),
+	    ht_flex(w, ht_get_parent_w(tree), ht_get_fl_w(tree)),
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write base CSS.");
+	    goto end;
+	    }
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POScon1 { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"box-sizing:border-box; "
+		"left:6px; "
+		"top:0px; "
+		"width:calc(100%% - 12px); "
+		"height:100%%; "
+		"border:none; "
+		"padding:0px; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z + 1
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write con1 CSS.");
+	    goto end;
+	    }
 
-	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase",id);
+	/*** Write CSS for the "more text this way" arrows.  These are pinned
+	 *** to the edges of the base layer, since the input above is out of
+	 *** the normal flow.
+	 ***/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POSbase > img[data-side] { "
+		"position:absolute; "
+		"top:0px; "
+		"bottom:0px; "
+		"margin:auto 0px; "
+	    "}\n"
+	    "\t\t#eb%POSbase > img[data-side='left'] { left:0px; }\n"
+	    "\t\t#eb%POSbase > img[data-side='right'] { right:0px; }\n",
+	    id, id, id
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write edge arrow CSS.");
+	    goto end;
+	    }
 
-	/** Global for ibeam cursor layer **/
-	htrAddScriptGlobal(s, "text_metric", "null", 0);
-	htrAddScriptGlobal(s, "eb_current", "null", 0);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase", id) != 0) goto end;
 
-	/** Script include to get functions **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js", 0);
+	/** Write JS globals. **/
+	if (htrAddScriptGlobal(s, "eb_current", "null", 0) != 0) goto end;
+	if (htrAddScriptGlobal(s, "text_metric", "null", 0) != 0) goto end;
 
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "eb", "eb_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "eb", "eb_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "eb", "eb_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "eb", "eb_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove");
-	htrAddEventHandlerFunction(s, "document","PASTE", "eb", "eb_paste");
+	/** Write JS script includes. **/
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_cursor.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js",  0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto end;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js",   0) != 0) goto end;
+	
+	/** Register JS event handlers. **/
+	if (htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "eb", "eb_mousedown") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEOUT",  "eb", "eb_mouseout")  != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEOVER", "eb", "eb_mouseover") != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEUP",   "eb", "eb_mouseup")   != 0) goto end;
+	if (htrAddEventHandlerFunction(s, "document","PASTE",     "eb", "eb_paste")     != 0) goto end;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    eb_init({layer:wgtrGetNodeRef(ns,'%STR&SYM'), c1:document.getElementById(\"eb%POScon1\"), form:\"%STR&JSSTR\", fieldname:\"%STR&JSSTR\", isReadOnly:%INT, mainBackground:\"%STR&JSSTR\", tooltip:\"%STR&JSSTR\", desc_fgcolor:\"%STR&JSSTR\", empty_desc:\"%STR&JSSTR\"});\n",
-	    name,  id,
-	    form, fieldname, is_readonly, main_bg,
-	    tooltip, descfg, descr);
+	if (htrAddScriptInit_va(s,
+	    "\teb_init({ "
+		"layer:wgtrGetNodeRef(ns,'%STR&SYM'), "
+		"c1:document.getElementById('eb%POScon1'), "
+		"form:'%STR&JSSTR', "
+		"fieldname:'%STR&JSSTR', "
+		"isReadOnly:%INT, "
+		"mainBackground:'%STR&JSSTR', "
+		"tooltip:'%STR&JSSTR', "
+		"desc_fgcolor:'%STR&JSSTR', "
+		"empty_desc:'%STR&JSSTR', "
+	    "});\n",
+	    name, id,
+	    form, fieldname,
+	    is_readonly,
+	    main_bg, tooltip,
+	    descfg, descr
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write JS init call.");
+	    goto end;
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"eb%POSbase\">\n",id);
+	if (htrAddBodyItem_va(s, "<div id='eb%POSbase'>", id) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write base HTML.");
+	    goto end;
+	    }
 
 	/** Use CSS border for drawing **/
-	if (is_raised)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: white gray gray white; %STR }\n",id, main_bg);
-	else
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { border-style:solid; border-width:1px; border-color: gray white white gray; %STR }\n",id, main_bg);
-	if (h >= 0)
-	    htrAddStylesheetItem_va(s,"\t#eb%POSbase { height:%POSpx; }\n\t#eb%POScon1 { height:%POSpx; }\n", id, h-2*box_offset, id, h-2*box_offset-2);
+	const char* border_colors = (is_raised) ? "white gray gray white" : "gray white white gray";
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#eb%POSbase { "
+		"border-style:solid; "
+		"border-width:1px; "
+		"border-color:%STR; "
+		"%[height:"ht_flex_format"; %]"
+		"%STR "
+	    "}\n",
+	    id,
+	    border_colors,
+	    (h >= 0), ht_flex_h(h, tree),
+	    main_bg
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write base border CSS.");
+	    goto end;
+	    }
 
-	//htrAddBodyItem_va(s, "<table border='0' cellspacing='0' cellpadding='0' width='%POS'><tr><td align='left' valign='middle' height='%POS'><img name='l' src='/sys/images/eb_edg.gif'></td><td>&nbsp;</td><td align='right' valign='middle'><img name='r' src='/sys/images/eb_edg.gif'></td></tr></table>\n", w-2, h-2);
-	//htrAddBodyItem_va(s, "<DIV ID=\"eb%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "<img name=\"l\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" /><input id=\"eb%POScon1\" /><img name=\"r\" src=\"/sys/images/eb_edg.gif\" style=\"vertical-align:10%%\" />\n",id);
+	if (htrAddBodyItem_va(s,
+	    "<img data-side='left' src='/sys/images/eb_edg.gif' alt=''>"
+	    "<input id='eb%POScon1'%[ maxlength='%POS'%]>"
+	    "<img data-side='right' src='/sys/images/eb_edg.gif' alt=''>",
+	    id,
+	    (max_chars > 0), max_chars
+	) != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write edge and input HTML.");
+	    goto end;
+	    }
 
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end;
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</DIV>\n");
+	if (htrAddBodyItem(s, "</div>\n") != 0)
+	    {
+	    mssError(0, "HTEB", "Failed to write HTML closing tag.");
+	    goto end;
+	    }
 
-	nmSysFree(tooltip);
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTEB",
+		"Failed to render \"%s\":\"%s\" (id: %d).",
+		tree->Name, tree->Type, id
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (tooltip != NULL) nmSysFree(tooltip);
+	
+	return rval;
     }
 
 
@@ -221,27 +340,6 @@ htebInitialize()
 	strcpy(drv->Name,"DHTML Single-line Editbox Driver");
 	strcpy(drv->WidgetName,"editbox");
 	drv->Render = htebRender;
-
-	/** Events **/
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
-	htrAddEvent(drv,"DataChange");
-	htrAddEvent(drv,"GetFocus");
-	htrAddEvent(drv,"LoseFocus");
-
-	/** Add a 'set value' action **/
-	htrAddAction(drv,"SetValue");
-	htrAddParam(drv,"SetValue","Value",DATA_T_STRING);	/* value to set it to */
-	htrAddParam(drv,"SetValue","Trigger",DATA_T_INTEGER);	/* whether to trigger the Modified event */
-
-	/** Value-modified event **/
-	htrAddEvent(drv,"Modified");
-	htrAddParam(drv,"Modified","NewValue",DATA_T_STRING);
-	htrAddParam(drv,"Modified","OldValue",DATA_T_STRING);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

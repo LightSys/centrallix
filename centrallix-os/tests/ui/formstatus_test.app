@@ -46,7 +46,7 @@ formstatus_test "widget/page"
     editbox "widget/editbox"
     {
       x = 30; y = 70; width = 80; height = 20;
-      maxchars = 30;
+      max_chars = 30;
       bgcolor = "#ffffff";
       fieldname = "Percentage";
     }

@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/xstring.h"
-#include "cxlib/mtsession.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,6 +30,15 @@
 /*		with a form element widget				*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/mtsession.h"
+#include "cxlib/xstring.h"
+#include "hints.h"
+#include "ht_render.h"
+#include "obj.h"
+#include "wgtr.h"
+
 
 /*** hthintRender - generate the HTML code for the page.
  ***/
@@ -62,8 +59,10 @@ hthintRender(pHtSession s, pWgtrNode tree, int z)
 	/** Serialize the hints data and add the script init for it **/
 	xsInit(&xs);
 	hntEncodeHints(hints, &xs);
-	htrAddScriptInit_va(s, "    cx_set_hints(wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")), '%STR&JSSTR', 'app');\n",
-		wgtrGetName(tree), xs.String);
+	htrAddScriptInit_va(s,
+	    "\tcx_set_hints(wgtrGetParent(wgtrGetNodeRef(ns, '%STR&SYM')), '%STR&JSSTR', 'app');\n",
+	    wgtrGetName(tree), xs.String
+	);
 	xsDeInit(&xs);
 
 	/** mark this node as not being associated with a DHTML object **/

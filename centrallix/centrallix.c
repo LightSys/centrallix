@@ -563,8 +563,6 @@ cxHtInit()
 	hthtmlInitialize();			/* html pane module */
 	htconnInitialize();			/* connector nonvisual module */
 	htbtnInitialize();			/* generic button module */
-	htibtnInitialize();			/* image button module */
-	httbtnInitialize();			/* text button module */
 	htmenuInitialize();			/* dropdown/popup menu module */
 	htsetInitialize();			/* frameset module */
 	htvblInitialize();			/* variable nonvisual module */
@@ -587,7 +585,6 @@ cxHtInit()
 	htcaInitialize();			/* calendar module */
 	htsbInitialize();			/* scrollbar module */
 	htimgInitialize();			/* image widget */
-	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
 	htmapInitialize();			/* object canvas widget */
 	htfuInitialize();			/* file upload widget */

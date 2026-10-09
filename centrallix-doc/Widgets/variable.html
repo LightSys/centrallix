@@ -19,7 +19,7 @@
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-			<p>This nonvisual widget is used at the top-level (within a "widget/page").  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.</p>
+			<p>This nonvisual widget is used at the top-level (within a "widget/page").  It should not contain any visual or nonvisual child widgets.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -36,7 +36,7 @@
 <tr>
 <td class="name">form</td>
 <td class="type">string</td>
-<td class="description">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</td>
+<td class="description">The form (e.g. it's osrc) with which to associate the variable and fieldname.  Defaults to the form in which variable is nested.</td>
 </tr>
 <tr>
 <td class="name">value</td>
@@ -73,7 +73,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -87,7 +87,7 @@ counter "widget/variable"
 
 	}
 
-		
+			
 
 		</pre>
 </body>

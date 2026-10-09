@@ -1,0 +1,138 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Centrallix Application Server: Widget Documentation</title>
+<link rel="StyleSheet" href="style.css" type="text/css">
+</head>
+<body>
+<!-- PAGE BREAK: 'terminal.html' -->
+<h2 class="widgetname"><a name="terminal">terminal</a></h2>
+<p class="widgettype">type: <span class="widgettypevalue">widget/terminal</span></p>
+<p class="widgettype">visual: <span class="widgettypevalue">yes</span></p>
+<p class="widgettype">container: <span class="widgettypevalue">no</span></p>
+<p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
+<h3 class="overview">Overview:</h3>
+<span class="overview">
+
+			<p>The terminal widget displays a fixed-size grid of characters (rows by cols) and emulates a subset of the VT100 terminal.  It opens the ObjectSystem object named by the 'source' property through the OSML, polls it for data, and interprets the escape sequences in that data stream to position and erase text on the display.</p>
+
+			<p>The widget is experimental and largely incomplete.  Only cursor positioning, carriage return, line feed, tab, and erase-to-end-of-line are honored; character attributes (colors, bold, reverse), erase-to-end-of-page, scrolling, keyboard input, sending data back to the source, and disconnecting are not implemented.  Because keyboard input is not delivered to the widget, the terminal is read-only in practice, and is best suited to viewing the output of a program such as "top".</p>
+
+		</span><h3 class="usage">Usage:</h3>
+<span class="usage">
+
+			<p>The terminal widget can be used inside any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.</p>
+
+			<p>The 'source' property must reference an ObjectSystem object which can be opened and read repeatedly, such as a shell script object (a ".shl" file).  The object is read in blocks of 2048 bytes and re-polled every two seconds when no data is available.  The path is resolved relative to the directory containing the application, since cross-directory reads are blocked by the browser's cross-site scripting protections.</p>
+
+			<p>The widget requires a browser with W3C DOM1 HTML and DOM2 CSS support, and it renders only on the "dhtml" output driver.</p>
+
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">cols</td>
+<td class="type">integer</td>
+<td class="description">Required.  The width of the terminal, in characters.  The widget's width in pixels is 'cols' multiplied by 'fontsize'.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color0</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 0.  Default is "black".</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color1</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 1.  Default is "red".</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color2</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 2.  Default is "green".</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color3</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 3.  Default is "yellow".</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color4</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 4.  Default is "blue".</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color5</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 5.  Default is "purple".</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color6</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 6.  Default is "aqua".</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">color7</td>
+<td class="type">string</td>
+<td class="description">A color, either named or numeric, to use for VT100 color 7.  Default is "white".</td>
+</tr>
+<tr>
+<td class="name">fontsize</td>
+<td class="type">integer</td>
+<td class="description">The size, in pixels, of one character cell.  Default is 12.  It is used only to compute the size of the widget; the characters themselves are displayed in the browser's "fixed" font at its normal size.</td>
+</tr>
+<tr>
+<td class="name">rows</td>
+<td class="type">integer</td>
+<td class="description">Required.  The height of the terminal, in character rows.</td>
+</tr>
+<tr>
+<td class="name">source</td>
+<td class="type">string</td>
+<td class="description">Required.  The ObjectSystem path of the object supplying the terminal's data stream.</td>
+</tr>
+<tr>
+<td class="name">x</td>
+<td class="type">integer</td>
+<td class="description">Required.  The X location of the left edge of the widget, relative to its container.</td>
+</tr>
+<tr>
+<td class="name">y</td>
+<td class="type">integer</td>
+<td class="description">Required.  The Y location of the top edge of the widget, relative to its container.</td>
+</tr>
+</table>
+<h3 class="actions">Actions:</h3>
+<table class="actions">
+<tr>
+<th class="name">Action</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">Connect</td>
+<td class="description">Opens an OSML session on the 'source' object and begins reading from it.  Does nothing if the terminal is already connected.  The terminal connects automatically when the page loads, so this action is only needed after a disconnect.</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Disconnect</td>
+<td class="description">Closes the connection to the 'source' object.</td>
+</tr>
+</table>
+<h3 class="sample">Sample Code:</h3>
+<pre>
+
+			
+
+term1 "widget/terminal"
+		{
+		x=0; y=100; rows=24; cols=80;
+		source = "/samples/top.shl";
+		}
+
+			
+
+		</pre>
+</body>
+</html>

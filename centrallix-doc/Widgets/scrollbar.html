@@ -14,7 +14,7 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
+			<p>The scrollbar is used to allow the user to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
 
 			<p>Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.</p>
 
@@ -38,7 +38,7 @@
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, to be used as the scrollbar background. If neither bgcolor nor background is supplied, the scrollbar is transparent.</td>
+<td class="description">A color, RGB or named, to be used as the scrollbar background.  If neither bgcolor nor background is supplied, the scrollbar is transparent.</td>
 </tr>
 <tr>
 <td class="name">direction</td>
@@ -84,7 +84,7 @@
 </tr>
 <tr>
 <td class="name">MoveTo</td>
-<td class="description">Sets the scroll bar to a specific location determined by the parameter.</td>
+<td class="description">Sets the scrollbar to a specific location determined by the "Value" parameter.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -92,6 +92,10 @@
 <tr>
 <th class="name">Event</th>
 <th class="description">Description</th>
+</tr>
+<tr class="notimplimented">
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</td>
 </tr>
 <tr>
 <td class="name">MouseDown</td>

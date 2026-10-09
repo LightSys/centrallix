@@ -16,7 +16,7 @@
 
 			<p>An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).</p>
 
-			<p>  When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.</p>
+			<p> When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
@@ -38,7 +38,7 @@
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">A color, RGB or named, for the editbox contents. If neither bgcolor nor background is specified, the editbox is transparent.</td>
+<td class="description">A color, RGB or named, for the editbox contents.  If neither bgcolor nor background is specified, the editbox is transparent.</td>
 </tr>
 <tr>
 <td class="name">description_fgcolor</td>
@@ -66,9 +66,9 @@
 <td class="description">Height, in pixels, of the editbox.</td>
 </tr>
 <tr>
-<td class="name">maxchars</td>
+<td class="name">max_chars</td>
 <td class="type">integer</td>
-<td class="description">Number of characters to accept from the user.</td>
+<td class="description">The maximum number of characters the editbox should accept from the user.  Defaults to -1 (no limit).</td>
 </tr>
 <tr>
 <td class="name">readonly</td>
@@ -112,12 +112,16 @@
 <td class="description">The Enable action allows an edit box to be written in, and takes no parameters x from being written in, and takes no parameters.</td>
 </tr>
 <tr>
+<td class="name">Disable</td>
+<td class="description">The Disable action prevents an edit box from being written in. This action takes no parameters.</td>
+</tr>
+<tr>
 <td class="name">SetFocus</td>
-<td class="description">The SetFocus action selects and gives control to an edit box.</td>
+<td class="description">The SetFocus action selects and gives control to an edit box at the specified "X" and "Y" coordinates (even if it is not the target?).</td>
 </tr>
 <tr>
 <td class="name">SetValue</td>
-<td class="description">The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).</td>
+<td class="description">The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription event.</td>
 </tr>
 <tr>
 <td class="name">SetValueDescription</td>
@@ -140,7 +144,7 @@
 </tr>
 <tr>
 <td class="name">Click</td>
-<td class="description">This event occurs when the user clicks the widget. No parameters are available from this event.</td>
+<td class="description">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</td>
 </tr>
 <tr>
 <td class="name">DataChange</td>
@@ -148,7 +152,7 @@
 </tr>
 <tr>
 <td class="name">DataModify</td>
-<td class="description">This event occurs when the data is changed (occurs when key press or button changes things).</td>
+<td class="description">This event occurs when the data is changed (occurs when key press or button changes things).  It provides four parameters. "Value" represents the now current value after the modification. "OldValue" representing the previous value.  "FromKeyboard" is 1 if the event is caused by the user typing into the editbox with their keyboard.  "FromOSRC" is 1 if the event is caused by an OSRC modifying the edit box data.</td>
 </tr>
 <tr>
 <td class="name">EscapePressed</td>
@@ -198,7 +202,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -224,7 +228,7 @@ my_editbox "widget/editbox"
 
 	}
 
-		
+			
 
 		</pre>
 </body>

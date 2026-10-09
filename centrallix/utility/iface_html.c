@@ -337,10 +337,10 @@ ifcHtmlInit(pHtSession s, pWgtrNode tree)
 
 	/** first add the necessary DHTML, and call to init **/
 	htrAddScriptInclude(s, "/sys/js/ht_utils_iface.js", 0);
-	htrAddStylesheetItem(s, "        #ifc_layer {position: absolute; visibility: hidden;}\n");
+	htrAddStylesheetItem(s, "\t\t#ifc_layer { position: absolute; visibility: hidden; }\n");
 	htrAddBodyItem(s, "<div id=\"ifc_layer\"></div>\n");
-	htrAddScriptInit_va(s, "    ifcInitialize(\"%STR&JSSTR\");\n", IFC.IfaceDir);
-	htrAddScriptInit(s, "    init_inline_interfaces();\n");
+	htrAddScriptInit_va(s, "\tifcInitialize('%STR&JSSTR');\n", IFC.IfaceDir);
+	htrAddScriptInit(s, "\tinit_inline_interfaces();\n");
 
 	/** now create all the interface info we know of in-line **/
 	xaInit(&AlreadyProcessed, 16);
@@ -359,4 +359,3 @@ ifcHtmlInit(pHtSession s, pWgtrNode tree)
 	return 0;
     }
    
-

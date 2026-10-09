@@ -1,6 +1,6 @@
 //
 // Widget Tree module
-// (c) 2004-2014 LightSys Technology Services, Inc.
+// (c) 2004-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -363,7 +363,7 @@ function wgtrIsUndefined(prop)
 // wgtrGetServerProperty() - return a server-supplied property value
 function wgtrGetServerProperty(node, prop_name, def)
     {
-    var val = node.__WgtrParams[prop_name];
+    var val = node?.__WgtrParams?.[prop_name];
     if (typeof val == 'undefined')
 	return def;
     else if (typeof val == 'object' && val && val.exp)
@@ -1126,8 +1126,23 @@ function wgtrGetGeom(node)
 	}
     else
 	{
-	//return {x:getPageX(node),y:getPageY(node),width:getClipWidth(node),height:getClipHeight(node)};
-	return {x:$(node).offset().left,y:$(node).offset().top,width:getClipWidth(node),height:getClipHeight(node)};
+	/*** One rect, measured live.  Take the size from it too, not from the clip
+	 *** values: a clip object caches its first read, so it reports the size the
+	 *** widget had before the page was last resized.
+	 ***/
+	const rect = node.getBoundingClientRect();
+
+	/*** No layout box (a closed tab, a hidden pane) means no geometry to
+	 *** report, so callers leave whatever they were placing where it is.
+	 ***/
+	if (!node.getClientRects().length) return null;
+
+	return {
+	    x: rect.left + window.scrollX,
+	    y: rect.top + window.scrollY,
+	    width: rect.width,
+	    height: rect.height,
+	    };
 	}
     }
 

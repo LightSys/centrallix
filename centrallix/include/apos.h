@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -31,6 +31,8 @@
 /* Description:	Applies layout logic to the widgets of an application.	*/
 /************************************************************************/
 
+#include <limits.h>
+#include <stdbool.h>
 
 #include "wgtr.h"
 #include "cxlib/xarray.h"
@@ -51,8 +53,16 @@ struct _APOS_L
     XArray	CWidgets;	//widgets that cross the line
     pAposSection SSection;	// section starting with this line
     pAposSection ESection;	// section ending with this line
-    };
     
+    /*** Used to find the distance the line should move when the parent
+     *** container is resized. loc_fl (local flex) is the weight that this
+     *** line moves relative to the container. my_fl (my flex) is the amount
+     *** that this line moves relative to the line before (left of) it.
+     *** Used for generating responsive CSS.
+     ***/
+    float   loc_fl, my_fl;
+    };
+
 /**Section Structure (used for both rows and columns)**/
 struct _APOS_S
     {
@@ -80,18 +90,15 @@ typedef struct
 /**Function Definitions**/
 int aposAutoPositionWidgetTree(pWgtrNode);	/**top-level function, called from wgtr module**/
 int aposAutoPositionContainers (pWgtrNode);	/**Auto-positions all widgets inside a container**/
-int aposInit();					/**Registers datastructures used in auto-positioning**/
-int aposInitiallizeGrid (pAposGrid);		/**Initiallizes the XArrays in the grid object**/
-int aposFree(pAposGrid);				/**Frees dynamically allocated memory**/
-int aposFreeGrids(pWgtrNode);				/**Frees dynamically allocated memory**/
-int aposSetOffsetBools(pWgtrNode, int*, int*, int*, int*, int*); /**sets bools used to offset widgets**/
+void aposInit();					/**Registers datastructures used in auto-positioning**/
+int aposInitializeGrid(pAposGrid);		/**Initializes the XArrays in the grid object**/
+void aposFree(pAposGrid);			/**Frees dynamically allocated memory**/
+void aposFreeGrids(pWgtrNode);			/**Frees dynamically allocated memory**/
 int aposBuildGrid(pWgtrNode);			/** builds the layout grids **/
 int aposSetLimits(pWgtrNode);			/** enforce min/max sizing **/
 
 /**Tree Preparation**/
-int aposPrepareTree(pWgtrNode, pXArray);	/**Prepares widget tree for auto-positioning**/
-int aposPatchNegativeHeight(pWgtrNode, pXArray);/**Temporarily sets unspecified heights**/
-int aposSetContainerFlex(pWgtrNode);		/**Determines a container's flexibility**/
+void aposSetContainerFlex(pWgtrNode);		/**Determines a container's flexibility**/
 int aposSetFlexibilities(pWgtrNode);		/**Determines a container's flexibility**/
 int aposSetSectionFlex(pAposSection sect, int type);
 
@@ -105,34 +112,69 @@ int aposFillInCWidget(pXArray, pXArray, pXArray);	/**Fills in the CWidget array 
 /**Section Creation**/
 int aposAddSectionsToGrid(pAposGrid, int, int);	 /**Adds all of the necessary sections to the grid**/
 int aposCreateSection(pXArray, pAposLine, pAposLine, int, int); /**Creates a section object**/
-int aposIsSpacer(pAposLine, pAposLine, int, int);/**Determines if a section is a space between widgets**/
-int aposNonFlexChildren(pAposLine, int);	 /**Checks section after line for non-flexible widgets**/
-int aposAverageChildFlex(pAposLine, int);	 /**Returns average flexibility of widgets**/
+bool aposIsSpacer(pAposLine, pAposLine, int, int);/**Determines if a section is a space between widgets**/
+bool aposNonFlexChildren(pAposLine, int);	 /**Checks section after line for non-flexible widgets**/
 int aposMinimumChildFlex(pAposLine, int);	 /**Returns minimum flexibility of widgets**/
 
 /**Resizing and Repositioning**/
 int aposSpaceOutLines(pXArray, pXArray, int);	/**Adjusts spaces between lines to expand or contract grid**/
-int aposSnapWidgetsToGrid(pXArray, int);	/**Refreshes widget dimensions to match adjusted grid**/
+int aposSpaceOutLines_r(pXArray, pXArray, int, bool);	/**Recursive worker for aposSpaceOutLines()**/
+void aposSnapWidgetsToGrid(pXArray, int, pWgtrClientInfo); /**Refreshes widget dimensions to match adjusted grid**/
 int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree to process windows**/
 
-/** # defines **/
+
+/** #define names for values to improve readability. **/
+
+/** Indicates how a line links to a widget. **/
+#define APOS_NOT_LINKED 0
 #define APOS_SWIDGETS 	1
 #define APOS_EWIDGETS 	2
 
+/** Indicates if a line is vertical. **/
+#define APOS_VERTICAL 	1
+#define APOS_HORIZONTAL 0
+
+/*** Indicates if a section or line is a row (horizontal) or a column (vertical).
+ *** A row spans horizontally between two vertical lines, and a column spans
+ *** vertically between two horizontal lines.
+ ***/
 #define APOS_ROW 	1
 #define APOS_COL 	2
 
+/** Indicates if a line is a border. **/
+#define APOS_IS_BORDER 	1
+#define APOS_NOT_BORDER 0
+
+/** Allows rounding when casting floats or doubles to ints. **/
 #define APOS_FUDGEFACTOR 0.5
 
-/** The greatest width between two widgets that still defines them as "adjacent," 
-*** indicating that we don't want to increase the distance between them **/
+/*** The greatest width between two widgets that still defines them as
+ *** "adjacent," indicating that we don't want to increase the distance
+ *** between them. Therefore, a section of this size or less is considered
+ *** a "spacer" which will not be resized (aka. flex = 0).
+ ***/
 #define APOS_MINSPACE 20
 
-/**Lowest acceptable width or height for a widget**/
+/** The lowest acceptable width or height for a widget. **/
 #define APOS_MINWIDTH 30
 
-/**Default flexibilities for widgetless gaps in expanding or contracting applications **/
+/** Default flexibilities for widgetless gaps in expanding or contracting applications. **/
+/*** Israel: I don't know the difference between these two values. I'm guessing
+ ***         E stands enlarge and C stands for contract, thus (30, 50) makes it
+ ***         easier for gaps to grown than for them to shrink.
+ ***/
 #define APOS_EGAPFLEX 30
 #define APOS_CGAPFLEX 50
+
+/*** Sentinel for a minimum-flexibility search that has not seen a widget yet.
+ *** Flexibilities are unbounded, so this must be larger than any of them.
+ ***/
+#define APOS_NOFLEXFOUND INT_MAX
+
+/** Flexibility reported for a line that holds no widgets at all. **/
+#define APOS_NOCHILDFLEX 100
+
+/** Macros for readability and anticipation-of-change. **/
+#define isScrollpane(widget) (strcmp((widget)->Type, "widget/scrollpane") == 0)
 
 #endif

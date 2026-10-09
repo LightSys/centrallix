@@ -14,12 +14,12 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-		    <p>The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.</p>
+			<p>The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-		    <p>This widget can be placed within any visual widget.</p>
+			<p>This widget can be placed within any visual widget.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -66,7 +66,7 @@
 <tr>
 <td class="name">initialdate</td>
 <td class="type">string</td>
-<td class="description">Used to set the initialdate by a string.</td>
+<td class="description">Sets the initial date from the specified string.</td>
 </tr>
 <tr>
 <td class="name">search_by_range</td>
@@ -102,7 +102,7 @@
 </tr>
 <tr>
 <td class="name">SetValue</td>
-<td class="description">Generates an internal data object using the data specified or the current time.</td>
+<td class="description">Set the time of the clock to a new time, specified using "Value".</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -113,7 +113,7 @@
 </tr>
 <tr>
 <td class="name">Click</td>
-<td class="description">This event occurs when the user clicks the widget. No parameters are available from this event.</td>
+<td class="description">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</td>
 </tr>
 <tr>
 <td class="name">DataChange</td>
@@ -151,25 +151,25 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-	
+			
 
 	dda "widget/datetime" {
 
-	    x=15;y=15;
+			x=15;y=15;
 
-	    width=200;
+			width=200;
 
-	    height=20;
+			height=20;
 
-	    fgcolor="#000000";
+			fgcolor="#000000";
 
-	    bgcolor="#cfcfcf";
+			bgcolor="#cfcfcf";
 
-	    //initialdate="12:34:56 May 3, 2002";
+			//initialdate="12:34:56 May 3, 2002";
 
 	}
 
-	
+			
 
 		</pre>
 </body>

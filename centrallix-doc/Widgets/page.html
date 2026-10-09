@@ -14,14 +14,14 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be "widget/page" or "widget/frameset", where the latter is used to create a multi-framed application containing multiple page widgets.</p>
+			<p>The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management.  When creating an application, the top-level object in the application must either be "widget/page" or "widget/frameset", where the latter is used to create a multi-framed application containing multiple page widgets.</p>
 
 			<p>Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-			<p>The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.</p>
+			<p>The page widget cannot be embedded within other widgets on a page.  There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -43,7 +43,7 @@
 <tr>
 <td class="name">bgcolor</td>
 <td class="type">string</td>
-<td class="description">The background color for the page. Can either be a recognized color (such as "red"), or an RGB color (such as "#C0C0C0").</td>
+<td class="description">The background color for the page.  Can either be a recognized color (such as "red"), or an RGB color (such as "#C0C0C0").</td>
 </tr>
 <tr>
 <td class="name">datafocus1</td>
@@ -93,7 +93,7 @@
 <tr>
 <td class="name">linkcolor</td>
 <td class="type">string</td>
-<td class="description">Color for hyper links.</td>
+<td class="description">Color for hyperlinks.</td>
 </tr>
 <tr>
 <td class="name">loadstatus</td>
@@ -149,7 +149,7 @@
 </tr>
 <tr>
 <td class="name">Alert</td>
-<td class="description">Sends an alert widget.</td>
+<td class="description">Sends an alert widget. Set the 'Message' to specify a text string that should appear in the alert.</td>
 </tr>
 <tr>
 <td class="name">Close</td>
@@ -157,11 +157,23 @@
 </tr>
 <tr>
 <td class="name">Launch</td>
-<td class="description">Starts a new app in a new window.</td>
+<td class="description">Loads the app at the specified "Source" in a new window of the specified "Width" and "Height".  Specify 1 or yes for "LinkApp" to link the new app into the same group as the current page for permissions.  Specify any value other than no for the "UseragentMenu", "UseragentResize", or "UseragentScroll" parameters to allow the user to see the menu bar, resize the window, or scroll it (respectively).  The "Name" parameter names the new window (the default name is new_window); specify 1 or true for "Multi" to open an additional numbered window instead of reusing the window with that name.</td>
+</tr>
+<tr>
+<td class="name">Log</td>
+<td class="description">Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log. Might be useful for logging Easter Egg #8.</td>
 </tr>
 <tr>
 <td class="name">LoadPage</td>
-<td class="description">Loads the page.</td>
+<td class="description">Loads the page at the specified "Source", or reloads the current page if no source is given.  Any other parameters are appended to the URL as query parameters.  Specify 1 or yes for "LinkApp" to link the loaded page into the same group as the current page for permissions.</td>
+</tr>
+<tr>
+<td class="name">ReloadPage</td>
+<td class="description">Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.</td>
+</tr>
+<tr>
+<td class="name">ReloadPage</td>
+<td class="description">Reloads the page in the user's browser.  Note: This event forces a reload, even if the original content could be loaded without one.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -182,7 +194,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -206,7 +218,7 @@ MyPage "widget/page"
 
 	}
 
-		
+			
 
 		</pre>
 </body>

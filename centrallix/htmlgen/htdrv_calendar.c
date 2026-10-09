@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -45,6 +33,14 @@
 /*		source to query additional data if need be.		*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
 
 /** globals **/
 static struct 
@@ -71,17 +67,16 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
     char eventpriofield[32] = "";
     int minpriority=0;
     int x=-1,y=-1,w,h;
-    int id, i;
 
-	/** Verify user-agent's capabilities allow us to continue... **/
-	if(!s->Capabilities.Dom0NS && !(s->Capabilities.Dom1HTML && s->Capabilities.CSS1))
+	/** Get an id for this. **/
+	const int id = (HTCA.idcnt++);
+
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
-	    mssError(1,"HTCA","Netscape 4.x DOM support or W3C HTML DOM1/CSS1 support required");
-	    return -1;
+	    mssError(1, "HTCA", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTCA.idcnt++);
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -89,7 +84,7 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
 	    mssError(1,"HTCA","Calendar widget must have a 'width' property");
-	    return -1;
+	    goto err;
 	    }
 	if (wgtrGetPropertyValue(tree,"height",DATA_T_INTEGER,POD(&h)) != 0) h = 0;
 	
@@ -109,13 +104,13 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "eventdatefield", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCA","Calendar widget must have an 'eventdatefield' property");
-	    return -1;
+	    goto err;
 	    }
 	strtcpy(eventdatefield, ptr, sizeof(eventdatefield));
 	if (wgtrGetPropertyValue(tree, "eventnamefield", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    mssError(1,"HTCA","Calendar widget must have an 'eventnamefield' property");
-	    return -1;
+	    goto err;
 	    }
 	strtcpy(eventnamefield,ptr,sizeof(eventnamefield));
 	if (wgtrGetPropertyValue(tree, "eventpriofield", DATA_T_STRING, POD(&ptr)) == 0)
@@ -134,43 +129,97 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** minimum priority **/
-	wgtrGetPropertyValue(tree, "displaymode", DATA_T_STRING, POD(&minpriority));
+	if (wgtrGetPropertyValue(tree, "minpriority", DATA_T_INTEGER, POD(&minpriority)) != 0) minpriority = 0;
 
 	/** Get name **/
-	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
+	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
 	strtcpy(name,ptr,sizeof(name));
 
 	/** Ok, write the style header items. **/
-	htrAddStylesheetItem_va(s,"\t#ca%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; HEIGHT:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,h,z);
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#ca%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:%INTpx; "
+		"top:%INTpx; "
+		"width:%POSpx; "
+		"height:%POSpx; "
+		"z-index:%POS; "
+	    "}\n",
+	    id, x, y, w, h, z
+	) != 0)
+	    {
+	    mssError(0, "HTCA", "Failed to write CSS init call.");
+	    goto err;
+	    }
 
 	/** Script include to get functions **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_calendar.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_calendar.js", 0) != 0) goto err;
 
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "ca", "ca_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "ca", "ca_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "ca", "ca_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "ca", "ca_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ca", "ca_mousemove");
+	/** Register events. **/
+	if (htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "ca", "ca_mousedown") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "ca", "ca_mousemove") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEOUT",  "ca", "ca_mouseout")  != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEOVER", "ca", "ca_mouseover") != 0) goto err;
+	if (htrAddEventHandlerFunction(s, "document","MOUSEUP",   "ca", "ca_mouseup")   != 0) goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    ca_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&JSSTR\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", \"%STR&SYM\", %INT, %INT, %INT);\n",
+	if (htrAddScriptInit_va(s,
+	    "\tca_init({"
+		"l:wgtrGetNodeRef(ns, '%STR&SYM'), "
+		"main_bg:'%STR&JSSTR', "
+		"cell_bg:'%STR&JSSTR', "
+		"textcolor:'%STR&JSSTR', "
+		"dispmode:'%STR&JSSTR', "
+		"eventdatefield:'%STR&SYM', "
+		"eventnamefield:'%STR&SYM', "
+		"%[eventpriofield:'%STR&SYM', %]"
+		"%[eventdescfield:'%STR&SYM', %]"
+		"minprio:%INT, "
+		"w:%INT, "
+		"h:%INT, "
+	    "});\n",
 	    name,
 	    main_bg, cell_bg, textcolor, dispmode,
-	    eventdatefield, eventdescfield, eventnamefield, eventpriofield,
-	    minpriority, w, h);
+	    eventdatefield, eventnamefield,
+	    (eventpriofield[0] != '\0'), eventpriofield,
+	    (eventdescfield[0] != '\0'), eventdescfield,
+	    minpriority, w, h
+	) != 0)
+	    {
+	    mssError(0, "HTCA", "Failed to write JS init call.");
+	    goto err;
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
-	htrAddBodyItem_va(s, "<DIV ID=\"ca%POSbase\"><BODY %STR text='%STR&HTE'>\n",id, main_bg, textcolor);
+	if (htrAddBodyItem_va(s,
+	    "<div id='ca%POSbase'><body %STR text='%STR&HTE'>\n",
+	    id, main_bg, textcolor
+	) != 0)
+	    {
+	    mssError(0, "HTCA", "Failed to write HTML opening tags.");
+	    goto err;
+	    }
 
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
 	/** End the containing layer. **/
-	htrAddBodyItem(s, "</BODY></DIV>\n");
+	if (htrAddBodyItem(s, "</body></div>\n") != 0)
+	    {
+	    mssError(0, "HTCA", "Failed to write HTML closing tags.");
+	    goto err;
+	    }
 
-    return 0;
+	return 0;
+
+    err:
+	mssError(0, "HTCA",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 
@@ -189,14 +238,6 @@ htcaInitialize()
 	strcpy(drv->Name,"DHTML Calendar View Driver");
 	strcpy(drv->WidgetName,"calendar");
 	drv->Render = htcaRender;
-
-	/** Events **/ 
-	htrAddEvent(drv,"Click");
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

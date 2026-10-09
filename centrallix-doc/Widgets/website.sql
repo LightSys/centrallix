@@ -54,6 +54,8 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/execmethod][/td][td]A nonvisual widget which can call ObjectSystem methods on server objects.[/td][/tr]
 	
+		[tr][td][widget/fileupload][/td][td]A nonvisual widget to manage file uploads to the Centrallix server.[/td][/tr]
+	
 		[tr][td][widget/form][/td][td]A nonvisual container used to group a set of form element widgets into a single record or object[/td][/tr]
 	
 		[tr][td][widget/formstatus][/td][td]A specialized visual widget used to display the current mode of a form widget.[/td][/tr]
@@ -68,11 +70,15 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/image][/td][td]A picture (image).[/td][/tr]
 	
-		[tr][td][widget/imagebutton][/td][td]A button widget which uses a set of images to control its appearance.[/td][/tr]
+		[tr][td][widget/imagebutton][/td][td]Deprecated.  An alias for widget/button with type=image.[/td][/tr]
 	
 		[tr][td][widget/label][/td][td]Form element capable of displaying text in a child window[/td][/tr]
 	
+		[tr][td][widget/map][/td][td]A visual widget for displaying geographical maps.[/td][/tr]
+	
 		[tr][td][widget/menu][/td][td]A visual pop-up or drop-down menu widget.[/td][/tr]
+	
+		[tr][td][widget/objcanvas][/td][td]A visual widget for advanced canvas-based graphics.[/td][/tr]
 	
 		[tr][td][widget/osrc][/td][td]A nonvisual widget which handles data communication between forms/tables and the Centrallix server.[/td][/tr]
 	
@@ -102,9 +108,11 @@ insert into topic values(null,1,"3. Application Components",null,
 	
 		[tr][td][widget/template][/td][td]templates are a way to provide default values (and default children) of different widget_class's[/td][/tr]
 	
+		[tr][td][widget/terminal][/td][td]A visual widget which emulates a VT100 text terminal attached to an ObjectSystem object.[/td][/tr]
+	
 		[tr][td][widget/textarea][/td][td]Visual multi-line text data entry widget.[/td][/tr]
 	
-		[tr][td][widget/textbutton][/td][td]A simple visual button widget built not from images but from a simple text string.[/td][/tr]
+		[tr][td][widget/textbutton][/td][td]Deprecated.  An alias for widget/button.[/td][/tr]
 	
 		[tr][td][widget/timer][/td][td]A nonvisual widget which is used to fire an event when a period of time has elapsed.[/td][/tr]
 	
@@ -142,6 +150,9 @@ insert into topic values(null, @newid, "widget/autolayout", null,
 			A \"hbox\" widget stacks its children horizontally one after the other, while a \"vbox\" widget stacks its children vertically from the top down.  The spacing between children can be set, and the size of each child can be either independently set per-child, or it can be set by virtue of the geometry of the autolayout widget.
 
 
+			Blank space can be placed between the children of an autolayout widget by adding an \"autolayoutspacer\" child.  A spacer draws nothing of its own, but it takes part in the layout just like any other child.
+
+
 			The autolayout widget supports having multiple rows or columns of widgets.  That is, if a \"vbox\" widget fills up vertically, it can resume adding children to a second vertical column should there be space to the right of the original column of widgets.  For this to work, the width of the columns (for a vbox) or the height of the rows (for an hbox) must be specified.
 
 
@@ -161,7 +172,7 @@ insert into topic values(null, @newid, "widget/autolayout", null,
 				[tr]
 					[td]align[/td]
 					[td]string[/td]
-					[td]Sets the alignment of text  can have left (default) right or center.[/td]
+					[td]Sets the alignment of text can have left (default) right or center.[/td]
 				[/tr]
 			
 				[tr]
@@ -179,7 +190,7 @@ insert into topic values(null, @newid, "widget/autolayout", null,
 				[tr]
 					[td]height[/td]
 					[td]integer[/td]
-					[td]Height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will chose a width and height that maximize the available autolayout area.[/td]
+					[td]Height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will choose a width and height that maximize the available autolayout area.[/td]
 				[/tr]
 			
 				[tr]
@@ -228,6 +239,25 @@ insert into topic values(null, @newid, "widget/autolayout", null,
 	
 	[b]Child Properties:[/b]
 	
+			(of widget/autolayoutspacer child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]fl_height[/td]
+							[td]integer[/td]
+							[td]The vertical flexibility of the spacer, as a weight relative to that of the sibling widgets.  Defaults to 5, rather than to the 100 used by most widgets, so a spacer takes a smaller share of the space added or removed when the autolayout widget is resized.  Set this to 0 to keep the space at a fixed size.[/td]
+						[/tr]
+					
+						[tr]
+							[td]fl_width[/td]
+							[td]integer[/td]
+							[td]The horizontal flexibility of the spacer, as a weight relative to that of the sibling widgets.  Defaults to 5, rather than to the 100 used by most widgets, so a spacer takes a smaller share of the space added or removed when the autolayout widget is resized.  Set this to 0 to keep the space at a fixed size.[/td]
+						[/tr]
+					
+				[/table]
+			
 			(of any child widgets)
 			
 				[table]
@@ -258,7 +288,7 @@ insert into topic values(null, @newid, "widget/autolayout", null,
 		[code]
 		
 
-		
+			
 
 // Here is a vbox which can have up to three
 
@@ -276,7 +306,17 @@ vbox1 \"widget/vbox\"
 
 	}
 
-		
+// A fixed 8 pixel gap between the children of an hbox.
+
+gap1 \"widget/autolayoutspacer\"
+
+	{
+
+	width=8; fl_width=0;
+
+	}
+
+			
 
 		
 		[/code]
@@ -297,17 +337,17 @@ insert into topic values(null, @newid, "widget/button", null,
 	[b]Overview:[/b]
 	
 
-		Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.
+			Combines the functionality of the textbutton and imagebutton, as well as adding the ability to have both text and image displayed in a button.  The deprecated widget/textbutton and widget/imagebutton names are rendered by this widget.
 
 
-	    
+		
 	[b]Usage:[/b]
 	
 
-		A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored.
+			A Button can be placed inside any visible container, but only nonvisual widgets can be placed within it.  Properties that don't apply to the button's type are ignored.
 
 
-	    
+		
 	[b]Properties:[/b]
 	
 		[table]
@@ -320,9 +360,39 @@ insert into topic values(null, @newid, "widget/button", null,
 				[/tr]
 			
 				[tr]
+					[td]align[/td]
+					[td]string[/td]
+					[td]Sets the alignment of text in the button, can have left right or center (default).[/td]
+				[/tr]
+			
+				[tr]
+					[td]background[/td]
+					[td]string[/td]
+					[td]A background image for the button.[/td]
+				[/tr]
+			
+				[tr]
+					[td]border_color[/td]
+					[td]string[/td]
+					[td]A color that outlines the button.[/td]
+				[/tr]
+			
+				[tr]
+					[td]border_radius[/td]
+					[td]integer[/td]
+					[td]A radius that describes the sharpness of the corners of the button (smaller means sharper).[/td]
+				[/tr]
+			
+				[tr]
+					[td]border_style[/td]
+					[td]string[/td]
+					[td]Determines the look of the outline.  One of 'outset' (default), 'solid', or 'none'.  An image-only button defaults to 'none', and one that draws no border also draws no padding, so it hugs its image; a button with text always reserves room for its frame whatever the style.[/td]
+				[/tr]
+			
+				[tr]
 					[td]clickimage[/td]
 					[td]string[/td]
-					[td]The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.[/td]
+					[td]The ObjectSystem pathname of the image to be shown when the user clicks the button.  Defaults to 'pointimage' if not specified, which in turn defaults to 'image'.[/td]
 				[/tr]
 			
 				[tr]
@@ -334,7 +404,7 @@ insert into topic values(null, @newid, "widget/button", null,
 				[tr]
 					[td]disabledimage[/td]
 					[td]string[/td]
-					[td]The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.[/td]
+					[td]The ObjectSystem pathname of the image to be shown when the button is disabled.  Defaults to 'image' if not specified.[/td]
 				[/tr]
 			
 				[tr]
@@ -368,15 +438,45 @@ insert into topic values(null, @newid, "widget/button", null,
 				[/tr]
 			
 				[tr]
+					[td]image_height[/td]
+					[td]integer[/td]
+					[td]Defines the height of image.  Defaults to the button's own height for an image-only button.[/td]
+				[/tr]
+			
+				[tr]
+					[td]image_margin[/td]
+					[td]integer[/td]
+					[td]Deprecated spelling of 'spacing'.[/td]
+				[/tr]
+			
+				[tr]
+					[td]image_position[/td]
+					[td]string[/td]
+					[td]Describes where an image sits relative to the text (top, right, bottom, left).  Deprecated: use the matching 'type' value instead.  Only consulted when 'type' is absent.[/td]
+				[/tr]
+			
+				[tr]
+					[td]image_width[/td]
+					[td]integer[/td]
+					[td]Defines the width of image.  Defaults to the button's own width for an image-only button.[/td]
+				[/tr]
+			
+				[tr]
 					[td]pointimage[/td]
 					[td]string[/td]
-					[td]The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.[/td]
+					[td]The pathname of the image to be shown when the button is pointed-to.  Defaults to the 'image' if not specified.[/td]
 				[/tr]
 			
 				[tr]
 					[td]spacing[/td]
 					[td]integer[/td]
-					[td]The distance between the image and text if applicable.[/td]
+					[td]The margin around the image, in pixels, which separates it from the text.  Defaults to 0.  Spelled 'image_margin' on the deprecated widget/textbutton.[/td]
+				[/tr]
+			
+				[tr]
+					[td]repeat[/td]
+					[td]yes/no[/td]
+					[td]Whether to keep firing the MouseDown event while the user holds the button down.  The Click event still fires once, on release.[/td]
 				[/tr]
 			
 				[tr]
@@ -386,15 +486,21 @@ insert into topic values(null, @newid, "widget/button", null,
 				[/tr]
 			
 				[tr]
+					[td]tooltip[/td]
+					[td]string[/td]
+					[td]The text that appears when the cursor hovers over the button.[/td]
+				[/tr]
+			
+				[tr]
 					[td]tristate[/td]
 					[td]yes/no[/td]
-					[td]Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.[/td]
+					[td]Whether or not the button is tri-state (does not display a raised border until the user points at it).  Default is yes.[/td]
 				[/tr]
 			
 				[tr]
 					[td]type[/td]
 					[td]string[/td]
-					[td]There are currently 7 different types.  1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background).[/td]
+					[td]There are currently 7 different types: 1) text 2) image 3) topimage (image above text) 4) rightimage 5) leftimage 6) bottomimage 7) textoverimage (text over image background).[/td]
 				[/tr]
 			
 				[tr]
@@ -417,6 +523,33 @@ insert into topic values(null, @newid, "widget/button", null,
 			
 		[/table]
 	
+	[b]Actions:[/b]
+	
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]SetText[/td]
+					[td]Called from a connector, this action sets the button's text to the value passed in through connector's \"Text\" parameter.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Click[/td]
+					[td]Triggers a Click event on the button with the \"from_action\" parameter set to 1.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Disable[/td]
+					[td]This action causes the button to enter its disabled state, displaying the disable_color, if specified.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Enable[/td]
+					[td]This action causes the button to enter its enabled state, possibly changing its normal colors.[/td]
+				[/tr]
+			
+		[/table]
+	
 	[b]Events:[/b]
 	
 		[table]
@@ -424,7 +557,7 @@ insert into topic values(null, @newid, "widget/button", null,
 		
 				[tr]
 					[td]Click[/td]
-					[td]This event occurs when the user clicks the widget. No parameters are available from this event.[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
 				[/tr]
 			
 				[tr]
@@ -454,7 +587,24 @@ insert into topic values(null, @newid, "widget/button", null,
 			
 		[/table]
 	
-	[b]Sample Code:[/b]
+	[b]Client Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]enabled[/td]
+					[td]yes/no[/td]
+					[td]Whether the button is enabled.  Can be read and set at runtime.[/td]
+				[/tr]
+			
+				[tr]
+					[td]text[/td]
+					[td]string[/td]
+					[td]Write-only.  Setting it is equivalent to invoking the SetText action; reading it always yields an empty string.[/td]
+				[/tr]
+			
+		[/table]
 	
 		[i]none currently available[/i]
 	
@@ -479,28 +629,28 @@ insert into topic values(null, @newid, "widget/calendar", null,
 
 			
 
-			    [b]Year[/b] - Presents twelve months at a time in a low-detail type of setting; when events occur on a day, the day is highlighted, but no more data than that is displayed.  If the user points the mouse at a given day, it will display in a popup \"tooltip\" type of manner the events associated with that day.  If more than one year's worth of data is in the objectsource's replica, then multiple years are displayed one after the other.  Each year is displayed as four rows of three months each, in traditional calendar format.
+				[b]Year[/b] - Presents twelve months at a time in a low-detail type of setting; when events occur on a day, the day is highlighted, but no more data than that is displayed.  If the user points the mouse at a given day, it will display in a popup \"tooltip\" type of manner the events associated with that day.  If more than one year's worth of data is in the objectsource's replica, then multiple years are displayed one after the other.  Each year is displayed as four rows of three months each, in traditional calendar format.
 
 
-			    [b]Month[/b] - Presents one month's worth of data in a medium-detail display.  For each month with data in the objectsource, the calendar will display the month as multiple rows, each row containing one week's worth of days.  The calendar will attempt to display the various entries for each day, in order of priority, but will limit the amount of data displayed to keep the boxes for the days approximately visually square.  Pointing at a day will show the events for the day in a popup, and pointing at an event in the day will show the details for that event.
+				[b]Month[/b] - Presents one month's worth of data in a medium-detail display.  For each month with data in the objectsource, the calendar will display the month as multiple rows, each row containing one week's worth of days.  The calendar will attempt to display the various entries for each day, in order of priority, but will limit the amount of data displayed to keep the boxes for the days approximately visually square.  Pointing at a day will show the events for the day in a popup, and pointing at an event in the day will show the details for that event.
 
 
-			    [b]Week[/b] - Presents one week's worth of data in a high-detail display.  For each week with data in the objectsource, the calendar will display the week as seven days with a large vertical extent capable of displaying all events for the day.  The left edge of the display will contain times during the day for the day's events to line up with.
+				[b]Week[/b] - Presents one week's worth of data in a high-detail display.  For each week with data in the objectsource, the calendar will display the week as seven days with a large vertical extent capable of displaying all events for the day.  The left edge of the display will contain times during the day for the day's events to line up with.
 
 
-			    [b]Day[/b] - Presents an entire day's worth of data in a high-detail display.  For each day with data in the objectsource, the calendar will display the day in full-width, with the day's events listed chronologically from top to bottom.
+				[b]Day[/b] - Presents an entire day's worth of data in a high-detail display.  For each day with data in the objectsource, the calendar will display the day in full-width, with the day's events listed chronologically from top to bottom.
 
 
 			
 
-			It should be noted that all of the data for the calendar must fit into the objectsource, or else the calendar will not display all of the available data.  In this manner the calendar's display must be controlled via the objectsource's data.
+			It should be noted that all the data for the calendar must fit into the objectsource, or else the calendar will not display all the available data.  In this manner the calendar's display must be controlled via the objectsource's data.
 
 
 		
 	[b]Usage:[/b]
 	
 
-			The calendar widget can be placed inside of any visual container, but because its height can change, it is often placed inside of a scrollpane widget.  This widget may not contain other visual widgets.
+			The calendar widget can be placed inside any visual container, but because its height can change, it is often placed inside a scrollpane widget.  This widget may not contain other visual widgets.
 
 
 		
@@ -621,10 +771,6 @@ insert into topic values(null, @newid, "widget/calendar", null,
 			
 		[/table]
 	
-	[b]Sample Code:[/b]
-	
-		[i]none currently available[/i]
-	
 ");
 	
 insert into topic values(null, @newid, "widget/chart", null,
@@ -640,12 +786,16 @@ insert into topic values(null, @newid, "widget/chart", null,
 		
 	[b]Overview:[/b]
 	
-			A chart widget is used to display charts and graphs of data. It uses the Chart.js library.
+
+			A chart widget is used to display charts and graphs of data.  It uses the Chart.js library.
+
 
 		
 	[b]Usage:[/b]
 	
-			The chart widget can be placed inside of any visual container, and will attach itself to any objectsource widget that contains it (whether directly or indirectly).  Charts may not contain visual widgets.
+
+			The chart widget can be placed inside any visual container, and will attach itself to any objectsource widget that contains it (whether directly or indirectly).  Charts may not contain visual widgets.
+
 
 		
 	[b]Properties:[/b]
@@ -656,31 +806,31 @@ insert into topic values(null, @newid, "widget/chart", null,
 				[tr]
 					[td]chart_type[/td]
 					[td]string[/td]
-					[td]Currently supported types are \"bar\", \"line\", \"scatter\", and \"pie\". Defaults to \"bar\". Chart.js supports much more than this, so new types could be added with relative ease.[/td]
+					[td]Currently supported types are \"bar\", \"line\", \"scatter\", and \"pie\".  Defaults to \"bar\".  Chart.js supports much more than this, so new types could be added with relative ease.[/td]
 				[/tr]
 			
 				[tr]
 					[td]legend_position[/td]
 					[td]string[/td]
-					[td]The position of the legend on the chart. May be \"top\", \"botton\", \"left\", or \"right\".[/td]
+					[td]The position of the legend on the chart.  May be \"top\", \"bottom\", \"left\", or \"right\".[/td]
 				[/tr]
 			
 				[tr]
 					[td]objectsource[/td]
 					[td]string[/td]
-					[td]The name of the ObjectSource widget which will supply data for the chart. We recommend that you do not specify this directly but instead embed the chart widget within a parent ObjectSource, directly or indirectly. If not specified, the chart will look for an ObjectSource in its parents.[/td]
+					[td]The name of the ObjectSource widget which will supply data for the chart.  We recommend that you do not specify this directly but instead embed the chart widget within a parent ObjectSource, directly or indirectly.  If not specified, the chart will look for an ObjectSource in its parents.[/td]
 				[/tr]
 			
 				[tr]
 					[td]start_at_zero[/td]
 					[td]boolean[/td]
-					[td]Set to false if you want the y axis to start at the lowest data value. Default is true.[/td]
+					[td]Set to false if you want the y-axis to start at the lowest data value.  Default is true.[/td]
 				[/tr]
 			
 				[tr]
 					[td]title[/td]
 					[td]string[/td]
-					[td]The title of the chart. Default is none.[/td]
+					[td]The title of the chart.  Default is none.[/td]
 				[/tr]
 			
 				[tr]
@@ -707,7 +857,7 @@ insert into topic values(null, @newid, "widget/chart", null,
 						[tr]
 							[td]chart_type[/td]
 							[td]string[/td]
-							[td]Chart.js has limited support for having multiple chart types on the same axes. The outer chart type must still be specified if this is set.[/td]
+							[td]Chart.js has limited support for having multiple chart types on the same axes.  The outer chart type must still be specified if this is set.[/td]
 						[/tr]
 					
 						[tr]
@@ -719,7 +869,7 @@ insert into topic values(null, @newid, "widget/chart", null,
 						[tr]
 							[td]fill[/td]
 							[td]boolean[/td]
-							[td]Set to false to remove the color fill beneath a line chart. Default is true.[/td]
+							[td]Specify false to remove the color fill behind a line chart.  Default is true.[/td]
 						[/tr]
 					
 						[tr]
@@ -731,13 +881,13 @@ insert into topic values(null, @newid, "widget/chart", null,
 						[tr]
 							[td]x_column[/td]
 							[td]string[/td]
-							[td]Which column in the data should be used for the x axis? By default, the chart will pick one for you.[/td]
+							[td]Which column in the data should be used for the x-axis? By default, the chart will pick one for you.[/td]
 						[/tr]
 					
 						[tr]
 							[td]y_column[/td]
 							[td]string[/td]
-							[td]Which column in the data should be used for the y axis? By default, the chart will pick one for you.[/td]
+							[td]Which column in the data should be used for the y-axis? By default, the chart will pick one for you.[/td]
 						[/tr]
 					
 				[/table]
@@ -750,23 +900,40 @@ insert into topic values(null, @newid, "widget/chart", null,
 						[tr]
 							[td]axis[/td]
 							[td]string[/td]
-							[td]Which axis is this? Possible values are \"x\" and \"y\". Default is \"x\".[/td]
+							[td]Which axis is this? Possible values are \"x\" and \"y\".  Default is \"x\".[/td]
 						[/tr]
 					
 						[tr]
 							[td]label[/td]
 							[td]string[/td]
-							[td]A label for the axis. Default is none.[/td]
+							[td]A label for the axis.  Default is none.[/td]
 						[/tr]
 					
 				[/table]
 			
+	[b]Events:[/b]
+	
+		[table]
+		[tr][th]Event[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]DblClick[/td]
+					[td]This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occurring on the widget within a required time period) while it is over this widget.[/td]
+				[/tr]
+			
+		[/table]
+	
 	[b]Sample Code:[/b]
 	
 		[code]
 		
 
-		
+			
 
 $Version=2$
 // Here is a simple chart.
@@ -793,7 +960,7 @@ chart \"widget/chart\"
 	x_axis \"widget/chart-axis\" { axis=\"x\"; label=\"X\"; }
 	}
 
-		
+			
 
 		
 		[/code]
@@ -821,7 +988,7 @@ insert into topic values(null, @newid, "widget/checkbox", null,
 	[b]Usage:[/b]
 	
 
-			The checkbox widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Checkboxes may not contain visual widgets.
+			The checkbox widget can be placed inside any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Checkboxes may not contain visual widgets.
 
 
 		
@@ -875,7 +1042,7 @@ insert into topic values(null, @newid, "widget/checkbox", null,
 		
 				[tr]
 					[td]SetValue[/td]
-					[td]This takes a given value and sets the check box value to it.[/td]
+					[td]Sets the checkbox using a given number: \"Value\". Use Value=1 for checked or Value=0 for unchecked.[/td]
 				[/tr]
 			
 		[/table]
@@ -887,7 +1054,7 @@ insert into topic values(null, @newid, "widget/checkbox", null,
 		
 				[tr]
 					[td]Click[/td]
-					[td]This event occurs when the user clicks the checkbox. No parameters are available from this event.[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
 				[/tr]
 			
 				[tr]
@@ -927,7 +1094,7 @@ insert into topic values(null, @newid, "widget/checkbox", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -957,7 +1124,7 @@ checkbox_test \"widget/page\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -1028,12 +1195,6 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 					[td]border_style[/td]
 					[td]string[/td]
 					[td]Determines the look of the outline.[/td]
-				[/tr]
-			
-				[tr]
-					[td]closetype[/td]
-					[td]string[/td]
-					[td]Decides wither the screen closes widthwise (1) or heightwise (2).[/td]
 				[/tr]
 			
 				[tr]
@@ -1117,7 +1278,7 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 				[tr]
 					[td]titlebar[/td]
 					[td]yes/no[/td]
-					[td]Whether the window will have a titlebar (and the close \"X\" in the upper right corner of the window). Default \"yes\".[/td]
+					[td]Whether the window will have a titlebar (and the close \"X\" in the upper right corner of the window).  Default \"yes\".[/td]
 				[/tr]
 			
 				[tr]
@@ -1129,7 +1290,7 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 				[tr]
 					[td]visible[/td]
 					[td]boolean[/td]
-					[td]The window is initially visible on screen. The window has an action which can \"true\".[/td]
+					[td]The window is initially visible on screen.  The window has an action which can \"true\".[/td]
 				[/tr]
 			
 				[tr]
@@ -1164,22 +1325,22 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 			
 				[tr]
 					[td]Open[/td]
-					[td]Opens the window.  If the parameter IsModal is set to 1, then the window becomes modal (only the window's contents are accessible to the user until the window is closed).  If the parameter NoClose is set to 1, then the close button in the upper right corner of the window becomes inactive and the window will only close via the Close, SetVisibility, and ToggleVisibility actions.[/td]
+					[td]Opens the window.  Set the \"X\" and \"Y\" parameters to the coordinates of the upper-left corner of the window to open it at that location.  If the parameter \"Center\" is set to any value other than no (the default), the window is centered on the specified coordinates instead.  Set the \"PointAt\" parameter with a widget name to make the new window point at that widget.  Set the \"PointSide\" parameter with a value of top, bottom, left, or right to force the window to point from that side.  Set the \"PointOffset\" parameter to the distance in pixels that the window should be from the widget it points at.  This action also takes the \"IsModal\",\"NoClose\", and \"Cascade\" parameters, described in the SetVisibility action.[/td]
 				[/tr]
 			
 				[tr]
 					[td]Point[/td]
-					[td]Makes the window relocate to a side using a triangle (pop over).[/td]
+					[td]Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.[/td]
 				[/tr]
 			
 				[tr]
 					[td]Popup[/td]
-					[td]Opens a window like a pop-up.[/td]
+					[td]Opens a window like a pop-up at the specified \"X\" and \"Y\" with the specified \"Width\" and \"Height\" (in pixels).  Or, set the \"PopTo\" parameter with a widget name to copy those properties from it.  In either case, the \"OffsetX\" and \"OffsetY\" parameters move the popup right and down respectively.  Finally, specify the \"ExtendTo\" parameter with a widget name to ensure that the popup extends to that parameter.[/td]
 				[/tr]
 			
 				[tr]
 					[td]SetVisibility[/td]
-					[td]One parameter, \"is_visible\", which is set to 0 or 1 to hide or show the window, respectively.[/td]
+					[td]Sets data about how the window displays.  Set the \"IsVisible\" parameter to 0 (hide) or 1 (show).  Set the \"IsModal\" parameter to 1 to make the window a modal (only the window's contents are accessible to the user until it is closed). Set the \"NoClose\" parameter to 1 to make the close button in the upper right corner of the window inactive (the window can only be closed via the Close, SetVisibility, and ToggleVisibility actions).  Set the \"Cascade\" parameter to 1 to cause multiple appearing windows to autopossition themselves in a cascading pattern.[/td]
 				[/tr]
 			
 				[tr]
@@ -1251,7 +1412,7 @@ insert into topic values(null, @newid, "widget/childwindow", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -1275,7 +1436,7 @@ MyWindow \"widget/childwindow\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -1303,7 +1464,7 @@ insert into topic values(null, @newid, "widget/clock", null,
 	[b]Usage:[/b]
 	
 
-			The clock widget can be used inside of any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.
+			The clock widget can be used inside any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.
 
 
 		
@@ -1470,7 +1631,7 @@ insert into topic values(null, @newid, "widget/component", null,
 	[b]Overview:[/b]
 	
 
-			This widget is used to instantiate a custom component that has already been defined using a widget/component-decl widget, typically inside a \".cmp\" file.  The instantiation can be either static or dynamic:  a static component is rendered along with the component or application that it resides inside, whereas a dynamic component is loaded as needed from the client.  Components may also allow multiple instantiation when dynamic, which is especially beneficial with components whose top-level widget happens to be a widget/childwindow.
+			This widget is used to instantiate a custom component that has already been defined using a widget/component-decl widget, typically inside a \".cmp\" file.  The instantiation can be either static or dynamic: a static component is rendered along with the component or application that it resides inside, whereas a dynamic component is loaded as needed from the client.  Components may also allow multiple instantiation when dynamic, which is especially beneficial with components whose top-level widget happens to be a widget/childwindow.
 
 
 		
@@ -1480,7 +1641,7 @@ insert into topic values(null, @newid, "widget/component", null,
 			A component can be either visual or non-visual, and can be placed at almost any point in the application.
 
 
-			At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However that capability is not available at present.
+			At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However, that capability is not available at present.
 
 
 		
@@ -1498,7 +1659,7 @@ insert into topic values(null, @newid, "widget/component", null,
 				[tr]
 					[td]form[/td]
 					[td]integer[/td]
-					[td]Can specify another form to be a child of (if different than the implied form in which this control is nested).[/td]
+					[td]Can specify another form to be a child of (if different from the implied form in which this control is nested).[/td]
 				[/tr]
 			
 				[tr]
@@ -1522,7 +1683,7 @@ insert into topic values(null, @newid, "widget/component", null,
 				[tr]
 					[td]path[/td]
 					[td]string[/td]
-					[td]The path, in the OSML, to the component's definition (.cmp) file. (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp).[/td]
+					[td]The path, in the OSML, to the component's definition (.cmp) file.  (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp).[/td]
 				[/tr]
 			
 				[tr]
@@ -1573,7 +1734,7 @@ insert into topic values(null, @newid, "widget/component", null,
 						[tr]
 							[td]type[/td]
 							[td]string[/td]
-							[td](e.g. readonly). Must have field be set in order to be \"readonly\".[/td]
+							[td](e.g. readonly).  Must have field be set in order to be \"readonly\".[/td]
 						[/tr]
 					
 						[tr]
@@ -1623,12 +1784,12 @@ insert into topic values(null, @newid, "widget/component", null,
 		
 				[tr]
 					[td]Destroy[/td]
-					[td]Destroys the component.  If multiple instances exist, then all instances are destroyed.[/td]
+					[td]Destroys the component.  If the 'Name' or 'Namespace' parameter is given, only the instances matching it are destroyed; otherwise all instances are destroyed.[/td]
 				[/tr]
 			
 				[tr]
 					[td]Instantiate[/td]
-					[td]Instantiates the component.[/td]
+					[td]Instantiates the component.  The optional 'Path' parameter is an absolute path to the component to load, which overrides the path property.  The optional 'Name' parameter names the new instance, so that Destroy can select it later.[/td]
 				[/tr]
 			
 		[/table]
@@ -1702,10 +1863,13 @@ insert into topic values(null, @newid, "widget/component-decl", null,
 			Other visual and nonvisual widgets may be placed inside a component-decl, in addition to parameters and declarations of Events and Actions that the component generates and handles.
 
 
+			To declare a client-side property on the component's external interface, place a \"widget/component-decl-cprop\" inside the component at the top level.  When the external property is changed, a MODIFY event with the same property name is activated inside the component to update its property so that it will match.
+
+
 			To declare that a component generates an Event, place a \"widget/component-decl-event\" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.
 
 
-			Similarly, to declare that a component can receive an Action, place a \"widget/component-decl-action\" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.
+			To declare that a component can receive an Action, place a \"widget/component-decl-action\" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.
 
 
 			Components can take parameters just like applications can.  See the \"widget/parameter\" widget for details on how to declare parameters on applications and components.
@@ -1752,6 +1916,47 @@ insert into topic values(null, @newid, "widget/component-decl", null,
 			
 		[/table]
 	
+	[b]Child Properties:[/b]
+	
+			(of component-decl-cprop child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]name[/td]
+							[td]string[/td]
+							[td]The name of the client-side property to expose.[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of component-decl-event child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]name[/td]
+							[td]string[/td]
+							[td]The name of the event to expose.[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of component-decl-action child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]name[/td]
+							[td]string[/td]
+							[td]The name of the action to expose.[/td]
+						[/tr]
+					
+				[/table]
+			
 	[b]Actions:[/b]
 	
 		[table]
@@ -1768,8 +1973,13 @@ insert into topic values(null, @newid, "widget/component-decl", null,
 				[/tr]
 			
 				[tr]
+					[td]ModifyProperty[/td]
+					[td]Sets a client property that the component exposes, so that the change is visible outside the component.  The \"PropertyName\" parameter names the property and the \"NewValue\" parameter holds its new value.  The component's event for that property change fires unless the \"TriggerEvent\" parameter is set to a true value, which suppresses it.[/td]
+				[/tr]
+			
+				[tr]
 					[td]TriggerEvent[/td]
-					[td]Allows events to happen.[/td]
+					[td]Fires the event named by the 'EventName' parameter inside the component, as though it had been invoked from outside the component.  The remaining parameters are passed along to that event.[/td]
 				[/tr]
 			
 		[/table]
@@ -1779,6 +1989,26 @@ insert into topic values(null, @newid, "widget/component-decl", null,
 		[table]
 		[tr][th]Event[/th][th]Description[/th][/tr]
 		
+				[tr]
+					[td]BeforeKeyPress[/td]
+					[td]This event occurs before the key press event is fired and can stop the key press event.  Passes the key's \"Code\" and \"Name\", and \"Ctrl\" which is 1 if the control key was held down.[/td]
+				[/tr]
+			
+				[tr]
+					[td]KeyDown[/td]
+					[td]This event occurs when the user presses any key down.  Passes the same values as BeforeKeyPress.[/td]
+				[/tr]
+			
+				[tr]
+					[td]KeyPress[/td]
+					[td]This event occurs when the user presses any key.  Passes the same values as BeforeKeyPress.[/td]
+				[/tr]
+			
+				[tr]
+					[td]KeyUp[/td]
+					[td]This event occurs when the user releases any key.  Passes the same values as BeforeKeyPress.[/td]
+				[/tr]
+			
 				[tr]
 					[td]LoadComplete[/td]
 					[td]Occurs when the widget has finished launching.[/td]
@@ -1856,7 +2086,7 @@ insert into topic values(null, @newid, "widget/connector", null,
 	[b]Overview:[/b]
 	
 
-			Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.
+			Each widget can have events and actions associated with it.  The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.
 
 
 			The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.
@@ -1899,13 +2129,13 @@ insert into topic values(null, @newid, "widget/connector", null,
 				[tr]
 					[td]source[/td]
 					[td]string[/td]
-					[td]The name of the widget generating the event (defaults to the widget the connector is placed inside of).[/td]
+					[td]The name of the widget generating the event (default: the connector's parent widget).[/td]
 				[/tr]
 			
 				[tr]
 					[td]target[/td]
 					[td]string[/td]
-					[td]The name of another widget on the page whose action will be called by this connector (if unspecified, defaults to the widget the connector is placed inside of).[/td]
+					[td]The name of another widget on the page whose action will be called by this connector (default: the connector's parent widget).[/td]
 				[/tr]
 			
 		[/table]
@@ -1915,11 +2145,11 @@ insert into topic values(null, @newid, "widget/connector", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
-// Here's our connector. Imagine that this is embedded within a treeview
+// Here's our connector.  Imagine that this is embedded within a treeview
 
 // and references an 'html' control called 'ht1' somewhere else on the page.
 
@@ -1945,7 +2175,7 @@ cn1 \"widget/connector\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -1966,14 +2196,14 @@ insert into topic values(null, @newid, "widget/datetime", null,
 	[b]Overview:[/b]
 	
 
-		    The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.
+			The datetime widget displays a calendar and clock.  Input is done by typing into the bar or by selecting a date in display pane.  When the form goes into query mode two panes will appear, one for the start and one for the end time.  Note that the osml format for searching for dates is dd Mon yyyy, whereas the format dates are displayed in the widget is Mon dd, yyyy.
 
 
 		
 	[b]Usage:[/b]
 	
 
-		    This widget can be placed within any visual widget.
+			This widget can be placed within any visual widget.
 
 
 		
@@ -2027,7 +2257,7 @@ insert into topic values(null, @newid, "widget/datetime", null,
 				[tr]
 					[td]initialdate[/td]
 					[td]string[/td]
-					[td]Used to set the initialdate by a string.[/td]
+					[td]Sets the initial date from the specified string.[/td]
 				[/tr]
 			
 				[tr]
@@ -2069,7 +2299,7 @@ insert into topic values(null, @newid, "widget/datetime", null,
 		
 				[tr]
 					[td]SetValue[/td]
-					[td]Generates an internal data object using the data specified or the current time.[/td]
+					[td]Set the time of the clock to a new time, specified using \"Value\".[/td]
 				[/tr]
 			
 		[/table]
@@ -2081,7 +2311,7 @@ insert into topic values(null, @newid, "widget/datetime", null,
 		
 				[tr]
 					[td]Click[/td]
-					[td]This event occurs when the user clicks the widget. No parameters are available from this event.[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
 				[/tr]
 			
 				[tr]
@@ -2131,25 +2361,25 @@ insert into topic values(null, @newid, "widget/datetime", null,
 		[code]
 		
 
-	
+			
 
 	dda \"widget/datetime\" {
 
-	    x=15;y=15;
+			x=15;y=15;
 
-	    width=200;
+			width=200;
 
-	    height=20;
+			height=20;
 
-	    fgcolor=\"#000000\";
+			fgcolor=\"#000000\";
 
-	    bgcolor=\"#cfcfcf\";
+			bgcolor=\"#cfcfcf\";
 
-	    //initialdate=\"12:34:56 May 3, 2002\";
+			//initialdate=\"12:34:56 May 3, 2002\";
 
 	}
 
-	
+			
 
 		
 		[/code]
@@ -2170,14 +2400,14 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 	[b]Overview:[/b]
 	
 
-		  A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.
+			A dropdown form element widget that allows one of several options to be selected in a visual manner.  The options are filled in using one of the child widgets, or via an SQL query to a database defined below.
 
 
 		
 	[b]Usage:[/b]
 	
 
-		  This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.
+			This widget can be placed within any visual widget (or within a form widget).  It may only contain 'dropdownitem' child objects, although it may of course also contain connectors as needed.
 
 
 		
@@ -2211,7 +2441,7 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 				[/tr]
 			
 				[tr]
-					[td]hilight[/td]
+					[td]highlight[/td]
 					[td]integer[/td]
 					[td]The color of the highlighted option when the mouse goes over the item.[/td]
 				[/tr]
@@ -2229,7 +2459,7 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 				[/tr]
 			
 				[tr]
-					[td]num_disp[/td]
+					[td]numdisplay[/td]
 					[td]integer[/td]
 					[td]Number of widgets displayed at once in the dropdown box.[/td]
 				[/tr]
@@ -2255,7 +2485,7 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 				[tr]
 					[td]sql[/td]
 					[td]string[/td]
-					[td]The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order:  label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).[/td]
+					[td]The SQL used to retrieve the list of items for the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).[/td]
 				[/tr]
 			
 				[tr]
@@ -2311,17 +2541,17 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 			
 				[tr]
 					[td]SetGroup[/td]
-					[td]This causes the dropdown to display a different Group of items (use the Group parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use Min and Max parameters).[/td]
+					[td]This causes the dropdown to display a different Group of items (use the \"Group\" parameter).  It can also restrict what items are displayed based on a minimum or maximum value (use \"Min\" and \"Max\" parameters).[/td]
 				[/tr]
 			
 				[tr]
 					[td]SetItems[/td]
-					[td]This specifies a SQL (use \"SQL\" parameter) query to use to re-load the contents of the dropdown.  It should have between two and five columns, in this order: label, value, selected (0 or 1, whether the item is selected by default), grp (group name), hidden (0 or 1 to hide the item from the dropdown list but still allow it to be a valid value).[/td]
+					[td]This specifies a SQL (see \"SQL\" parameter) query to use when reloading the contents of the dropdown.  Use the \"RowLimit\" parameter to specify a maximum number of options that the query should fetch (defaults to 100).[/td]
 				[/tr]
 			
 				[tr]
 					[td]SetValue[/td]
-					[td]Changes the child property \"value\".[/td]
+					[td]Changes the child property \"Value\".[/td]
 				[/tr]
 			
 		[/table]
@@ -2388,7 +2618,7 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -2456,7 +2686,7 @@ myDropDown2 \"widget/dropdown\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -2480,7 +2710,7 @@ insert into topic values(null, @newid, "widget/editbox", null,
 			An editbox form element widget allows the display and data entry of a single line of text (or a numeric value).  When the editbox is clicked (and thus receives keyboard focus), the user can type and erase data inside the widget.  Data which does not fit will cause the text to scroll.  When it receives keyboard focus, the editbox displays a flashing I-beam cursor.  The cursor color uses the data focus color for the page (default is '#000080', or dark blue).
 
 
-			  When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.
+			 When an editbox is part of a form and the form goes into query mode the editbox has several additional features.  First, you can use the * operator as a wildcard (e.g. *ber matches September, October, November, December).  Second you can enter a range if the field is numeric (e.g. 1-100).  Thirdly, a list of criteria can be specified, separated by commas.
 
 
 		
@@ -2505,7 +2735,7 @@ insert into topic values(null, @newid, "widget/editbox", null,
 				[tr]
 					[td]bgcolor[/td]
 					[td]string[/td]
-					[td]A color, RGB or named, for the editbox contents. If neither bgcolor nor background is specified, the editbox is transparent.[/td]
+					[td]A color, RGB or named, for the editbox contents.  If neither bgcolor nor background is specified, the editbox is transparent.[/td]
 				[/tr]
 			
 				[tr]
@@ -2539,9 +2769,9 @@ insert into topic values(null, @newid, "widget/editbox", null,
 				[/tr]
 			
 				[tr]
-					[td]maxchars[/td]
+					[td]max_chars[/td]
 					[td]integer[/td]
-					[td]Number of characters to accept from the user.[/td]
+					[td]The maximum number of characters the editbox should accept from the user.  Defaults to -1 (no limit).[/td]
 				[/tr]
 			
 				[tr]
@@ -2593,13 +2823,18 @@ insert into topic values(null, @newid, "widget/editbox", null,
 				[/tr]
 			
 				[tr]
+					[td]Disable[/td]
+					[td]The Disable action prevents an edit box from being written in. This action takes no parameters.[/td]
+				[/tr]
+			
+				[tr]
 					[td]SetFocus[/td]
-					[td]The SetFocus action selects and gives control to an edit box.[/td]
+					[td]The SetFocus action selects and gives control to an edit box at the specified \"X\" and \"Y\" coordinates (even if it is not the target?).[/td]
 				[/tr]
 			
 				[tr]
 					[td]SetValue[/td]
-					[td]The SetValue action modifies the contents of an editbox, and takes a single parameter, 'Value' (string).[/td]
+					[td]The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription event.[/td]
 				[/tr]
 			
 				[tr]
@@ -2626,7 +2861,7 @@ insert into topic values(null, @newid, "widget/editbox", null,
 			
 				[tr]
 					[td]Click[/td]
-					[td]This event occurs when the user clicks the widget. No parameters are available from this event.[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
 				[/tr]
 			
 				[tr]
@@ -2636,7 +2871,7 @@ insert into topic values(null, @newid, "widget/editbox", null,
 			
 				[tr]
 					[td]DataModify[/td]
-					[td]This event occurs when the data is changed (occurs when key press or button changes things).[/td]
+					[td]This event occurs when the data is changed (occurs when key press or button changes things).  It provides four parameters. \"Value\" represents the now current value after the modification. \"OldValue\" representing the previous value.  \"FromKeyboard\" is 1 if the event is caused by the user typing into the editbox with their keyboard.  \"FromOSRC\" is 1 if the event is caused by an OSRC modifying the edit box data.[/td]
 				[/tr]
 			
 				[tr]
@@ -2701,7 +2936,7 @@ insert into topic values(null, @newid, "widget/editbox", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -2727,7 +2962,7 @@ my_editbox \"widget/editbox\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -2748,7 +2983,7 @@ insert into topic values(null, @newid, "widget/execmethod", null,
 	[b]Overview:[/b]
 	
 
-			The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.This widget may become deprecated in the future when more advanced OSML API widgets become available.
+			The execmethod widget is a nonvisual widget which is used to call ObjectSystem methods on objects on the server.  This widget may become deprecated in the future when more advanced OSML API widgets become available.
 
 
 			These widgets are used via the activation of their \"ExecuteMethod\" action.
@@ -2758,7 +2993,7 @@ insert into topic values(null, @newid, "widget/execmethod", null,
 	[b]Usage:[/b]
 	
 
-			The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type \"widget/page\") for clarity's sake. It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.
+			The execmethod widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type \"widget/page\") for clarity's sake.  It has no effect on its container.These widgets cannot contain visual widgets, and since they have no Events, normally contain no connector widgets either.
 
 
 		
@@ -2794,7 +3029,7 @@ insert into topic values(null, @newid, "widget/execmethod", null,
 		
 				[tr]
 					[td]ExecuteMethod[/td]
-					[td]Action causes the widget to execute the method on the server. It can take three parameters, which default to those provided in this widget's properties: \"Objname\", the object path, \"Method\", the method to invoke, and \"Parameter\", the parameter to pass to the method being invoked.[/td]
+					[td]Action causes the widget to execute the method on the server.  It can take three parameters, which default to those provided in this widget's properties: \"Objname\", the object path, \"Method\", the method to invoke, and \"Parameter\", the parameter to pass to the method being invoked.[/td]
 				[/tr]
 			
 		[/table]
@@ -2804,7 +3039,7 @@ insert into topic values(null, @newid, "widget/execmethod", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -2822,10 +3057,117 @@ mySoundPlayer \"widget/execmethod\"
 
 	}
 
-		
+			
 
 		
 		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/fileupload", null,
+"		[b]fileupload[/b] :: A nonvisual widget to manage file uploads to the Centrallix server.
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/fileupload[/td][/tr]
+		[tr][td]visual:[/td][td] no[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+
+			The fileupload widget is a nonvisual widget that allows the client to upload files to the server.
+
+
+		
+	[b]Usage:[/b]
+	
+
+			The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type \"widget/page\") to improve clarity.  It has no effect on its container.  This widget does cannot contain any visual widgets.
+
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]target[/td]
+					[td]string[/td]
+					[td]The Centrallix object system path to the directory where uploaded files should be placed. (Causes undefined behavior if unspecified.)[/td]
+				[/tr]
+			
+				[tr]
+					[td]multiselect[/td]
+					[td]integer[/td]
+					[td]Set to 1 to allow the user to pass multiple files at once instead of only selecting a single file (default: 0).[/td]
+				[/tr]
+			
+				[tr]
+					[td]form[/td]
+					[td]string[/td]
+					[td]Unused.[/td]
+				[/tr]
+			
+				[tr]
+					[td]fieldname[/td]
+					[td]string[/td]
+					[td]Unused.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Actions:[/b]
+	
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]Clear[/td]
+					[td]This action clears whatever file was selected and uploaded by the user.  This action causes a DataChange event with the NewValue parameter set to an empty string (\"\").  It takes no parameters.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Prompt[/td]
+					[td]This action prompts the user to select a file.  It takes no parameters.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Submit[/td]
+					[td]This action submits the selected file to be uploaded, possibly causing an UploadComplete, UploadError, or DataChange event.  It takes no parameters.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Events:[/b]
+	
+		[table]
+		[tr][th]Event[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]DataChange[/td]
+					[td]This event occurs when the uploaded file(s) is changed, either because the user selected new file(s) or because the file upload widget was cleared.  It provides two parameters: \"NewValue\" is the new file name, or an empty string (\"\") if the widget was cleared, and \"OldValue\" is the value before the data was changed.[/td]
+				[/tr]
+			
+				[tr]
+					[td]UploadComplete[/td]
+					[td]This event occurs when an upload is successfully completed by the user.  It provides several parameters called \"OrigNameX\" and \"NewNameX\" where X is a number greater than 0 that appear to relate to the files names that the user has uploaded.[/td]
+				[/tr]
+			
+				[tr]
+					[td]UploadError[/td]
+					[td]This event occurs when there is an error during a file upload.  It provides no parameters.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Change[/td]
+					[td]This event is registered, but it looks like it never occurs.[/td]
+				[/tr]
+			
+		[/table]
 	
 ");
 	
@@ -2843,35 +3185,29 @@ insert into topic values(null, @newid, "widget/form", null,
 	[b]Overview:[/b]
 	
 
-			The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the objectsystem (or of a single query result set object). Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.
+			The form widget is used as a high-level container for form elements.  Essentially, a form widget represents a single record of data, or the attributes of a single object in the object system (or of a single query result set object).  Form widgets must be used in conjunction with an ObjectSource widget, which does the actual transferring of data to and from the server.
 
 
 			Forms have five different \"modes\"of operation, each of which can be specifically allowed or disallowed for the form.
 
 
-		
+			
+				 No Data - form inactive/disabled, no data viewed/edited.
 
-		 No Data - form inactive/disabled, no data viewed/edited.
+				 View - data being viewed readonly.
 
+				 Modify - existing data being modified.
 
-		 View - data being viewed readonly.
+				 Query - query criteria being entered (used for query-by-form applications)
 
+				 New - new object being entered/created.
 
-		 Modify - existing data being modified.
-
-
-		 Query - query criteria being entered (used for query-by-form applications)
-
-
-		 New - new object being entered/created.
-
-
-		
+			
 
 			Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a \"three-way confirm\" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a \"three-way confirm\" window.  This should be a hidden (visible=no) \"widget/htmlwindow\" object which may contain any content, but should at least contain three buttons named \"_3bConfirmSave\", \"_3bConfirmDiscard\", and \"_3bConfirmCancel\" directly in the htmlwindow.  During a confirm operation, this window will become \"application-modal\"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.
 
 
-			Several settings on the form widget control what state, or \"mode\", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can beused to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.
+			Several settings on the form widget control what state, or \"mode\", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can be used to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.
 
 
 		
@@ -2944,7 +3280,7 @@ insert into topic values(null, @newid, "widget/form", null,
 				[tr]
 					[td]comfirm_discard[/td]
 					[td]yes/no[/td]
-					[td]Set to true when the discard button of the 3 buttom confirm window (3bconfirmwindow) is pressed.[/td]
+					[td]Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.[/td]
 				[/tr]
 			
 				[tr]
@@ -2979,7 +3315,7 @@ insert into topic values(null, @newid, "widget/form", null,
 			
 				[tr]
 					[td]objectsource[/td]
-					[td][/td]
+					[td]string[/td]
 					[td]Represents the widget object source (transfers data to and from server).[/td]
 				[/tr]
 			
@@ -3019,7 +3355,7 @@ insert into topic values(null, @newid, "widget/form", null,
 						[tr]
 							[td]fieldname[/td]
 							[td]string[/td]
-							[td]Fieldname (from the dataset) to bind this element to.[/td]
+							[td]Field name (from the dataset) to bind this element to.[/td]
 						[/tr]
 					
 				[/table]
@@ -3035,7 +3371,7 @@ insert into topic values(null, @newid, "widget/form", null,
 		
 				[tr]
 					[td]Clear[/td]
-					[td]Clears the form to a 'no data'state.[/td]
+					[td]Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.[/td]
 				[/tr]
 			
 				[tr]
@@ -3045,12 +3381,12 @@ insert into topic values(null, @newid, "widget/form", null,
 			
 				[tr]
 					[td]Discard[/td]
-					[td]Cancels an edit of form contents.[/td]
+					[td]Cancels an edit of form contents.  Specify 1 for the 'FromKeyboard' or 'FromOSRC' parameters to indicate that the action is caused by a keyboard input or an osrc, respectively (both default to 0).[/td]
 				[/tr]
 			
 				[tr]
 					[td]Disable[/td]
-					[td]Prevents interaction with the entire form.[/td]
+					[td]Prevents interaction with the entire form.  Specify any value other than no for the 'Enabled' parameter to enable it instead.[/td]
 				[/tr]
 			
 				[tr]
@@ -3060,7 +3396,7 @@ insert into topic values(null, @newid, "widget/form", null,
 			
 				[tr]
 					[td]Enable[/td]
-					[td]Allows interaction with the form.[/td]
+					[td]Allows interaction with the form.   Specify 0 or no for the 'Enabled' parameter to disable it instead.[/td]
 				[/tr]
 			
 				[tr]
@@ -3075,7 +3411,7 @@ insert into topic values(null, @newid, "widget/form", null,
 			
 				[tr]
 					[td]New[/td]
-					[td]Allows creation of new form contents.[/td]
+					[td]Allows creation of new form contents.  Specify the 'Multi' parameter to set the MultiEnter field.[/td]
 				[/tr]
 			
 				[tr]
@@ -3095,7 +3431,7 @@ insert into topic values(null, @newid, "widget/form", null,
 			
 				[tr]
 					[td]QueryExec[/td]
-					[td]the query and returns data.[/td]
+					[td]Executes the query and returns data.[/td]
 				[/tr]
 			
 				[tr]
@@ -3110,12 +3446,12 @@ insert into topic values(null, @newid, "widget/form", null,
 			
 				[tr]
 					[td]SetValue[/td]
-					[td]Modifies a field and puts the form into a new modify or search mode if appropriate.[/td]
+					[td]Modifies the specified 'Field' to the specified 'Value', then puts the form into a new modify or search mode, if appropriate.[/td]
 				[/tr]
 			
 				[tr]
 					[td]Submit[/td]
-					[td]Attemps to save data, if there is an error it returns false.[/td]
+					[td]Attempts to save data, if there is an error it returns false.  Specify the 'Target' parameter to set a target page other than the one containing the form widget.  Specify any truthy value for the 'NewPage' parameter to allow launching a new page.[/td]
 				[/tr]
 			
 				[tr]
@@ -3182,12 +3518,12 @@ insert into topic values(null, @newid, "widget/form", null,
 			
 				[tr]
 					[td]NoData[/td]
-					[td]This event occurs if and only if there was a mode change and the new mode is the 'NoData' state (always occurs with both a statusChange event and a ModeChange Event.[/td]
+					[td]This event occurs if and only if there was a mode change and the new mode is the 'NoData' state (always occurs with both a statusChange event and a ModeChange Event.)[/td]
 				[/tr]
 			
 				[tr]
 					[td]Query[/td]
-					[td]This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.[/td]
+					[td]This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.)[/td]
 				[/tr]
 			
 				[tr]
@@ -3264,7 +3600,7 @@ insert into topic values(null, @newid, "widget/form", null,
 		[code]
 		
 
-		
+			
 
 form1 \"widget/form\"
 
@@ -3274,7 +3610,7 @@ form1 \"widget/form\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -3295,7 +3631,7 @@ insert into topic values(null, @newid, "widget/formstatus", null,
 	[b]Overview:[/b]
 	
 
-			Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently \"doing\" (for instance, is a blank form with a blinking cursor in a \"new\" state or \"enter query\" state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.
+			Many times with multimodal forms like those offered by Centrallix, the end-user can become confused as to what the form is currently \"doing\" (for instance, is a blank form with a blinking cursor in a \"new\" state or \"enter query\" state?).  Centrallix helps to address this issue using the form status widget.  A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multimodal form.  This widget is a special-case form element.
 
 
 		
@@ -3337,11 +3673,20 @@ insert into topic values(null, @newid, "widget/formstatus", null,
 			
 		[/table]
 	
+	[b]Child Properties:[/b]
+	
+		[i]none currently available[/i]
+	
 	[b]Events:[/b]
 	
 		[table]
 		[tr][th]Event[/th][th]Description[/th][/tr]
 		
+				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
 				[tr]
 					[td]MouseDown[/td]
 					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
@@ -3374,21 +3719,21 @@ insert into topic values(null, @newid, "widget/formstatus", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
 formstatus \"widget/formstatus\" 
 
-    {
+		{
 
-    x=5; y=450;
+		x=5; y=450;
 
-    style=\"largeflat\";
+		style=\"largeflat\";
 
-    }
+		}
 
-		
+			
 
 		
 		[/code]
@@ -3416,7 +3761,7 @@ insert into topic values(null, @newid, "widget/frameset", null,
 	[b]Usage:[/b]
 	
 
-			The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application. The frameset should contain only other framesets and/or pages.
+			The frameset can either be a top-level widget, or can be contained within a frameset (for subframes).The frameset widget should not be used anywhere else in an application.  The frameset should contain only other framesets and/or pages.
 
 
 		
@@ -3428,7 +3773,7 @@ insert into topic values(null, @newid, "widget/frameset", null,
 				[tr]
 					[td]borderwidth[/td]
 					[td]integer[/td]
-					[td]Number of pixels wide the border(s) between the frame(s) are. Can be set to zero.[/td]
+					[td]Number of pixels wide the border(s) between the frame(s) are.  Can be set to zero.[/td]
 				[/tr]
 			
 				[tr]
@@ -3471,7 +3816,7 @@ insert into topic values(null, @newid, "widget/frameset", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -3527,7 +3872,7 @@ BigFrameset \"widget/frameset\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -3552,6 +3897,12 @@ insert into topic values(null, @newid, "widget/hbox", null,
 
 
 		
+	[b]Usage:[/b]
+	See "widget/autolayout"
+	[b]Properties:[/b]
+	
+		[i]none currently available[/i]
+	
 ");
 	
 insert into topic values(null, @newid, "widget/hints", null,
@@ -3568,14 +3919,14 @@ insert into topic values(null, @newid, "widget/hints", null,
 	[b]Overview:[/b]
 	
 
-			The hints widget stores default values and other component modifying properties.
+			The hints widget stores default values and properties that affect data in other widgets, such as input validation data.
 
 
 		
 	[b]Usage:[/b]
 	
 
-			The hints widget can be placed inside of any visual component. Hints do not contain visual widgets.
+			The hints widget can be placed inside any visual component.  Hints do not contain visual widgets.
 
 
 		
@@ -3671,7 +4022,32 @@ insert into topic values(null, @newid, "widget/hints", null,
 				[tr]
 					[td]style[/td]
 					[td]string[/td]
-					[td]Optional: contains a combination of 1 or more items following set {readonly, alwaysdef} separated by a comma if multiple items are chosen.[/td]
+					[td]
+				Optional.  Contains one or more style hint items, separated by commas.  Most items have a negating counterpart which prevents the item's effect, even if it is specified elsewhere (e.g. \"allownull\" explicitly restores the default behavior of allowing null values, even if \"notnull\" is specified elsewhere).
+				The valid items are listed below, each with its negating item.  Although the parser accepts all of them, only the items shown in bold appear to have any implemented effect.
+				
+					bitmask / nobitmask
+					list / nolist
+					buttons / nobuttons
+					notnull / allownull
+					strnull / nostrnull
+					grouped / nogrouped
+					readonly / modifiable
+					hidden / visible
+					password / nopassword
+					multiline / singleline
+					highlight / nohighlight
+					uppercase / mixedcase
+					lowercase / mixedcase
+					tabpage / notabpage
+					sepwindow / nosepwindow
+					alwaysdef / noalwaysdef
+					createonly / nocreateonly
+					multiselect / singleselect
+					key / notkey
+					applyonchange / applyonmodify
+				
+			[/td]
 				[/tr]
 			
 				[tr]
@@ -3687,7 +4063,7 @@ insert into topic values(null, @newid, "widget/hints", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -3715,7 +4091,7 @@ f_trx_mod \"widget/checkbox\"
 
 	}
 
-}		
+}			
 
 		
 		[/code]
@@ -3736,7 +4112,7 @@ insert into topic values(null, @newid, "widget/html", null,
 	[b]Overview:[/b]
 	
 
-			The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic). The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.
+			The HTML area widget provides a way to insert a plain HTML document into a Centrallix generated page, either in-flow (static) or in its own separate layer that can be reloaded at will (dynamic).  The HTML document can either be given in a property of the widget or can be referenced so that the HTML is read from an external document.
 
 
 			The HTML area widget also can act as a mini-browser -- clicking on hyper-text links in the visible document will by default cause the link to be followed, and the new document to be displayed in the HTML area (if the HTML area is dynamic).
@@ -3761,7 +4137,7 @@ insert into topic values(null, @newid, "widget/html", null,
 				[tr]
 					[td]content[/td]
 					[td]string[/td]
-					[td]Static contents for the HTML area. Usually used in lieu of \"source\" (see below).[/td]
+					[td]Static contents for the HTML area.  Usually used in lieu of \"source\" (see below).[/td]
 				[/tr]
 			
 				[tr]
@@ -3791,7 +4167,7 @@ insert into topic values(null, @newid, "widget/html", null,
 				[tr]
 					[td]source[/td]
 					[td]string[/td]
-					[td]The objectsystem path or URL containing the document to be loaded into the HTML as  local server.[/td]
+					[td]The object system path or URL containing the document to be loaded into the HTML as local server.[/td]
 				[/tr]
 			
 				[tr]
@@ -3821,7 +4197,22 @@ insert into topic values(null, @newid, "widget/html", null,
 		
 				[tr]
 					[td]LoadPage[/td]
-					[td]Loadpage action takes two parameters. \"Source\" contains the URL for the new page to be loaded into the HTML area.The optional parameter \"Transition\" indicates the type of fade to be used between one page and the next.Currently supported values are \"pixelate\", \"rlwipe\", and \"lrwipe\".[/td]
+					[td]Loads a new page into the HTML widget using two parameters.  The \"Source\" parameter specifies the URL for the new page to be loaded into the HTML area and the optional \"Mode\" parameter can specify a new value for the mode property.  The optional parameter \"Transition\" indicates the type of fade to be used between one page and the next.  This currently supports: rlwipe, lrwipe, and pixelate.[/td]
+				[/tr]
+			
+				[tr]
+					[td]AddText[/td]
+					[td]Appends content from the specified \"Text\" string parameter to the end of the content in an HTML widget.  If the \"ContentType\" string parameter is specified with a value that differs from the current content type, all HTML content in the widget is overwritten.[/td]
+				[/tr]
+			
+				[tr]
+					[td]SetValue[/td]
+					[td]Replaces the current HTML content with the specified \"Value\" (or clears it if no Value is specified), and sets the current content type using the \"ContentType\" string parameter, if it is specified (otherwise, the previous content type is preserved).[/td]
+				[/tr]
+			
+				[tr]
+					[td]ShowText[/td]
+					[td]Causes plain text content in the widget to be escaped properly so it can be shown using HTML, protecting from cross-site scripting attacks.  This action takes no parameters.[/td]
 				[/tr]
 			
 		[/table]
@@ -3863,7 +4254,7 @@ insert into topic values(null, @newid, "widget/html", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -3881,7 +4272,7 @@ HTMLArea \"widget/html\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -3924,7 +4315,7 @@ insert into topic values(null, @newid, "widget/image", null,
 				[tr]
 					[td]aspect[/td]
 					[td]sting[/td]
-					[td]Determines wither the image can be stretched or must stay its original aspect ration.[/td]
+					[td]Specifies whether the image can be stretched or must stay its original aspect ratio.[/td]
 				[/tr]
 			
 				[tr]
@@ -3978,7 +4369,7 @@ insert into topic values(null, @newid, "widget/image", null,
 		
 				[tr]
 					[td]LoadImage[/td]
-					[td]Displays the image to user.[/td]
+					[td]Displays the new image from the provided \"Source\" path to user.  Specify 1 or yes for the \"LinkApp\" parameter to pass the full akey session link on in the url request.[/td]
 				[/tr]
 			
 				[tr]
@@ -4000,7 +4391,7 @@ insert into topic values(null, @newid, "widget/image", null,
 		
 				[tr]
 					[td]Click[/td]
-					[td]This event occurs when the user clicks the checkbox. No parameters are available from this event.[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
 				[/tr]
 			
 				[tr]
@@ -4050,13 +4441,13 @@ insert into topic values(null, @newid, "widget/image", null,
 				[tr]
 					[td]xoffset[/td]
 					[td]integer[/td]
-					[td]Distance it is along the x axis from its parent widget.[/td]
+					[td]Distance it is along the x-axis from its parent widget.[/td]
 				[/tr]
 			
 				[tr]
 					[td]yoffset[/td]
 					[td]integer[/td]
-					[td]Distance it is along the y axis from its parent widget.[/td]
+					[td]Distance it is along the y-axis from its parent widget.[/td]
 				[/tr]
 			
 		[/table]
@@ -4066,7 +4457,7 @@ insert into topic values(null, @newid, "widget/image", null,
 ");
 	
 insert into topic values(null, @newid, "widget/imagebutton", null,
-"		[b]imagebutton[/b] :: A button widget which uses a set of images to control its appearance.
+"		[b]imagebutton[/b] :: Deprecated.  An alias for widget/button with type=image.
 
 		[b]Metadata:[/b]
 		[table]
@@ -4079,16 +4470,10 @@ insert into topic values(null, @newid, "widget/imagebutton", null,
 	[b]Overview:[/b]
 	
 
-			The ImageButton widget provides a clickable button that is comprised of a set of two or three images.The first image is shown normally when the button is idle, the second when the button is pointed-to, and the third image is shown when the button is actually clicked.  This provides a \"tri-state\" appearance much like that provided by buttons in modern user interfaces, although the button can be two-state, with just an \"unclicked\" and \"clicked\" version of the image.
+			Deprecated.  This name is rendered by widget/button and is kept only so that existing applications keep working.  New applications should use widget/button, which documents the properties, events, actions, and client properties that an imagebutton accepts.
 
 
-			The images are automatically swapped out when the appropriate mouse events occur on the button.
-
-
-			ImageButtons can also be disabled, and a \"disabled\" image is displayed at that time.
-
-
-			Unlike the textbutton, there is no 'tristate' property for an imagebutton; to make an imagebutton tri-state (different image when idle vs. when pointed to), use a 'pointimage', otherwise do not specify 'pointimage'.
+			An imagebutton is a widget/button whose 'type' defaults to 'image'.  Thus, this button is borderless and text-free, its appearance comes from the image.  The properties for widget/button apply here, so an existing imagebutton can be given 'text', a 'border_style', or an explicit 'type' without being renamed (although it should be).
 
 
 		
@@ -4101,131 +4486,14 @@ insert into topic values(null, @newid, "widget/imagebutton", null,
 		
 	[b]Properties:[/b]
 	
-		[table]
-		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
-		
-				[tr]
-					[td]clickimage[/td]
-					[td]string[/td]
-					[td]The ObjectSystem pathname of the image to be shown when the user clicks the imagebutton.  Defaults to 'image' if not specified.[/td]
-				[/tr]
-			
-				[tr]
-					[td]disabledimage[/td]
-					[td]string[/td]
-					[td]The ObjectSystem pathname of the image to be shown when the imagebutton is disabled.  Defaults to 'image' if not specified.[/td]
-				[/tr]
-			
-				[tr]
-					[td]height[/td]
-					[td]integer[/td]
-					[td]Height, in pixels, of the image button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]image[/td]
-					[td]string[/td]
-					[td]The pathname of the image to be shown when the button is \"idle\".[/td]
-				[/tr]
-			
-				[tr]
-					[td]pointimage[/td]
-					[td]string[/td]
-					[td]The pathname of the image to be shown when the button is pointed-to.  Defaults to  the 'image' if not specified.[/td]
-				[/tr]
-			
-				[tr]
-					[td]repeat[/td]
-					[td]yes/no[/td]
-					[td]Whether to repeat the click event multiple times while the user holds down the button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]tooltip[/td]
-					[td]string[/td]
-					[td]The text that appears when the courser hovers over the image button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]width[/td]
-					[td]integer[/td]
-					[td]Width, in pixels, of the image button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]x[/td]
-					[td]integer[/td]
-					[td]X-coordinate of the upper left corner of the button, relative to its container.[/td]
-				[/tr]
-			
-				[tr]
-					[td]y[/td]
-					[td]integer[/td]
-					[td]Y-coordinate of the upper left corner of the button, relative to its container.[/td]
-				[/tr]
-			
-		[/table]
-	
-	[b]Actions:[/b]
-	
-		[table]
-		[tr][th]Action[/th][th]Description[/th][/tr]
-		
-				[tr]
-					[td]Disable[/td]
-					[td]This action causes the image button to enter its 'disabled' state, displaying the 'disabledimage' if specified.[/td]
-				[/tr]
-			
-				[tr]
-					[td]Enable[/td]
-					[td]This action causes the image button to enter its 'enabled' state, possibly changing its appearance if a 'disabledimage' was explicitly specified.[/td]
-				[/tr]
-			
-		[/table]
-	
-	[b]Events:[/b]
-	
-		[table]
-		[tr][th]Event[/th][th]Description[/th][/tr]
-		
-				[tr]
-					[td]Click[/td]
-					[td]This event occurs when the user clicks the button. No parameters are available from this event.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseDown[/td]
-					[td]This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseMove[/td]
-					[td]This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseOut[/td]
-					[td]This event occurs when the user moves the mouse pointer off of the checkbox.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseOver[/td]
-					[td]This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseUp[/td]
-					[td]This event occurs when the user releases the mouse button on the checkbox.[/td]
-				[/tr]
-			
-		[/table]
+		[i]none currently available[/i]
 	
 	[b]Sample Code:[/b]
 	
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -4247,7 +4515,7 @@ MyButton \"widget/imagebutton\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -4281,7 +4549,7 @@ insert into topic values(null, @newid, "widget/label", null,
 	[b]Usage:[/b]
 	
 
-			The label widget can be placed inside of any visual container, and will attach itself to any form widget that contains it (whether directly or indirectly).  Labels may not contain visual widgets.
+			The label widget can be placed inside any visual container.  It will attach itself to any form widget that contains it (whether directly or indirectly).  Labels may not contain visual widgets.
 
 
 		
@@ -4353,7 +4621,7 @@ insert into topic values(null, @newid, "widget/label", null,
 				[tr]
 					[td]style[/td]
 					[td]string[/td]
-					[td](e.g. bold).[/td]
+					[td]'bold' for bold text, 'italic' for italic text.[/td]
 				[/tr]
 			
 				[tr]
@@ -4401,7 +4669,7 @@ insert into topic values(null, @newid, "widget/label", null,
 		
 				[tr]
 					[td]SetValue[/td]
-					[td]Sets the value property to the given parameter.[/td]
+					[td]This sets the value property to the specified \"Value\".[/td]
 				[/tr]
 			
 		[/table]
@@ -4413,7 +4681,7 @@ insert into topic values(null, @newid, "widget/label", null,
 		
 				[tr]
 					[td]Click[/td]
-					[td]This event occurs when the user clicks the checkbox. No parameters are available from this event.[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
 				[/tr]
 			
 				[tr]
@@ -4468,7 +4736,7 @@ insert into topic values(null, @newid, "widget/label", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -4478,10 +4746,133 @@ f_trx_mod_l \"widget/label\" { width=86; text=\"User Edit?\"; align=right; font_
 
 
 
-		
+			
 
 		
 		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/map", null,
+"		[b]map[/b] :: A visual widget for displaying geographical maps.
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/map[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] yes[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+
+			The map widget is a visual widget for displaying geographical maps, which are pulled from an object source.
+
+
+		
+	[b]Usage:[/b]
+	
+
+			The map widget is a visual that contains Centrallix objects.
+
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]Width (in pixels) of the map.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]X-coordinate of the upper left corner of the map (in pixels), relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]Y-coordinate of the upper left corner of the map (in pixels), relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]Height (in pixels) of the map.[/td]
+				[/tr]
+			
+				[tr]
+					[td]source[/td]
+					[td]string[/td]
+					[td]A Centrallix object source path that we open to get the objects that will be rendered in the map widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]allow_selection[/td]
+					[td]integer[/td]
+					[td]Not implemented yet: Specify 1 to enable something... (default: 0)[/td]
+				[/tr]
+			
+				[tr]
+					[td]show_selection[/td]
+					[td]integer[/td]
+					[td]Not implemented yet: Specify 1 to enable something... (default: 0)[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Events:[/b]
+	
+		[table]
+		[tr][th]Event[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]DblClick[/td]
+					[td]This event occurs when the user double-clicks the mouse pointer (equivalent to two Click events occurring on the widget within a required time period) while it is over this widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]RightClick[/td]
+					[td]The RightClick event occurs when a user clicks on the widget with the relevant button on their mouse or mouse pad.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseDown[/td]
+					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseMove[/td]
+					[td]This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseOut[/td]
+					[td]This event occurs when the user moves the mouse pointer off of the widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseOver[/td]
+					[td]This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseUp[/td]
+					[td]This event occurs when the user releases the mouse button on the widget.[/td]
+				[/tr]
+			
+		[/table]
 	
 ");
 	
@@ -4512,7 +4903,7 @@ insert into topic values(null, @newid, "widget/menu", null,
 	[b]Usage:[/b]
 	
 
-			Menus can be placed inside of any visual container. However, be aware that the menu will be clipped by its container, so placing them at the top-level can be of an advantage. Menu widgets contain menuitem widgets, which are also described in this section.
+			Menus can be placed inside any visual container.  However, be aware that the menu will be clipped by its container, so menus are usually placed inside top level widgets (e.g. page).  Menu widgets contain menuitem widgets, which are also described here.
 
 
 		
@@ -4584,7 +4975,7 @@ insert into topic values(null, @newid, "widget/menu", null,
 				[tr]
 					[td]popup[/td]
 					[td]yes/no[/td]
-					[td]Default \"no\".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menubars).[/td]
+					[td]Default \"no\".  Popup menus disappear after an item on them is selected, whereas fixed menus remain visible (such as for menu bars).[/td]
 				[/tr]
 			
 				[tr]
@@ -4653,7 +5044,7 @@ insert into topic values(null, @newid, "widget/menu", null,
 						[tr]
 							[td]onright[/td]
 							[td]yes/no[/td]
-							[td]If set to \"yes\", then the menu item will be displayed on the righthand side of a horizontal menu bar (e.g., for having \"File\" \"Edit\" \"Tools\" on the left, and \"Help\" on the far right).[/td]
+							[td]If set to \"yes\", then the menu item will be displayed on the right hand side of a horizontal menu bar (e.g., for having \"File\" \"Edit\" \"Tools\" on the left, and \"Help\" on the far right).[/td]
 						[/tr]
 					
 						[tr]
@@ -4687,8 +5078,8 @@ insert into topic values(null, @newid, "widget/menu", null,
 		[tr][th]Action[/th][th]Description[/th][/tr]
 		
 				[tr]
-					[td]Activate[/td]
-					[td]This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.  When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.  Takes two parameters - X and Y, the (integer) positions on the page for the menu to appear.[/td]
+					[td]Popup[/td]
+					[td]This action causes a popup-type menu to become visible and appear at a selected (x,y) position on the page.  When the user selects an item on the menu or clicks elsewhere on the page, the menu then disappears.  Takes two parameters - \"X\" and \"Y\", which are the (integer) positions (in pixels) on the page for the menu to appear.[/td]
 				[/tr]
 			
 		[/table]
@@ -4700,7 +5091,7 @@ insert into topic values(null, @newid, "widget/menu", null,
 		
 				[tr]
 					[td]DataChange[/td]
-					[td]This event occurs when the an item in the menu which is not a submenu is changed.[/td]
+					[td]This event occurs when an item in the menu which is not a submenu is changed.[/td]
 				[/tr]
 			
 				[tr]
@@ -4740,7 +5131,22 @@ insert into topic values(null, @newid, "widget/menu", null,
 			
 				[tr]
 					[td]Select[/td]
-					[td]This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).[/td]
+					[td]This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).  This event also provides the \"Value\" and \"Label\" parameters to represent what was selected.[/td]
+				[/tr]
+			
+				[tr]
+					[td]SelectItem[/td]
+					[td]This event occurs when an item in the menu is selected.  It provides the same parameters as the Select event.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Activate[/td]
+					[td]This event occurs when the dropdown appears.  It provides two parameters, \"X\" and \"Y\", which are the (integer) positions (in pixels) on the page for the menu has appeared.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Deactivate[/td]
+					[td]This event occurs when the dropdown disappears, and it provides no parameters.[/td]
 				[/tr]
 			
 		[/table]
@@ -4750,7 +5156,7 @@ insert into topic values(null, @newid, "widget/menu", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -4766,7 +5172,7 @@ myMenu \"widget/menu\"
 
 	bgcolor=\"#808080\";
 
-	
+
 
 	m1 \"widget/menuitem\" { label=\"One\"; }
 
@@ -4776,10 +5182,123 @@ myMenu \"widget/menu\"
 
 	}
 
-		
+			
 
 		
 		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/objcanvas", null,
+"		[b]objcanvas[/b] :: A visual widget for advanced canvas-based graphics.
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/objcanvas[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] yes[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+
+			The objcanvas widget is a visual widget for displaying advanced canvas graphics.
+
+
+		
+	[b]Usage:[/b]
+	
+
+			The objcanvas widget is a visual that contains Centrallix objects.  I honestly don't really understand how to use it or what it does (-Israel).
+
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]width[/td]
+					[td]integer[/td]
+					[td]Width (in pixels) of the objcanvas.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]X-coordinate of the upper left corner of the objcanvas (in pixels), relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]Y-coordinate of the upper left corner of the objcanvas (in pixels), relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]height[/td]
+					[td]integer[/td]
+					[td]Height (in pixels) of the objcanvas.[/td]
+				[/tr]
+			
+				[tr]
+					[td]source[/td]
+					[td]string[/td]
+					[td]A Centrallix object source path that we open to get the objects that will be rendered in the objcanvas widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]allow_selection[/td]
+					[td]integer[/td]
+					[td]Not implemented yet: Specify 1 to enable something... (default: 0)[/td]
+				[/tr]
+			
+				[tr]
+					[td]show_selection[/td]
+					[td]integer[/td]
+					[td]Not implemented yet: Specify 1 to enable something... (default: 0)[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Events:[/b]
+	
+		[table]
+		[tr][th]Event[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseDown[/td]
+					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseMove[/td]
+					[td]This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseOut[/td]
+					[td]This event occurs when the user moves the mouse pointer off of the widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseOver[/td]
+					[td]This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseUp[/td]
+					[td]This event occurs when the user releases the mouse button on the widget.[/td]
+				[/tr]
+			
+		[/table]
 	
 ");
 	
@@ -4797,13 +5316,13 @@ insert into topic values(null, @newid, "widget/osrc", null,
 	[b]Overview:[/b]
 	
 
-			The objectsource (osrc) widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client. This widget implements a form of \"replication\" by maintaining a replica of a small segment of data in the user agent.
+			The objectsource (osrc) widget lies at the core of Centrallix's ability to dynamically exchange data between the server and client.  This widget implements a form of \"replication\" by maintaining a replica of a small segment of data in the user agent.
 
 
-			Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.
+			Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data.  In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.
 
 
-			Objectsources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below) or rule-based connnectivity (see widget/rule).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.
+			Object sources offer synchronization with other object sources via the Sync and DoubleSync actions (see below) or rule-based connectivity (see widget/rule).  These actions allow the application to contain multiple object sources with primary key / foreign key relationships, and to have those object sources automatically stay in synchronization with each other based on those relationships.
 
 
 			An objectsource may also be used to run a query which does not return any rows, such as an insert, update, or delete query.  Under normal data maintenance conditions such queries are not needed as the objectsource handles those operations internally, however.
@@ -4828,7 +5347,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 				[tr]
 					[td]autoquery[/td]
 					[td]string[/td]
-					[td]One of oneachreveal, never, onload, onfirstreveal.  (note: this autoquery setting is different from, but related to, the \"widget/rule\" \"autoquery\").  \"onload\" means that the osrc should run its query automatically when the .app containing this osrc is loaded by the user.  \"onfirstreveal\" means that the osrc should run its query automatically when the data (e.g., a table or form) is first displayed to the user (e.g., the containing childwindow becomes visible or tabpage is selected).  \"oneachreveal\" means to do so *each* time the data is displayed to the user.  \"never\" means that the osrc should never query automatically by itself, but it may be triggered by a connector (QueryParam, QueryText, etc.) or by a widget/rule of type osrc_relationship.  Important Note:  If you expect to normally trigger the osrc via a relationship or via QueryParam, it is often *best* to set autoquery to 'never'.  Otherwise, unexpected results can sometimes occur.[/td]
+					[td]One of oneachreveal, never, onload, onfirstreveal.  (note: this autoquery setting is different from, but related to, the \"widget/rule\" \"autoquery\").  \"onload\" means that the osrc should run its query automatically when the .app containing this osrc is loaded by the user.  \"onfirstreveal\" means that the osrc should run its query automatically when the data (e.g., a table or form) is first displayed to the user (e.g., the containing childwindow becomes visible or tabpage is selected).  \"oneachreveal\" means to do so *each* time the data is displayed to the user.  \"never\" means that the osrc should never query automatically by itself, but it may be triggered by a connector (QueryParam, QueryText, etc.) or by a widget/rule of type osrc_relationship.  Important Note: If you expect to normally trigger the osrc via a relationship or via QueryParam, it is often *best* to set autoquery to 'never'.  Otherwise, unexpected results can sometimes occur.[/td]
 				[/tr]
 			
 				[tr]
@@ -4864,13 +5383,13 @@ insert into topic values(null, @newid, "widget/osrc", null,
 				[tr]
 					[td]receive_updates[/td]
 					[td]yes/no[/td]
-					[td]** This feature currently disabled in Centrallix 0.9.1 **  Default \"no\".  If set to \"yes\", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).[/td]
+					[td]** This feature currently disabled in Centrallix 0.9.1 ** Default \"no\".  If set to \"yes\", the objectsource will ask the server to send it updates on any changes that occur on the server side (i.e., if the changes were made by another objectsource or by another user, they would be automatically refreshed into this objectsource in near real-time).[/td]
 				[/tr]
 			
 				[tr]
 					[td]refresh_interval[/td]
 					[td]integer[/td]
-					[td]The time between the data refreshing, if set to 0 it does not automatically refresh.[/td]
+					[td]The time in milliseconds between the data refreshing, if set to 0 it does not automatically refresh.[/td]
 				[/tr]
 			
 				[tr]
@@ -4882,13 +5401,13 @@ insert into topic values(null, @newid, "widget/osrc", null,
 				[tr]
 					[td]revealed_only[/td]
 					[td]string[/td]
-					[td]Acts as a boolean and delays query until the osrc is visable (if \"true\").[/td]
+					[td]Acts as a boolean and delays query until the osrc is visible (if \"true\").[/td]
 				[/tr]
 			
 				[tr]
 					[td]scrollahead[/td]
 					[td]integer[/td]
-					[td]Similar to readahead, but relates to how many records should be fetched when more records are needed from the server to fulfill a request to display more data, such as a table widget scrolling without changing the current record.  By default this is set to the value of 'readahead'.[/td]
+					[td]Similar to readahead, but relates to how many records should be fetched when more records are needed from the server to fulfill a request to display more data, such as a table widget scrolling without changing the current record.  Defaults to the value of 'readahead'.[/td]
 				[/tr]
 			
 				[tr]
@@ -4921,7 +5440,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 						[tr]
 							[td]autoquery[/td]
 							[td]true/false[/td]
-							[td]When autoquery is set to true, when the master changes, the slave automatially requeries (otherwise have to explicitly call requery or refresh on the slave osrc).  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes / requeries.[/td]
+							[td]When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.[/td]
 						[/tr]
 					
 						[tr]
@@ -5000,7 +5519,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 		
 				[tr]
 					[td]BeginCreateObject[/td]
-					[td]Creates a base of an object and notifies all childeren that a child is creating an object.[/td]
+					[td]Creates a base of an object and notifies all children that a child is creating an object.[/td]
 				[/tr]
 			
 				[tr]
@@ -5010,7 +5529,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 			
 				[tr]
 					[td]ChangeSource[/td]
-					[td]Changes the data item that the object source points to in the server.[/td]
+					[td]Changes the data item that the object source points to in the server.  The 'Source' parameter is the new object path, which replaces the old path everywhere it occurs in the query.  The query is then re-run, unless the 'Refresh' parameter is given a false value.[/td]
 				[/tr]
 			
 				[tr]
@@ -5034,23 +5553,38 @@ insert into topic values(null, @newid, "widget/osrc", null,
 				[/tr]
 			
 				[tr]
-					[td]DeleteClients[/td]
-					[td]Stops relations with all clients and forces them to resync.[/td]
+					[td]DiscardClients[/td]
+					[td]Discards the unsaved changes in all client widgets of this objectsource, then passes the request on to the clients of those clients.[/td]
+				[/tr]
+			
+				[tr]
+					[td]DoSQL[/td]
+					[td]Runs the SQL statement given in the 'SQL' parameter once for each distinct value of the field named by the 'GroupingField' parameter in the retrieved records.  Any other parameters are passed to the statement as query parameters.[/td]
 				[/tr]
 			
 				[tr]
 					[td]DoubleSync[/td]
-					[td]DEPRECATED: Performs a double synchronization with two other objectsources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.[/td]
+					[td]DEPRECATED: Performs a double synchronization with two other object sources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), using 'ParentOSRC' along with the 'ParentKey' and 'ParentSelfKey' parameters, each followed by a digit from 1 to 9 (e.g. ParentKey1 and ParentSelfKey1).  Next, a Sync is performed between the current objectsource and the 'ChildOSRC' in the same way the first step performed a sync between the 'ParentOSRC' and the current objectsource, respectively, using the 'SelfChildKey' and 'ChildKey' parameters, numbered in the same way.[/td]
 				[/tr]
 			
 				[tr]
 					[td]FindObject[/td]
-					[td]Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters:  To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other abitrary field values, set those values in the parameters to this action.[/td]
+					[td]Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters: To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other arbitrary field values, set those values in the parameters to this action.[/td]
 				[/tr]
 			
 				[tr]
 					[td]First[/td]
 					[td]Returns first record in the replica.[/td]
+				[/tr]
+			
+				[tr]
+					[td]ForEach[/td]
+					[td]Invokes the action named by 'ForEachAction' on the widget named by 'ForEachTarget' once for each row in the replica.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Invalidate[/td]
+					[td]Discards the record of this objectsource's last synchronization, so that the next Sync re-runs the query even when the synchronization key values have not changed.[/td]
 				[/tr]
 			
 				[tr]
@@ -5095,7 +5629,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 			
 				[tr]
 					[td]QueryText[/td]
-					[td]Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples:  'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case insensitive.[/td]
+					[td]Runs the query, searching for objects whose attributes *contain* a combination of string values.  'query' contains a space-separated list of strings that must be present in each returned record (typically the 'query' is typed by the user).  'field_list' is a comma-separated list of field names to search in.  Each field name (attribute) can be preceded by a * or followed by a *; the presence of these asterisks controls whether the matching is done on the entire attribute value or just as a substring match.  Examples: 'my_key,*my_description*' for field_list means to match exact values for my_key, and match anywhere in my_description.  cx__case_insensitive can be set to 1 to make the search case-insensitive.[/td]
 				[/tr]
 			
 				[tr]
@@ -5110,12 +5644,12 @@ insert into topic values(null, @newid, "widget/osrc", null,
 			
 				[tr]
 					[td]Sync[/td]
-					[td]DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.[/td]
+					[td]DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The 'ParentOSRC' (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as a pair of 'ParentKey' and 'ChildKey' parameters, each followed by a digit from 1 to 9 (e.g. ParentKey1 and ChildKey1).  'ParentKey' indicates the name of the field in the 'ParentOSRC' to sync with (probably a primary key), and 'ChildKey' indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.[/td]
 				[/tr]
 			
 				[tr]
 					[td]SaveClients[/td]
-					[td]Save the clients that connect and lets clients of clients know that orsc is conected to them.[/td]
+					[td]Save the clients that connect and lets clients of clients know that orsc is connected to them.[/td]
 				[/tr]
 			
 				[tr]
@@ -5141,6 +5675,11 @@ insert into topic values(null, @newid, "widget/osrc", null,
 				[/tr]
 			
 				[tr]
+					[td]ClientsSaved[/td]
+					[td]This event occurs once the SaveClients action has saved every client widget of this objectsource, and of those clients' own clients.[/td]
+				[/tr]
+			
+				[tr]
 					[td]Created[/td]
 					[td]This event occurs when data is created in the object source.[/td]
 				[/tr]
@@ -5151,13 +5690,38 @@ insert into topic values(null, @newid, "widget/osrc", null,
 				[/tr]
 			
 				[tr]
+					[td]DataSaved[/td]
+					[td]This event occurs when a record created or modified through this objectsource has been saved on the server.  It is invoked alongside Created or Modified, but only when the save was not requested by a client widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Deleted[/td]
+					[td]This event occurs once an object has been deleted through this objectsource.[/td]
+				[/tr]
+			
+				[tr]
 					[td]EndQuery[/td]
 					[td]This event is invoked when a query is completed and the last row(s) retrieved.[/td]
 				[/tr]
 			
 				[tr]
+					[td]Found[/td]
+					[td]This event occurs when a FindObject search locates a record and makes it the current record.  A search by record number passes 'ID', and a search by object name passes 'Name'.  A search by other field values passes the name and value of each field that matched.[/td]
+				[/tr]
+			
+				[tr]
 					[td]Modified[/td]
 					[td]This event occurs when data is modified in the object source.[/td]
+				[/tr]
+			
+				[tr]
+					[td]NotFound[/td]
+					[td]This event occurs when a FindObject search does not locate a matching record.  It passes the values that were given to FindObject.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Results[/td]
+					[td]This event occurs each time a batch of query results has been retrieved.  It passes 'FirstRecord', 'LastRecord', and 'CurrentRecord', which are record numbers within the replica, and 'FinalRecord', which is the record number of the last record in the query once the end of the query has been reached.[/td]
 				[/tr]
 			
 				[tr]
@@ -5172,7 +5736,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -5204,7 +5768,7 @@ osrc1 \"widget/osrc\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -5225,7 +5789,7 @@ insert into topic values(null, @newid, "widget/page", null,
 	[b]Overview:[/b]
 	
 
-			The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management. When creating an application, the top-level object in the application must either be \"widget/page\" or \"widget/frameset\", where the latter is used to create a multi-framed application containing multiple page widgets.
+			The page widget represents the HTML application (or subapplication) as a whole and serves as a top-level container for other widgets in the application.  The page widget also implements some important functionality regarding the management of keypresses, focus, widget resizing, and event management.  When creating an application, the top-level object in the application must either be \"widget/page\" or \"widget/frameset\", where the latter is used to create a multi-framed application containing multiple page widgets.
 
 
 			Page widgets specify the colors for mouse, keyboard, and data focus for the application.  Focus is usually indicated via the drawing of a rectangle around a widget or data item, and for a 3D-effect two colors are specified for each type of focus: a color for the top and left of the rectangle, and another color for the right and bottom of the rectangle.  Mouse focus gives feedback to the user as to which widget they are pointing at (and thus which one will receive keyboard and/or data focus if the user clicks the mouse).  Keyboard focus tells the user which widget will receive data entered via the keyboard.  Data focus tells the user which record or data item is selected in a widget.
@@ -5235,7 +5799,7 @@ insert into topic values(null, @newid, "widget/page", null,
 	[b]Usage:[/b]
 	
 
-			The page widget cannot be embedded within other widgets on a page. There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.
+			The page widget cannot be embedded within other widgets on a page.  There must only be one per page, unless a frameset is used, in which case page widgets may be added within a frameset widget.
 
 
 		
@@ -5259,7 +5823,7 @@ insert into topic values(null, @newid, "widget/page", null,
 				[tr]
 					[td]bgcolor[/td]
 					[td]string[/td]
-					[td]The background color for the page. Can either be a recognized color (such as \"red\"), or an RGB color (such as \"#C0C0C0\").[/td]
+					[td]The background color for the page.  Can either be a recognized color (such as \"red\"), or an RGB color (such as \"#C0C0C0\").[/td]
 				[/tr]
 			
 				[tr]
@@ -5319,7 +5883,7 @@ insert into topic values(null, @newid, "widget/page", null,
 				[tr]
 					[td]linkcolor[/td]
 					[td]string[/td]
-					[td]Color for hyper links.[/td]
+					[td]Color for hyperlinks.[/td]
 				[/tr]
 			
 				[tr]
@@ -5385,7 +5949,7 @@ insert into topic values(null, @newid, "widget/page", null,
 		
 				[tr]
 					[td]Alert[/td]
-					[td]Sends an alert widget.[/td]
+					[td]Sends an alert widget. Set the 'Message' to specify a text string that should appear in the alert.[/td]
 				[/tr]
 			
 				[tr]
@@ -5395,12 +5959,27 @@ insert into topic values(null, @newid, "widget/page", null,
 			
 				[tr]
 					[td]Launch[/td]
-					[td]Starts a new app in a new window.[/td]
+					[td]Loads the app at the specified \"Source\" in a new window of the specified \"Width\" and \"Height\".  Specify 1 or yes for \"LinkApp\" to link the new app into the same group as the current page for permissions.  Specify any value other than no for the \"UseragentMenu\", \"UseragentResize\", or \"UseragentScroll\" parameters to allow the user to see the menu bar, resize the window, or scroll it (respectively).  The \"Name\" parameter names the new window (the default name is new_window); specify 1 or true for \"Multi\" to open an additional numbered window instead of reusing the window with that name.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Log[/td]
+					[td]Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log. Might be useful for logging Easter Egg #8.[/td]
 				[/tr]
 			
 				[tr]
 					[td]LoadPage[/td]
-					[td]Loads the page.[/td]
+					[td]Loads the page at the specified \"Source\", or reloads the current page if no source is given.  Any other parameters are appended to the URL as query parameters.  Specify 1 or yes for \"LinkApp\" to link the loaded page into the same group as the current page for permissions.[/td]
+				[/tr]
+			
+				[tr]
+					[td]ReloadPage[/td]
+					[td]Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.[/td]
+				[/tr]
+			
+				[tr]
+					[td]ReloadPage[/td]
+					[td]Reloads the page in the user's browser.  Note: This event forces a reload, even if the original content could be loaded without one.[/td]
 				[/tr]
 			
 		[/table]
@@ -5427,7 +6006,7 @@ insert into topic values(null, @newid, "widget/page", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -5451,7 +6030,7 @@ MyPage \"widget/page\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -5472,7 +6051,7 @@ insert into topic values(null, @newid, "widget/pane", null,
 	[b]Overview:[/b]
 	
 
-			The pane is Centrallix's simplest container. It consists only of a background and a border, which can either have a \"raised\" edge or \"lowered\" edge style.
+			The pane is Centrallix's simplest container.  It consists only of a background and a border, which can either have a \"raised\" edge or \"lowered\" edge style.
 
 
 		
@@ -5579,7 +6158,7 @@ insert into topic values(null, @newid, "widget/pane", null,
 			
 				[tr]
 					[td]SetBackground[/td]
-					[td]Sets the backgound image or color of the pane, using the attribute Color or Image.[/td]
+					[td]Sets the background to the specified \"Image\" path or \"Color\" of the pane.[/td]
 				[/tr]
 			
 		[/table]
@@ -5591,7 +6170,7 @@ insert into topic values(null, @newid, "widget/pane", null,
 		
 				[tr]
 					[td]Click[/td]
-					[td]This event occurs when the user clicks the checkbox. No parameters are available from this event.[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
 				[/tr]
 			
 				[tr]
@@ -5641,11 +6220,11 @@ insert into topic values(null, @newid, "widget/pane", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
-mypane \"widget/pane\"
+my_pane \"widget/pane\"
 
 	{
 
@@ -5657,7 +6236,7 @@ mypane \"widget/pane\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -5709,7 +6288,7 @@ insert into topic values(null, @newid, "widget/parameter", null,
 				[tr]
 					[td]find_container[/td]
 					[td]string[/td]
-					[td]If this is a parameter to a component, and the parameter has type \"object\", this can be set to a type of widget that should be searched for in the containing application or component once the component is instantiated.  Note that the object being searched for must be a container of the component instance, either directly or indirectly.  This option is frequently used to link in with a form or objectsource in the contianing application or component, without that form or objectsource having to be explicitly passed to the component.[/td]
+					[td]If this is a parameter to a component, and the parameter has type \"object\", this can be set to a type of widget that should be searched for in the containing application or component once the component is instantiated.  Note that the object being searched for must be a container of the component instance, either directly or indirectly.  This option is frequently used to link in with a form or objectsource in the containing application or component, without that form or objectsource having to be explicitly passed to the component.[/td]
 				[/tr]
 			
 				[tr]
@@ -5733,7 +6312,7 @@ insert into topic values(null, @newid, "widget/parameter", null,
 		
 				[tr]
 					[td]SetValue[/td]
-					[td]This sets the value of the parameter.[/td]
+					[td]This sets the value property to the specified \"Value\".[/td]
 				[/tr]
 			
 		[/table]
@@ -5769,7 +6348,7 @@ my_cmp \"widget/component-decl\"
 
 	width=200; height=32;
 
-	
+
 
 	field_name \"widget/parameter\"
 
@@ -5833,7 +6412,7 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 	[b]Usage:[/b]
 	
 
-			The radio button panel can be placed inside of any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).  The \"widget/radiobuttonpanel\" is the main widget, and can contain any number of \"widget/radiobutton\" widgets which specify the choices which will be present on the panel.  No other visual widgets can be contained within a radio button panel.
+			The radio button panel can be placed inside any visual container, and will automatically attach itself to a form widget if it is inside of one (directly or indirectly).  The \"widget/radiobuttonpanel\" is the main widget, and can contain any number of \"widget/radiobutton\" widgets which specify the choices which will be present on the panel.  No other visual widgets can be contained within a radio button panel.
 
 
 			Note: form widget interaction was not yet implemented as of the time of writing of this document.
@@ -5860,13 +6439,19 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 				[tr]
 					[td]bgcolor[/td]
 					[td]string[/td]
-					[td]A color, RGB or named, for the panel background. If neither bgcolor nor background transparent.[/td]
+					[td]A color, RGB or named, for the panel background.  If neither bgcolor nor background transparent.[/td]
 				[/tr]
 			
 				[tr]
 					[td]height[/td]
 					[td]integer[/td]
 					[td]Height, in pixels, of the panel.[/td]
+				[/tr]
+			
+				[tr]
+					[td]spacing[/td]
+					[td]integer[/td]
+					[td]The maximum height (in pixels) of space allowed between radio buttons on the panel (default: 10px).[/td]
 				[/tr]
 			
 				[tr]
@@ -5884,7 +6469,7 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 				[tr]
 					[td]title[/td]
 					[td]string[/td]
-					[td]The title for the radio button panel, which appears superimposed on the rectangular   border around the radio buttons.[/td]
+					[td]The title for the radio button panel, which appears superimposed on the rectangular border around the radio buttons.[/td]
 				[/tr]
 			
 				[tr]
@@ -5923,7 +6508,7 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 						[tr]
 							[td]selected[/td]
 							[td]boolean[/td]
-							[td]the radio button is initially selected or not. Should only be set on one radio Default;\"false\".[/td]
+							[td]the radio button is initially selected or not.  Should only be set on one radio Default;\"false\".[/td]
 						[/tr]
 					
 						[tr]
@@ -5934,12 +6519,76 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 					
 				[/table]
 			
+	[b]Actions:[/b]
+	
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]SetValue[/td]
+					[td]Sets the selected option for the radio button panel to the new option specified with the \"Value\" parameter, or unsets the dropdown if no value is specified.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Events:[/b]
+	
+		[table]
+		[tr][th]Event[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseDown[/td]
+					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseMove[/td]
+					[td]This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseOut[/td]
+					[td]This event occurs when the user moves the mouse pointer off of the widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseOver[/td]
+					[td]This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.[/td]
+				[/tr]
+			
+				[tr]
+					[td]MouseUp[/td]
+					[td]This event occurs when the user releases the mouse button on the widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]DataChange[/td]
+					[td]This event occurs when a new option is selected in the dropdown widget.  It provides the \"Value\" parameter, which indicates the new selected option.[/td]
+				[/tr]
+			
+				[tr]
+					[td]GetFocus[/td]
+					[td]This event occurs when the parent pane gains the user's focus.[/td]
+				[/tr]
+			
+				[tr]
+					[td]LoseFocus[/td]
+					[td]This event occurs when the parent pane looses the user's focus.[/td]
+				[/tr]
+			
+		[/table]
+	
 	[b]Sample Code:[/b]
 	
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -5963,7 +6612,7 @@ testradio \"widget/radiobuttonpanel\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -5984,10 +6633,10 @@ insert into topic values(null, @newid, "widget/remotectl", null,
 	[b]Overview:[/b]
 	
 
-			The remote control nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.
+			The remote control nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems.  This is done by passing the event/action information through a remote control channel on the server.
 
 
-			Two remote control widgets are required: a master and slave. This widget is the slave widget, which receives remote control events via the Centrallix server. When a master widget (remotemgr) sends an event through the channel, this slave widget is automatically activated and can then trigger the appropriate action on another widget on the page.
+			Two remote control widgets are required: a master and slave.  This widget is the slave widget, which receives remote control events via the Centrallix server.  When a master widget (remotemgr) sends an event through the channel, this slave widget is automatically activated and can then trigger the appropriate action on another widget on the page.
 
 
 			In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.
@@ -6004,7 +6653,7 @@ insert into topic values(null, @newid, "widget/remotectl", null,
 
 
 		
-	[b]Sample Code:[/b]
+	[b]Properties:[/b]
 	
 		[i]none currently available[/i]
 	
@@ -6024,10 +6673,10 @@ insert into topic values(null, @newid, "widget/remotemgr", null,
 	[b]Overview:[/b]
 	
 
-			The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.
+			The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems.  This is done by passing the event/action information through a remote control channel on the server.
 
 
-			Two remote control widgets are required: a master and slave. This widget is the master widget, which sends remote control events via the Centrallix server. When a this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.
+			Two remote control widgets are required: a master and slave.  This widget is the master widget, which sends remote control events via the Centrallix server.  When this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.
 
 
 			In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.
@@ -6044,7 +6693,7 @@ insert into topic values(null, @newid, "widget/remotemgr", null,
 
 
 		
-	[b]Sample Code:[/b]
+	[b]Properties:[/b]
 	
 		[i]none currently available[/i]
 	
@@ -6064,20 +6713,20 @@ insert into topic values(null, @newid, "widget/repeat", null,
 	[b]Overview:[/b]
 	
 
-		The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.
+			The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.
 
 
-	    
+		
 	[b]Usage:[/b]
 	
 
-		This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.
+			This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.
 
 
-		The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.
+			The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.
 
 
-	    
+		
 	[b]Properties:[/b]
 	
 		[table]
@@ -6096,7 +6745,7 @@ insert into topic values(null, @newid, "widget/repeat", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -6104,11 +6753,11 @@ $Version=2$
 
 	vbox \"widget/vbox\"
 
-	    {
+			{
 
-	    x=10; y=10; cellsize=20; spacing=0;
+			x=10; y=10; cellsize=20; spacing=0;
 
-	    rpt \"widget/repeat\"
+			rpt \"widget/repeat\"
 
 		{
 
@@ -6116,23 +6765,23 @@ $Version=2$
 
 		button \"widget/button\"
 
-		    {
+				{
 
-		    type=\"text\";
+				type=\"text\";
 
-		    width=100; height=20;
+				width=100; height=20;
 
-		    text=runserver(:rpt:name);
+				text=runserver(:rpt:name);
 
-		    }
+				}
 
 		}
 
-	    }
+			}
 
-		
+			
 
-	    
+			
 		[/code]
 	
 ");
@@ -6191,7 +6840,7 @@ insert into topic values(null, @newid, "widget/scrollbar", null,
 	[b]Overview:[/b]
 	
 
-			The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.
+			The scrollbar is used to allow the user to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.
 
 
 			Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.
@@ -6219,7 +6868,7 @@ insert into topic values(null, @newid, "widget/scrollbar", null,
 				[tr]
 					[td]bgcolor[/td]
 					[td]string[/td]
-					[td]A color, RGB or named, to be used as the scrollbar background. If neither bgcolor nor background is supplied, the scrollbar is transparent.[/td]
+					[td]A color, RGB or named, to be used as the scrollbar background.  If neither bgcolor nor background is supplied, the scrollbar is transparent.[/td]
 				[/tr]
 			
 				[tr]
@@ -6273,7 +6922,7 @@ insert into topic values(null, @newid, "widget/scrollbar", null,
 		
 				[tr]
 					[td]MoveTo[/td]
-					[td]Sets the scroll bar to a specific location determined by the parameter.[/td]
+					[td]Sets the scrollbar to a specific location determined by the \"Value\" parameter.[/td]
 				[/tr]
 			
 		[/table]
@@ -6283,6 +6932,11 @@ insert into topic values(null, @newid, "widget/scrollbar", null,
 		[table]
 		[tr][th]Event[/th][th]Description[/th][/tr]
 		
+				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
 				[tr]
 					[td]MouseDown[/td]
 					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
@@ -6326,7 +6980,7 @@ insert into topic values(null, @newid, "widget/scrollpane", null,
 	[b]Overview:[/b]
 	
 
-			The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.
+			The scrollpane widget provides a container and a scrollbar.  The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.
 
 
 			The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.  Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.
@@ -6360,7 +7014,7 @@ insert into topic values(null, @newid, "widget/scrollpane", null,
 				[tr]
 					[td]height[/td]
 					[td]integer[/td]
-					[td]height, in pixels, of the scrollpane's visible area. Due to the nature of the  can time.[/td]
+					[td]height, in pixels, of the scrollpane's visible area.  Due to the nature of the can time.[/td]
 				[/tr]
 			
 				[tr]
@@ -6396,7 +7050,7 @@ insert into topic values(null, @newid, "widget/scrollpane", null,
 		
 				[tr]
 					[td]ScrollTo[/td]
-					[td]Scrolls to a specific location determined by the scroll bar.[/td]
+					[td]Scrolls to a specific location determined by the scroll bar.  Specify the 'Percent' attribute to indicate how far to scroll in decimal representation (so 1.00 is 100%, aka. the bottom of the page).  Specify 'Offset' how many pixels the content should be offset from the top (specify 100 to scroll the first 100 px of content off the top of the scroll pane).  Specify 'RangeStart' and 'RangeEnd' to scroll to within the pixel range (using the same units as offset).  Keep in mind that this action will trigger a scroll event to occur.[/td]
 				[/tr]
 			
 		[/table]
@@ -6407,13 +7061,28 @@ insert into topic values(null, @newid, "widget/scrollpane", null,
 		[tr][th]Event[/th][th]Description[/th][/tr]
 		
 				[tr]
+					[td]Scroll[/td]
+					[td]This event occurs any time the user scrolls the scroll pane.  This includes scrolling by clicking the scroll buttons, clicking on the scroll bar, dragging the scroll thumb, turning the scroll wheel, or when the ScrollTo action is used.  This event does not occur when the scroll pane moves because the contained content changed in length, or when the scroll pane is forced to scroll because the available visible area was resized.  This event will never occur if the content within the scroll pane is shorter than the available visible area because then the content cannot be scrolled.  This event provides the :Percent attribute, a number from 0 to 100 (the same as the ScrollTo action above) representing the percentage that the user has now scrolled down the page as of the event occurring.  This event also provides :Change, representing how much the user's scroll location has changed in the same unit as above (although this value will be negative if the user scrolled up).[/td]
+				[/tr]
+			
+				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Wheel[/td]
+					[td]This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.[/td]
+				[/tr]
+			
+				[tr]
 					[td]MouseDown[/td]
 					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
 				[/tr]
 			
 				[tr]
 					[td]MouseMove[/td]
-					[td]This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.[/td]
+					[td]This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.[/td]
 				[/tr]
 			
 				[tr]
@@ -6438,7 +7107,7 @@ insert into topic values(null, @newid, "widget/scrollpane", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -6474,7 +7143,7 @@ MyScrollPane \"widget/scrollpane\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -6495,7 +7164,7 @@ insert into topic values(null, @newid, "widget/tab", null,
 	[b]Overview:[/b]
 	
 
-			The TabControl widget provides a DHTML tab control within Centrallix. The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.
+			The TabControl widget provides a DHTML tab control within Centrallix.  The widget behaves in the same way as tab controls in other GUI environments, providing a set of tab pages, layered one on top of the other, which can be selected (brought to the foreground) by clicking the mouse on the respective visible tab at the top of the tab control.
 
 
 			To further distinguish which tab at the top of the tab control is active, this widget slightly modifies the X/Y position of the tab as well as changing a thumbnail image (on the left edge of the tab) to further enhance the distinction between selected and inactive tab pages.
@@ -6508,7 +7177,7 @@ insert into topic values(null, @newid, "widget/tab", null,
 			The tab pages are containers, and as such, controls of various kinds, including other tab controls, can be placed inside the tab pages.
 
 
-			Tab pages are added to a tab control by including widgets of type \"widget/tabpage\" within the \"widget/tab\" widget in the structure file that defines the application. Any controls to appear inside a particular tab page should be placed inside their respective \"widget/tabpage\" widgets in the structure file.Only widgets of type \"widget/tabpage\" should be placed inside a \"widget/tab\", with the exception of nonvisuals such as connectors.
+			Tab pages are added to a tab control by including widgets of type \"widget/tabpage\" within the \"widget/tab\" widget in the structure file that defines the application.  Any controls to appear inside a particular tab page should be placed inside their respective \"widget/tabpage\" widgets in the structure file.  Only widgets of type \"widget/tabpage\" should be placed inside a \"widget/tab\", except for nonvisual widgets such as connectors.
 
 
 			Tab pages also have a 'visible' property which allows them to be hidden and revealed.  This is used if the type is set to dynamic, but can be used manually as well.
@@ -6595,13 +7264,19 @@ insert into topic values(null, @newid, "widget/tab", null,
 				[tr]
 					[td]tab_location[/td]
 					[td]string[/td]
-					[td]The location of the tabs:  \"top\" (default), \"bottom\", \"left\", \"right\", or \"none\".[/td]
+					[td]The location of the tabs: \"top\" (default), \"bottom\", \"left\", \"right\", or \"none\".[/td]
 				[/tr]
 			
 				[tr]
 					[td]tab_width[/td]
 					[td]integer[/td]
 					[td]The width of the tabs in pixels.  This is optional for tab_locations of \"top\", \"bottom\", and \"none\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]tab_height[/td]
+					[td]integer[/td]
+					[td]The height of the tabs in pixels.  This is optional for all tab_locations. Defaults to 24px.[/td]
 				[/tr]
 			
 				[tr]
@@ -6629,16 +7304,40 @@ insert into topic values(null, @newid, "widget/tab", null,
 				[/tr]
 			
 				[tr]
-					[td]y[/td]
+					[td]rendering[/td]
+					[td]string[/td]
+					[td]'client-side' or 'server-side'. This property is intended for developers (although it can give a very small performance boost). A value of \"server-side\" turns off JS rendering on the client. This does not work for dynamic width tabs (aka. top or bottom tabs with no 'tab_width' property). Defaults to \"client-side\". [/td]
+				[/tr]
+			
+				[tr]
+					[td]select_translate_along[/td]
 					[td]integer[/td]
-					[td]Y-coordinate of the upper left corner of the control, relative to its container.[/td]
+					[td]The amount to translate a selected tab along the side of the tab control. Defaults to 0px.[/td]
+				[/tr]
+			
+				[tr]
+					[td]select_translate_out[/td]
+					[td]integer[/td]
+					[td]The amount to translate a selected tab out and away from the side of the tab control. Defaults to 2px.[/td]
+				[/tr]
+			
+				[tr]
+					[td]select_translate_x[/td]
+					[td]integer[/td]
+					[td]The amount to translate a selected tab in the x direction. If set, overrides the value derived from select_translate_along and/or select_translate_out.[/td]
+				[/tr]
+			
+				[tr]
+					[td]select_translate_y[/td]
+					[td]integer[/td]
+					[td]The amount to translate a selected tab in the y direction. If set, overrides the value derived from select_translate_along and/or select_translate_out.[/td]
 				[/tr]
 			
 		[/table]
 	
 	[b]Child Properties:[/b]
 	
-			(of any child widgets)
+			(of widget/tabpage child widgets)
 			
 				[table]
 				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
@@ -6676,7 +7375,7 @@ insert into topic values(null, @newid, "widget/tab", null,
 		
 				[tr]
 					[td]SetTab[/td]
-					[td]Sets the selected tab according to the parameter given (the tab itself or its index).[/td]
+					[td]Sets the selected tab to the tab with the index specified by the \"TabIndex\" parameter, or the tab with the name specified by the \"Tab\" parameter.  (\"Tab\" takes priority if both are specified.  Does nothing if neither is specified.)[/td]
 				[/tr]
 			
 		[/table]
@@ -6744,7 +7443,7 @@ insert into topic values(null, @newid, "widget/tab", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -6766,7 +7465,7 @@ myTabControl \"widget/tab\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -6787,10 +7486,11 @@ insert into topic values(null, @newid, "widget/table", null,
 	[b]Overview:[/b]
 	
 
-			A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.
+			A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data. The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.
 
 
-		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only [i]static[/i] mode and [i]dynamicrow[/i] mode were supported.
+			Table widgets come in three different flavors: static, dynamicpage, and dynamicrow. Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget. Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will. Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query. As of the time of writing of this document, only [i]static[/i] mode and [i]dynamicrow[/i] mode were supported.
+
 
 			Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.
 
@@ -6799,7 +7499,7 @@ insert into topic values(null, @newid, "widget/table", null,
 	[b]Usage:[/b]
 	
 
-			Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via \"widget/table-column\" child widgets within the table widget.
+			Table widgets are normally placed inside a scrollpane so that any rows which don't fit int the container can still be viewed.  Table columns are created via \"widget/table-column\" child widgets within the table widget.
 
 
 		
@@ -6812,6 +7512,12 @@ insert into topic values(null, @newid, "widget/table", null,
 					[td]allow_selection[/td]
 					[td]yes/no[/td]
 					[td]Whether to permit the user to select rows in the table.  Default \"yes\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]allow_sorting[/td]
+					[td]yes/no[/td]
+					[td]Whether clicking a column header sorts the table by that column.  Acts as the default for all columns; individual columns may override via their own \"allow_sorting\" property.  Default \"yes\".[/td]
 				[/tr]
 			
 				[tr]
@@ -6842,6 +7548,18 @@ insert into topic values(null, @newid, "widget/table", null,
 					[td]colsep[/td]
 					[td]integer[/td]
 					[td]The width of the column separation lines in pixels.  Default is 1.[/td]
+				[/tr]
+			
+				[tr]
+					[td]colsep_mode[/td]
+					[td]string[/td]
+					[td]Either 'full' or 'header'. Default is 'full'.[/td]
+				[/tr]
+			
+				[tr]
+					[td]colsep_mode[/td]
+					[td]string[/td]
+					[td]Either 'full' or 'header'.  Default is 'full'.[/td]
 				[/tr]
 			
 				[tr]
@@ -6919,7 +7637,7 @@ insert into topic values(null, @newid, "widget/table", null,
 				[tr]
 					[td]inner_border[/td]
 					[td]integer[/td]
-					[td]width of the inner spacing between cells in a table. Default0.[/td]
+					[td]width of the inner spacing between cells in a table.  Default0.[/td]
 				[/tr]
 			
 				[tr]
@@ -6967,7 +7685,7 @@ insert into topic values(null, @newid, "widget/table", null,
 				[tr]
 					[td]overlap_scrollbar[/td]
 					[td]integer[/td]
-					[td]Acts as a boolean to allow the scroll bar to overlab with the table (allow is \"1\").[/td]
+					[td]Acts as a boolean to allow the scroll bar to overlap with the table (allow is \"1\").[/td]
 				[/tr]
 			
 				[tr]
@@ -7105,13 +7823,13 @@ insert into topic values(null, @newid, "widget/table", null,
 				[tr]
 					[td]x[/td]
 					[td]integer[/td]
-					[td]X-coordinate of the upper left corner of the table. Default is 0.[/td]
+					[td]X-coordinate of the upper left corner of the table.  Default is 0.[/td]
 				[/tr]
 			
 				[tr]
 					[td]y[/td]
 					[td]integer[/td]
-					[td]Y-coordinate of the upper left corner of the table. Default is 0.[/td]
+					[td]Y-coordinate of the upper left corner of the table.  Default is 0.[/td]
 				[/tr]
 			
 		[/table]
@@ -7126,7 +7844,73 @@ insert into topic values(null, @newid, "widget/table", null,
 						[tr]
 							[td]align[/td]
 							[td]string[/td]
-							[td]The alignment of the column:  \"left\" or \"right\".[/td]
+							[td]The alignment of the column: \"left\", \"center\", or \"right\".[/td]
+						[/tr]
+					
+						[tr]
+							[td]fieldname[/td]
+							[td]string[/td]
+							[td]The field name that this column will use to get data.[/td]
+						[/tr]
+					
+						[tr]
+							[td]value[/td]
+							[td]string[/td]
+							[td]Not documented.[/td]
+						[/tr]
+					
+						[tr]
+							[td]textcolor[/td]
+							[td]string[/td]
+							[td]The color of the text displayed in this column.[/td]
+						[/tr]
+					
+						[tr]
+							[td]caption_align[/td]
+							[td]string[/td]
+							[td]The alignment of the caption in the column: \"left\", \"center\", or \"right\".[/td]
+						[/tr]
+					
+						[tr]
+							[td]caption_fieldname[/td]
+							[td]string[/td]
+							[td]The field name that this column will use to get caption data.[/td]
+						[/tr]
+					
+						[tr]
+							[td]caption_value[/td]
+							[td]string[/td]
+							[td]Not documented.[/td]
+						[/tr]
+					
+						[tr]
+							[td]caption_textcolor[/td]
+							[td]string[/td]
+							[td]The color of the captions in this column.[/td]
+						[/tr]
+					
+						[tr]
+							[td]caption_font_size[/td]
+							[td]string[/td]
+							[td]The font size of thecaption text.[/td]
+						[/tr]
+					
+						[tr]
+							[td]caption_style[/td]
+							[td]string[/td]
+							[td]Not documented.[/td]
+						[/tr]
+					
+						[tr]
+							[td]caption_wrap[/td]
+							[td]string[/td]
+							[td]Determines if the caption text will wrap around obstacles.[/td]
+						[/tr]
+					
+						[tr]
+							[td]allow_sorting[/td]
+							[td]yes/no[/td]
+							[td]Whether clicking this column's header sorts the table by this column.  Defaults to the table's \"allow_sorting\" value (which defaults to \"yes\").[/td]
 						[/tr]
 					
 						[tr]
@@ -7162,7 +7946,25 @@ insert into topic values(null, @newid, "widget/table", null,
 						[tr]
 							[td]type[/td]
 							[td]string[/td]
-							[td]The type of the column: \"text\", \"check\", or \"image\".  \"text\" is a normal column, and displays the textual value of the data element.  \"check\" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not \"N\" or \"No\".  \"image\" displays the image referred to by the pathname contained in the data value.[/td]
+							[td]The type of the column: \"text\", \"check\", \"image\", or \"progress\".  \"text\" is a normal column, and displays the textual value of the data element.  \"check\" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not \"N\" or \"No\".  \"image\" displays the image referred to by the pathname contained in the data value. \"progress\" displays a progress bar, with additional fields such as bar_color, bar_textcolor, and bar_padding.[/td]
+						[/tr]
+					
+						[tr]
+							[td]image_maxwidth[/td]
+							[td]integer[/td]
+							[td]The max width of the image displayed when type=image.[/td]
+						[/tr]
+					
+						[tr]
+							[td]image_maxheight[/td]
+							[td]integer[/td]
+							[td]The max height of the image displayed when type=image.[/td]
+						[/tr]
+					
+						[tr]
+							[td]style[/td]
+							[td]string[/td]
+							[td]Not documented.[/td]
 						[/tr]
 					
 						[tr]
@@ -7177,6 +7979,43 @@ insert into topic values(null, @newid, "widget/table", null,
 							[td]Determines if text can wrap around an obstacle.[/td]
 						[/tr]
 					
+						[tr]
+							[td]visible[/td]
+							[td]integer[/td]
+							[td]Set this to 0 to hide the column from the table.[/td]
+						[/tr]
+					
+				[/table]
+			
+			(of widget/table-row-detail child widgets)
+			
+				[table]
+				[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+				
+						[tr]
+							[td]width[/td]
+							[td]integer[/td]
+							[td]Not documented.[/td]
+						[/tr]
+					
+						[tr]
+							[td]height[/td]
+							[td]integer[/td]
+							[td]The height of the table row detail. (This will expand the height of the selected row when the widget appears.)[/td]
+						[/tr]
+					
+						[tr]
+							[td]display_for[/td]
+							[td]integer[/td]
+							[td]Specify 0 to hide the row-detail (useful for creating multiple widgets and picking between them dynamically). Support run_client().[/td]
+						[/tr]
+					
+						[tr]
+							[td]show_on_new[/td]
+							[td]integer[/td]
+							[td]Specify 1 to make new rows show their table-row-detail when added (deault: 0).[/td]
+						[/tr]
+					
 				[/table]
 			
 	[b]Actions:[/b]
@@ -7189,6 +8028,11 @@ insert into topic values(null, @newid, "widget/table", null,
 					[td]Drops all elements from the table.[/td]
 				[/tr]
 			
+				[tr]
+					[td]ShowSelection[/td]
+					[td]Enables the initial_selection property and redraws the table.[/td]
+				[/tr]
+			
 		[/table]
 	
 	[b]Events:[/b]
@@ -7197,8 +8041,23 @@ insert into topic values(null, @newid, "widget/table", null,
 		[tr][th]Event[/th][th]Description[/th][/tr]
 		
 				[tr]
+					[td]Check[/td]
+					[td]The Check event fires when the user clicks an unchecked checkbox in a row.  Passes the same values as DblClick, plus 'checkbox' which is set to 1.  Cancelling this event prevents the row from being selected.[/td]
+				[/tr]
+			
+				[tr]
 					[td]Click[/td]
 					[td]The Click event fires when a user clicks on a row.[/td]
+				[/tr]
+			
+				[tr]
+					[td]ClickItem[/td]
+					[td]The ClickItem event fires when the user clicks an item in an 'itemlist' column.  Passes 'Item' which is the item text, 'ItemKey' and 'ItemIndex' which identify the item, 'Row' which is the row number, and 'Column' and 'ColumnName' which are the field name and the column name.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Close[/td]
+					[td]The Close event fires on a \"widget/table-row-detail\" child widget when it stops being shown for a row, either because another row was selected, because its \"display_for\" value was set to 0, or because the row was scrolled out of the table.  Passes no values.[/td]
 				[/tr]
 			
 				[tr]
@@ -7207,8 +8066,33 @@ insert into topic values(null, @newid, "widget/table", null,
 				[/tr]
 			
 				[tr]
+					[td]DragCancelItem[/td]
+					[td]The DragCancelItem event fires when the user drops a dragged item somewhere other than an 'itemlist' column, cancelling the drag.  Passes the same values as ClickItem, describing where the drag started.[/td]
+				[/tr]
+			
+				[tr]
+					[td]DragDropItem[/td]
+					[td]The DragDropItem event fires when the user drops a dragged item on an 'itemlist' column.  Passes 'Item', 'ItemKey', and 'ItemIndex' which identify the dragged item, 'SourceRow', 'SourceColumn', and 'SourceColumnName' which describe where the drag started, 'TargetRow', 'TargetColumn', and 'TargetColumnName' which describe where it was dropped, and 'BeforeItem' which is the item it was dropped in front of (or null).[/td]
+				[/tr]
+			
+				[tr]
+					[td]DragStartItem[/td]
+					[td]The DragStartItem event fires when the user begins dragging an item in an 'itemlist' column.  Passes the same values as ClickItem, plus 'OffsetX' and 'OffsetY' which are the distance the pointer has moved.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Open[/td]
+					[td]The Open event fires on a \"widget/table-row-detail\" child widget when it is shown for a row, which happens when the row is selected (or when a new row is added, if \"show_on_new\" is set).  Passes no values.[/td]
+				[/tr]
+			
+				[tr]
 					[td]RightClick[/td]
-					[td]The Click event fires when a user right clicks on a mouse or mouse pad.[/td]
+					[td]The RightClick event occurs when a user clicks on the widget with the relevant button on their mouse or mouse pad.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Uncheck[/td]
+					[td]The Uncheck event fires when the user clicks a checked checkbox in a row.  Passes the same values as DblClick, plus 'checkbox' which is set to 2.  Cancelling this event prevents the row from being selected.[/td]
 				[/tr]
 			
 		[/table]
@@ -7218,7 +8102,7 @@ insert into topic values(null, @newid, "widget/table", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -7254,7 +8138,7 @@ tblFileList \"widget/table\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -7273,25 +8157,36 @@ insert into topic values(null, @newid, "widget/template", null,
 		[/table]
 		
 	[b]Overview:[/b]
-	
-
-		
+	 
 	[b]Usage:[/b]
 	
 
-		  A widget/template must be a root widget of a file (which normally is given a .tpl extension). 
+			A widget/template must be a root widget of a file (which normally is given a .tpl extension).  
 
 
-		  Each child in a widget/template is a \"rule\". Each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and \"rule\")) and 2) match the widget type of the child (eg \"widget/imagebutton\").
+			Each child in a widget/template is a \"rule\".  Each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and \"rule\")) and 2) match the widget type of the child (eg \"widget/imagebutton\").
 
 
-		  Every other property of the \"rule\" are default values.
+			Every other property of the \"rule\" are default values.
 
 
-		  All children of the \"rule\" are automatically inserted into the matched widgets.
+			All children of the \"rule\" are automatically inserted into the matched widgets.
 
 
 		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td][/td]
+					[td][/td]
+					[td][/td]
+				[/tr]
+			
+		[/table]
+	
 	[b]Child Properties:[/b]
 	
 			(of any child widgets)
@@ -7312,13 +8207,13 @@ insert into topic values(null, @newid, "widget/template", null,
 		[code]
 		
 
-		
+			
 
 objcanvas_test \"widget/template\"
 
-    {
+		{
 
-    btnFirst \"widget/imagebutton\"
+		btnFirst \"widget/imagebutton\"
 
 	{
 
@@ -7344,9 +8239,171 @@ objcanvas_test \"widget/template\"
 
 	}
 
-    }
+		}
+
+			
 
 		
+		[/code]
+	
+");
+	
+insert into topic values(null, @newid, "widget/terminal", null,
+"		[b]terminal[/b] :: A visual widget which emulates a VT100 text terminal attached to an ObjectSystem object.
+
+		[b]Metadata:[/b]
+		[table]
+		[tr][td]type:[/td][td]widget/terminal[/td][/tr]
+		[tr][td]visual:[/td][td] yes[/td][/tr]
+		[tr][td]container:[/td][td] no[/td][/tr]
+		[tr][td]form element:[/td][td] no[/td][/tr]
+		[/table]
+		
+	[b]Overview:[/b]
+	
+
+			The terminal widget displays a fixed-size grid of characters (rows by cols) and emulates a subset of the VT100 terminal.  It opens the ObjectSystem object named by the 'source' property through the OSML, polls it for data, and interprets the escape sequences in that data stream to position and erase text on the display.
+
+
+			The widget is experimental and largely incomplete.  Only cursor positioning, carriage return, line feed, tab, and erase-to-end-of-line are honored; character attributes (colors, bold, reverse), erase-to-end-of-page, scrolling, keyboard input, sending data back to the source, and disconnecting are not implemented.  Because keyboard input is not delivered to the widget, the terminal is read-only in practice, and is best suited to viewing the output of a program such as \"top\".
+
+
+		
+	[b]Usage:[/b]
+	
+
+			The terminal widget can be used inside any container capable of having visual subwidgets.  It may contain no widgets other than any applicable connectors.
+
+
+			The 'source' property must reference an ObjectSystem object which can be opened and read repeatedly, such as a shell script object (a \".shl\" file).  The object is read in blocks of 2048 bytes and re-polled every two seconds when no data is available.  The path is resolved relative to the directory containing the application, since cross-directory reads are blocked by the browser's cross-site scripting protections.
+
+
+			The widget requires a browser with W3C DOM1 HTML and DOM2 CSS support, and it renders only on the \"dhtml\" output driver.
+
+
+		
+	[b]Properties:[/b]
+	
+		[table]
+		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]cols[/td]
+					[td]integer[/td]
+					[td]Required.  The width of the terminal, in characters.  The widget's width in pixels is 'cols' multiplied by 'fontsize'.[/td]
+				[/tr]
+			
+				[tr]
+					[td]color0[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 0.  Default is \"black\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]color1[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 1.  Default is \"red\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]color2[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 2.  Default is \"green\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]color3[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 3.  Default is \"yellow\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]color4[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 4.  Default is \"blue\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]color5[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 5.  Default is \"purple\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]color6[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 6.  Default is \"aqua\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]color7[/td]
+					[td]string[/td]
+					[td]A color, either named or numeric, to use for VT100 color 7.  Default is \"white\".[/td]
+				[/tr]
+			
+				[tr]
+					[td]fontsize[/td]
+					[td]integer[/td]
+					[td]The size, in pixels, of one character cell.  Default is 12.  It is used only to compute the size of the widget; the characters themselves are displayed in the browser's \"fixed\" font at its normal size.[/td]
+				[/tr]
+			
+				[tr]
+					[td]rows[/td]
+					[td]integer[/td]
+					[td]Required.  The height of the terminal, in character rows.[/td]
+				[/tr]
+			
+				[tr]
+					[td]source[/td]
+					[td]string[/td]
+					[td]Required.  The ObjectSystem path of the object supplying the terminal's data stream.[/td]
+				[/tr]
+			
+				[tr]
+					[td]x[/td]
+					[td]integer[/td]
+					[td]Required.  The X location of the left edge of the widget, relative to its container.[/td]
+				[/tr]
+			
+				[tr]
+					[td]y[/td]
+					[td]integer[/td]
+					[td]Required.  The Y location of the top edge of the widget, relative to its container.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Actions:[/b]
+	
+		[table]
+		[tr][th]Action[/th][th]Description[/th][/tr]
+		
+				[tr]
+					[td]Connect[/td]
+					[td]Opens an OSML session on the 'source' object and begins reading from it.  Does nothing if the terminal is already connected.  The terminal connects automatically when the page loads, so this action is only needed after a disconnect.[/td]
+				[/tr]
+			
+				[tr]
+					[td]Disconnect[/td]
+					[td]Closes the connection to the 'source' object.[/td]
+				[/tr]
+			
+		[/table]
+	
+	[b]Sample Code:[/b]
+	
+		[code]
+		
+
+			
+
+term1 \"widget/terminal\"
+		{
+		x=0; y=100; rows=24; cols=80;
+		source = \"/samples/top.shl\";
+		}
+
+			
 
 		
 		[/code]
@@ -7464,17 +8521,17 @@ insert into topic values(null, @newid, "widget/textarea", null,
 		
 				[tr]
 					[td]InsertText[/td]
-					[td]Checks to see if things need to be changed (new is different from old) then calls set value.[/td]
+					[td]Checks to see if things need to be changed (new is different from old) then calls SetValue with the provided \"Text\".  Specify 1 for the \"SetFocus\" parameter to cause this textarea to become the focus when the text is inserted.[/td]
 				[/tr]
 			
 				[tr]
 					[td]SetFocus[/td]
-					[td]Sets the focus on a selected widget.[/td]
+					[td]Sets the focus on a selected widget.  Specify the optional \"X\" or \"Y\" parameters to move the focus box that appears on the textarea.[/td]
 				[/tr]
 			
 				[tr]
 					[td]SetValue[/td]
-					[td]Sets the content to the text parameter sent.[/td]
+					[td]Sets the content to the specified \"Value\" parameter.[/td]
 				[/tr]
 			
 		[/table]
@@ -7520,6 +8577,11 @@ insert into topic values(null, @newid, "widget/textarea", null,
 				[/tr]
 			
 				[tr]
+					[td]Click[/td]
+					[td]This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.[/td]
+				[/tr]
+			
+				[tr]
 					[td]MouseDown[/td]
 					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
 				[/tr]
@@ -7551,14 +8613,10 @@ insert into topic values(null, @newid, "widget/textarea", null,
 			
 		[/table]
 	
-	[b]Sample Code:[/b]
-	
-		[i]none currently available[/i]
-	
 ");
 	
 insert into topic values(null, @newid, "widget/textbutton", null,
-"		[b]textbutton[/b] :: A simple visual button widget built not from images but from a simple text string.
+"		[b]textbutton[/b] :: Deprecated.  An alias for widget/button.
 
 		[b]Metadata:[/b]
 		[table]
@@ -7571,10 +8629,10 @@ insert into topic values(null, @newid, "widget/textbutton", null,
 	[b]Overview:[/b]
 	
 
-			A textbutton provides similar functionality to the imagebutton. However, the programmer need not create two or three graphics images in order to use a textbutton; rather simply specifying the text to appear on the button is sufficient.
+			Deprecated.  This name is rendered by widget/button and is kept only so that existing applications keep working.  New applications should use widget/button, which documents the properties, events, actions, and client properties that a textbutton accepts.
 
 
-			Textbuttons, like imagebuttons, can either have two or three states. A three-state textbutton doesn't have a \"raised\" border until the user points to it, whereas a two-state textbutton retains its raised border whether pointed to or not.
+			A textbutton is a widget/button that takes its 'type' from its content: 'text' when no 'image' is given, otherwise the position named by 'image_position', which defaults to 'top'.  Two of the property names used by existing textbuttons are deprecated spellings: 'image_margin' is now 'spacing', and 'image_position' is now covered by the 'topimage', 'rightimage', 'bottomimage', and 'leftimage' values of 'type'.
 
 
 		
@@ -7587,196 +8645,14 @@ insert into topic values(null, @newid, "widget/textbutton", null,
 		
 	[b]Properties:[/b]
 	
-		[table]
-		[tr][th]Property[/th][th]Type[/th][th]Description[/th][/tr]
-		
-				[tr]
-					[td]align[/td]
-					[td]string[/td]
-					[td]Sets the alignment of text in the button, can have left right or center (default).[/td]
-				[/tr]
-			
-				[tr]
-					[td]background[/td]
-					[td]string[/td]
-					[td]A background image for the button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]bgcolor[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, to be used as the button's background.If neither bgcolor nor background are specified, the button is transparent.[/td]
-				[/tr]
-			
-				[tr]
-					[td]border_color[/td]
-					[td]string[/td]
-					[td]A color that outlines the button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]border_radius[/td]
-					[td]integer[/td]
-					[td]A radius that describes the sharpness of the corners of the button (smaller means sharper).[/td]
-				[/tr]
-			
-				[tr]
-					[td]border_style[/td]
-					[td]string[/td]
-					[td]Determines the look of the outline.[/td]
-				[/tr]
-			
-				[tr]
-					[td]disable_color[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, to be used for the button's text when it is disabled.[/td]
-				[/tr]
-			
-				[tr]
-					[td]enabled[/td]
-					[td]yes/no or expr[/td]
-					[td]Whether the button is enabled (can be clicked).  Default is 'yes'.  Also supports dynamic runclient() expressions allowing the enabled status of the button to follow the value of an expression.[/td]
-				[/tr]
-			
-				[tr]
-					[td]fgcolor1[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, for the text on the button.  Default \"white\".[/td]
-				[/tr]
-			
-				[tr]
-					[td]fgcolor2[/td]
-					[td]string[/td]
-					[td]A color, RGB or named, for the text's 1-pixel drop-shadow.  Default \"black\".[/td]
-				[/tr]
-			
-				[tr]
-					[td]height[/td]
-					[td]integer[/td]
-					[td]Height, in pixels, of the text button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]image[/td]
-					[td]string[/td]
-					[td]File path to the source of the image.[/td]
-				[/tr]
-			
-				[tr]
-					[td]image_height[/td]
-					[td]integer[/td]
-					[td]Defines the height of image.[/td]
-				[/tr]
-			
-				[tr]
-					[td]image_margin[/td]
-					[td]integer[/td]
-					[td]Defines spacing between image and the border.[/td]
-				[/tr]
-			
-				[tr]
-					[td]image_width[/td]
-					[td]integer[/td]
-					[td]Defines the width of image.[/td]
-				[/tr]
-			
-				[tr]
-					[td]image_position[/td]
-					[td]string[/td]
-					[td]Describes where an image is in the text button (top-default, right, bottom, left).[/td]
-				[/tr]
-			
-				[tr]
-					[td]text[/td]
-					[td]string[/td]
-					[td]The text to appear on the button.  This may be a dynamic runclient() expression to dynamically change the button's text.[/td]
-				[/tr]
-			
-				[tr]
-					[td]tristate[/td]
-					[td]yes/no[/td]
-					[td]Whether or not the button is tri-state (does not display a raised border until the user points at it). Default is yes.[/td]
-				[/tr]
-			
-				[tr]
-					[td]width[/td]
-					[td]integer[/td]
-					[td]The width, in pixels, of the text button.[/td]
-				[/tr]
-			
-				[tr]
-					[td]x[/td]
-					[td]integer[/td]
-					[td]X-coordinate of the upper left corner of the button, relative to its container.[/td]
-				[/tr]
-			
-				[tr]
-					[td]y[/td]
-					[td]integer[/td]
-					[td]Y-coordinate of the upper left corner of the button, relative to its container.[/td]
-				[/tr]
-			
-		[/table]
-	
-	[b]Child Properties:[/b]
-	
 		[i]none currently available[/i]
-	
-	[b]Actions:[/b]
-	
-		[table]
-		[tr][th]Action[/th][th]Description[/th][/tr]
-		
-				[tr]
-					[td]SetText[/td]
-					[td]Called from a connector, this action sets the button's text to the value passed in through connector's \"Text\" parameter.[/td]
-				[/tr]
-			
-		[/table]
-	
-	[b]Events:[/b]
-	
-		[table]
-		[tr][th]Event[/th][th]Description[/th][/tr]
-		
-				[tr]
-					[td]Click[/td]
-					[td]This event occurs when the user clicks the button. No parameters are available from this event.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseDown[/td]
-					[td]This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseMove[/td]
-					[td]This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseOut[/td]
-					[td]This event occurs when the user moves the mouse pointer off of the widget.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseOver[/td]
-					[td]This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.[/td]
-				[/tr]
-			
-				[tr]
-					[td]MouseUp[/td]
-					[td]This event occurs when the user releases the mouse button on the widget.[/td]
-				[/tr]
-			
-		[/table]
 	
 	[b]Sample Code:[/b]
 	
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -7798,7 +8674,7 @@ MyButton \"widget/textbutton\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -7819,14 +8695,14 @@ insert into topic values(null, @newid, "widget/timer", null,
 	[b]Overview:[/b]
 	
 
-			A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.
+			A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer.  Timers can be used to create animations, delayed effects, and more.
 
 
 		
 	[b]Usage:[/b]
 	
 
-			Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.
+			Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however.  Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.
 
 
 		
@@ -7867,7 +8743,7 @@ insert into topic values(null, @newid, "widget/timer", null,
 			
 				[tr]
 					[td]SetTimer[/td]
-					[td]Action takes two parameters: \"Time\" (integer in milliseconds) and \"AutoReset\" (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.[/td]
+					[td]Action takes two parameters: \"Time\" (integer in milliseconds) and \"AutoReset\" (integer 0 or 1).  It causes a timer to begin counting down towards an Expire event.[/td]
 				[/tr]
 			
 		[/table]
@@ -7878,7 +8754,7 @@ insert into topic values(null, @newid, "widget/timer", null,
 		[tr][th]Event[/th][th]Description[/th][/tr]
 		
 				[tr]
-					[td]expire[/td]
+					[td]Expire[/td]
 					[td]This occurs when the timer hits its timeout and the auto reset is not enabled.[/td]
 				[/tr]
 			
@@ -7889,7 +8765,7 @@ insert into topic values(null, @newid, "widget/timer", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -7901,7 +8777,7 @@ $Version=2$
 
 //
 
-mytimerOne \"widget/timer\"
+my_timer1 \"widget/timer\"
 
 	{
 
@@ -7915,7 +8791,7 @@ mytimerOne \"widget/timer\"
 
 		{ 
 
-		event=\"Expire\"; target=\"mytimerTwo\";action=\"SetTimer\";
+		event=\"Expire\"; target=\"my_timer2\";action=\"SetTimer\";
 
 		Time=\"500\"; AutoReset=\"0\";
 
@@ -7923,7 +8799,7 @@ mytimerOne \"widget/timer\"
 
 	}
 
-mytimerTwo \"widget/timer\"
+my_timer2 \"widget/timer\"
 
 	{
 
@@ -7937,7 +8813,7 @@ mytimerTwo \"widget/timer\"
 
 		{ 
 
-		event=\"Expire\"; target=\"mytimerOne\";action=\"SetTimer\";
+		event=\"Expire\"; target=\"my_timer1\";action=\"SetTimer\";
 
 		Time=\"500\"; AutoReset=\"0\";
 
@@ -7945,7 +8821,7 @@ mytimerTwo \"widget/timer\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -7966,17 +8842,17 @@ insert into topic values(null, @newid, "widget/treeview", null,
 	[b]Overview:[/b]
 	
 
-			A treeview provides a way of viewing hierarchically-organized data via a \"traditional\" GUI point-and-click tree structure. A treeview has \"branches\" that can expand and collapse entire subtrees of data.
+			A treeview provides a way of viewing hierarchically-organized data via a \"traditional\" GUI point-and-click tree structure.  A treeview has \"branches\" that can expand and collapse entire subtrees of data.
 
 
-			Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used. The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree. Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files. In other cases, the treeview is teamed up with a special ObjectSystem object called a \"querytree\" (QYT) object. The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.
+			Centrallix treeviews present a subtree of the ObjectSystem, with the data dynamically loaded, on demand, from the server as the widget is used.  The treeview widget thus has no intelligence in and of itself in determining what kinds of objects are presented at each level of the tree.  Many times, this is exactly what is desired because the treeview is being used to simply browse objects in the ObjectSystem, such as directories and files.  In other cases, the treeview is teamed up with a special ObjectSystem object called a \"querytree\" (QYT) object.  The querytree object creates a hierarchical view from other potentially non-hierarchical data in the ObjectSystem, such as that from different database tables and so forth.
 
 
 		
 	[b]Usage:[/b]
 	
 
-			Treeviews can be placed inside of any visual container, but are usually placed inside of a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container. Treeviews can contain only nonvisual widgets such as connectors.
+			Treeviews can be placed inside any visual container, but are usually placed inside a scrollpane, since scrollpanes can expand to allow the user to view data that would not normally fit inside the desired container.  Treeviews can contain only nonvisual widgets such as connectors.
 
 
 		
@@ -8030,7 +8906,7 @@ insert into topic values(null, @newid, "widget/treeview", null,
 				[tr]
 					[td]show_root_branch[/td]
 					[td]yes/no[/td]
-					[td]Whether to display the connection lines between the root and the root's immediate children.  If \"no\", the root's children are flush against the lefthand side of the treeview, otherwise the connecting lines show up.[/td]
+					[td]Whether to display the connection lines between the root and the root's immediate children.  If \"no\", the root's children are flush against the left-hand side of the treeview, otherwise the connecting lines show up.[/td]
 				[/tr]
 			
 				[tr]
@@ -8072,7 +8948,7 @@ insert into topic values(null, @newid, "widget/treeview", null,
 		
 				[tr]
 					[td]Search[/td]
-					[td]Searches for a specific element.[/td]
+					[td]Searches the tree for the text given in the 'Value' parameter, then expands and selects the first matching element.[/td]
 				[/tr]
 			
 				[tr]
@@ -8087,7 +8963,7 @@ insert into topic values(null, @newid, "widget/treeview", null,
 			
 				[tr]
 					[td]SetRoot[/td]
-					[td]Sets the selected element as the root.[/td]
+					[td]Collapses the tree and re-roots it.  The 'NewRoot' parameter is the pathname of the new root object (javascript:window is used if it is omitted), and the 'NewRootObj' parameter optionally supplies an already-retrieved object to use as that root.  Set the 'Expand' parameter to yes to expand the new root immediately.[/td]
 				[/tr]
 			
 		[/table]
@@ -8104,7 +8980,7 @@ insert into topic values(null, @newid, "widget/treeview", null,
 			
 				[tr]
 					[td]ClickItem[/td]
-					[td]Occurs when the user clicks on the clickable link for an item in the treeview. Its one parameter is \"Pathname\", or the ObjectSystem path to the object which was selected.[/td]
+					[td]Occurs when the user clicks on the clickable link for an item in the treeview.  Its one parameter is \"Pathname\", or the ObjectSystem path to the object which was selected.[/td]
 				[/tr]
 			
 				[tr]
@@ -8149,13 +9025,13 @@ insert into topic values(null, @newid, "widget/treeview", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
 // Example of a pane containing a scrollpane containing a treeview.
 
-mypane \"widget/pane\"
+my_pane \"widget/pane\"
 
 	{
 
@@ -8165,13 +9041,13 @@ mypane \"widget/pane\"
 
 	bgcolor = \"#c0c0c0\";
 
-	myscroll \"widget/scrollpane\"
+	my_scrollpane \"widget/scrollpane\"
 
 		{
 
 		x=0; y=0; width=198; height=198;
 
-		mytreeview \"widget/treeview\"
+		my_treeview \"widget/treeview\"
 
 			{
 
@@ -8185,7 +9061,7 @@ mypane \"widget/pane\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -8213,7 +9089,7 @@ insert into topic values(null, @newid, "widget/variable", null,
 	[b]Usage:[/b]
 	
 
-			This nonvisual widget is used at the top-level (within a \"widget/page\").  Currently it has no events, and so shouldn't contain any visual or nonvisual widgets.
+			This nonvisual widget is used at the top-level (within a \"widget/page\").  It should not contain any visual or nonvisual child widgets.
 
 
 		
@@ -8231,7 +9107,7 @@ insert into topic values(null, @newid, "widget/variable", null,
 				[tr]
 					[td]form[/td]
 					[td]string[/td]
-					[td]The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).[/td]
+					[td]The form (e.g. it's osrc) with which to associate the variable and fieldname.  Defaults to the form in which variable is nested.[/td]
 				[/tr]
 			
 				[tr]
@@ -8276,7 +9152,7 @@ insert into topic values(null, @newid, "widget/variable", null,
 		[code]
 		
 
-		
+			
 
 $Version=2$
 
@@ -8290,7 +9166,7 @@ counter \"widget/variable\"
 
 	}
 
-		
+			
 
 		
 		[/code]
@@ -8311,9 +9187,15 @@ insert into topic values(null, @newid, "widget/vbox", null,
 	[b]Overview:[/b]
 	
 
-			An autolayout widget with style set to \"vbox\".  See \"widget/autolayout\".
+			An autolayout widget with style set to \"vbox\". See \"widget/autolayout\".
 
 
 		
+	[b]Usage:[/b]
+	See "widget/autolayout"
+	[b]Properties:[/b]
+	
+		[i]none currently available[/i]
+	
 ");
 	

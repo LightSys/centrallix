@@ -38,11 +38,11 @@
  #define LIKELY(x)   (__builtin_expect(!!(x), 1))
  #define UNLIKELY(x) (__builtin_expect(!!(x), 0))
 #else
- /*** Fallback: Define pass through functions to support compilers that don't
-  *** have this feature.
-  ***/
- #define LIKELY(x)   (!!(x))
- #define UNLIKELY(x) (!!(x))
+/*** Fallback: Define pass through functions to support compilers that don't
+ *** have this feature.
+ ***/
+#define LIKELY(x)   (!!(x))
+#define UNLIKELY(x) (!!(x))
 #endif
 
 #endif

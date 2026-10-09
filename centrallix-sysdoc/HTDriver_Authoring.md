@@ -23,9 +23,6 @@ License: Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
     - [A.	Initialization](#ainitialization)
       - [Function: htrAllocDriver() returns pHtDriver](#function-htrallocdriver-returns-phtdriver)
       - [Function: htrRegisterDriver(pHtDriver drv) returns int](#function-htrregisterdriverphtdriver-drv-returns-int)
-      - [Function: htrAddAction(pHtDriver drv, char* action_name) returns int](#function-htraddactionphtdriver-drv-char-action_name-returns-int)
-      - [Function: htrAddEvent(pHtDriver drv, char* event_name) returns int](#function-htraddeventphtdriver-drv-char-event_name-returns-int)
-      - [Function: htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype) returns int](#function-htraddparamphtdriver-drv-char-eventaction-char-param_name-int-datatype-returns-int)
       - [Structure: HtDriver (pHtDriver is the pointer typedef)](#structure-htdriver-phtdriver-is-the-pointer-typedef)
     - [B.  Callback Methods](#b--callback-methods)
     - [C.	Page Generation API Methods](#cpage-generation-api-methods)
@@ -36,7 +33,6 @@ License: Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
       - [htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags) returns int](#htraddscriptglobalphtsession-s-char-var_name-char-initialization-int-flags-returns-int)
       - [htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags) returns int](#htraddscriptfunctionphtsession-s-char-fn_name-char-fn_text-int-flags-returns-int)
       - [htrAddScriptInit(pHtSession s, char* init_text) returns int](#htraddscriptinitphtsession-s-char-init_text-returns-int)
-      - [htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code) returns int](#htraddeventhandlerphtsession-s-char-event_src-char-event-char-drvname-char-handler_code-returns-int)
       - [htrDisableBody(pHtSession s) returns int](#htrdisablebodyphtsession-s-returns-int)
       - [htrRenderWidget(pHtSession s, pObject widget_obj, int z, char* parentname, char* parentobj) returns int](#htrrenderwidgetphtsession-s-pobject-widget_obj-int-z-char-parentname-char-parentobj-returns-int)
       - [htrRenderSubwidgets(pHtSession s, pObject widget_obj, char* docname, char* layername, int z) returns int](#htrrendersubwidgetsphtsession-s-pobject-widget_obj-char-docname-char-layername-int-z-returns-int)
@@ -134,7 +130,7 @@ Modules should #include the following files: "ht_render.h", "obj.h", "mtask.h", 
 
 Module initialization is performed in the xxxInitialize() function for the module, where 'xxx' is the module's chosen prefix.  Most widget drivers have prefixes of the form 'htxx' where 'xx' is a two-to-four letter abbreviation of the module, such as 'eb' for the editbox widget.
 
-The initialization process mainly consists of 1) allocating a new driver structure, 2) filling out the appropriate fields in the structure, 3) adding events and/or actions to the driver structure, 4) initializing any module globals, and finally, 5) registering the driver structure with the HTML generation subsystem.  The module's Initialize() function should return 0 on success.
+The initialization process mainly consists of 1) allocating a new driver structure, 2) filling out the appropriate fields in the structure, 3) initializing any module globals, and finally, 4) registering the driver structure with the HTML generation subsystem.  The module's Initialize() function should return 0 on success.
 
 #### Function: htrAllocDriver() returns pHtDriver
 
@@ -144,18 +140,6 @@ This function allocates a new initialized HtDriver structure. After calling this
 
 This function registers a new widget driver with the DHTML generation subsystem.  On success, it returns 0; on failure it returns -1.
 
-#### Function: htrAddAction(pHtDriver drv, char* action_name) returns int
-
-Adds an Action to the catalog of actions associated with this widget driver.
-
-#### Function: htrAddEvent(pHtDriver drv, char* event_name) returns int
-
-Adds an Event to the catalog of events associated with this widget driver.
-
-#### Function: htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype) returns int
-
-Adds a parameter (with a given data type) to an event or action.
-
 #### Structure: HtDriver (pHtDriver is the pointer typedef)
 
 | Attribute    | Type          | Description
@@ -164,8 +148,6 @@ Adds a parameter (with a given data type) to an event or action.
 | WidgetName   | char[64]      | A one-word name of the widget.  This name will be used in the structure file type name when declaring an instance of the widget, as in "widget/widgetname" where "widgetname" is this property.
 | Render       | function ptr. | The module's Initialize() function should set this function pointer to the module's Render() function.  See below for more information on Render().
 | Verify       | function ptr. | This function pointer should be set to the module's Verify() function, which is not yet used.  Verify() should simply return 0.
-
-All other elements of this structure are "private" and should not be modified or accessed directly by the widget driver.  Instead, there are API functions which are used to set up these values.  If you look at the already-implemented drivers in the Centrallix distribution, many of them *do* access these directly, but only because the additional API functions were not written at that time. The additional API functions make the initialization process considerably simpler, so please do use them :)
 
 ### B.  Callback Methods
 
@@ -194,11 +176,11 @@ The 'parentobj' parameter is the name of the "layer" object that will contain th
 The following list of functions are used by widget drivers to actually generate the DHTML and scripting needed to support widget instances.
 
 #### htrAddStylesheetItem(pHtSession s, char* html_text) returns int
-This functions adds a stylesheet definition to the header between the tags `<STYLE TYPE="text/css"></STYLE>`.  It is recommended to maintain a consistant indention style (using a tab '\t' character) at the beginning of these lines.
+This functions adds a stylesheet definition to the header between the tags `<STYLE TYPE="text/css"></STYLE>`.  It is recommended to maintain a consistant indention style (using double tab '\t\t' characters) at the beginning of these lines.
 
 Example:
 
-`htrAddStylesheetItem(s, "\t#pgtop { POSITION:absolute; VISIBILITY:hidden;");`
+`htrAddStylesheetItem(s, "\t\t#pgtop { POSITION:absolute; VISIBILITY:hidden;");`
 
 #### htrAddHeaderItem(pHtSession s, char* html_text) returns int
 This function adds text directly to the HTML header section of the generated document (between `<HEAD>` and `</HEAD>`).  The html_text string's content is copied into subsystem data structures.
@@ -209,7 +191,7 @@ The 'pHtSession' parameter 's' is passed to the Render() function as the first p
 
 Example:
 
-`htrAddHeaderItem(s, "    <TITLE>This is a title</TITLE>\n");`
+`htrAddHeaderItem(s, "\t<TITLE>This is a title</TITLE>\n");`
 
 #### htrAddBodyItem(pHtSession s, char* html_text) returns int
 This function adds text directly into the HTML body of the document, and works in a manner identical to the above HeaderItem function.
@@ -272,30 +254,6 @@ Example:
 
 `htrAddScriptInit(s, "    lb_init(document.layers.lb0base);\n");`
 
-#### htrAddEventHandler(pHtSession s, char* event_src, char* event, char* drvname, char* handler_code) returns int
-This function adds an event handler script segment (not a complete function declaration).  The event handler will manage an event of a given type, for a given type of widget.
-
-The 'event_src' parameter is always "document" for the time being.
-
-The 'event' parameter is the type of event.  Allowed types are events such as "MOUSEMOVE", "MOUSEOVER", "MOUSEOUT", "MOUSEDOWN", "MOUSEUP", "KEYPRESS", and so forth.
-
-The 'drvname' parameter is the two-to-four letter abbreviation of the widget driver, such as 'eb' for the 'editbox' widget.  This parameter is used by the subsystem to keep event scripts for the different widgets distinct from one another.
-
-Finally, the 'handler_code' parameter is the text of the script segment.
-
-All of the string values here are *copied* by the subsystem into internal session structures.
-
-IMPORTANT NOTE:  Calling this function twice for the same event and the same widget driver will not have the expected result.  Because the script segments are keyed internally by driver, event source, and event type, such subsequent calls will be completely ignored by the HTML generation subsystem.  Widget drivers should group all code for a given event type together in one call to this function.
-
-Example:
-
-```
-htrAddEventHandler(s, "document", "MOUSEOVER", "lb",
-    "    if (e.target && e.target.kind == 'lb')\n"
-    "        {\n"
-    "        e.target.bgcolor = '#ff0000';\n"
-    "        }\n" );
-```
 
 #### htrDisableBody(pHtSession s) returns int
 This function is used to disable the output of the `<BODY>` and `</BODY>` tags, including any body parameters added with the API function htrAddBodyParam().  This is primarly used by the frameset widget driver to suppress the output of the body in favor of the frameset declarations.  Note that it probably does not make sense to call htrRenderSubwidgets() when the body has been disabled :)

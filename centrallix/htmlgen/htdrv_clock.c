@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -40,6 +28,14 @@
 /* Description:	HTML Widget driver for a local time clock.		*/
 /************************************************************************/
 
+#include <stdint.h>
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
 
 /** globals **/
@@ -64,23 +60,22 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
     int shadowx = 0;
     int shadowy = 0;
     int size = 0;
-    int moveable = 0;
     int bold = 0;
     int showsecs = 1;
     int showampm = 1;
     int miltime = 0;
     int x=-1,y=-1,w,h;
-    int id, i;
     char fieldname[HT_FIELDNAME_SIZE];
 
-	if(!s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
-	    {
-	    mssError(1,"HTCL","Netscape 4 or W3C DOM support required");
-	    return -1;
-	    }
+	/** Get an id for this. **/
+	const int id = (HTCL.idcnt++);
 
-    	/** Get an id for this. **/
-	id = (HTCL.idcnt++);
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTCL", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
     	/** Get x,y,w,h of this object **/
 	if (wgtrGetPropertyValue(tree,"x",DATA_T_INTEGER,POD(&x)) != 0) x=0;
@@ -105,9 +100,9 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    miltime = 1;
 	    showampm = 0;
 	    }
-	else if (wgtrGetPropertyValue(tree,"ampm",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
+	else
 	    {
-	    showampm = 0;
+	    showampm = htrGetBoolean(tree, "ampm", 1);
 	    }
 
 	/** Get text color **/
@@ -117,7 +112,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	   strcpy(fgcolor1,"black");
 
 	/* Shadowed text? */
-	if (wgtrGetPropertyValue(tree,"shadowed",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"true") || !strcasecmp(ptr,"yes")))
+	if (htrGetBoolean(tree, "shadowed", 0))
 	    {
 	    shadowed = 1;
 	    if (wgtrGetPropertyValue(tree,"fgcolor2",DATA_T_STRING,POD(&ptr)) == 0)
@@ -135,20 +130,14 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Bold text? **/
-	if (wgtrGetPropertyValue(tree,"bold",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
-	    bold = 1;
+	bold = htrGetBoolean(tree, "bold", 0);
 
 	/** Get text size **/
 	if (wgtrGetPropertyValue(tree,"size",DATA_T_INTEGER,POD(&ptr)) == 0)
 	    size = (intptr_t)ptr;
 
-	/** Movable? **/
-	if (wgtrGetPropertyValue(tree,"moveable",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"true"))
-	    moveable = 1;
-
 	/** Show Seconds **/
-	if (wgtrGetPropertyValue(tree,"seconds",DATA_T_STRING,POD(&ptr)) == 0 && (!strcasecmp(ptr,"false") || !strcasecmp(ptr,"no")))
-	    showsecs = 0;
+	showsecs = htrGetBoolean(tree, "seconds", 1);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -160,53 +149,110 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	else 
 	    fieldname[0]='\0';
 
-	/** Write Style header items. **/
-	htrAddStylesheetItem_va(s,"\t#cl%POSbase { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,x,y,w,z);
-	htrAddStylesheetItem_va(s,"\t#cl%POScon1 { POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
-	htrAddStylesheetItem_va(s,"\t#cl%POScon2 { POSITION:absolute; VISIBILITY:hidden; LEFT:%INTpx; TOP:%INTpx; WIDTH:%POSpx; Z-INDEX:%POS; }\n",id,0,0,w,z+2);
+	/** Write style headers. **/
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t#cl%POSbase { "
+		"position:absolute; "
+		"visibility:inherit; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"width:"ht_flex_format"; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    ht_flex_x(x, tree),
+	    ht_flex_y(y, tree),
+	    ht_flex_w(w, tree),
+	    z
+	) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to write base CSS.");
+	    goto err;
+	    }
+	if (htrAddStylesheetItem_va(s,
+	    "\t\t.cl%POScon { "
+		"position:absolute; "
+		"left:0px; "
+		"top:0px; "
+		"width:100%%; "
+		"z-index:%POS; "
+	    "}\n",
+	    id,
+	    z + 2
+	) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to write con CSS.");
+	    goto err;
+	    }
 
-	/** Write named global **/
-	htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase",id);
-
-	/** Other global variables **/
-	htrAddScriptGlobal(s, "cl_move", "false", 0);
-	htrAddScriptGlobal(s, "cl_xOffset", "null", 0);
-	htrAddScriptGlobal(s, "cl_yOffset", "null", 0);
+ 	/** Link the widget to the DOM node. **/
+	if (htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase", id) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to add object linkage.");
+	    goto err;
+	    }
 
 	/** Javascript include files **/
-	htrAddScriptInclude(s, "/sys/js/htdrv_clock.js", 0);
-	htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0);
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0)) goto err;
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_clock.js", 0)) goto err;
 
 	/** Event Handlers **/
-	htrAddEventHandlerFunction(s, "document","MOUSEUP", "cl", "cl_mouseup");
-	htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "cl", "cl_mousedown");
-	htrAddEventHandlerFunction(s, "document","MOUSEOVER", "cl", "cl_mouseover");
-	htrAddEventHandlerFunction(s, "document","MOUSEOUT", "cl", "cl_mouseout");
-	htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "cl", "cl_mousemove");
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "cl", "cl_mousedown")) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "cl", "cl_mousemove")) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOUT",  "cl", "cl_mouseout"))  goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "cl", "cl_mouseover")) goto err;
+	if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",   "cl", "cl_mouseup"))   goto err;
 
 	/** Script initialization call. **/
-	htrAddScriptInit_va(s, "    cl_init({layer:wgtrGetNodeRef(ns,\"%STR&SYM\"), c1:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon1\"), c2:htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"cl%POScon2\"), fieldname:\"%STR&JSSTR\", background:\"%STR&JSSTR\", shadowed:%POS, foreground1:\"%STR&JSSTR\", foreground2:\"%STR&JSSTR\", fontsize:%INT, moveable:%INT, bold:%INT, sox:%INT, soy:%INT, showSecs:%INT, showAmPm:%INT, milTime:%INT});\n",
-	    name,
-	    name, id,
-	    name, id,
-	    fieldname, main_bg, shadowed,
-	    fgcolor1, fgcolor2,
-	    size, moveable, bold,
-	    shadowx, shadowy,
-	    showsecs, showampm, miltime);
+	if (htrAddScriptInit_va(s, "\t{ "
+	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
+	    "cl_init({ "
+		"layer, "
+		"c1:htr_subel(layer, 'cl%POScon1'), "
+		"c2:htr_subel(layer, 'cl%POScon2'), "
+		"fieldname:'%STR&JSSTR', "
+		"fontsize:%INT, "
+		"bold:%INT, "
+		"background:'%STR&JSSTR', "
+		"foreground1:'%STR&JSSTR', "
+		"foreground2:'%STR&JSSTR', "
+		"shadowed:%POS, "
+		"sox:%INT, "
+		"soy:%INT, "
+		"showSecs:%INT, "
+		"showAmPm:%INT, "
+		"milTime:%INT, "
+	    "}); }\n",
+	    name, id, id,
+	    fieldname, size, bold,
+	    main_bg, fgcolor1, fgcolor2,
+	    shadowed, shadowx, shadowy,
+	    showsecs, showampm, miltime
+	) != 0)
+	    {
+	    mssError(0, "HTCL", "Failed to add JS init call.");
+	    goto err;
+	    }
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"cl%POSbase\">\n",id);
 	htrAddBodyItem_va(s, "    <BODY %STR><TABLE width=%POS height=%POS border=0 cellpadding=0 cellspacing=0><TR><TD></TD></TR></TABLE></BODY>\n",main_bg,w,h);
-	htrAddBodyItem_va(s, "    <DIV ID=\"cl%POScon1\"></DIV>\n",id);
-	htrAddBodyItem_va(s, "    <DIV ID=\"cl%POScon2\"></DIV>\n",id);
+	htrAddBodyItem_va(s, "    <DIV ID='cl%POScon1' CLASS='cl%POScon' style='visibility:inherit;'></DIV>\n", id, id);
+	htrAddBodyItem_va(s, "    <DIV ID='cl%POScon2' CLASS='cl%POScon' style='visibility:hidden;'></DIV>\n", id, id);
 	htrAddBodyItem(s,    "</DIV>\n");
 
-	/** Check for more sub-widgets **/
-	for (i=0;i<xaCount(&(tree->Children));i++)
-	    htrRenderWidget(s, xaGetItem(&(tree->Children), i), z+1);
+	/** Render children. **/
+	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTCL",
+	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    tree->Name, tree->Type, id
+	);
+	return -1;
     }
 
 
@@ -225,13 +271,6 @@ htclInitialize()
 	strcpy(drv->Name,"DHTML Local Time Clock Driver");
 	strcpy(drv->WidgetName,"clock");
 	drv->Render = htclRender;
-
-	/** Events **/ 
-	htrAddEvent(drv,"MouseUp");
-	htrAddEvent(drv,"MouseDown");
-	htrAddEvent(drv,"MouseOver");
-	htrAddEvent(drv,"MouseOut");
-	htrAddEvent(drv,"MouseMove");
 
 	/** Register. **/
 	htrRegisterDriver(drv);

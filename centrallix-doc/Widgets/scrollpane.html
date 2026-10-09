@@ -14,7 +14,7 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>The scrollpane widget provides a container and a scrollbar. The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.</p>
+			<p>The scrollpane widget provides a container and a scrollbar.  The scrollbar can be used to move up and down in the container, so more content can be placed in the container than can be normally viewed at one time.</p>
 
 			<p>The scrollbar includes a draggable thumb as well as up and down arrows at the top and bottom.  Clicking the arrows scrolls the content of the container up or down by a small amount, whereas clicking on the scrollbar itself above or below the thumb will scroll the area by a large amount.</p>
 
@@ -43,7 +43,7 @@
 <tr>
 <td class="name">height</td>
 <td class="type">integer</td>
-<td class="description">height, in pixels, of the scrollpane's visible area. Due to the nature of the  can time.</td>
+<td class="description">height, in pixels, of the scrollpane's visible area.  Due to the nature of the can time.</td>
 </tr>
 <tr>
 <td class="name">visible</td>
@@ -74,7 +74,7 @@
 </tr>
 <tr>
 <td class="name">ScrollTo</td>
-<td class="description">Scrolls to a specific location determined by the scroll bar.</td>
+<td class="description">Scrolls to a specific location determined by the scroll bar.  Specify the 'Percent' attribute to indicate how far to scroll in decimal representation (so 1.00 is 100%, aka. the bottom of the page).  Specify 'Offset' how many pixels the content should be offset from the top (specify 100 to scroll the first 100 px of content off the top of the scroll pane).  Specify 'RangeStart' and 'RangeEnd' to scroll to within the pixel range (using the same units as offset).  Keep in mind that this action will trigger a scroll event to occur.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -84,12 +84,24 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">Scroll</td>
+<td class="description">This event occurs any time the user scrolls the scroll pane.  This includes scrolling by clicking the scroll buttons, clicking on the scroll bar, dragging the scroll thumb, turning the scroll wheel, or when the ScrollTo action is used.  This event does not occur when the scroll pane moves because the contained content changed in length, or when the scroll pane is forced to scroll because the available visible area was resized.  This event will never occur if the content within the scroll pane is shorter than the available visible area because then the content cannot be scrolled.  This event provides the :Percent attribute, a number from 0 to 100 (the same as the ScrollTo action above) representing the percentage that the user has now scrolled down the page as of the event occurring.  This event also provides :Change, representing how much the user's scroll location has changed in the same unit as above (although this value will be negative if the user scrolled up).</td>
+</tr>
+<tr>
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</td>
+</tr>
+<tr>
+<td class="name">Wheel</td>
+<td class="description">This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</td>
+</tr>
+<tr>
 <td class="name">MouseDown</td>
 <td class="description">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
 </tr>
 <tr>
 <td class="name">MouseMove</td>
-<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</td>
 </tr>
 <tr>
 <td class="name">MouseOut</td>
@@ -107,7 +119,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -143,7 +155,7 @@ MyScrollPane "widget/scrollpane"
 
 	}
 
-		
+			
 
 		</pre>
 </body>

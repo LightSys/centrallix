@@ -1,21 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-#include "cxlib/qprintf.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -42,22 +29,29 @@
 /*		render its subwidgets.					*/
 /************************************************************************/
 
+#include <string.h>
 
-/** Globals **/
+#include "cxlib/mtsession.h"
+#include "ht_render.h"
+#include "wgtr.h"
 
-static struct
-    {
-    int idcnt;
-    } HTRPT;
 
 int
 htrptRender(pHtSession s, pWgtrNode tree, int z)
     {
 	/** Render Subwidgets **/
-	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
-	htrRenderSubwidgets(s,tree,z);
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) goto err;
+	if (htrRenderSubwidgets(s, tree, z) != 0) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTRPT",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 int
@@ -68,8 +62,6 @@ htrptInitialize()
     /** Allocate the driver **/
     drv = htrAllocDriver();
     if (!drv) return -1;
-
-    memset(&HTRPT, 0, sizeof(HTRPT));
     
     /** Fill in structure **/
     strcpy(drv->Name,"Repeat Object Driver");

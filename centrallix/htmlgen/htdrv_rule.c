@@ -1,23 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdarg.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/xstring.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/qprintf.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2007 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -46,6 +31,19 @@
 /*		rules are specific to the affected widget.		*/
 /************************************************************************/
 
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/xstring.h"
+#include "expression.h"
+#include "ht_render.h"
+#include "obj.h"
+#include "wgtr.h"
 
 
 /*** Rule definition - for other drivers registering rule types
@@ -191,8 +189,8 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
 	/** Script Init **/
-	htrAddScriptInit_va(s, "    rl_init(wgtrGetNodeRef(ns,\"%STR&SYM\"), \"%STR&JSSTR\", %STR);\n", nptr, ruletype, xs->String);
-	htrAddScriptInit_va(s, "    wgtrGetParent(wgtrGetNodeRef(ns,\"%STR&SYM\")).addRule(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", nptr, nptr);
+	htrAddScriptInit_va(s, "\trl_init(wgtrGetNodeRef(ns, '%STR&SYM'), '%STR&JSSTR', %STR);\n", nptr, ruletype, xs->String);
+	htrAddScriptInit_va(s, "\twgtrGetParent(wgtrGetNodeRef(ns, '%STR&SYM')).addRule(wgtrGetNodeRef(ns,'%STR&SYM'));\n", nptr, nptr);
 
 	/** mark this node as not being associated with a DHTML object **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;

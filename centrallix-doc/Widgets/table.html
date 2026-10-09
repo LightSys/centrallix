@@ -14,16 +14,16 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data.The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
+			<p>A table widget is used to display data in a tabular format. It consists of a header row with column labels, followed by any number of rows containing data. The header may have a different color or image scheme than the rows, and the rows may or may not be configured to alternate between two colors or background images.</p>
 
-		Table widgets come in three different flavors: static, dynamicpage, and dynamicrow.Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget.Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will.Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query.As of the time of writing of this document, only <i>static</i> mode and <i>dynamicrow</i> mode were supported.
+			<p>Table widgets come in three different flavors: static, dynamicpage, and dynamicrow. Static table widgets are built on the server and write their data directly into the container in which they reside, which is usually a scrollpane widget.  Dynamicpage table widgets load their data once they initialize on the client, by activating a query through an ObjectSource nonvisual widget. Dynamicpage table widgets do not support modification, but can be reloaded through an ObjectSource at will. Dynamicrow table widgets, on the other hand, display each row as an individual layer, and thus are modifiable on the client. Dynamicrow table widgets also load their contents through an ObjectSource widget query. As of the time of writing of this document, only <i>static</i> mode and <i>dynamicrow</i> mode were supported.</p>
 
 			<p>Table widgets allow the selection (keyboard, mouse, and data focus) of individual rows.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via "widget/table-column" child widgets within the table widget.</p>
+			<p>Table widgets are normally placed inside a scrollpane so that any rows which don't fit int the container can still be viewed.  Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -36,6 +36,11 @@
 <td class="name">allow_selection</td>
 <td class="type">yes/no</td>
 <td class="description">Whether to permit the user to select rows in the table.  Default "yes".</td>
+</tr>
+<tr>
+<td class="name">allow_sorting</td>
+<td class="type">yes/no</td>
+<td class="description">Whether clicking a column header sorts the table by that column.  Acts as the default for all columns; individual columns may override via their own "allow_sorting" property.  Default "yes".</td>
 </tr>
 <tr>
 <td class="name">background</td>
@@ -61,6 +66,16 @@
 <td class="name">colsep</td>
 <td class="type">integer</td>
 <td class="description">The width of the column separation lines in pixels.  Default is 1.</td>
+</tr>
+<tr>
+<td class="name">colsep_mode</td>
+<td class="type">string</td>
+<td class="description">Either 'full' or 'header'. Default is 'full'.</td>
+</tr>
+<tr>
+<td class="name">colsep_mode</td>
+<td class="type">string</td>
+<td class="description">Either 'full' or 'header'.  Default is 'full'.</td>
 </tr>
 <tr>
 <td class="name">data_mode</td>
@@ -125,7 +140,7 @@
 <tr>
 <td class="name">inner_border</td>
 <td class="type">integer</td>
-<td class="description">width of the inner spacing between cells in a table. Default0.</td>
+<td class="description">width of the inner spacing between cells in a table.  Default0.</td>
 </tr>
 <tr>
 <td class="name">inner_padding</td>
@@ -165,7 +180,7 @@
 <tr>
 <td class="name">overlap_scrollbar</td>
 <td class="type">integer</td>
-<td class="description">Acts as a boolean to allow the scroll bar to overlab with the table (allow is "1").</td>
+<td class="description">Acts as a boolean to allow the scroll bar to overlap with the table (allow is "1").</td>
 </tr>
 <tr>
 <td class="name">reverse_order</td>
@@ -280,12 +295,12 @@
 <tr>
 <td class="name">x</td>
 <td class="type">integer</td>
-<td class="description">X-coordinate of the upper left corner of the table. Default is 0.</td>
+<td class="description">X-coordinate of the upper left corner of the table.  Default is 0.</td>
 </tr>
 <tr>
 <td class="name">y</td>
 <td class="type">integer</td>
-<td class="description">Y-coordinate of the upper left corner of the table. Default is 0.</td>
+<td class="description">Y-coordinate of the upper left corner of the table.  Default is 0.</td>
 </tr>
 </table>
 <h3 class="childproperties">Child Properties:</h3>
@@ -299,7 +314,62 @@
 <tr>
 <td class="name">align</td>
 <td class="type">string</td>
-<td class="description">The alignment of the column:  "left" or "right".</td>
+<td class="description">The alignment of the column: "left", "center", or "right".</td>
+</tr>
+<tr>
+<td class="name">fieldname</td>
+<td class="type">string</td>
+<td class="description">The field name that this column will use to get data.</td>
+</tr>
+<tr>
+<td class="name">value</td>
+<td class="type">string</td>
+<td class="description">Not documented.</td>
+</tr>
+<tr>
+<td class="name">textcolor</td>
+<td class="type">string</td>
+<td class="description">The color of the text displayed in this column.</td>
+</tr>
+<tr>
+<td class="name">caption_align</td>
+<td class="type">string</td>
+<td class="description">The alignment of the caption in the column: "left", "center", or "right".</td>
+</tr>
+<tr>
+<td class="name">caption_fieldname</td>
+<td class="type">string</td>
+<td class="description">The field name that this column will use to get caption data.</td>
+</tr>
+<tr>
+<td class="name">caption_value</td>
+<td class="type">string</td>
+<td class="description">Not documented.</td>
+</tr>
+<tr>
+<td class="name">caption_textcolor</td>
+<td class="type">string</td>
+<td class="description">The color of the captions in this column.</td>
+</tr>
+<tr>
+<td class="name">caption_font_size</td>
+<td class="type">string</td>
+<td class="description">The font size of thecaption text.</td>
+</tr>
+<tr>
+<td class="name">caption_style</td>
+<td class="type">string</td>
+<td class="description">Not documented.</td>
+</tr>
+<tr>
+<td class="name">caption_wrap</td>
+<td class="type">string</td>
+<td class="description">Determines if the caption text will wrap around obstacles.</td>
+</tr>
+<tr>
+<td class="name">allow_sorting</td>
+<td class="type">yes/no</td>
+<td class="description">Whether clicking this column's header sorts the table by this column.  Defaults to the table's "allow_sorting" value (which defaults to "yes").</td>
 </tr>
 <tr>
 <td class="name">caption_fieldname</td>
@@ -329,7 +399,22 @@
 <tr>
 <td class="name">type</td>
 <td class="type">string</td>
-<td class="description">The type of the column: "text", "check", or "image".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value.</td>
+<td class="description">The type of the column: "text", "check", "image", or "progress".  "text" is a normal column, and displays the textual value of the data element.  "check" displays a checkmark if the data is non-zero (integers) or for strings if the value is non-empty and not "N" or "No".  "image" displays the image referred to by the pathname contained in the data value. "progress" displays a progress bar, with additional fields such as bar_color, bar_textcolor, and bar_padding.</td>
+</tr>
+<tr>
+<td class="name">image_maxwidth</td>
+<td class="type">integer</td>
+<td class="description">The max width of the image displayed when type=image.</td>
+</tr>
+<tr>
+<td class="name">image_maxheight</td>
+<td class="type">integer</td>
+<td class="description">The max height of the image displayed when type=image.</td>
+</tr>
+<tr>
+<td class="name">style</td>
+<td class="type">string</td>
+<td class="description">Not documented.</td>
 </tr>
 <tr>
 <td class="name">width</td>
@@ -340,6 +425,39 @@
 <td class="name">wrap</td>
 <td class="type">string</td>
 <td class="description">Determines if text can wrap around an obstacle.</td>
+</tr>
+<tr>
+<td class="name">visible</td>
+<td class="type">integer</td>
+<td class="description">Set this to 0 to hide the column from the table.</td>
+</tr>
+</table>
+<p class="childname">(of widget/table-row-detail child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">width</td>
+<td class="type">integer</td>
+<td class="description">Not documented.</td>
+</tr>
+<tr>
+<td class="name">height</td>
+<td class="type">integer</td>
+<td class="description">The height of the table row detail. (This will expand the height of the selected row when the widget appears.)</td>
+</tr>
+<tr>
+<td class="name">display_for</td>
+<td class="type">integer</td>
+<td class="description">Specify 0 to hide the row-detail (useful for creating multiple widgets and picking between them dynamically). Support run_client().</td>
+</tr>
+<tr>
+<td class="name">show_on_new</td>
+<td class="type">integer</td>
+<td class="description">Specify 1 to make new rows show their table-row-detail when added (deault: 0).</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
@@ -352,6 +470,10 @@
 <td class="name">Clear</td>
 <td class="description">Drops all elements from the table.</td>
 </tr>
+<tr>
+<td class="name">ShowSelection</td>
+<td class="description">Enables the initial_selection property and redraws the table.</td>
+</tr>
 </table>
 <h3 class="events">Events:</h3>
 <table class="events">
@@ -360,22 +482,54 @@
 <th class="description">Description</th>
 </tr>
 <tr>
+<td class="name">Check</td>
+<td class="description">The Check event fires when the user clicks an unchecked checkbox in a row.  Passes the same values as DblClick, plus 'checkbox' which is set to 1.  Cancelling this event prevents the row from being selected.</td>
+</tr>
+<tr>
 <td class="name">Click</td>
 <td class="description">The Click event fires when a user clicks on a row.</td>
+</tr>
+<tr>
+<td class="name">ClickItem</td>
+<td class="description">The ClickItem event fires when the user clicks an item in an 'itemlist' column.  Passes 'Item' which is the item text, 'ItemKey' and 'ItemIndex' which identify the item, 'Row' which is the row number, and 'Column' and 'ColumnName' which are the field name and the column name.</td>
+</tr>
+<tr>
+<td class="name">Close</td>
+<td class="description">The Close event fires on a "widget/table-row-detail" child widget when it stops being shown for a row, either because another row was selected, because its "display_for" value was set to 0, or because the row was scrolled out of the table.  Passes no values.</td>
 </tr>
 <tr>
 <td class="name">DblClick</td>
 <td class="description">The DblClick event fires when the user double-clicks the mouse on a row.  Passes three values, 'Caller' which is the table's name, 'recnum' which is the sequential number of the record in the table, and 'data' which is an array of the data in the selected record.</td>
 </tr>
 <tr>
+<td class="name">DragCancelItem</td>
+<td class="description">The DragCancelItem event fires when the user drops a dragged item somewhere other than an 'itemlist' column, cancelling the drag.  Passes the same values as ClickItem, describing where the drag started.</td>
+</tr>
+<tr>
+<td class="name">DragDropItem</td>
+<td class="description">The DragDropItem event fires when the user drops a dragged item on an 'itemlist' column.  Passes 'Item', 'ItemKey', and 'ItemIndex' which identify the dragged item, 'SourceRow', 'SourceColumn', and 'SourceColumnName' which describe where the drag started, 'TargetRow', 'TargetColumn', and 'TargetColumnName' which describe where it was dropped, and 'BeforeItem' which is the item it was dropped in front of (or null).</td>
+</tr>
+<tr>
+<td class="name">DragStartItem</td>
+<td class="description">The DragStartItem event fires when the user begins dragging an item in an 'itemlist' column.  Passes the same values as ClickItem, plus 'OffsetX' and 'OffsetY' which are the distance the pointer has moved.</td>
+</tr>
+<tr>
+<td class="name">Open</td>
+<td class="description">The Open event fires on a "widget/table-row-detail" child widget when it is shown for a row, which happens when the row is selected (or when a new row is added, if "show_on_new" is set).  Passes no values.</td>
+</tr>
+<tr>
 <td class="name">RightClick</td>
-<td class="description">The Click event fires when a user right clicks on a mouse or mouse pad.</td>
+<td class="description">The RightClick event occurs when a user clicks on the widget with the relevant button on their mouse or mouse pad.</td>
+</tr>
+<tr>
+<td class="name">Uncheck</td>
+<td class="description">The Uncheck event fires when the user clicks a checked checkbox in a row.  Passes the same values as DblClick, plus 'checkbox' which is set to 2.  Cancelling this event prevents the row from being selected.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -411,7 +565,7 @@ tblFileList "widget/table"
 
 	}
 
-		
+			
 
 		</pre>
 </body>
