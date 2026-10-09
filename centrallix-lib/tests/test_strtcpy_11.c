@@ -1,7 +1,10 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "test_utils.h"
 
 #include "strtcpy.h"
 
@@ -62,61 +65,62 @@ static Case cases[] =
 	{ "",		"ab",		2,	-2,	"a",		1 },
     };
 
-long long
-test(char** tname)
+/** Number of cases run per call to doTest(). **/
+#define NCASES	((int)(sizeof(cases) / sizeof(Case)))
+
+/*** This test verifies strtcatf() over a table of buffer sizes and append
+ *** lengths, checking the four things the function promises: the strtcat()
+ *** return convention (bytes appended including the null terminator, negated
+ *** when truncated, zero when nothing fits), that *pos is left on the
+ *** terminating null, that dst is always null-terminated, and that no byte
+ *** outside the caller's declared DstLen is ever touched.
+ ***/
+static bool
+doTest(void)
     {
-    int i, c, rval;
-    int iter;
-    int ncases = sizeof(cases) / sizeof(Case);
+    int c, rval;
     unsigned char raw[RAW];
     unsigned char snapshot[RAW];
     char* dst = (char*)raw + GUARD;
     size_t pos;
     size_t n;
 
-	/*** This test verifies strtcatf() over a table of buffer sizes and
-	 *** append lengths, checking the four things the function promises:
-	 *** the strtcat() return convention (bytes appended including the
-	 *** null terminator, negated when truncated, zero when nothing fits),
-	 *** that *pos is left on the terminating null, that dst is always
-	 *** null-terminated, and that no byte outside the caller's declared
-	 *** DstLen is ever touched.
-	 ***/
-
-	*tname = "strtcpy-11 strtcatf() return values and buffer bounds";
-	iter = 40000;
-	for(i=0;i<iter;i++)
+	for(c=0;c<NCASES;c++)
 	    {
-	    for(c=0;c<ncases;c++)
-		{
-		/** Fill the whole area, then seed the prefix over the front. **/
-		memset(raw, 0xAA, RAW);
-		memcpy(dst, cases[c].Prefix, strlen(cases[c].Prefix) + 1);
-		memcpy(snapshot, raw, RAW);
+	    /** Fill the whole area, then seed the prefix over the front. **/
+	    memset(raw, 0xAA, RAW);
+	    memcpy(dst, cases[c].Prefix, strlen(cases[c].Prefix) + 1);
+	    memcpy(snapshot, raw, RAW);
 
-		/** Append onto the end of the seeded prefix. **/
-		pos = strlen(cases[c].Prefix);
-		rval = strtcatf(dst, cases[c].DstLen, &pos, "%s", cases[c].Src);
+	    /** Append onto the end of the seeded prefix. **/
+	    pos = strlen(cases[c].Prefix);
+	    rval = strtcatf(dst, cases[c].DstLen, &pos, "%s", cases[c].Src);
 
-		/** Return value follows the strtcat() convention. **/
-		assert(rval == cases[c].ExpRval);
+	    /** Return value follows the strtcat() convention. **/
+	    assert(rval == cases[c].ExpRval);
 
-		/** Contents and write position are both as expected. **/
-		assert(!strcmp(dst, cases[c].ExpDst));
-		assert(pos == cases[c].ExpPos);
+	    /** Contents and write position are both as expected. **/
+	    assert(!strcmp(dst, cases[c].ExpDst));
+	    assert(pos == cases[c].ExpPos);
 
-		/** *pos always lands on the terminating null. **/
-		assert(pos == strlen(dst));
+	    /** *pos always lands on the terminating null. **/
+	    assert(pos == strlen(dst));
 
-		/** Leading guard bytes must not be clobbered. **/
-		for(n=0;n<GUARD;n++)
-		    assert(raw[n] == 0xAA);
+	    /** Leading guard bytes must not be clobbered. **/
+	    for(n=0;n<GUARD;n++)
+		assert(raw[n] == 0xAA);
 
-		/** Nothing at or past DstLen may be touched either. **/
-		for(n=GUARD+cases[c].DstLen;n<RAW;n++)
-		    assert(raw[n] == snapshot[n]);
-		}
+	    /** Nothing at or past DstLen may be touched either. **/
+	    for(n=GUARD+cases[c].DstLen;n<RAW;n++)
+		assert(raw[n] == snapshot[n]);
 	    }
 
-    return (long long)iter * ncases;
+    return true;
+    }
+
+long long
+test(char** tname)
+    {
+    *tname = "strtcpy-11 strtcatf() return values and buffer bounds";
+    return loopTest(doTest) * NCASES;
     }
