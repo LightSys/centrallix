@@ -47,6 +47,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +60,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/timer.h"
 #include "cxlib/util.h"
 #include "cxlib/warn.h"
 #include "cxss/cxss.h"
@@ -2966,6 +2968,47 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    {
 	    setup_test_ids((arg != NULL) ? arg : "");
 	    }
+	else if (strcmp(cmdname, "time") == 0)
+	    {
+	    if (UNLIKELY(arg == NULL))
+		{
+		mssError(1, "TESTOBJ", "Usage: time <command>");
+		goto end;
+		}
+	    char* const timed_cmd = cmd + 5;
+
+	    /** Run the command. **/
+	    Timer timer;
+	    timerStart(timerInit(&timer));
+	    const int timed_rval = testobj_do_cmd(s, timed_cmd, batch_mode, inp_lx);
+	    const double seconds = timerGet(timerStop(&timer));
+	    if (UNLIKELY(timed_rval < 0)) goto end;
+
+	    /** Print the time. **/
+	    if (UNLIKELY(isnan(seconds)))
+		{
+		mssError(1, "TESTOBJ",
+		    "Failed to read the clock while timing \"%.*s\".",
+		    (int)strcspn(timed_cmd, "\r\n"), timed_cmd
+		);
+		goto end;
+		}
+	    if (UNLIKELY(fdPrintf(TESTOBJ.Output, "Time: %.6f seconds\n", seconds) < 0))
+		{
+		mssError(1, "TESTOBJ",
+		    "Failed to write time %.6f seconds for \"%.*s\" to output file \"%s\".",
+		    seconds, (int)strcspn(timed_cmd, "\r\n"), timed_cmd, TESTOBJ.OutputFilename
+		);
+		goto end;
+		}
+
+	    /** Pass on a quit. **/
+	    if (timed_rval == 1)
+		{
+		rval = 1;
+		goto end;
+		}
+	    }
 	else if (strcmp(cmdname, "trunc") == 0)
 	    {
 	    if (UNLIKELY(testobj_i_cmdTrunc(s, arg, ls) < 0)) goto end;
@@ -2995,6 +3038,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  quit/exit - Exits this application.\n");
 	    printf("  show      - Displays an object's attributes and methods.\n");
 	    printf("  test      - Enables test suite output for the given list of ids.\n");
+	    printf("  time      - Run a command and print how long it took.\n");
 	    printf("  trunc     - Truncates an object's content to a given point.\n");
 	    }
 	else
