@@ -45,7 +45,7 @@ test(char** tname)
     pXHashEntry testEntry;
     XHashTable testHash;
 
-	*tname = "xhashtable-00 ITERATOR test";
+	*tname = "xhash-06 Iterator";
 
 	iter = 60000;
 
