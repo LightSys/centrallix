@@ -2835,6 +2835,23 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		goto end;
 		}
 	    }
+	else if (strcmp(cmdname, "pwd") == 0)
+	    {
+	    char* const wd = objGetWD(s);
+	    if (UNLIKELY(wd == NULL))
+		{
+		mssError(1, "TESTOBJ", "Failed to get the working directory.");
+		goto end;
+		}
+	    if (UNLIKELY(fdPrintf(TESTOBJ.Output, "%s\n", wd) < 0))
+		{
+		mssError(1, "TESTOBJ",
+		    "Failed to write working directory \"%s\" to output file \"%s\".",
+		    wd, TESTOBJ.OutputFilename
+		);
+		goto end;
+		}
+	    }
 	else if (strcmp(cmdname, "quit") == 0 || strcmp(cmdname, "exit") == 0)
 	    {
 	    rval = 1;
@@ -2966,6 +2983,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  output    - Change where output goes.\n");
 	    printf("  print     - Displays an object's content.\n");
 	    printf("  printshow - Displays an object's content, followed by its attributes and methods.\n");
+	    printf("  pwd       - Print the current working \"directory\" in the objectsystem.\n");
 	    printf("  query     - Runs a SQL query.\n");
 	    printf("  quit/exit - Exits this application.\n");
 	    printf("  show      - Displays an object's attributes and methods.\n");
