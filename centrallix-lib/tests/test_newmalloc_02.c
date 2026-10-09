@@ -28,6 +28,7 @@
 #define BLOCK_COUNT	64lu
 #define BLOCK_SIZE	128
 
+#ifdef GLOBAL_BLK_COUNTING
 static bool doTest(void)
     {
     bool success = true;
@@ -75,11 +76,20 @@ static bool doTest(void)
 
     return success;
     }
+#endif
 
 long long test(char** tname)
     {
     *tname = "newmalloc-02 nmStats()";
+#ifdef GLOBAL_BLK_COUNTING
     return loopTest(doTest);
+#else
+    /*** No stats are being collected and nmStats() is disabled, so we can't
+     *** test it. To test it, please rebuild with --enable-debugging.
+     ***/
+    return 0;
+#endif
+
     }
 
 /** Scope cleanup. **/
