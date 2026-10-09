@@ -2835,6 +2835,11 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		goto end;
 		}
 	    }
+	else if (strcmp(cmdname, "mem") == 0)
+	    {
+	    nmStats();
+	    nmDeltas();
+	    }
 	else if (strcmp(cmdname, "pwd") == 0)
 	    {
 	    char* const wd = objGetWD(s);
@@ -2978,6 +2983,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  hints     - Show the presentation hints of an attribute (or object)\n");
 	    printf("  help      - Displays this help screen.\n");
 	    printf("  list, ls  - Lists the objects in the current \"directory\" in the objectsystem.\n");
+	    printf("  mem       - Print memory statistics and the allocation changes since the last mem.\n");
 	    printf("  mlquery   - Runs a SQL query, reading in multiple lines until a blank line.\n");
 	    printf("  obfuscate - Begins obfuscation of CSV and query output, given an obfuscation key and optional rule file\n");
 	    printf("  output    - Change where output goes.\n");
