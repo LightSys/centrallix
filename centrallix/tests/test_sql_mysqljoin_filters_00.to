@@ -1,0 +1,44 @@
+##NAME Function filters
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# isnull_func_single_table
+csv select :p:p_partner_key, :l:p_location_id, st = :l:p_state_province from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and isnull(:l:p_state_province, 'ZZ') = 'ZZ' and :p:p_partner_key >= '100000' and :p:p_partner_key < '102000' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, st = :l:p_state_province from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and isnull(:l:p_state_province, 'ZZ') = 'ZZ' and :p:p_partner_key >= '100000' and :p:p_partner_key < '102000' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# condition_single_table
+csv select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and condition(:l:p_location_type = 'H', 1, 0) = 1 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100050' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and condition(:l:p_location_type = 'H', 1, 0) = 1 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100050' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# convert_datepart_arith_filters
+csv select :c:p_partner_key, :c:p_contact_id, :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and convert(integer, :c:p_location_id) = :l:p_location_id and datepart(year, :c:s_date_created) = 2011 and :l:p_location_id + 1 = 2 and :l:p_revision_id * 2 = 0 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100080' order by :c:p_partner_key, :c:p_contact_id, :l:p_revision_id
+csv set passthrough 0 select :c:p_partner_key, :c:p_contact_id, :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and convert(integer, :c:p_location_id) = :l:p_location_id and datepart(year, :c:s_date_created) = 2011 and :l:p_location_id + 1 = 2 and :l:p_revision_id * 2 = 0 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100080' order by :c:p_partner_key, :c:p_contact_id, :l:p_revision_id
+
+# func_upper_lower_filters
+csv select :p:p_partner_key, :p:p_surname, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and upper(:l:p_city) = 'DENVER' and lower(:l:p_state_province) = 'co' and :p:p_partner_key < '100060' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_surname, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and upper(:l:p_city) = 'DENVER' and lower(:l:p_state_province) = 'co' and :p:p_partner_key < '100060' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# func_substring_charindex
+csv select :p:p_partner_key, :p:p_surname, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and substring(:p:p_surname, 1, 2) = 'Mc' and charindex('e', :l:p_city) = 2 and :p:p_partner_key < '104000' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_surname, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and substring(:p:p_surname, 1, 2) = 'Mc' and charindex('e', :l:p_city) = 2 and :p:p_partner_key < '104000' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# func_rtrim_char_length
+csv select :p:p_partner_key, :p:p_given_name, :p:p_surname from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and char_length(:p:p_given_name) = 4 and rtrim(:p:p_given_name) = 'Alan' and :l:p_revision_id = 0 order by :p:p_partner_key, :l:p_location_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_given_name, :p:p_surname from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and char_length(:p:p_given_name) = 4 and rtrim(:p:p_given_name) = 'Alan' and :l:p_revision_id = 0 order by :p:p_partner_key, :l:p_location_id
+
+# func_datepart_datediff
+csv select :p:p_partner_key, :l:p_location_id, yr = datepart(year, :l:s_date_created) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and datepart(year, :l:s_date_created) = 2011 and datediff(day, :p:s_date_created, :p:s_date_modified) = 0 and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, yr = datepart(year, :l:s_date_created) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and datepart(year, :l:s_date_created) = 2011 and datediff(day, :p:s_date_created, :p:s_date_modified) = 0 and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# int_division_filter
+csv select :l:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_location_id / 2 = 1 and :p:p_partner_key < '100060' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :l:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_location_id / 2 = 1 and :p:p_partner_key < '100060' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# concat_plus_filter_null_given
+csv select :p:p_partner_key, :p:p_given_name, :p:p_surname from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_given_name + ' ' + :p:p_surname = 'Grace Torres' and :l:p_revision_id = 0 order by :p:p_partner_key, :l:p_location_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_given_name, :p:p_surname from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_given_name + ' ' + :p:p_surname = 'Grace Torres' and :l:p_revision_id = 0 order by :p:p_partner_key, :l:p_location_id
+
+# concat_plus_filter_null_in_join_range
+csv select :p:p_partner_key, :p:p_given_name, x = :p:p_surname + ':' + :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key < '100030' and :l:p_city + :l:p_state_province = 'Colorado SpringsCO' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_given_name, x = :p:p_surname + ':' + :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_partner_key < '100030' and :l:p_city + :l:p_state_province = 'Colorado SpringsCO' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id

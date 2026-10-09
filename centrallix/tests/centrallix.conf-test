@@ -92,7 +92,7 @@ centrallix "system/config"
     // Loadable Modules
     modules "system/config"
 	{
-	mysd "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_mysql.so"; type="osdriver"; }
+	mysd "system/config-module" { enable_module=yes; path="/usr/local/lib/centrallix/objdrv_mysql.so"; type="osdriver"; }
 	sybd "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_sybase.so"; type="osdriver"; }
 	http "system/config-module" { enable_module=yes; path="/usr/local/lib/centrallix/objdrv_http.so"; type="osdriver"; }
 	xml "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_xml.so"; type="osdriver"; }

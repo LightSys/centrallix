@@ -1,0 +1,44 @@
+##NAME Aggregates
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# outer_left_leaf_then_group
+csv select cl = :p:p_partner_class, n = count(1), nloc = count(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key group by :p:p_partner_class order by :p:p_partner_class
+csv set passthrough 0 select cl = :p:p_partner_class, n = count(1), nloc = count(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key group by :p:p_partner_class order by :p:p_partner_class
+
+# group_first_col_counts
+csv select cl = :p:p_partner_class, n = count(1), mx = max(:l:p_location_id), sm = sum(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :p:p_partner_class order by :p:p_partner_class
+csv set passthrough 0 select cl = :p:p_partner_class, n = count(1), mx = max(:l:p_location_id), sm = sum(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :p:p_partner_class order by :p:p_partner_class
+
+# group_later_col
+csv select st = :l:p_state_province, n = count(1), cls = max(:p:p_partner_class) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :l:p_state_province order by :l:p_state_province
+csv set passthrough 0 select st = :l:p_state_province, n = count(1), cls = max(:p:p_partner_class) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :l:p_state_province order by :l:p_state_province
+
+# group_both_cols_having
+csv select cl = :p:p_partner_class, lt = :l:p_location_type, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :p:p_partner_class, :l:p_location_type having count(1) > 2 order by :p:p_partner_class, :l:p_location_type
+csv set passthrough 0 select cl = :p:p_partner_class, lt = :l:p_location_type, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :p:p_partner_class, :l:p_location_type having count(1) > 2 order by :p:p_partner_class, :l:p_location_type
+
+# group_having_later_state
+csv select st = :l:p_state_province, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :l:p_state_province having count(1) >= 10 order by :l:p_state_province
+csv set passthrough 0 select st = :l:p_state_province, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :l:p_state_province having count(1) >= 10 order by :l:p_state_province
+
+# group_outer_counts
+csv select cl = :p:p_partner_class, n = count(1), c1 = count(:c:p_contact_id), mx = max(:c:p_contact_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :c:p_partner_key group by :p:p_partner_class order by :p:p_partner_class
+csv set passthrough 0 select cl = :p:p_partner_class, n = count(1), c1 = count(:c:p_contact_id), mx = max(:c:p_contact_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c where :p:p_partner_key *= :c:p_partner_key group by :p:p_partner_class order by :p:p_partner_class
+
+# group_money_3way
+csv select fc = :f:a_fund_class, ty = :a:a_acct_type, total = sum(:t:a_amount), n = count(1) from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_account/rows a, /tests/Test_DB/a_fund/rows f where :t:a_ledger_number = :a:a_ledger_number and :t:a_account_code = :a:a_account_code and :t:a_ledger_number = :f:a_ledger_number and :t:a_fund = :f:a_fund group by :f:a_fund_class, :a:a_acct_type order by :f:a_fund_class, :a:a_acct_type
+csv set passthrough 0 select fc = :f:a_fund_class, ty = :a:a_acct_type, total = sum(:t:a_amount), n = count(1) from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_account/rows a, /tests/Test_DB/a_fund/rows f where :t:a_ledger_number = :a:a_ledger_number and :t:a_account_code = :a:a_account_code and :t:a_ledger_number = :f:a_ledger_number and :t:a_fund = :f:a_fund group by :f:a_fund_class, :a:a_acct_type order by :f:a_fund_class, :a:a_acct_type
+
+# aggregate_no_group
+csv select n = count(1), mn = min(:l:p_location_id), mx = max(:l:p_city), cnt_c = count(:c:p_contact_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :p:p_partner_key
+csv set passthrough 0 select n = count(1), mn = min(:l:p_location_id), mx = max(:l:p_city), cnt_c = count(:c:p_contact_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :l:p_partner_key = :p:p_partner_key and :c:p_partner_key = :p:p_partner_key
+
+# group_outer_with_having_null
+csv select cl = :p:p_partner_class, n = count(1), nl = count(:l:p_partner_key) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key group by :p:p_partner_class having count(:l:p_partner_key) < count(1) order by :p:p_partner_class
+csv set passthrough 0 select cl = :p:p_partner_class, n = count(1), nl = count(:l:p_partner_key) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key group by :p:p_partner_class having count(:l:p_partner_key) < count(1) order by :p:p_partner_class
+
+# aggregates_over_outer_nulls
+csv select n = count(1), nl = count(:l:p_location_id), sm = sum(:l:p_location_id), mn = min(:l:p_city), mx = max(:l:p_state_province), av = avg(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '102000'
+csv set passthrough 0 select n = count(1), nl = count(:l:p_location_id), sm = sum(:l:p_location_id), mn = min(:l:p_city), mx = max(:l:p_state_province), av = avg(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :p:p_partner_key >= '100000' and :p:p_partner_key < '102000'

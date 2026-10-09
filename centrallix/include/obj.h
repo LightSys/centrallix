@@ -58,6 +58,7 @@
 #define	OBJSYS_SORT_XASIZE	4096	/* initial size of query sort xarray */
 #define	OBJSYS_SORT_REOPEN	0	/* whether to enable reopen functionality in sorts */
 #define	OBJSYS_SORT_MAX		16	/* maximum sort-by items */
+#define	OBJSYS_MAX_JOIN		16	/* maximum sources in a joined query */
 
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -197,6 +198,8 @@ typedef struct _OSD
     int		(*Commit)();
     int		(*GetQueryCoverageMask)();
     int		(*GetQueryIdentityPath)();
+    int		(*OpenJoinQuery)();
+    int		(*QueryFetchJoin)();
     }
     ObjDriver, *pObjDriver;
 
@@ -210,6 +213,7 @@ typedef struct _OSD
 #define OBJDRV_C_OUTERTYPE	128	/* driver layering depends on outer, not inner, type */
 #define OBJDRV_C_NOAUTO		256	/* driver should never be automatically invoked */
 #define OBJDRV_C_DOWNLOADAS	512	/* driver supports the cx__download_as attribute */
+#define OBJDRV_C_JOIN		1024	/* driver can join its sources, see objOpenJoinQuery() */
 
 /** objxact transaction tree **/
 typedef struct _OT
@@ -415,6 +419,28 @@ typedef struct _SRTI
     ObjQuerySortItem, *pObjQuerySortItem;
 
 
+/** one source of a joined query, see objOpenJoinQuery() **/
+typedef struct
+    {
+    pObject	Obj;		/* object whose subobjects are joined, as in objOpenQuery() */
+    int		ObjID;		/* id that criteria use to reference this source */
+    void*	Tree;		/* pExpression criteria; may reference earlier sources */
+    void**	SortBy;		/* NULL-terminated pExpression list, or NULL */
+    int		Flags;		/* OBJ_JS_F_xxx */
+    }
+    ObjJoinSource, *pObjJoinSource;
+
+#define OBJ_JS_F_OUTER		1	/* NULL row for this source when none match */
+
+/** joined query information **/
+typedef struct _OQJ
+    {
+    int		nSources;
+    pObject	Objs[OBJSYS_MAX_JOIN];	/* linked; Objs[0] is also the query's Obj */
+    }
+    ObjQueryJoin, *pObjQueryJoin;
+
+
 /** object query information **/
 typedef struct _OQ
     {
@@ -430,6 +456,7 @@ typedef struct _OQ
     pObjQuerySort SortInf;
     pObjDriver	Drv;		/* used for multiquery only */
     pObjSession	QySession;	/* used for multiquery only */
+    pObjQueryJoin Join;		/* used for joined queries only */
     }
     ObjQuery, *pObjQuery;
 
@@ -693,6 +720,8 @@ int objQueryDelete(pObjQuery this);
 pObject objQueryFetch(pObjQuery this, int mode);
 pObject objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type);
 int objQueryClose(pObjQuery this);
+int objOpenJoinQuery(pObjJoinSource sources, int n_sources, pObjQuery* qy);
+int objQueryFetchJoin(pObjQuery this, int mode, pObject objs[]);
 int objGetQueryCoverageMask(pObjQuery this);
 int objGetQueryIdentityPath(pObjQuery this, char* buf, int maxlen);
 

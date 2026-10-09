@@ -1,0 +1,44 @@
+##NAME Outer join filters
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# outer_leaf_const_filter_rev0
+csv select :p:p_partner_key, loc = :l:p_location_id, :l:p_revision_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_revision_id = 0 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, :l:p_revision_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_revision_id = 0 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_leaf_filter_or_null
+csv select :p:p_partner_key, loc = :l:p_location_id, ltype = :l:p_location_type from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and (:l:p_location_type = 'W' or :l:p_location_type is null) and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, ltype = :l:p_location_type from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and (:l:p_location_type = 'W' or :l:p_location_type is null) and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_reverse_const_on_inner_side
+csv select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :l:p_partner_key =* :p:p_partner_key and :l:p_partner_key = '100005' and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :l:p_partner_key =* :p:p_partner_key and :l:p_partner_key = '100005' and :p:p_partner_key >= '100000' and :p:p_partner_key < '100010' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_country_nulls_uk
+csv select :l:p_partner_key, :l:p_location_id, cc = :l:p_country_code, cn = :co:p_country_name from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_country/rows co where :l:p_country_code *= :co:p_country_code and :l:p_partner_key >= '100000' and :l:p_partner_key < '100030' and :l:p_country_code != 'US' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :l:p_partner_key, :l:p_location_id, cc = :l:p_country_code, cn = :co:p_country_name from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_country/rows co where :l:p_country_code *= :co:p_country_code and :l:p_partner_key >= '100000' and :l:p_partner_key < '100030' and :l:p_country_code != 'US' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_antijoin_is_null
+csv select :p:p_partner_key, :p:p_partner_class from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_partner_key is null and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key
+csv set passthrough 0 select :p:p_partner_key, :p:p_partner_class from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_partner_key is null and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key
+
+# outer_is_not_null_on_outer
+csv select :p:p_partner_key, loc = :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_location_id is not null and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_location_id is not null and :p:p_partner_key >= '100000' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_donor_isnull_in_where
+csv select :p:p_partner_key, daf = :d:p_is_daf from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_donor/rows d where :p:p_partner_key *= :d:p_partner_key and isnull(:d:p_is_daf, 0) = 0 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key
+csv set passthrough 0 select :p:p_partner_key, daf = :d:p_is_daf from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_donor/rows d where :p:p_partner_key *= :d:p_partner_key and isnull(:d:p_is_daf, 0) = 0 and :p:p_partner_key >= '100000' and :p:p_partner_key < '100030' order by :p:p_partner_key
+
+# outer_filter_function_on_outer
+csv select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and upper(:l:p_city) = 'COLORADO SPRINGS' and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and upper(:l:p_city) = 'COLORADO SPRINGS' and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_filter_neq_on_outer
+csv select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_city != 'Colorado Springs' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and :l:p_city != 'Colorado Springs' and :p:p_partner_key < '100020' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# outer_filter_isnull_or_value
+csv select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and (:l:p_city is null or :l:p_city = 'Colorado Springs') and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, loc = :l:p_location_id, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key *= :l:p_partner_key and (:l:p_city is null or :l:p_city = 'Colorado Springs') and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id

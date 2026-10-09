@@ -1,0 +1,376 @@
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_surname","p_location_id","p_revision_id","p_city"
+"100001","Dickens",1,0,"Dover"
+"100002","Nguyen",1,0,"Pueblo"
+"100004","Lee",1,0,"Leeds"
+"100004","Lee",2,0,"Monterrey"
+"100005","Denver",1,0,"Nowhere"
+"100005","Denver",1,1,"Nowhere"
+"100005","Denver",2,0,"Colorado Springs"
+"100006","McKay",1,0,"Colorado Springs"
+"100006","McKay",2,0,"Denver"
+"100006","McKay",3,0,"DENVER"
+"100009","Powell ",1,0,"Colorado Springs "
+"100010","Didion",1,0,"London"
+"100011",,1,0,"Berlin"
+"100011",,2,0,"Nowhere"
+"100012",,1,0,
+"100012",,2,0,"Colorado Springs"
+"100013","Ortiz",1,0,"DENVER"
+"100013","Ortiz",2,0,"Santa Fe"
+"100013","Ortiz",3,0,"Dover"
+"100015",,1,0,"Toronto"
+"100016","powell",1,0,"Monterrey"
+"100016","powell",1,1,"Monterrey"
+"100017","Lefevre",1,0,"Colorado Springs"
+"100017","Lefevre",2,0,
+"100018","Powell",1,0,"Denver"
+"100018","Powell",2,0,"DENVER"
+"100019","Dickens",1,0,"Dover"
+"100019","Dickens",2,0,"San Diego"
+"100019","Dickens",3,0,"Colorado Springs "
+"p_partner_key","p_surname","p_location_id","p_revision_id","p_city"
+"100001","Dickens",1,0,"Dover"
+"100002","Nguyen",1,0,"Pueblo"
+"100004","Lee",1,0,"Leeds"
+"100004","Lee",2,0,"Monterrey"
+"100005","Denver",1,0,"Nowhere"
+"100005","Denver",1,1,"Nowhere"
+"100005","Denver",2,0,"Colorado Springs"
+"100006","McKay",1,0,"Colorado Springs"
+"100006","McKay",2,0,"Denver"
+"100006","McKay",3,0,"DENVER"
+"100009","Powell ",1,0,"Colorado Springs "
+"100010","Didion",1,0,"London"
+"100011",,1,0,"Berlin"
+"100011",,2,0,"Nowhere"
+"100012",,1,0,
+"100012",,2,0,"Colorado Springs"
+"100013","Ortiz",1,0,"DENVER"
+"100013","Ortiz",2,0,"Santa Fe"
+"100013","Ortiz",3,0,"Dover"
+"100015",,1,0,"Toronto"
+"100016","powell",1,0,"Monterrey"
+"100016","powell",1,1,"Monterrey"
+"100017","Lefevre",1,0,"Colorado Springs"
+"100017","Lefevre",2,0,
+"100018","Powell",1,0,"Denver"
+"100018","Powell",2,0,"DENVER"
+"100019","Dickens",1,0,"Dover"
+"100019","Dickens",2,0,"San Diego"
+"100019","Dickens",3,0,"Colorado Springs "
+MQJ: Joining 3 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id","p_contact_id","p_contact_type"
+"100001",1,1,"W"
+"100002",1,1,"F"
+"100002",1,2,"C"
+"100004",1,1,"C"
+"100004",1,2,"E"
+"100004",1,3,"P"
+"100004",2,1,"C"
+"100004",2,2,"E"
+"100004",2,3,"P"
+"100005",1,1,"E"
+"100005",1,2,"P"
+"100005",1,3,"W"
+"100005",1,4,"F"
+"100005",1,1,"E"
+"100005",1,2,"P"
+"100005",1,3,"W"
+"100005",1,4,"F"
+"100005",2,1,"E"
+"100005",2,2,"P"
+"100005",2,3,"W"
+"100005",2,4,"F"
+"100009",1,1,"F"
+"100009",1,2,"C"
+"100010",1,1,"C"
+"100010",1,2,"E"
+"100010",1,3,"P"
+"p_partner_key","p_location_id","p_contact_id","p_contact_type"
+"100001",1,1,"W"
+"100002",1,1,"F"
+"100002",1,2,"C"
+"100004",1,1,"C"
+"100004",1,2,"E"
+"100004",1,3,"P"
+"100004",2,1,"C"
+"100004",2,2,"E"
+"100004",2,3,"P"
+"100005",1,1,"E"
+"100005",1,2,"P"
+"100005",1,3,"W"
+"100005",1,4,"F"
+"100005",1,1,"E"
+"100005",1,2,"P"
+"100005",1,3,"W"
+"100005",1,4,"F"
+"100005",2,1,"E"
+"100005",2,2,"P"
+"100005",2,3,"W"
+"100005",2,4,"F"
+"100009",1,1,"F"
+"100009",1,2,"C"
+"100010",1,1,"C"
+"100010",1,2,"E"
+"100010",1,3,"P"
+MQJ: Joining 3 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id","p_contact_id"
+"100001",1,1
+"100002",1,1
+"100002",1,2
+"100004",1,1
+"100004",1,2
+"100004",1,3
+"100004",2,1
+"100004",2,2
+"100004",2,3
+"100005",1,1
+"100005",1,2
+"100005",1,3
+"100005",1,4
+"100005",1,1
+"100005",1,2
+"100005",1,3
+"100005",1,4
+"100005",2,1
+"100005",2,2
+"100005",2,3
+"100005",2,4
+"100009",1,1
+"100009",1,2
+"100010",1,1
+"100010",1,2
+"100010",1,3
+"p_partner_key","p_location_id","p_contact_id"
+"100001",1,1
+"100002",1,1
+"100002",1,2
+"100004",1,1
+"100004",1,2
+"100004",1,3
+"100004",2,1
+"100004",2,2
+"100004",2,3
+"100005",1,1
+"100005",1,2
+"100005",1,3
+"100005",1,4
+"100005",1,1
+"100005",1,2
+"100005",1,3
+"100005",1,4
+"100005",2,1
+"100005",2,2
+"100005",2,3
+"100005",2,4
+"100009",1,1
+"100009",1,2
+"100010",1,1
+"100010",1,2
+"100010",1,3
+MQJ: Joining 4 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id","p_contact_id","ctype"
+"100001",1,1,"Web Site"
+"100002",1,1,"Fax"
+"100002",1,2,"Cell"
+"100004",1,1,"Cell"
+"100004",1,2,"Email"
+"100004",1,3,"Phone"
+"100004",2,1,"Cell"
+"100004",2,2,"Email"
+"100004",2,3,"Phone"
+"100005",1,1,"Email"
+"100005",1,2,"Phone"
+"100005",1,3,"Web Site"
+"100005",1,4,"Fax"
+"100005",1,1,"Email"
+"100005",1,2,"Phone"
+"100005",1,3,"Web Site"
+"100005",1,4,"Fax"
+"100005",2,1,"Email"
+"100005",2,2,"Phone"
+"100005",2,3,"Web Site"
+"100005",2,4,"Fax"
+"100009",1,1,"Fax"
+"100009",1,2,"Cell"
+"100010",1,1,"Cell"
+"100010",1,2,"Email"
+"100010",1,3,"Phone"
+"p_partner_key","p_location_id","p_contact_id","ctype"
+"100001",1,1,"Web Site"
+"100002",1,1,"Fax"
+"100002",1,2,"Cell"
+"100004",1,1,"Cell"
+"100004",1,2,"Email"
+"100004",1,3,"Phone"
+"100004",2,1,"Cell"
+"100004",2,2,"Email"
+"100004",2,3,"Phone"
+"100005",1,1,"Email"
+"100005",1,2,"Phone"
+"100005",1,3,"Web Site"
+"100005",1,4,"Fax"
+"100005",1,1,"Email"
+"100005",1,2,"Phone"
+"100005",1,3,"Web Site"
+"100005",1,4,"Fax"
+"100005",2,1,"Email"
+"100005",2,2,"Phone"
+"100005",2,3,"Web Site"
+"100005",2,4,"Fax"
+"100009",1,1,"Fax"
+"100009",1,2,"Cell"
+"100010",1,1,"Cell"
+"100010",1,2,"Email"
+"100010",1,3,"Phone"
+MQJ: Joining 6 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id","p_contact_id","ctype","ltype","cn"
+"100001",1,1,"Web Site","Vacation","United States"
+"100004",2,1,"Cell","Home","Mexico"
+"100004",2,2,"Email","Home","Mexico"
+"100004",2,3,"Phone","Home","Mexico"
+"100005",2,1,"Email","Home","United States"
+"100005",2,2,"Phone","Home","United States"
+"100005",2,3,"Web Site","Home","United States"
+"100005",2,4,"Fax","Home","United States"
+"100009",1,1,"Fax","Vacation","United States"
+"100009",1,2,"Cell","Vacation","United States"
+"100013",1,1,"Web Site","Home","United States"
+"100013",2,1,"Web Site","Work","United States"
+"100013",3,1,"Web Site","Vacation","United States"
+"100015",1,1,"Cell","Vacation","Canada"
+"100015",1,2,"Email","Vacation","Canada"
+"100015",1,3,"Phone","Vacation","Canada"
+"100018",1,1,"Web Site","Home","United States"
+"100018",2,1,"Web Site","Home","United States"
+"100019",1,1,"Fax","Home","United States"
+"100019",1,2,"Cell","Home","United States"
+"100019",2,1,"Fax","Work","United States"
+"100019",2,2,"Cell","Work","United States"
+"100019",3,1,"Fax","Vacation","United States"
+"100019",3,2,"Cell","Vacation","United States"
+"p_partner_key","p_location_id","p_contact_id","ctype","ltype","cn"
+"100001",1,1,"Web Site","Vacation","United States"
+"100004",2,1,"Cell","Home","Mexico"
+"100004",2,2,"Email","Home","Mexico"
+"100004",2,3,"Phone","Home","Mexico"
+"100005",2,1,"Email","Home","United States"
+"100005",2,2,"Phone","Home","United States"
+"100005",2,3,"Web Site","Home","United States"
+"100005",2,4,"Fax","Home","United States"
+"100009",1,1,"Fax","Vacation","United States"
+"100009",1,2,"Cell","Vacation","United States"
+"100013",1,1,"Web Site","Home","United States"
+"100013",2,1,"Web Site","Work","United States"
+"100013",3,1,"Web Site","Vacation","United States"
+"100015",1,1,"Cell","Vacation","Canada"
+"100015",1,2,"Email","Vacation","Canada"
+"100015",1,3,"Phone","Vacation","Canada"
+"100018",1,1,"Web Site","Home","United States"
+"100018",2,1,"Web Site","Home","United States"
+"100019",1,1,"Fax","Home","United States"
+"100019",1,2,"Cell","Home","United States"
+"100019",2,1,"Fax","Work","United States"
+"100019",2,2,"Cell","Work","United States"
+"100019",3,1,"Fax","Vacation","United States"
+"100019",3,2,"Cell","Vacation","United States"
+MQJ: Joining 5 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id","p_contact_id","d_key","p_nondup_partner_key"
+"100011",1,1,"100011","100012"
+"100011",1,2,"100011","100012"
+"100011",1,3,"100011","100012"
+"100011",1,4,"100011","100012"
+"100011",2,1,"100011","100012"
+"100011",2,2,"100011","100012"
+"100011",2,3,"100011","100012"
+"100011",2,4,"100011","100012"
+"p_partner_key","p_location_id","p_contact_id","d_key","p_nondup_partner_key"
+"100011",1,1,"100011","100012"
+"100011",1,2,"100011","100012"
+"100011",1,3,"100011","100012"
+"100011",1,4,"100011","100012"
+"100011",2,1,"100011","100012"
+"100011",2,2,"100011","100012"
+"100011",2,3,"100011","100012"
+"100011",2,4,"100011","100012"
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/a_transaction/rows'.
+"a_batch_number","a_transaction_number","a_acct_desc","a_amount"
+1,1,"Checking",$250.00
+1,2,"Donations",-$250.00
+1,3,"Supplies",$75.50
+1,4,"Other Income",-$12.25
+1,5,"Checking",$1000.00
+1,6,"Salaries",-$1000.00
+2,1,"Checking",$500.00
+2,2,"Donations",-$500.00
+2,3,"Supplies",$151.00
+2,4,"Other Income",-$24.50
+2,5,"Checking",$2000.00
+2,6,"Salaries",-$2000.00
+3,1,"Checking",$750.00
+3,2,"Donations",-$750.00
+3,3,"Supplies",$226.50
+3,4,"Other Income",-$36.75
+3,5,"Checking",$3000.00
+3,6,"Salaries",-$3000.00
+"a_batch_number","a_transaction_number","a_acct_desc","a_amount"
+1,1,"Checking",$250.00
+1,2,"Donations",-$250.00
+1,3,"Supplies",$75.50
+1,4,"Other Income",-$12.25
+1,5,"Checking",$1000.00
+1,6,"Salaries",-$1000.00
+2,1,"Checking",$500.00
+2,2,"Donations",-$500.00
+2,3,"Supplies",$151.00
+2,4,"Other Income",-$24.50
+2,5,"Checking",$2000.00
+2,6,"Salaries",-$2000.00
+3,1,"Checking",$750.00
+3,2,"Donations",-$750.00
+3,3,"Supplies",$226.50
+3,4,"Other Income",-$36.75
+3,5,"Checking",$3000.00
+3,6,"Salaries",-$3000.00
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id"
+"100001",1
+"100002",1
+"100004",1
+"100004",2
+"100005",1
+"100005",1
+"100005",2
+"100006",1
+"100006",2
+"100006",3
+"100009",1
+"100010",1
+"100011",1
+"100011",2
+"100012",1
+"100012",2
+"100013",1
+"100013",2
+"100013",3
+"p_partner_key","p_location_id"
+"100001",1
+"100002",1
+"100004",1
+"100004",2
+"100005",1
+"100005",1
+"100005",2
+"100006",1
+"100006",2
+"100006",3
+"100009",1
+"100010",1
+"100011",1
+"100011",2
+"100012",1
+"100012",2
+"100013",1
+"100013",2
+"100013",3

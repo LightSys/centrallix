@@ -46,6 +46,17 @@ messages accordingly.  Those error messages will display in dark blue, as
 opposed to an output mismatch in dark red.
 
 
+== MYSQL TESTS ==
+
+The test_sql_mysql* tests query the MySQL database /tests/Test_DB.  Create it
+once, as a MySQL administrator:
+
+    $ sudo mysql < tests/mysql_test_db.sql
+
+This (re)creates the Centrallix_Test database with synthetic data, and a
+cxtest MySQL login that can only read it.  Without it, these tests fail.
+
+
 == CREATING TEST SUITE ENTRIES - test_obj BASED ==
 
 Each test suite item should have two files:

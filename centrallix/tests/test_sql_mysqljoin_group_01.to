@@ -1,0 +1,24 @@
+##NAME GROUP BY string keys
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# group_given_name_trailing_space
+csv select g = :p:p_given_name, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_given_name >= 'Al' and :p:p_given_name < 'Am' group by :p:p_given_name order by :p:p_given_name, char_length(:p:p_given_name)
+csv set passthrough 0 select g = :p:p_given_name, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_given_name >= 'Al' and :p:p_given_name < 'Am' group by :p:p_given_name order by :p:p_given_name, char_length(:p:p_given_name)
+
+# group_surname_all
+csv select s = :p:p_surname, n = count(1), mx = max(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :p:p_surname order by :p:p_surname, char_length(:p:p_surname), ascii(isnull(:p:p_surname, ''))
+csv set passthrough 0 select s = :p:p_surname, n = count(1), mx = max(:l:p_location_id) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key group by :p:p_surname order by :p:p_surname, char_length(:p:p_surname), ascii(isnull(:p:p_surname, ''))
+
+# group_by_trailing_space_city
+csv select c = :l:p_city, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_city >= 'Colorado' and :l:p_city < 'Coloradp' group by :l:p_city order by :l:p_city, char_length(:l:p_city)
+csv set passthrough 0 select c = :l:p_city, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_city >= 'Colorado' and :l:p_city < 'Coloradp' group by :l:p_city order by :l:p_city, char_length(:l:p_city)
+
+# group_given_name_andrew_tie_order
+csv select g = :p:p_given_name, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_given_name >= 'Al' and :p:p_given_name < 'Andrf' group by :p:p_given_name order by :p:p_given_name, char_length(:p:p_given_name)
+csv set passthrough 0 select g = :p:p_given_name, n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:p_given_name >= 'Al' and :p:p_given_name < 'Andrf' group by :p:p_given_name order by :p:p_given_name, char_length(:p:p_given_name)
+
+# group_given_name_lee_later_source_key
+csv select g = :p:p_given_name, n = count(1) from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :p:p_partner_key = :l:p_partner_key and :p:p_given_name >= 'Lee' and :p:p_given_name < 'Lef' and :l:p_revision_id = 0 group by :p:p_given_name order by :p:p_given_name
+csv set passthrough 0 select g = :p:p_given_name, n = count(1) from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_partner/rows p where :p:p_partner_key = :l:p_partner_key and :p:p_given_name >= 'Lee' and :p:p_given_name < 'Lef' and :l:p_revision_id = 0 group by :p:p_given_name order by :p:p_given_name

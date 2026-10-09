@@ -230,6 +230,8 @@ The driver should implement an `Initialize()` function, as well as the following
 | [QueryFetch](#function-queryfetch)**                      | Open the next child object in the query's result set.
 | [QueryCreate](#function-querycreate)                      | Currently just a stub function that is not fully implemented.
 | [QueryClose](#function-queryclose)**                      | Close an open query.
+| [OpenJoinQuery](#joined-queries)                          | Start a query that joins the child objects of several objects.
+| [QueryFetchJoin](#joined-queries)                         | Open the next row of child objects in a joined query's result set.
 | [Read](#function-read)*                                   | Read content from the object.
 | [Write](#function-write)*                                 | Write content to the object.
 | [GetAttrType](#function-getattrtype)*                     | Get the type of a given object's attribute.
@@ -320,6 +322,8 @@ The capabilities field is a bitmask which can contain zero or more of the follow
   - > **THE ABOVE IS OUT-OF-DATE** (May 16th, 2022): A driver can now determine whether to handle the `Where` and `OrderBy` on a per-query basis, by setting values in the ObjQuery structure used when opening a new query.  This allows a driver to handle `Where` and `OrderBy` selectively for some object listings but not others.
 
 - `OBJDRV_C_TRANS`: Indicates that this objectsystem driver requires transaction management by the OSML's transaction layer (the OXT layer).  OS drivers that require this normally are those that for some reason cannot complete operations in independence from one another.  For example, with a database driver, the creation of a new row object and the setting of its attributes must be done as one operation, although the operation requires several calls from the end user's process.  The OXT allows for the grouping of objectsystem calls so that the os driver does not have to complete them independently, but instead can wait until several calls have been made before actually completing the operation.
+
+- `OBJDRV_C_JOIN`: Indicates that this objectsystem driver can join the subobjects of several of its objects in one query, through the `OpenJoinQuery()` and `QueryFetchJoin()` entry points (see [Joined Queries](#joined-queries)).
 
 #### Registering the Driver Struct
 When all values within the structure have been initialized, the driver should call the OSML to register itself, using the `objRegisterDriver()` function:
@@ -599,6 +603,14 @@ The `QueryCreate()` function is just a stub function that is not fully implement
 int xxxQueryClose(void* qy_v, pObjTrxTree* oxt);
 ```
 The `QueryClose()` function closes a query instance, freeing all allocated data and releasing all shared memory such as open connections, files, or other driver instances.  This function operates very similarly to `Close()`, documented in detail above.  The query should be closed, whether or not `QueryFetch()` has been called enough times to enumerate all of the query results.
+
+
+### Joined Queries
+A driver with `OBJDRV_C_JOIN` also implements `OpenJoinQuery()` and `QueryFetchJoin()`, which the OSML calls for `objOpenJoinQuery()` and `objQueryFetchJoin()`.  `QueryClose()` closes joined queries too.
+
+`OpenJoinQuery()` is passed an array of the sources' `inf_v` values, the array of `ObjJoinSource` and its length, the `pObjQuery`, a `void**` to set to the new `qy_v`, and `oxt`.  Each source's `Tree` may reference its own subobjects and those of earlier sources, by `ObjID`.  It returns 1 if the query is open, 0 if the driver cannot join these sources (with no error), or -1 on error.  A driver must return 0 unless its rows exactly match those of querying each source in turn with the earlier sources' values filled in.
+
+`QueryFetchJoin()` is passed `qy_v`, an array of new objects (one per source, set up as for `QueryFetch()`), an array to fill with each source's `inf_v`, the open mode, and `oxt`.  An `OBJ_JS_F_OUTER` source with no matching row gets `NULL`.  It returns 1 on a row, 0 at the end of the results, or -1 on error.
 
 
 ### Object Attributes

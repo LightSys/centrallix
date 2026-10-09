@@ -450,6 +450,7 @@ objInitialize()
 
 	nmRegister(sizeof(Object),"Object");
 	nmRegister(sizeof(ObjQuery),"ObjQuery");
+	nmRegister(sizeof(ObjQueryJoin),"ObjQueryJoin");
 	nmRegister(sizeof(ObjDriver),"ObjDriver");
 	nmRegister(sizeof(Pathname),"Pathname");
 	nmRegister(sizeof(DateTime),"DateTime");

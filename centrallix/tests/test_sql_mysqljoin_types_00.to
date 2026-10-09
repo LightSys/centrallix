@@ -1,0 +1,28 @@
+##NAME Mixed column types
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# type_string_vs_int_loc_id
+csv select :c:p_partner_key, :c:p_contact_id, cl = :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id = :l:p_location_id and :c:p_partner_key >= '100000' and :c:p_partner_key < '100020' and :l:p_revision_id = 0 order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+csv set passthrough 0 select :c:p_partner_key, :c:p_contact_id, cl = :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id = :l:p_location_id and :c:p_partner_key >= '100000' and :c:p_partner_key < '100020' and :l:p_revision_id = 0 order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+
+# type_int_vs_string_phone_country
+csv select :ci:p_partner_key, :ci:p_contact_id, :ci:p_phone_country, :c:p_country_code from /tests/Test_DB/p_contact_info/rows ci, /tests/Test_DB/p_country/rows c where :c:p_phone_code = :ci:p_phone_country and :ci:p_partner_key >= '100000' and :ci:p_partner_key < '100015' order by :ci:p_partner_key, :ci:p_contact_id, :c:p_country_code
+csv set passthrough 0 select :ci:p_partner_key, :ci:p_contact_id, :ci:p_phone_country, :c:p_country_code from /tests/Test_DB/p_contact_info/rows ci, /tests/Test_DB/p_country/rows c where :c:p_phone_code = :ci:p_phone_country and :ci:p_partner_key >= '100000' and :ci:p_partner_key < '100015' order by :ci:p_partner_key, :ci:p_contact_id, :c:p_country_code
+
+# type_string_ge_int
+csv select :c:p_partner_key, :c:p_contact_id, :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id >= :l:p_location_id and :l:p_revision_id = 0 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100015' order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+csv set passthrough 0 select :c:p_partner_key, :c:p_contact_id, :c:p_location_id, ll = :l:p_location_id from /tests/Test_DB/p_contact_info/rows c, /tests/Test_DB/p_location/rows l where :c:p_partner_key = :l:p_partner_key and :c:p_location_id >= :l:p_location_id and :l:p_revision_id = 0 and :c:p_partner_key >= '100000' and :c:p_partner_key < '100015' order by :c:p_partner_key, :c:p_contact_id, :l:p_location_id
+
+# type_int_vs_int_ids
+csv select :l:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :c:p_contact_id = :l:p_location_id and :l:p_partner_key = :c:p_partner_key and :l:p_partner_key >= '100000' and :l:p_partner_key < '100035' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+csv set passthrough 0 select :l:p_partner_key, :l:p_location_id, :c:p_contact_id from /tests/Test_DB/p_location/rows l, /tests/Test_DB/p_contact_info/rows c where :c:p_contact_id = :l:p_location_id and :l:p_partner_key = :c:p_partner_key and :l:p_partner_key >= '100000' and :l:p_partner_key < '100035' order by :l:p_partner_key, :l:p_location_id, :l:p_revision_id, :c:p_contact_id
+
+# money_eq_cross_table
+csv select :t:a_batch_number, :t:a_transaction_number, :t:a_amount, gi = :g:a_amount from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_subtrx_gift_item/rows g where :t:a_amount = :g:a_amount order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :g:a_batch_number, :g:a_gift_number, :g:a_split_number
+csv set passthrough 0 select :t:a_batch_number, :t:a_transaction_number, :t:a_amount, gi = :g:a_amount from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_subtrx_gift_item/rows g where :t:a_amount = :g:a_amount order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :g:a_batch_number, :g:a_gift_number, :g:a_split_number
+
+# money_gt_cross_table
+csv select :t:a_transaction_number, :t:a_amount, gi = :g:a_amount from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_subtrx_gift_item/rows g where :t:a_amount > :g:a_amount order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :g:a_batch_number, :g:a_gift_number, :g:a_split_number
+csv set passthrough 0 select :t:a_transaction_number, :t:a_amount, gi = :g:a_amount from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_subtrx_gift_item/rows g where :t:a_amount > :g:a_amount order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :g:a_batch_number, :g:a_gift_number, :g:a_split_number

@@ -1,0 +1,40 @@
+##NAME Datetime comparisons
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# inner3_acct_fund_period_datetime_ge
+csv select :t:a_transaction_number, :f:a_fund_desc, :pe:a_period, :t:a_effective_date, :pe:a_start_date from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_fund/rows f, /tests/Test_DB/a_period/rows pe where :f:a_ledger_number = :t:a_ledger_number and :f:a_fund = :t:a_fund and :pe:a_ledger_number = :t:a_ledger_number and :t:a_effective_date >= :pe:a_start_date and :t:a_effective_date <= :pe:a_end_date and :pe:a_summary_only = 0 order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :pe:a_period
+csv set passthrough 0 select :t:a_transaction_number, :f:a_fund_desc, :pe:a_period, :t:a_effective_date, :pe:a_start_date from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_fund/rows f, /tests/Test_DB/a_period/rows pe where :f:a_ledger_number = :t:a_ledger_number and :f:a_fund = :t:a_fund and :pe:a_ledger_number = :t:a_ledger_number and :t:a_effective_date >= :pe:a_start_date and :t:a_effective_date <= :pe:a_end_date and :pe:a_summary_only = 0 order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :pe:a_period
+
+# datetime_eq_selfjoin
+csv select p1 = :p1:a_period, p2 = :p2:a_period, :p1:a_start_date from /tests/Test_DB/a_period/rows p1, /tests/Test_DB/a_period/rows p2 where :p1:a_start_date = :p2:a_start_date and :p1:a_period < :p2:a_period order by :p1:a_period, :p2:a_period
+csv set passthrough 0 select p1 = :p1:a_period, p2 = :p2:a_period, :p1:a_start_date from /tests/Test_DB/a_period/rows p1, /tests/Test_DB/a_period/rows p2 where :p1:a_start_date = :p2:a_start_date and :p1:a_period < :p2:a_period order by :p1:a_period, :p2:a_period
+
+# datetime_containment_two_cmp
+csv select inner_p = :p1:a_period, outer_p = :p2:a_period from /tests/Test_DB/a_period/rows p1, /tests/Test_DB/a_period/rows p2 where :p1:a_start_date >= :p2:a_start_date and :p1:a_end_date <= :p2:a_end_date and :p1:a_period != :p2:a_period order by :p1:a_period, :p2:a_period
+csv set passthrough 0 select inner_p = :p1:a_period, outer_p = :p2:a_period from /tests/Test_DB/a_period/rows p1, /tests/Test_DB/a_period/rows p2 where :p1:a_start_date >= :p2:a_start_date and :p1:a_end_date <= :p2:a_end_date and :p1:a_period != :p2:a_period order by :p1:a_period, :p2:a_period
+
+# datetime_trx_eq_period_end
+csv select :t:a_transaction_number, :pe:a_period, :pe:a_end_date, :t:a_effective_date from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_period/rows pe where :t:a_effective_date < :pe:a_end_date and :pe:a_summary_only = 0 and :pe:a_period >= '2011.03' and :pe:a_period <= '2011.04' order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :pe:a_period
+csv set passthrough 0 select :t:a_transaction_number, :pe:a_period, :pe:a_end_date, :t:a_effective_date from /tests/Test_DB/a_transaction/rows t, /tests/Test_DB/a_period/rows pe where :t:a_effective_date < :pe:a_end_date and :pe:a_summary_only = 0 and :pe:a_period >= '2011.03' and :pe:a_period <= '2011.04' order by :t:a_batch_number, :t:a_journal_number, :t:a_transaction_number, :pe:a_period
+
+# datetime_created_eq_partner_location
+csv select :p:p_partner_key, :l:p_location_id, :p:s_date_created from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:s_date_created = :l:s_date_created and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, :p:s_date_created from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:s_date_created = :l:s_date_created and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# datetime_created_lt_cross_no_key
+csv select k1 = :p:p_partner_key, k2 = :c:p_partner_key, :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c where :c:s_date_created < :p:s_date_created and :p:p_partner_key >= '100000' and :p:p_partner_key < '100012' and :c:p_partner_key >= '100000' and :c:p_partner_key < '100006' order by :p:p_partner_key, :c:p_partner_key, :c:p_contact_id
+csv set passthrough 0 select k1 = :p:p_partner_key, k2 = :c:p_partner_key, :c:p_contact_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_contact_info/rows c where :c:s_date_created < :p:s_date_created and :p:p_partner_key >= '100000' and :p:p_partner_key < '100012' and :c:p_partner_key >= '100000' and :c:p_partner_key < '100006' order by :p:p_partner_key, :c:p_partner_key, :c:p_contact_id
+
+# datetime_vs_period_start
+csv select :p:p_partner_key, :pe:a_period, :p:s_date_created, :pe:a_start_date from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/a_period/rows pe where :p:s_date_created >= :pe:a_start_date and :p:s_date_created <= :pe:a_end_date and :pe:a_summary_only = 0 and :p:p_partner_key >= '100020' and :p:p_partner_key < '100045' order by :p:p_partner_key, :pe:a_period
+csv set passthrough 0 select :p:p_partner_key, :pe:a_period, :p:s_date_created, :pe:a_start_date from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/a_period/rows pe where :p:s_date_created >= :pe:a_start_date and :p:s_date_created <= :pe:a_end_date and :pe:a_summary_only = 0 and :p:p_partner_key >= '100020' and :p:p_partner_key < '100045' order by :p:p_partner_key, :pe:a_period
+
+# datetime_created_between_ranges_group
+csv select mo = datepart(month, :p:s_date_created), n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:s_date_created >= :p:s_date_created group by datepart(month, :p:s_date_created) order by datepart(month, :p:s_date_created)
+csv set passthrough 0 select mo = datepart(month, :p:s_date_created), n = count(1) from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:s_date_created >= :p:s_date_created group by datepart(month, :p:s_date_created) order by datepart(month, :p:s_date_created)
+
+# datetime_le_p_dup_vs_partner
+csv select :d:p_partner_key, :d:p_dup_partner_key, :d:s_date_created from /tests/Test_DB/p_dup/rows d, /tests/Test_DB/p_partner/rows p where :p:p_partner_key = :d:p_partner_key and :p:s_date_created <= :d:s_date_created and :d:p_partner_key < '100100' order by :d:p_partner_key, :d:p_dup_partner_key
+csv set passthrough 0 select :d:p_partner_key, :d:p_dup_partner_key, :d:s_date_created from /tests/Test_DB/p_dup/rows d, /tests/Test_DB/p_partner/rows p where :p:p_partner_key = :d:p_partner_key and :p:s_date_created <= :d:s_date_created and :d:p_partner_key < '100100' order by :d:p_partner_key, :d:p_dup_partner_key

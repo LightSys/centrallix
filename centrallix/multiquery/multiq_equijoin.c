@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -65,6 +65,7 @@
 
 #define MQJ_MAX_JOIN		(EXPR_MAX_PARAMS)
 #define MQJ_MAX_SOURCE		(EXPR_MAX_PARAMS)
+#define MQJ_MAX_GROUP		(OBJSYS_MAX_JOIN)
 
 
 /*** Globals ***/
@@ -104,6 +105,30 @@ typedef enum
     }
     MqjJoinExecState;
 
+/*** A run of sources that their driver may be able to join itself, as one
+ *** joined query (objOpenJoinQuery()).  The first source fetches each joined
+ *** row, and each other source then takes its own object from that row.
+ ***/
+typedef struct
+    {
+    int			First;			/* index in Sources of the first source */
+    int			nSources;
+    int			Declined;		/* driver could not join; use nested iteration */
+    pObjQuery		Query;			/* joined query, while the first source runs */
+    pObject		RowObjs[MQJ_MAX_GROUP];	/* row objects not yet taken by their source */
+    pExpression		AndExp[MQJ_MAX_GROUP];	/* source's criteria ANDed with the join's */
+    pExpression		AndParents[MQJ_MAX_GROUP][2];	/* Parent of each AndExp child before */
+    }
+    MqjGroup, *pMqjGroup;
+
+typedef enum
+    {
+    MqjGroupNone,		/* source runs by itself */
+    MqjGroupRowPending,		/* source runs from its group; row not taken yet */
+    MqjGroupRowTaken		/* source runs from its group; row taken */
+    }
+    MqjGroupState;
+
 typedef struct
     {
     pExpression		Constraint;
@@ -117,6 +142,8 @@ typedef struct
     MqjJoinExecState	State;
     pQueryElement	QE;
     int			NonEmpty;
+    pMqjGroup		Group;			/* group this source is in, if any */
+    MqjGroupState	GroupState;		/* for sources other than the group's first */
     }
     MqjJoinExec, *pMqjJoinExec;
 
@@ -291,6 +318,135 @@ mqj_internal_PrintMask(int mask, pMqjSource sources[], int n_sources)
 		fprintf(stderr, "%s%s", first?"":" ", sources[i]->FromItem->Presentation);
 		first = 0;
 		}
+	    }
+
+    return 0;
+    }
+
+
+/*** mqj_internal_IsSimpleSource - check whether a source is a plain query
+ *** on one object, which its driver could join with others.
+ ***/
+int
+mqj_internal_IsSimpleSource(pMqjJoinExec src)
+    {
+    pQueryStructure from_item = (pQueryStructure)(src->QE->QSLinkage);
+
+	if (!from_item || strncmp(src->QE->Driver->Name, "MQP", 3) != 0 || src->NonEmpty)
+	    return 0;
+	if (src->QE->Flags & (MQ_EF_FROMSUBTREE | MQ_EF_INCLSUBTREE | MQ_EF_PRUNESUBTREE | MQ_EF_FROMOBJECT | MQ_EF_WILDCARD | MQ_EF_PAGED))
+	    return 0;
+	if (from_item->Flags & (MQ_SF_EXPRESSION | MQ_SF_COLLECTION))
+	    return 0;
+
+    return 1;
+    }
+
+
+/*** mqj_internal_FindGroups - find runs of sources whose nested iteration
+ *** gives the same rows as one SQL-style join of them: "s0 JOIN s1 ON c1
+ *** LEFT JOIN s2 ON c2 ...".  Nested iteration can cut a source's rows short
+ *** (NONEMPTY, an outer source's NULL row, reverse dependencies), which one
+ *** joined query cannot copy, so the checks below keep that out of a run.
+ *** Returns 0 on success, or -1 on error.
+ ***/
+int
+mqj_internal_FindGroups(pQueryStatement stmt, pMqjJoinData md)
+    {
+    pMqjJoinExec src, later;
+    pMqjGroup group;
+    unsigned int group_mask, tail_mask;
+    int first, next, first_outer, j;
+    int n = md->Sources.nItems;
+
+	/** SET PASSTHROUGH 0 **/
+	if (stmt->Query->Flags & MQ_F_NOPASSTHROUGH)
+	    return 0;
+
+	/** Writes would be seen by later sources in nested iteration **/
+	if ((stmt->Flags & MQ_TF_ONEASSIGN) ||
+		mq_internal_FindItem(stmt->QTree, MQ_T_UPDATECLAUSE, NULL) || mq_internal_FindItem(stmt->QTree, MQ_T_DELETECLAUSE, NULL) ||
+		mq_internal_FindItem(stmt->QTree, MQ_T_INSERTCLAUSE, NULL) || mq_internal_FindItem(stmt->QTree, MQ_T_ONDUPCLAUSE, NULL))
+	    return 0;
+
+	/** Nested iteration finds the first row without running the whole join **/
+	if ((stmt->Query->Flags & MQ_F_ONEROW) || (stmt->LimitStart == 0 && stmt->LimitCnt == 1))
+	    return 0;
+
+	for(first=0; first<n; first=next)
+	    {
+	    /** First source must always have a row **/
+	    next = first + 1;
+	    src = (pMqjJoinExec)md->Sources.Items[first];
+	    if (!mqj_internal_IsSimpleSource(src) || (md->CanBeOuterMask & src->CoverageMask))
+		continue;
+	    group_mask = src->CoverageMask;
+	    first_outer = -1;
+
+	    /** Add the sources that follow, while they fit **/
+	    while(next < n && next - first < MQJ_MAX_GROUP)
+		{
+		/** Simple, and depends on no source outside the run that could be NULL **/
+		src = (pMqjJoinExec)md->Sources.Items[next];
+		if (!mqj_internal_IsSimpleSource(src) || (src->DependencyMask & ~group_mask & md->CanBeOuterMask))
+		    break;
+
+		/** An empty NONEMPTY source skips this source's other rows **/
+		if (next + 1 < n && ((pMqjJoinExec)md->Sources.Items[next + 1])->NonEmpty)
+		    break;
+
+		/** Outer source: later sources must depend on others, never on it **/
+		if (md->CanBeOuterMask & src->CoverageMask)
+		    {
+		    if (!src->OuterMask)
+			break;
+		    for(j=next+1; j<n; j++)
+			{
+			later = (pMqjJoinExec)md->Sources.Items[j];
+			if ((later->DependencyMask & src->CoverageMask) || later->DependencyMask == 0)
+			    break;
+			}
+		    if (j < n)
+			break;
+		    if (first_outer < 0)
+			first_outer = next;
+		    }
+		group_mask |= src->CoverageMask;
+		next++;
+		}
+
+	    /** Outer members only in a run that ends the join **/
+	    if (next < n && first_outer >= 0)
+		next = first_outer;
+	    if (next - first < 2)
+		continue;
+
+	    /** Sources after the run **/
+	    tail_mask = 0;
+	    for(j=next; j<n; j++)
+		tail_mask |= ((pMqjJoinExec)md->Sources.Items[j])->CoverageMask;
+
+	    /** From the first of them that can be NULL, each must be outer joined or depend only on them **/
+	    for(j=next; j<n && !(md->CanBeOuterMask & ((pMqjJoinExec)md->Sources.Items[j])->CoverageMask); j++)
+		;
+	    for(; j<n; j++)
+		{
+		later = (pMqjJoinExec)md->Sources.Items[j];
+		if (!later->OuterMask && (later->DependencyMask & ~tail_mask))
+		    break;
+		}
+	    if (j < n)
+		continue;
+
+	    /** Record the group **/
+	    group = (pMqjGroup)nmMalloc(sizeof(MqjGroup));
+	    if (!group)
+		return -1;
+	    memset(group, 0, sizeof(MqjGroup));
+	    group->First = first;
+	    group->nSources = next - first;
+	    for(j=first; j<next; j++)
+		((pMqjJoinExec)md->Sources.Items[j])->Group = group;
 	    }
 
     return 0;
@@ -766,6 +922,10 @@ mqjAnalyze(pQueryStatement stmt)
 		    printf("(no constraint)\n");*/
 		}
 
+	    /** Runs of sources that their driver may join itself **/
+	    if (mqj_internal_FindGroups(stmt, md) < 0)
+		goto error;
+
 	    /** Now link in to the query exec tree **/
 	    stmt->Tree = qe;
 	    }
@@ -910,10 +1070,293 @@ mqjStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    {
 	    src = (pMqjJoinExec)md->Sources.Items[i];
 	    src->ReturnIterCnt = 0;
+	    src->GroupState = MqjGroupNone;
 	    mqj_internal_SetState(md, i, MqjStateNotStarted);
 	    }
 
     return 0;
+    }
+
+
+/*** mqj_internal_SetSourceObj - replace a source's current object, closing
+ *** the previous one.
+ ***/
+void
+mqj_internal_SetSourceObj(pQueryStatement stmt, int src_index, pObject obj)
+    {
+    pParamObjects objlist = stmt->Query->ObjList;
+
+	if (objlist->Objects[src_index])
+	    objClose(objlist->Objects[src_index]);
+	expModifyParamByID(objlist, src_index, obj);
+
+    return;
+    }
+
+
+/*** mqj_internal_CloseGroup - close a group's joined query and everything
+ *** opened for it, including the rows its sources have not taken yet.
+ ***/
+void
+mqj_internal_CloseGroup(pQueryStatement stmt, pMqjJoinData md, pMqjGroup group)
+    {
+    pExpression child;
+    int i, j;
+
+	/** The query, its current row, and rows not taken **/
+	if (group->Query)
+	    {
+	    mqj_internal_SetSourceObj(stmt, ((pMqjJoinExec)md->Sources.Items[group->First])->SrcIndex, NULL);
+	    objQueryClose(group->Query);
+	    group->Query = NULL;
+	    }
+	for(i=1; i<group->nSources; i++)
+	    {
+	    if (group->RowObjs[i])
+		objClose(group->RowObjs[i]);
+	    group->RowObjs[i] = NULL;
+	    }
+
+	/** Criteria it ran on **/
+	for(i=0; i<group->nSources; i++)
+	    {
+	    if (group->AndExp[i])
+		{
+		for(j=group->AndExp[i]->Children.nItems-1; j>=0; j--)
+		    {
+		    child = (pExpression)(group->AndExp[i]->Children.Items[j]);
+		    child->Parent = group->AndParents[i][j];
+		    xaRemoveItem(&group->AndExp[i]->Children, j);
+		    }
+		expFreeExpression(group->AndExp[i]);
+		group->AndExp[i] = NULL;
+		}
+	    }
+
+    return;
+    }
+
+
+/*** mqj_internal_OpenGroup - try to have the driver run a group's sources
+ *** as one joined query.  If it cannot, the group is marked Declined, and
+ *** its sources run by nested iteration from then on.  Returns 1 if the
+ *** joined query is open, 0 if not.
+ ***/
+int
+mqj_internal_OpenGroup(pQueryStatement stmt, pMqjJoinData md, pMqjGroup group)
+    {
+    ObjJoinSource sources[MQJ_MAX_GROUP];
+    pObject objs[MQJ_MAX_GROUP];
+    pMqjJoinExec src;
+    pParamObjects objlist = stmt->Query->ObjList;
+    unsigned int group_mask = 0;
+    XString err;
+    int mode = (stmt->Flags & MQ_TF_ALLOWUPDATE)?O_RDWR:O_RDONLY;
+    int i, id;
+    int rval = -1;
+
+	/** Still open if the first source was restarted without finishing **/
+	mqj_internal_CloseGroup(stmt, md, group);
+
+	for(i=0; i<group->nSources; i++)
+	    {
+	    objs[i] = NULL;
+	    group_mask |= ((pMqjJoinExec)md->Sources.Items[group->First + i])->CoverageMask;
+	    }
+
+	for(i=0; i<group->nSources; i++)
+	    {
+	    src = (pMqjJoinExec)md->Sources.Items[group->First + i];
+
+	    /** Object the source queries **/
+	    objs[i] = objOpen(stmt->Query->SessionID, ((pQueryStructure)(src->QE->QSLinkage))->Source, mode, 0600, "system/directory");
+	    if (!objs[i])
+		goto end;
+	    objUnmanageObject(stmt->Query->SessionID, objs[i]);
+
+	    /** Values from sources outside the group are constants **/
+	    if (src->Constraint)
+		{
+		for(id=0; id<objlist->nObjects; id++)
+		    {
+		    if (!(group_mask & (1<<id)) && expFreezeOne(src->Constraint, objlist, id) < 0)
+			goto end;
+		    }
+		}
+
+	    /** Criteria: the source's own, and those of the join **/
+	    if (src->QE->Constraint && src->Constraint)
+		{
+		group->AndExp[i] = expAllocExpression();
+		if (!group->AndExp[i])
+		    goto end;
+		group->AndExp[i]->NodeType = EXPR_N_AND;
+		group->AndParents[i][0] = src->QE->Constraint->Parent;
+		group->AndParents[i][1] = src->Constraint->Parent;
+		expAddNode(group->AndExp[i], src->QE->Constraint);
+		expAddNode(group->AndExp[i], src->Constraint);
+		sources[i].Tree = group->AndExp[i];
+		}
+	    else
+		{
+		sources[i].Tree = (src->QE->Constraint)?(src->QE->Constraint):(src->Constraint);
+		}
+
+	    sources[i].Obj = objs[i];
+	    sources[i].ObjID = src->SrcIndex;
+	    sources[i].SortBy = (src->QE->OrderBy[0])?((void**)(src->QE->OrderBy)):NULL;
+	    sources[i].Flags = (src->OuterMask)?OBJ_JS_F_OUTER:0;
+	    }
+
+	/** Try the joined query, which links the objects it keeps **/
+	rval = objOpenJoinQuery(sources, group->nSources, &group->Query);
+
+    end:
+	for(i=0; i<group->nSources; i++)
+	    if (objs[i])
+		objClose(objs[i]);
+	if (rval == 1)
+	    {
+	    objUnmanageQuery(stmt->Query->SessionID, group->Query);
+	    cxTestOutput(1, "MQJ: Joining %d sources in their driver, starting with '%s'.\n", group->nSources,
+		    ((pQueryStructure)(((pMqjJoinExec)md->Sources.Items[group->First])->QE->QSLinkage))->Source);
+	    }
+	else
+	    {
+	    if (rval < 0)
+		{
+		xsInit(&err);
+		mssUserError(&err);
+		fprintf(stderr, "Warning: Failed to join %d sources in their driver (%s); joining them by nested iteration.\n", group->nSources, xsString(&err));
+		xsDeInit(&err);
+		mssClearError();
+		}
+	    group->Declined = 1;
+	    mqj_internal_CloseGroup(stmt, md, group);
+	    }
+
+    return (rval == 1);
+    }
+
+
+/*** mqj_internal_SrcStart - start one source, from its group's joined query
+ *** if it can.  Returns 0 on success, or -1 on error.
+ ***/
+int
+mqj_internal_SrcStart(pQueryStatement stmt, pMqjJoinData md, int source_id)
+    {
+    pMqjJoinExec src = (pMqjJoinExec)md->Sources.Items[source_id];
+    pMqjGroup group = src->Group;
+
+	src->GroupState = MqjGroupNone;
+	if (group && !group->Declined)
+	    {
+	    if (source_id == group->First)
+		{
+		if (mqj_internal_OpenGroup(stmt, md, group))
+		    return 0;
+		}
+	    else if (group->Query)
+		{
+		src->GroupState = MqjGroupRowPending;
+		return 0;
+		}
+	    }
+
+    return src->QE->Driver->Start(src->QE, stmt, src->Constraint);
+    }
+
+
+/*** mqj_internal_SrcNextItem - get a source's next row.  A group's first
+ *** source fetches a joined row; each other source in it takes its object
+ *** from that row, which is its only row.  Returns 1 on a row, 0 if no more
+ *** rows, or -1 on error.
+ ***/
+int
+mqj_internal_SrcNextItem(pQueryStatement stmt, pMqjJoinData md, int source_id)
+    {
+    pMqjJoinExec src = (pMqjJoinExec)md->Sources.Items[source_id];
+    pMqjGroup group = src->Group;
+    pObject objs[MQJ_MAX_GROUP];
+    pObject obj;
+    int mode = (stmt->Flags & MQ_TF_ALLOWUPDATE)?O_RDWR:O_RDONLY;
+    int i, rval;
+
+	/** First source of a joined group: next joined row **/
+	if (group && source_id == group->First && group->Query)
+	    {
+	    for(i=1; i<group->nSources; i++)
+		{
+		if (group->RowObjs[i])
+		    objClose(group->RowObjs[i]);
+		group->RowObjs[i] = NULL;
+		}
+	    rval = objQueryFetchJoin(group->Query, mode, objs);
+	    if (rval == 1 && !objs[0])
+		{
+		mssError(1, "MQJ", "Joined query returned a row without one for its first source '%s'",
+			((pQueryStructure)(src->QE->QSLinkage))->Source);
+		for(i=1; i<group->nSources; i++)
+		    if (objs[i])
+			objClose(objs[i]);
+		rval = -1;
+		}
+	    if (rval != 1)
+		{
+		mqj_internal_SetSourceObj(stmt, src->SrcIndex, NULL);
+		return rval;
+		}
+	    for(i=0; i<group->nSources; i++)
+		{
+		if (objs[i])
+		    objUnmanageObject(stmt->Query->SessionID, objs[i]);
+		}
+	    mqj_internal_SetSourceObj(stmt, src->SrcIndex, objs[0]);
+	    for(i=1; i<group->nSources; i++)
+		group->RowObjs[i] = objs[i];
+	    return 1;
+	    }
+
+	/** Other source of a joined group: take its object **/
+	if (src->GroupState == MqjGroupRowPending)
+	    {
+	    obj = group->RowObjs[source_id - group->First];
+	    group->RowObjs[source_id - group->First] = NULL;
+	    src->GroupState = MqjGroupRowTaken;
+	    mqj_internal_SetSourceObj(stmt, src->SrcIndex, obj);
+	    return (obj != NULL);
+	    }
+	if (src->GroupState == MqjGroupRowTaken)
+	    {
+	    mqj_internal_SetSourceObj(stmt, src->SrcIndex, NULL);
+	    return 0;
+	    }
+
+    return src->QE->Driver->NextItem(src->QE, stmt);
+    }
+
+
+/*** mqj_internal_SrcFinish - finish one source, however it was started.
+ ***/
+int
+mqj_internal_SrcFinish(pQueryStatement stmt, pMqjJoinData md, int source_id)
+    {
+    pMqjJoinExec src = (pMqjJoinExec)md->Sources.Items[source_id];
+    pMqjGroup group = src->Group;
+
+	if (group && source_id == group->First && group->Query)
+	    {
+	    mqj_internal_CloseGroup(stmt, md, group);
+	    return 0;
+	    }
+	if (src->GroupState != MqjGroupNone)
+	    {
+	    mqj_internal_SetSourceObj(stmt, src->SrcIndex, NULL);
+	    src->GroupState = MqjGroupNone;
+	    return 0;
+	    }
+
+    return src->QE->Driver->Finish(src->QE, stmt);
     }
 
 
@@ -971,7 +1414,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 	if (null_dep_mask != 0 && !can_be_outer)
 	    {
 	    if (src->State == MqjStateStarted)
-		src->QE->Driver->Finish(src->QE, stmt);
+		mqj_internal_SrcFinish(stmt, md, source_id);
 	    mqj_internal_SetState(md, source_id, MqjStateFinished);
 	    return 0;
 	    }
@@ -982,7 +1425,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 	    src->ReturnIterCnt = 0;
 	    if (null_dep_mask == 0)
 		{
-		if (src->QE->Driver->Start(src->QE, stmt, src->Constraint) < 0)
+		if (mqj_internal_SrcStart(stmt, md, source_id) < 0)
 		    return -1;
 		mqj_internal_SetState(md, source_id, MqjStateStarted);
 		}
@@ -1003,10 +1446,10 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 		    /** Started -- retrieve row **/
 		    if (src->State == MqjStateStarted)
 			{
-			rval = src->QE->Driver->NextItem(src->QE, stmt);
+			rval = mqj_internal_SrcNextItem(stmt, md, source_id);
 			if (rval < 0 || rval == 0)
 			    {
-			    src->QE->Driver->Finish(src->QE, stmt);
+			    mqj_internal_SrcFinish(stmt, md, source_id);
 			    mqj_internal_SetState(md, source_id, MqjStateFinished);
 			    }
 			}
@@ -1057,7 +1500,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 				    {
 				    if (checksrc->State == MqjStateStarted)
 					{
-					checksrc->QE->Driver->Finish(checksrc->QE, stmt);
+					mqj_internal_SrcFinish(stmt, md, j);
 					if (src->State == MqjStateOuter)
 					    mqj_internal_SetState(md, j, MqjStateOuter);
 					else
@@ -1078,7 +1521,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 			/** Next source returned error **/
 			if (src->State == MqjStateStarted)
 			    {
-			    src->QE->Driver->Finish(src->QE, stmt);
+			    mqj_internal_SrcFinish(stmt, md, source_id);
 			    }
 			mqj_internal_SetState(md, source_id, MqjStateFinished);
 			return -1;
@@ -1090,7 +1533,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 			    /** Required non-empty sequential join, finish now. **/
 			    if (src->State == MqjStateStarted)
 				{
-				src->QE->Driver->Finish(src->QE, stmt);
+				mqj_internal_SrcFinish(stmt, md, source_id);
 				}
 			    mqj_internal_SetState(md, source_id, MqjStateFinished);
 			    return 0;
@@ -1164,7 +1607,7 @@ mqjFinish(pQueryElement qe, pQueryStatement stmt)
 	    src = (pMqjJoinExec)md->Sources.Items[i];
 	    if (src->State == MqjStateStarted)
 		{
-		src->QE->Driver->Finish(src->QE, stmt);
+		mqj_internal_SrcFinish(stmt, md, i);
 		mqj_internal_SetState(md, i, MqjStateFinished);
 		}
 	    }
@@ -1191,6 +1634,8 @@ mqjRelease(pQueryElement qe, pQueryStatement stmt)
 		src = (pMqjJoinExec)md->Sources.Items[i];
 		if (src->Constraint)
 		    expFreeExpression(src->Constraint);
+		if (src->Group && src->Group->First == i)
+		    nmFree(src->Group, sizeof(MqjGroup));
 		nmFree(src, sizeof(MqjJoinExec));
 		}
 	    xaDeInit(&md->Sources);
@@ -1218,6 +1663,7 @@ mqjInitialize()
 	nmRegister(sizeof(MqjSource), "MqjSource");
 	nmRegister(sizeof(MqjJoinData), "MqjJoinData");
 	nmRegister(sizeof(MqjJoinExec), "MqjJoinExec");
+	nmRegister(sizeof(MqjGroup), "MqjGroup");
 
 	/** Fill in the structure elements **/
 	strcpy(drv->Name, "MQJ - MultiQuery Join Module");

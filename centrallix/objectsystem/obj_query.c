@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2025 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -388,6 +388,12 @@ objQueryDelete(pObjQuery this)
 
 	ASSERTMAGIC(this, MGK_OBJQUERY);
 
+	if (this->Join)
+	    {
+	    mssError(1, "OSML", "objQueryDelete: joined queries do not support delete");
+	    return -1;
+	    }
+
     	/** Multiquery? **/
 	if (this->Drv) return this->Drv->QueryDelete(this->Data);
 
@@ -428,6 +434,12 @@ objQueryFetch(pObjQuery this, int mode)
     	ASSERTMAGIC(this,MGK_OBJQUERY);
 
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryFetch(%8.8lX:%3.3s)...", (long)this, this->Drv->Name);
+
+	if (this->Join)
+	    {
+	    mssError(1, "OSML", "objQueryFetch: use objQueryFetchJoin() on a joined query");
+	    return NULL;
+	    }
 
     	/** Multiquery? **/
 	if (this->Drv) 
@@ -587,6 +599,12 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
 
 	ASSERTMAGIC(this,MGK_OBJQUERY);
 
+	if (this->Join)
+	    {
+	    mssError(1, "OSML", "objQueryCreate: joined queries do not support create");
+	    return NULL;
+	    }
+
 	/** Duh. **/
 	mode |= OBJ_O_CREAT;
 
@@ -719,6 +737,14 @@ objQueryClose(pObjQuery this)
 	    xaRemoveItem(&(sess->OpenQueries), xaFindItem(&(sess->OpenQueries), (void*)this));
 	    }
 
+	/** Joined sources other than the first, which is this->Obj **/
+	if (this->Join)
+	    {
+	    for(i=1; i<this->Join->nSources; i++)
+		objClose(this->Join->Objs[i]);
+	    nmFree(this->Join, sizeof(ObjQueryJoin));
+	    }
+
 	/** Close the parent object (or, just unlink from it), if applicable **/
 	if (this->Obj) objClose(this->Obj);
 	
@@ -728,6 +754,187 @@ objQueryClose(pObjQuery this)
 	nmFree(this,sizeof(ObjQuery));
 
     return 0;
+    }
+
+
+/*** objOpenJoinQuery() - open one query across the subobjects of several
+ *** objects of a driver with OBJDRV_C_JOIN.  Rows are those of "s0 [LEFT] JOIN
+ *** s1 ON tree1 [LEFT] JOIN s2 ON tree2 ... WHERE tree0", ordered by each
+ *** source's SortBy in turn, where OBJ_JS_F_OUTER makes a LEFT JOIN.  The
+ *** trees and sort lists must stay valid until the query is closed.  Fetch
+ *** rows with objQueryFetchJoin().
+ ***
+ *** Returns 1 and sets *qy if opened, 0 if the driver cannot join these
+ *** sources, or -1 on error.
+ ***/
+int
+objOpenJoinQuery(pObjJoinSource sources, int n_sources, pObjQuery* qy)
+    {
+    pObjQuery this = NULL;
+    pObject first;
+    pObjDriver drv;
+    void* inf[OBJSYS_MAX_JOIN];
+    int i;
+    int rval = -1;
+
+	*qy = NULL;
+	if (n_sources < 2 || n_sources > OBJSYS_MAX_JOIN)
+	    {
+	    mssError(1, "OSML", "objOpenJoinQuery: cannot join %d sources (must be 2 to %d)", n_sources, OBJSYS_MAX_JOIN);
+	    goto end;
+	    }
+	first = sources[0].Obj;
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpenJoinQuery(%8.8lX:%3.3s:%s,%d)... ", (long)first, first->Driver->Name, first->Pathname->Pathbuf, n_sources);
+
+	/** Only one driver stack and session can join **/
+	for(i=0; i<n_sources; i++)
+	    {
+	    ASSERTMAGIC(sources[i].Obj, MGK_OBJECT);
+	    if (sources[i].Obj->Driver != first->Driver || sources[i].Obj->TLowLevelDriver != first->TLowLevelDriver ||
+		    sources[i].Obj->ILowLevelDriver != first->ILowLevelDriver || sources[i].Obj->Session != first->Session)
+		{
+		rval = 0;
+		goto end;
+		}
+	    inf[i] = sources[i].Obj->Data;
+	    }
+	drv = first->Driver;
+	if (!drv->OpenJoinQuery || !drv->QueryFetchJoin ||
+		!((drv->Capabilities & OBJDRV_C_JOIN) ||
+		  ((drv->Capabilities & OBJDRV_C_LLQUERY) && first->TLowLevelDriver && (first->TLowLevelDriver->Capabilities & OBJDRV_C_JOIN))))
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+
+	/** Allocate the query **/
+	this = (pObjQuery)nmMalloc(sizeof(ObjQuery));
+	if (!this)
+	    goto end;
+	memset(this, 0, sizeof(ObjQuery));
+	this->Magic = MGK_OBJQUERY;
+	this->Join = (pObjQueryJoin)nmMalloc(sizeof(ObjQueryJoin));
+	if (!this->Join)
+	    goto end;
+	memset(this->Join, 0, sizeof(ObjQueryJoin));
+	for(i=0; i<n_sources; i++)
+	    this->Join->Objs[i] = objLinkTo(sources[i].Obj);
+	this->Join->nSources = n_sources;
+	this->Obj = this->Join->Objs[0];
+
+	/** Issue the open to the driver **/
+	rval = drv->OpenJoinQuery(inf, sources, n_sources, this, &(this->Data), &(first->Session->Trx));
+	if (rval < 0)
+	    mssError(0, "OSML", "Failed to open joined query on '%s'", objGetPathname(first));
+	if (rval != 1)
+	    goto end;
+
+	xaAddItem(&(first->Session->OpenQueries), (void*)this);
+	*qy = this;
+
+    end:
+	if (rval != 1 && this)
+	    {
+	    this->Data = NULL;
+	    objQueryClose(this);
+	    }
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "%d\n", rval);
+
+    return rval;
+    }
+
+
+/*** objQueryFetchJoin() - fetch the next row of a joined query, opening one
+ *** object per source into objs[] (at least as many as the query has
+ *** sources).  An OBJ_JS_F_OUTER source with no matching row gets NULL.
+ *** Returns 1 on a row, 0 at the end of the results, or -1 on error.  On 0
+ *** or -1, every objs[] entry is NULL.
+ ***/
+int
+objQueryFetchJoin(pObjQuery this, int mode, pObject objs[])
+    {
+    pObject src;
+    void* data[OBJSYS_MAX_JOIN];
+    int i, n;
+    int rval = -1;
+
+	ASSERTMAGIC(this, MGK_OBJQUERY);
+
+	if (!this->Join)
+	    {
+	    mssError(1, "OSML", "objQueryFetchJoin: not a joined query");
+	    return -1;
+	    }
+	n = this->Join->nSources;
+	for(i=0; i<n; i++)
+	    objs[i] = NULL;
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objQueryFetchJoin(%8.8lX)...", (long)this);
+
+	/** Set up an object descriptor for each source **/
+	for(i=0; i<n; i++)
+	    {
+	    src = this->Join->Objs[i];
+	    objs[i] = obj_internal_AllocObj();
+	    if (!objs[i])
+		goto end;
+	    objs[i]->EvalContext = src->EvalContext;
+	    objs[i]->Driver = src->Driver;
+	    objs[i]->ILowLevelDriver = src->ILowLevelDriver;
+	    objs[i]->TLowLevelDriver = src->TLowLevelDriver;
+	    objs[i]->Mode = mode;
+	    objs[i]->Session = src->Session;
+	    if (src->Prev)
+		objLinkTo(src->Prev);
+	    objs[i]->Prev = src->Prev;
+	    objs[i]->Pathname = (pPathname)nmMalloc(sizeof(Pathname));
+	    if (!objs[i]->Pathname)
+		goto end;
+	    objs[i]->Pathname->OpenCtlBuf = NULL;
+	    objs[i]->Pathname->LinkCnt = 1;
+	    obj_internal_CopyPath(objs[i]->Pathname, src->Pathname);
+	    objs[i]->SubCnt = src->SubCnt+1;
+	    objs[i]->SubPtr = src->SubPtr;
+	    }
+
+	/** Fetch the row from the driver **/
+	rval = this->Obj->Driver->QueryFetchJoin(this->Data, objs, data, mode, &(this->Obj->Session->Trx));
+	if (rval != 1)
+	    goto end;
+
+	/** Keep the objects that got a row **/
+	this->RowID++;
+	for(i=0; i<n; i++)
+	    {
+	    if (data[i])
+		{
+		objs[i]->Data = data[i];
+		objs[i]->RowID = this->RowID;
+		xaAddItem(&(objs[i]->Session->OpenObjects), (void*)objs[i]);
+		}
+	    else
+		{
+		obj_internal_FreeObj(objs[i]);
+		objs[i] = NULL;
+		}
+	    }
+
+    end:
+	if (rval != 1)
+	    {
+	    for(i=0; i<n; i++)
+		{
+		if (objs[i])
+		    obj_internal_FreeObj(objs[i]);
+		objs[i] = NULL;
+		}
+	    }
+
+	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, " %d\n", rval);
+
+    return rval;
     }
 
 

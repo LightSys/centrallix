@@ -272,6 +272,7 @@ struct _MQ /* MultiQuery */
 #define MQ_F_SHOWPLAN		32		/* print diagnostics for SQL statement **/
 #define MQ_F_FIRSTSTATEMENT	64		/* parsing the first statement in the query */
 #define MQ_F_ONEROW		128		/* only the first row of the results is needed */
+#define MQ_F_NOPASSTHROUGH	256		/* join in Centrallix, not in the data source driver */
 
 
 /*** Pseudo-object structure. ***/

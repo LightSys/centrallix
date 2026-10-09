@@ -1,0 +1,67 @@
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"g","n"
+"Alan",6
+"Alan ",8
+"g","n"
+"Alan",6
+"Alan ",8
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"s","n","mx"
+,38,3
+"Andrews",9,3
+"Denver",6,2
+"Dickens",9,3
+"Didion",4,2
+"Lee",9,3
+"Lefevre",9,3
+"McKay",8,3
+"Mcintyre",4,2
+"Nguyen",4,2
+"Ortiz",8,3
+"Powell",6,2
+"Powell ",9,3
+"Poxon",6,2
+"Torres",5,2
+"powell",4,2
+"s","n","mx"
+,38,3
+"Andrews",9,3
+"Denver",6,2
+"Dickens",9,3
+"Didion",4,2
+"Lee",9,3
+"Lefevre",9,3
+"McKay",8,3
+"Mcintyre",4,2
+"Nguyen",4,2
+"Ortiz",8,3
+"Powell",6,2
+"Powell ",9,3
+"Poxon",6,2
+"Torres",5,2
+"powell",4,2
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_location/rows'.
+"c","n"
+"Colorado Springs",17
+"Colorado Springs ",10
+"c","n"
+"Colorado Springs",17
+"Colorado Springs ",10
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"g","n"
+"Alan",6
+"Alan ",8
+"Amy",9
+"Andrea",4
+"Andrew",9
+"g","n"
+"Alan",6
+"Alan ",8
+"Amy",9
+"Andrea",4
+"Andrew",9
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"g","n"
+"Lee",5
+"g","n"
+"Lee",5

@@ -1,0 +1,24 @@
+##NAME Literal filters
+
+# Show when joins are pushed down to MySQL
+test 1
+
+# in_list_filters
+csv select :p:p_partner_key, :p:p_partner_class, :l:p_state_province from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_state_province in ('CO', 'DE', 'FL') and :p:p_partner_class in ('IND', 'CHU') and :p:p_partner_key < '100040' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :p:p_partner_class, :l:p_state_province from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_state_province in ('CO', 'DE', 'FL') and :p:p_partner_class in ('IND', 'CHU') and :p:p_partner_key < '100040' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# name_literal_on_later
+csv select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:name = '100005|1|0'
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:name = '100005|1|0'
+
+# name_literal_on_first
+csv select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:name = '100005' order by :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :p:name = '100005' order by :l:p_location_id, :l:p_revision_id
+
+# literal_with_quote_and_percent
+csv select :p:p_partner_key, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_city != 'O\'Fallon %s %d \\ _' and :l:p_city = 'Colorado Springs' and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_city from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_city != 'O\'Fallon %s %d \\ _' and :l:p_city = 'Colorado Springs' and :p:p_partner_key < '100030' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+
+# between_style_range_on_first_later
+csv select :p:p_partner_key, :l:p_location_id, :l:p_postal_code from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_postal_code >= '80900' and :l:p_postal_code <= '80999' and :p:p_partner_key < '102000' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id
+csv set passthrough 0 select :p:p_partner_key, :l:p_location_id, :l:p_postal_code from /tests/Test_DB/p_partner/rows p, /tests/Test_DB/p_location/rows l where :p:p_partner_key = :l:p_partner_key and :l:p_postal_code >= '80900' and :l:p_postal_code <= '80999' and :p:p_partner_key < '102000' order by :p:p_partner_key, :l:p_location_id, :l:p_revision_id

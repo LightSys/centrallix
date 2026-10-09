@@ -1,0 +1,259 @@
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id","p_revision_id","p_city"
+"100040",1,0,"Santa Fe"
+"100041",1,0,"Colorado Springs "
+"100041",2,0,"Pueblo"
+"100042",1,0,"London"
+"100042",2,0,"Leeds"
+"100043",1,0,"Berlin"
+"100043",2,0,"Nowhere"
+"100043",3,0,"Colorado Springs"
+"100046",1,0,"DENVER"
+"100047",1,0,"San Diego"
+"100047",1,1,"San Diego"
+"100048",1,0,"Toronto"
+"100048",2,0,"London"
+"100049",1,0,"Monterrey"
+"100049",2,0,"Berlin"
+"100050",1,0,"Colorado Springs"
+"100050",2,0,
+"100050",3,0,"Colorado Springs"
+"100052",1,0,"Dover"
+"100053",1,0,"Pueblo"
+"100054",1,0,"Leeds"
+"100054",2,0,"Monterrey"
+"100055",1,0,"Nowhere"
+"100055",2,0,"Colorado Springs"
+"100056",1,0,"Colorado Springs"
+"100056",2,0,"Denver"
+"100056",3,0,"DENVER"
+"100058",1,0,"Colorado Springs "
+"100059",1,0,"London"
+"100060",1,0,"Berlin"
+"100060",2,0,"Nowhere"
+"100061",1,0,
+"100061",2,0,"Colorado Springs"
+"100062",1,0,"DENVER"
+"100062",2,0,"Santa Fe"
+"100062",3,0,"Dover"
+"100064",1,0,"Toronto"
+"p_partner_key","p_location_id","p_revision_id","p_city"
+"100040",1,0,"Santa Fe"
+"100041",1,0,"Colorado Springs "
+"100041",2,0,"Pueblo"
+"100042",1,0,"London"
+"100042",2,0,"Leeds"
+"100043",1,0,"Berlin"
+"100043",2,0,"Nowhere"
+"100043",3,0,"Colorado Springs"
+"100046",1,0,"DENVER"
+"100047",1,0,"San Diego"
+"100047",1,1,"San Diego"
+"100048",1,0,"Toronto"
+"100048",2,0,"London"
+"100049",1,0,"Monterrey"
+"100049",2,0,"Berlin"
+"100050",1,0,"Colorado Springs"
+"100050",2,0,
+"100050",3,0,"Colorado Springs"
+"100052",1,0,"Dover"
+"100053",1,0,"Pueblo"
+"100054",1,0,"Leeds"
+"100054",2,0,"Monterrey"
+"100055",1,0,"Nowhere"
+"100055",2,0,"Colorado Springs"
+"100056",1,0,"Colorado Springs"
+"100056",2,0,"Denver"
+"100056",3,0,"DENVER"
+"100058",1,0,"Colorado Springs "
+"100059",1,0,"London"
+"100060",1,0,"Berlin"
+"100060",2,0,"Nowhere"
+"100061",1,0,
+"100061",2,0,"Colorado Springs"
+"100062",1,0,"DENVER"
+"100062",2,0,"Santa Fe"
+"100062",3,0,"Dover"
+"100064",1,0,"Toronto"
+MQJ: Joining 3 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","loc","con"
+"100040",1,1
+"100040",1,2
+"100040",1,3
+"100041",1,1
+"100041",1,2
+"100041",1,3
+"100041",1,4
+"100041",2,1
+"100041",2,2
+"100041",2,3
+"100041",2,4
+"100042",1,
+"100042",2,
+"100043",1,1
+"100043",2,1
+"100043",3,1
+"100045",,1
+"100045",,2
+"100046",1,1
+"100046",1,2
+"100046",1,3
+"100047",1,1
+"100047",1,2
+"100047",1,3
+"100047",1,4
+"100047",1,1
+"100047",1,2
+"100047",1,3
+"100047",1,4
+"100048",1,
+"100048",2,
+"100049",1,1
+"100049",2,1
+"p_partner_key","loc","con"
+"100040",1,1
+"100040",1,2
+"100040",1,3
+"100041",1,1
+"100041",1,2
+"100041",1,3
+"100041",1,4
+"100041",2,1
+"100041",2,2
+"100041",2,3
+"100041",2,4
+"100042",1,
+"100042",2,
+"100043",1,1
+"100043",2,1
+"100043",3,1
+"100045",,1
+"100045",,2
+"100046",1,1
+"100046",1,2
+"100046",1,3
+"100047",1,1
+"100047",1,2
+"100047",1,3
+"100047",1,4
+"100047",1,1
+"100047",1,2
+"100047",1,3
+"100047",1,4
+"100048",1,
+"100048",2,
+"100049",1,1
+"100049",2,1
+MQJ: Joining 4 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"p_partner_key","p_location_id","p_contact_id","ctype"
+"100001",1,1,"Web Site"
+"100002",1,1,"Fax"
+"100002",1,2,"Cell"
+"100004",1,1,"Cell"
+"100004",1,2,"Email"
+"100004",1,3,"Phone"
+"100004",2,1,"Cell"
+"100004",2,2,"Email"
+"100004",2,3,"Phone"
+"100005",1,1,"Email"
+"100005",1,2,"Phone"
+"100005",1,3,"Web Site"
+"100005",1,4,"Fax"
+"100005",2,1,"Email"
+"100005",2,2,"Phone"
+"100005",2,3,"Web Site"
+"100005",2,4,"Fax"
+"100009",1,1,"Fax"
+"100009",1,2,"Cell"
+"100010",1,1,"Cell"
+"100010",1,2,"Email"
+"100010",1,3,"Phone"
+"100011",1,1,"Email"
+"100011",1,2,"Phone"
+"100011",1,3,"Web Site"
+"100011",1,4,"Fax"
+"100011",2,1,"Email"
+"100011",2,2,"Phone"
+"100011",2,3,"Web Site"
+"100011",2,4,"Fax"
+"p_partner_key","p_location_id","p_contact_id","ctype"
+"100001",1,1,"Web Site"
+"100002",1,1,"Fax"
+"100002",1,2,"Cell"
+"100004",1,1,"Cell"
+"100004",1,2,"Email"
+"100004",1,3,"Phone"
+"100004",2,1,"Cell"
+"100004",2,2,"Email"
+"100004",2,3,"Phone"
+"100005",1,1,"Email"
+"100005",1,2,"Phone"
+"100005",1,3,"Web Site"
+"100005",1,4,"Fax"
+"100005",2,1,"Email"
+"100005",2,2,"Phone"
+"100005",2,3,"Web Site"
+"100005",2,4,"Fax"
+"100009",1,1,"Fax"
+"100009",1,2,"Cell"
+"100010",1,1,"Cell"
+"100010",1,2,"Email"
+"100010",1,3,"Phone"
+"100011",1,1,"Email"
+"100011",1,2,"Phone"
+"100011",1,3,"Web Site"
+"100011",1,4,"Fax"
+"100011",2,1,"Email"
+"100011",2,2,"Phone"
+"100011",2,3,"Web Site"
+"100011",2,4,"Fax"
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_contact_info/rows'.
+"k1","k2","p_contact_data"
+"100011","100020","office@example.org"
+"100011","100057","office@example.org"
+"100011","100066","office@example.org"
+"100020","100057","office@example.org"
+"100020","100066","office@example.org"
+"100057","100066","office@example.org"
+"k1","k2","p_contact_data"
+"100011","100020","office@example.org"
+"100011","100057","office@example.org"
+"100011","100066","office@example.org"
+"100020","100057","office@example.org"
+"100020","100066","office@example.org"
+"100057","100066","office@example.org"
+MQJ: Joining 3 sources in their driver, starting with '/tests/Test_DB/p_partner/rows'.
+"n","a","b"
+272,405,4
+"n","a","b"
+272,405,4
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_contact_info/rows'.
+"p_partner_key","p_contact_id","lpk","p_postal_code"
+"100090",1,"100006","80903"
+"100090",1,"100012","80903"
+"100090",1,"100023","80903"
+"100090",1,"100039","80903"
+"100090",1,"100050","80903"
+"100090",1,"100056","80903"
+"100090",1,"100061","80903"
+"100090",1,"100072","80903"
+"100090",1,"100088","80903"
+"p_partner_key","p_contact_id","lpk","p_postal_code"
+"100090",1,"100006","80903"
+"100090",1,"100012","80903"
+"100090",1,"100023","80903"
+"100090",1,"100039","80903"
+"100090",1,"100050","80903"
+"100090",1,"100056","80903"
+"100090",1,"100061","80903"
+"100090",1,"100072","80903"
+"100090",1,"100088","80903"
+MQJ: Joining 2 sources in their driver, starting with '/tests/Test_DB/p_location/rows'.
+"pc","n"
+"80903",36
+"80910",45
+"80999",28
+"pc","n"
+"80903",36
+"80910",45
+"80999",28

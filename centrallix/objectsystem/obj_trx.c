@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -875,6 +875,103 @@ oxtQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
+/*** oxtOpenJoinQuery -- passthru.  Sources with a transaction in progress
+ *** are not joined, so that fetched objects never need one.
+ ***/
+int
+oxtOpenJoinQuery(void* inf_v[], pObjJoinSource sources, int n_sources, pObjQuery query, void** qy_data, pObjTrxTree* oxt)
+    {
+    pObjTrxPtr inf;
+    pObjTrxQuery qy;
+    void* ll_inf[OBJSYS_MAX_JOIN];
+    int i, rval;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
+	*qy_data = NULL;
+	for(i=0; i<n_sources; i++)
+	    {
+	    inf = (pObjTrxPtr)(inf_v[i]);
+	    if (inf->Trx)
+		return 0;
+	    ll_inf[i] = inf->LLParam;
+	    }
+
+	/** Allocate the query **/
+	qy = (pObjTrxQuery)nmMalloc(sizeof(ObjTrxQuery));
+	if (!qy)
+	    return -1;
+	qy->Inf = (pObjTrxPtr)(inf_v[0]);
+	qy->Obj = qy->Inf->Obj;
+	qy->Query = query;
+
+	/** Call the low level driver. **/
+	rval = qy->Obj->TLowLevelDriver->OpenJoinQuery(ll_inf, sources, n_sources, query, &(qy->LLParam), oxt);
+	if (rval != 1)
+	    {
+	    nmFree(qy, sizeof(ObjTrxQuery));
+	    return rval;
+	    }
+	*qy_data = (void*)qy;
+
+    return 1;
+    }
+
+
+/*** oxtQueryFetchJoin -- passthru.
+ ***/
+int
+oxtQueryFetchJoin(void* qy_v, pObject objs[], void* data[], int mode, pObjTrxTree* oxt)
+    {
+    pObjTrxQuery qy = (pObjTrxQuery)qy_v;
+    pObjTrxPtr subobjs[OBJSYS_MAX_JOIN];
+    void* ll_data[OBJSYS_MAX_JOIN];
+    pObjTrxTree new_oxt = NULL;
+    int n = qy->Query->Join->nSources;
+    int i;
+    int rval = -1;
+
+	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
+
+	/** Allocate the subobjects first, so a row is never half wrapped **/
+	for(i=0; i<n; i++)
+	    subobjs[i] = NULL;
+	for(i=0; i<n; i++)
+	    {
+	    subobjs[i] = (pObjTrxPtr)nmMalloc(sizeof(ObjTrxPtr));
+	    if (!subobjs[i])
+		goto end;
+	    }
+
+	/** Call the lowlevel driver **/
+	rval = qy->Obj->TLowLevelDriver->QueryFetchJoin(qy->LLParam, objs, ll_data, mode, &new_oxt);
+	if (rval != 1)
+	    goto end;
+	for(i=0; i<n; i++)
+	    {
+	    if (ll_data[i])
+		{
+		subobjs[i]->LLParam = ll_data[i];
+		subobjs[i]->Obj = objs[i];
+		subobjs[i]->Trx = NULL;
+		data[i] = subobjs[i];
+		subobjs[i] = NULL;
+		}
+	    else
+		{
+		data[i] = NULL;
+		}
+	    }
+
+    end:
+	for(i=0; i<n; i++)
+	    if (subobjs[i])
+		nmFree(subobjs[i], sizeof(ObjTrxPtr));
+
+    return rval;
+    }
+
+
 /*** oxtWrite -- passthru for now.  Later will be included as a part of
  *** the trans layer.
  ***/
@@ -1031,6 +1128,8 @@ oxtInitialize()
 	drv->QueryDelete = oxtQueryDelete;
 	drv->QueryFetch = oxtQueryFetch;
 	drv->QueryClose = oxtQueryClose;
+	drv->OpenJoinQuery = oxtOpenJoinQuery;
+	drv->QueryFetchJoin = oxtQueryFetchJoin;
 	drv->GetAttrType = oxtGetAttrType;
 	drv->GetAttrValue = oxtGetAttrValue;
 	drv->SetAttrValue = oxtSetAttrValue;
