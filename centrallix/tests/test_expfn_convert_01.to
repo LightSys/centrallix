@@ -22,8 +22,8 @@ csv SELECT "latin1 to ascii"	= convert(:data:latin1,	'ascii',	'latin1')
 csv SELECT "latin1 to latin1"	= convert(:data:latin1,	'latin1',	'LATIN-1')
 csv SELECT "latin1 to cp1252"	= convert(:data:latin1,	'cp1252',	'ISO-8859-1')
 csv SELECT "latin1 to utf8"	= convert(:data:latin1,	'utf8',		'ISO/IEC 8859-1')
-csv SELECT "latin1: empty str"	= convert("",		'ISO 8859-1',	'EIC 8859-1')
-query SELECT "latin1: NULL"	= convert(NULL,		'EIC-8859-1',	'iso/iec 8859-1')
+csv SELECT "latin1: empty str"	= convert("",		'ISO 8859-1',	'IEC 8859-1')
+query SELECT "latin1: NULL"	= convert(NULL,		'IEC-8859-1',	'iso/iec 8859-1')
 # test more names 
 
 # Convert from UTF-8
@@ -55,4 +55,3 @@ csv SELECT "one byte to multi" = to_hex(convert(from_hex('92'), 'utf8', 'cp1252'
 
 # convert multiple bytes into single 
 csv SELECT "multi to one byte" = to_hex(convert('’', 'cp1252', 'utf8'))
-

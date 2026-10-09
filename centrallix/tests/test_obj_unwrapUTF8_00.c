@@ -7,7 +7,7 @@ int
 test_unwrap_success(char* in_buf, size_t in_len, char* expect_buf, size_t expect_len)
     {
     size_t out_len = 0;
-    char* out_buf;
+    char* out_buf = NULL;
     int ret = 0;
 
     /** test normal **/
@@ -37,7 +37,7 @@ test_unwrap_fail(char* in_buf, size_t in_len)
     size_t out_len = 0;
     char* out_buf = NULL;
 
-    /** test normal **/
+    /** test failure **/
     if(objUnwrapUTF8(in_buf, in_len, &out_buf, &out_len) != -1) return -1;
     if(out_len != 0) return -2;
     if(out_buf != NULL) return -3;
@@ -83,11 +83,11 @@ test(char** name)
 
 
     /** containing min/max for each range **/
-    in_buf = "\x00"             "\x7f"              /* asccii range */
+    in_buf = "\x00"             "\x7f"              /* ascii range */
 	     "\xc2\x80"         "\xDF\xBF"          /* 2 byte range */
 	     "\xE0\xA0\x80"     "\xEF\xBF\xBF"      /* 3 byte range */
 	     "\xF0\x90\x80\x80" "\xF4\x8F\xBF\xBF"; /* 4 byte range */
-    expect_buf = "\x00"         "\x7f"          /* asccii range */
+    expect_buf = "\x00"         "\x7f"          /* ascii range */
 		 "\x80"         "\x07\xFF"      /* 2 byte range */
 		 "\x08\x00"     "\xFF\xFF"      /* 3 byte range */
 		 "\x01\x00\x00" "\x10\xFF\xFF"; /* 4 byte range */
@@ -145,7 +145,7 @@ test(char** name)
 
     /** Truncated multibyte continuation bytes */
     
-    in_buf = "\xC2" "AB"; /* 2-byte character: leading byte only, nothing else in the string */
+    in_buf = "\xC2" "AB"; /* 2-byte character: leading byte only */
     assert(test_unwrap_fail(in_buf, 3) == 0);
 
     in_buf = "A\xC2"; /* 2-byte character truncated at the very end of the string */
