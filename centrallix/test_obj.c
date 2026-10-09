@@ -770,7 +770,7 @@ testobj_i_hasChildren(char* path, bool* has_children)
 	*has_children = false;
 
 	/** Open the object. **/
-	obj = objOpen(s, path, O_RDONLY, 0400, NULL);
+	obj = objOpen(s, path, O_RDONLY, 0400, "system/directory");
 	if (UNLIKELY(obj == NULL))
 	    {
 	    mssError(0, "TESTOBJ", "Failed to open \"%s\".", path);
