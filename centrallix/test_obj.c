@@ -769,37 +769,35 @@ testobj_i_hasChildren(char* path, bool* has_children)
 	/** Assume no children. **/
 	*has_children = false;
 
-	/** Open the object and get its info. **/
+	/** Open the object. **/
 	obj = objOpen(s, path, O_RDONLY, 0400, NULL);
 	if (UNLIKELY(obj == NULL))
 	    {
 	    mssError(0, "TESTOBJ", "Failed to open \"%s\".", path);
 	    goto end;
 	    }
-	const pObjectInfo info = objInfo(obj);
-	if (UNLIKELY(info == NULL))
-	    {
-	    mssError(0, "TESTOBJ", "Failed to get info for \"%s\".", path);
-	    goto end;
-	    }
 
-	/** Use the driver's info, if it answers the question. **/
-	if ((info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)) != 0)
+	/** Use the driver's info, if provided. **/
+	const pObjectInfo info = objInfo(obj);
+	if (info != NULL)
 	    {
-	    rval = 0;
-	    goto end;
-	    }
-	if ((info->Flags & OBJ_INFO_F_HAS_SUBOBJ) != 0)
-	    {
-	    *has_children = true;
-	    rval = 0;
-	    goto end;
-	    }
-	if ((info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) != 0)
-	    {
-	    *has_children = (info->nSubobjects > 0);
-	    rval = 0;
-	    goto end;
+	    if ((info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)) != 0)
+		{
+		rval = 0;
+		goto end;
+		}
+	    if ((info->Flags & OBJ_INFO_F_HAS_SUBOBJ) != 0)
+		{
+		*has_children = true;
+		rval = 0;
+		goto end;
+		}
+	    if ((info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) != 0)
+		{
+		*has_children = (info->nSubobjects > 0);
+		rval = 0;
+		goto end;
+		}
 	    }
 
 	/** Fetch one child. **/
