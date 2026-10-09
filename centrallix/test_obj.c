@@ -2816,6 +2816,9 @@ testobj_i_cmdTrunc(pObjSession s, char* path, pLxSession ls)
     }
 
 
+static int testobj_i_runFile(pObjSession s, char* filename);
+
+
 /*** testobj_do_cmd - runs one command line.
  ***
  *** @param s The OSML session.
@@ -3108,6 +3111,21 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		}
 	    sleep(seconds);
 	    }
+	else if (strcmp(cmdname, "source") == 0)
+	    {
+	    if (UNLIKELY(arg == NULL))
+		{
+		mssError(1, "TESTOBJ", "Usage: source <file>");
+		goto end;
+		}
+	    const int file_rval = testobj_i_runFile(s, arg);
+	    if (UNLIKELY(file_rval < 0)) goto end;
+	    if (file_rval == 1)
+		{
+		rval = 1;
+		goto end;
+		}
+	    }
 	else if (strcmp(cmdname, "test") == 0)
 	    {
 	    setup_test_ids((arg != NULL) ? arg : "");
@@ -3182,6 +3200,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  query     - Runs a SQL query.\n");
 	    printf("  quit/exit - Exits this application.\n");
 	    printf("  show      - Displays an object's attributes and methods.\n");
+	    printf("  source    - Runs the commands in a file, like -f.\n");
 	    printf("  test      - Enables test suite output for the given list of ids.\n");
 	    printf("  time      - Run a command and print how long it took.\n");
 	    printf("  trunc     - Truncates an object's content to a given point.\n");
@@ -3235,6 +3254,104 @@ testobj_i_copyLine(pLxSession lx)
 	    }
 
 	return line;
+    }
+
+
+/*** testobj_i_runFile - runs each line of a command file as a command.
+ *** Failed commands print a warning and do not stop the file, unless -e
+ *** was given.
+ ***
+ *** @param s The OSML session.
+ *** @param filename The command file.
+ *** @returns 0 on success, 1 if a command quits, or -1 on failure.
+ ***/
+static int
+testobj_i_runFile(pObjSession s, char* filename)
+    {
+    int rval = -1;
+    pFile cmdfile = NULL;
+    pLxSession cmd_lx = NULL;
+
+	if (UNLIKELY(thExcessiveRecursion()))
+	    {
+	    mssError(1, "TESTOBJ",
+		"Failed to run command file \"%s\": resource exhaustion occurred.",
+		filename
+	    );
+	    goto end;
+	    }
+
+	/** Open the file. **/
+	cmdfile = fdOpen(filename, O_RDONLY, 0600);
+	if (UNLIKELY(cmdfile == NULL))
+	    {
+	    mssError(1, "TESTOBJ",
+		"Failed to open command file \"%s\": %s",
+		filename, strerror(errno)
+	    );
+	    goto end;
+	    }
+	cmd_lx = mlxOpenSession(cmdfile, MLX_F_LINEONLY | MLX_F_EOF);
+	if (UNLIKELY(cmd_lx == NULL))
+	    {
+	    mssError(1, "TESTOBJ",
+		"Failed to start reading command file \"%s\".",
+		filename
+	    );
+	    goto end;
+	    }
+
+	/** Run each line. **/
+	while (true)
+	    {
+	    const int t = mlxNextToken(cmd_lx);
+	    if (t == MLX_TOK_EOF) break;
+	    if (UNLIKELY(t == MLX_TOK_ERROR))
+		{
+		mssError(0, "TESTOBJ", "Failed to read command file \"%s\".", filename);
+		goto end;
+		}
+
+	    char* const line = testobj_i_copyLine(cmd_lx);
+	    if (UNLIKELY(line == NULL))
+		{
+		mssError(0, "TESTOBJ",
+		    "Failed to read a line of command file \"%s\".",
+		    filename
+		);
+		goto end;
+		}
+	    const int cmd_rval = testobj_do_cmd(s, line, 1, cmd_lx);
+	    if (UNLIKELY(cmd_rval < 0 && TESTOBJ.StopOnError))
+		{
+		mssError(0, "TESTOBJ",
+		    "Failed to run command \"%.*s\".",
+		    (int)strcspn(line, "\r\n"), line
+		);
+		}
+	    else if (UNLIKELY(cmd_rval < 0))
+		{
+		mssWarnError(
+		    "Failed to run command \"%.*s\".",
+		    (int)strcspn(line, "\r\n"), line
+		);
+		}
+	    nmSysFree(line);
+	    if (UNLIKELY(cmd_rval < 0 && TESTOBJ.StopOnError)) goto end;
+	    if (cmd_rval == 1)
+		{
+		rval = 1;
+		goto end;
+		}
+	    }
+
+	rval = 0;
+
+    end:
+	if (cmd_lx != NULL) warnNeg(mlxCloseSession(cmd_lx));
+	if (cmdfile != NULL) warnNeg(fdClose(cmdfile, 0));
+
+	return rval;
     }
 
 
@@ -3428,8 +3545,6 @@ start(void* unused)
     pFile histfile = NULL;
     pApplication app = NULL;
     bool pushed_context = false;
-    pFile cmdfile = NULL;
-    pLxSession cmd_lx = NULL;
     char* inbuf = NULL;
     char prompt[1024];
     const bool interactive = (TESTOBJ.Command[0] == '\0' && TESTOBJ.CmdFile[0] == '\0');
@@ -3578,62 +3693,7 @@ start(void* unused)
 	/** Command file from -f. **/
 	if (TESTOBJ.CmdFile[0] != '\0')
 	    {
-	    cmdfile = fdOpen(TESTOBJ.CmdFile, O_RDONLY, 0600);
-	    if (UNLIKELY(cmdfile == NULL))
-		{
-		mssError(1, "TESTOBJ",
-		    "Failed to open command file \"%s\": %s",
-		    TESTOBJ.CmdFile, strerror(errno)
-		);
-		goto end;
-		}
-	    cmd_lx = mlxOpenSession(cmdfile, MLX_F_LINEONLY | MLX_F_EOF);
-	    if (UNLIKELY(cmd_lx == NULL))
-		{
-		mssError(1, "TESTOBJ",
-		    "Failed to start reading command file \"%s\".",
-		    TESTOBJ.CmdFile
-		);
-		goto end;
-		}
-	    while (true)
-		{
-		const int t = mlxNextToken(cmd_lx);
-		if (t == MLX_TOK_EOF) break;
-		if (UNLIKELY(t == MLX_TOK_ERROR))
-		    {
-		    mssError(0, "TESTOBJ", "Failed to read command file \"%s\".", TESTOBJ.CmdFile);
-		    goto end;
-		    }
-
-		char* const line = testobj_i_copyLine(cmd_lx);
-		if (UNLIKELY(line == NULL))
-		    {
-		    mssError(0, "TESTOBJ",
-			"Failed to read a line of command file \"%s\".",
-			TESTOBJ.CmdFile
-		    );
-		    goto end;
-		    }
-		const int cmd_rval = testobj_do_cmd(s, line, 1, cmd_lx);
-		if (UNLIKELY(cmd_rval < 0 && TESTOBJ.StopOnError))
-		    {
-		    mssError(0, "TESTOBJ",
-			"Failed to run command \"%.*s\".",
-			(int)strcspn(line, "\r\n"), line
-		    );
-		    }
-		else if (UNLIKELY(cmd_rval < 0))
-		    {
-		    mssWarnError(
-			"Failed to run command \"%.*s\".",
-			(int)strcspn(line, "\r\n"), line
-		    );
-		    }
-		nmSysFree(line);
-		if (UNLIKELY(cmd_rval < 0 && TESTOBJ.StopOnError)) goto end;
-		if (cmd_rval == 1) break;
-		}
+	    if (UNLIKELY(testobj_i_runFile(s, TESTOBJ.CmdFile) < 0)) goto end;
 	    }
 
 	/** Interactive prompt. **/
@@ -3690,8 +3750,6 @@ start(void* unused)
 	/** Clean up. **/
 	cxssShred(TESTOBJ.Password, sizeof(TESTOBJ.Password));
 	if (inbuf != NULL) free(inbuf);
-	if (cmd_lx != NULL) warnNeg(mlxCloseSession(cmd_lx));
-	if (cmdfile != NULL) warnNeg(fdClose(cmdfile, 0));
 	if (LIKELY(app != NULL)) warnNeg(appDestroy(app));
 	if (LIKELY(pushed_context)) warnNeg(cxssPopContext());
 	if (LIKELY(s != NULL))
