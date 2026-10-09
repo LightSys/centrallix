@@ -97,6 +97,7 @@ test(char** tname)
 	    testEntry = xhGetNextElement(&testHash, testEntry);
 	    assert(testEntry == NULL);
 
+	    xhClear(&testHash, NULL, NULL);
 	    xhDeInit(&testHash);
 	    }
 
