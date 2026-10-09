@@ -1280,17 +1280,19 @@ testobj_i_getCsvText(pObject row, char* attrname, int* type, char** text)
  ***
  *** @param row The query result row.
  *** @param attrname The attribute to print.
+ *** @param present Whether the row has this attribute.  If not, the field is
+ *** 	left empty.
  *** @param first Whether this is the first field of the row.
  *** @returns 0 on success, or -1 if writing the output fails.
  ***/
 static int
-testobj_i_printCsvField(pObject row, char* attrname, bool first)
+testobj_i_printCsvField(pObject row, char* attrname, bool present, bool first)
     {
     int type = DATA_T_UNAVAILABLE;
     char* text = NULL;
     int write_result;
 
-	const int text_result = testobj_i_getCsvText(row, attrname, &type, &text);
+	const int text_result = (present) ? testobj_i_getCsvText(row, attrname, &type, &text) : 1;
 	if (UNLIKELY(text_result < 0))
 	    {
 	    mssWarnError(
@@ -1339,12 +1341,35 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
     pObject row = NULL;
     char* attrnames[CSV_MAX_ATTRS];
     int n_attrs = -1;
+    int n_rows = 0;
+    bool present[CSV_MAX_ATTRS];
+    bool unused_present;
+    XHashTable columns_buf;
+    pXHashTable columns = NULL;
+    XArray extras_buf;
+    pXArray extras = NULL;
 
 	if (UNLIKELY(query_text == NULL))
 	    {
 	    mssError(1, "TESTOBJ", "Usage: csv <query-text>");
 	    goto end;
 	    }
+
+	/** Map each attribute name to its presence flag. **/
+	if (UNLIKELY(xhInit(&columns_buf, 257, 0) < 0))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to initialize the csv column table.");
+	    goto end;
+	    }
+	columns = &columns_buf;
+
+	/** Names of attributes left out of the header. **/
+	if (UNLIKELY(xaInit(&extras_buf, 16) < 0))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to initialize the csv extra attribute list.");
+	    goto end;
+	    }
+	extras = &extras_buf;
 
 	query = objMultiQuery(s, query_text, NULL, 0);
 	if (UNLIKELY(query == NULL))
@@ -1355,6 +1380,8 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 
 	while ((row = objQueryFetch(query, O_RDONLY)) != NULL)
 	    {
+	    n_rows++;
+
 	    /** Print the header from the first row. **/
 	    if (n_attrs < 0)
 		{
@@ -1369,6 +1396,11 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 			goto end;
 			}
 		    n_attrs++;
+		    if (UNLIKELY(xhAdd(columns, attrnames[n_attrs - 1], (char*)&present[n_attrs - 1]) < 0))
+			{
+			mssError(1, "TESTOBJ", "Failed to add csv column \"%s\".", attrname);
+			goto end;
+			}
 		    if (UNLIKELY(fdQPrintf(TESTOBJ.Output, "%[,%]\"%STR&DSYB\"", n_attrs > 1, attrname) < 0))
 			{
 			mssError(1, "TESTOBJ",
@@ -1388,10 +1420,47 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 		    }
 		}
 
+	    /** Find the columns this row has. **/
+	    memset(present, 0, sizeof(present));
+	    for (char* attrname = objGetFirstAttr(row); attrname != NULL; attrname = objGetNextAttr(row))
+		{
+		bool* flag = (bool*)xhLookup(columns, attrname);
+		if (flag != NULL)
+		    {
+		    *flag = true;
+		    continue;
+		    }
+
+		/*** Warn once for each attribute left out of the header.
+		 *** Add the attribute to the to prevent repeat warnings.
+		 ***/
+		char* extra = nmSysStrdup(attrname);
+		if (UNLIKELY(extra == NULL))
+		    {
+		    mssError(1, "TESTOBJ", "Failed to copy attribute name \"%s\".", attrname);
+		    goto end;
+		    }
+		if (UNLIKELY(xaAddItem(extras, extra) < 0))
+		    {
+		    mssError(1, "TESTOBJ", "Failed to record extra attribute \"%s\".", attrname);
+		    nmSysFree(extra);
+		    goto end;
+		    }
+		if (UNLIKELY(xhAdd(columns, extra, (char*)&unused_present) < 0))
+		    {
+		    mssError(1, "TESTOBJ", "Failed to add extra attribute \"%s\".", attrname);
+		    goto end;
+		    }
+		fprintf(stderr,
+		    "Warning: Attribute \"%s\" in csv row %d is not in the header, so it is left out.\n",
+		    attrname, n_rows
+		);
+		}
+
 	    /** Print the row. **/
 	    for (int i = 0; i < n_attrs; i++)
 		{
-		if (UNLIKELY(testobj_i_printCsvField(row, attrnames[i], i == 0) < 0)) goto end;
+		if (UNLIKELY(testobj_i_printCsvField(row, attrnames[i], present[i], i == 0) < 0)) goto end;
 		}
 	    if (UNLIKELY(fdPrintf(TESTOBJ.Output, "\n") < 0))
 		{
@@ -1411,7 +1480,19 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
     end:
 	if (row != NULL) warnNeg(objClose(row));
 	if (LIKELY(query != NULL)) warnNeg(objQueryClose(query));
-	for (int i = 0; i < n_attrs; i++) nmSysFree(attrnames[i]);
+	if (LIKELY(columns != NULL))
+	    {
+	    warnNeg(xhClear(columns, NULL, NULL));
+	    warnNeg(xhDeInit(columns));
+	    }
+	if (LIKELY(extras != NULL))
+	    {
+	    for (int i = 0; i < xaCount(extras); i++)
+		nmSysFree(xaGetItem(extras, i));
+	    warnNeg(xaDeInit(extras));
+	    }
+	for (int i = 0; i < n_attrs; i++)
+	    nmSysFree(attrnames[i]);
 
 	return rval;
     }
