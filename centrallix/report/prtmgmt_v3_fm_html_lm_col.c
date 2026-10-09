@@ -8,6 +8,8 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
+#include "cxlib/expect.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -20,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -57,38 +59,91 @@ int
 prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section)
     {
     pPrtObjStream column, subobj;
-    PrtTextStyle oldstyle;
-    double end_y = 0.0;
+    PrtHTMLfmSavedStyle oldstyle;
+    pPrtColLMData lm_inf = (pPrtColLMData)(section->LMData);
+    double end_x = -1.0;
 
 	/** Write the section prologue **/
-	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_Output(context,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\"><tr>\n", -1);
+	if (UNLIKELY(prt_htmlfm_SaveStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to save style.");
+	    goto err;
+	    }
+	/** Size the section as a share of its container's inner width. **/
+	int width_pct = 100;
+	if (section->Parent != NULL && prtInnerWidth(section->Parent) > 0.0)
+	    width_pct = min(100, (int)(section->Width / prtInnerWidth(section->Parent) * 100.0 + 0.5));
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+	    "<table role=\"presentation\" cellpadding=\"0\" width=\"%d%%\"><tr>\n",
+	    width_pct
+	) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write section opening tags.");
+	    goto err;
+	    }
 
 	/** Loop through the column objects **/
 	for(column = section->ContentHead; column; column = column->Next)
 	    {
 	    if (column->ObjType->TypeID != PRT_OBJ_T_SECTCOL) continue;
-	    if (end_y > 0.0 && end_y != column->Y)
+	    if (end_x >= 0.0 && column->X > end_x + 0.001)
 		{
-		prt_htmlfm_OutputPrintf(context, "<td width=\"%d\">&nbsp;</td>", (int)(column->Y - end_y + 0.001));
+		/** Write the gap between columns, split by the separator line if there is one. **/
+		const int gap = (int)((column->X - end_x) * PRT_HTMLFM_XPIXEL + 0.5);
+		const int rval = (lm_inf != NULL && lm_inf->Separator.nLines > 0)
+		    ? prt_htmlfm_OutputPrintf(context,
+			"<td width=\"%d\" style=\"border-right:%dpx solid #%6.6X;\"></td><td width=\"%d\"></td>",
+			gap / 2,
+			max(PRT_HTMLFM_BORDER_PIXELS(lm_inf->Separator.Width[0]), 1),
+			lm_inf->Separator.Color[0],
+			gap - gap / 2
+		    )
+		    : prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"></td>", gap);
+		if (UNLIKELY(rval < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write column gap.");
+		    goto err;
+		    }
 		}
-	    prt_htmlfm_OutputPrintf(context, "<td valign=\"top\" align=\"left\" width=\"%d\">", (int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001));
-	    prt_htmlfm_InitStyle(context, &(column->TextStyle));
+	    if (UNLIKELY(prt_htmlfm_OutputPrintf(context,
+		"<td width=\"%d\">",
+		(int)(column->Width*PRT_HTMLFM_XPIXEL + 0.001)
+	    ) < 0))
+		{
+		mssError(0, "PRT", "Failed to write column opening tag.");
+		goto err;
+		}
+	    if (UNLIKELY(prt_htmlfm_InitStyle(context, &(column->TextStyle)) < 0)) goto err;
 	    subobj = column->ContentHead;
 	    while(subobj)
 		{
-		prt_htmlfm_Generate_r(context, subobj);
+		if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err;
 		subobj = subobj->Next;
 		}
-	    prt_htmlfm_EndStyle(context);
-	    prt_htmlfm_Output(context, "</td>",5);
-	    end_y = column->Y + column->Width;
+	    if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err;
+	    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0))
+		{
+		mssError(0, "PRT", "Failed to write column closing tag.");
+		goto err;
+		}
+	    end_x = column->X + column->Width;
 	    }
 
 	/** Output the section epilogue **/
-	prt_htmlfm_Output(context,"</tr></table>\n", -1);
-	prt_htmlfm_ResetStyle(context, &oldstyle);
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr></table>\n") < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write section closing tags.");
+	    goto err;
+	    }
+	if (UNLIKELY(prt_htmlfm_ResetStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to reset style.");
+	    goto err;
+	    }
 
-    return 0;
+	return 0;
+
+    err:
+	mssError(0, "PRT", "Failed to generate multicolumn section.");
+	return -1;
     }
-

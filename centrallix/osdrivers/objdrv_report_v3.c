@@ -44,7 +44,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -283,6 +283,8 @@ typedef struct
     int		rend_y_pixels;
     int		rotation;
     double	zoom;
+    int		auto_escape;	/* whether to escape the chart engine's markup in text */
+    pXArray	texts;		/* escaped copies of text, freed with the context */
     }
     RptChartContext, *pRptChartContext;
 
@@ -2105,14 +2107,25 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		    }
 		else
 		    {
-		    /** general purpose container here. **/
-		    if (rpt_internal_DoContainer(inf, subinf, rs, tablecell_handle) < 0)
+		    /** General purpose container here, in an area so its text flows and wraps. **/
+		    area_handle = prtAddObject(tablecell_handle, PRT_OBJ_T_AREA, 0,0,-1,-1, flags, NULL);
+		    if (area_handle < 0)
 			{
-			mssError(0,"RPT","problem constructing cell object '%s' (error doing content)", subinf->Name);
+			mssError(0,"RPT","problem constructing cell object '%s' (error adding area object)", subinf->Name);
 			prtEndObject(tablecell_handle);
 			prtEndObject(tablerow_handle);
 			goto error;
 			}
+		    rpt_internal_SetMargins(inf, subinf, area_handle, 0, 0, 0, 0);
+		    if (rpt_internal_DoContainer(inf, subinf, rs, area_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing cell object '%s' (error doing content)", subinf->Name);
+			prtEndObject(area_handle);
+			prtEndObject(tablecell_handle);
+			prtEndObject(tablerow_handle);
+			goto error;
+			}
+		    prtEndObject(area_handle);
 		    }
 
 		/** End the cell **/
@@ -2151,13 +2164,23 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		    }
 		else
 		    {
-		    /** Handle table row as a monolithic container with abstract content in it **/
-		    if (rpt_internal_DoContainer(inf, tablerow, rs, tablerow_handle) < 0)
+		    /** Handle table row as a monolithic container with abstract content in it, in an area so its text flows. **/
+		    area_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_AREA, 0,0,-1,-1, flags, NULL);
+		    if (area_handle < 0)
 			{
-			mssError(0,"RPT","problem constructing row object '%s' (error doing content)", tablerow->Name);
+			mssError(0,"RPT","problem constructing row object '%s' (error adding area object)", tablerow->Name);
 			prtEndObject(tablerow_handle);
 			goto error;
 			}
+		    rpt_internal_SetMargins(inf, tablerow, area_handle, 0, 0, 0, 0);
+		    if (rpt_internal_DoContainer(inf, tablerow, rs, area_handle) < 0)
+			{
+			mssError(0,"RPT","problem constructing row object '%s' (error doing content)", tablerow->Name);
+			prtEndObject(area_handle);
+			prtEndObject(tablerow_handle);
+			goto error;
+			}
+		    prtEndObject(area_handle);
 		    }
 		break; /* end the subinf for() loop, since we did all objects in DoContainer or DoArea */
 		}
@@ -2470,6 +2493,9 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    if (ac) rval = rpt_internal_NextRecord(ac, inf, table, rs, 0);
 	    else rval = 1;
 
+	    /** The record limit ends the table, with its final summary, as the end of the data does **/
+	    if (rval == 0 && reclimit != -1 && reccnt + 1 >= reclimit) rval = 1;
+
 	    /** Emit summary rows? **/
 	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
 		{
@@ -2701,6 +2727,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
     int nl = 0;
     PrtTextStyle oldstyle;
     pPrtTextStyle oldstyleptr = &oldstyle;
+    int oldjust;
     int t,rval;
     ObjData od;
     pStructInf value_inf;
@@ -2717,6 +2744,7 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 
 	/** Get style information **/
 	prtGetTextStyle(container_handle, &oldstyleptr);
+	oldjust = prtGetJustification(container_handle);
 	cxssPushContext();
 	context_pushed = 1;
 	rpt_internal_CheckFormats(inf, data);
@@ -2803,12 +2831,16 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 
 	/** Put the fonts etc back **/
 	prtSetTextStyle(container_handle, &oldstyle);
+	prtSetJustification(container_handle, oldjust);
+	if (url)
+	    prtSetURL(container_handle, NULL);
 	cxssPopContext();
 
 	return 0;
 
     error:
 	prtSetTextStyle(container_handle, &oldstyle);
+	prtSetJustification(container_handle, oldjust);
 	if (url)
 	    prtSetURL(container_handle, NULL);
 	if (context_pushed)
@@ -2833,6 +2865,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
     pRptActiveQueries ac;
     PrtTextStyle oldstyle;
     pPrtTextStyle oldstyleptr = &oldstyle;
+    int oldjust;
     int reccnt;
     int rval;
     int n;
@@ -2894,6 +2927,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 
 	/** Get style information **/
 	prtGetTextStyle(container_handle, &oldstyleptr);
+	oldjust = prtGetJustification(container_handle);
 	cxssPushContext();
 	context_pushed = 1;
 	rpt_internal_CheckFormats(inf, form);
@@ -2942,7 +2976,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 		/** No inner iterations; exit out now. **/
 		break;
 		}
-	    last_inner_cnt = qy->InnerExecCnt;
+	    if (outer_mode) last_inner_cnt = qy->InnerExecCnt;
 
 	    /** Emit a page break if requested **/
 	    if (ffsep) prtWriteFF(container_handle);
@@ -2959,6 +2993,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 
 	/** Set formatting/style information back to how it was before **/
 	prtSetTextStyle(container_handle, &oldstyle);
+	prtSetJustification(container_handle, oldjust);
 	cxssPopContext();
 	context_pushed = 0;
 
@@ -3210,34 +3245,95 @@ rpt_internal_GetYDecimalPrecision(pRptChartContext ctx, int n, int ser)
     }
 
 
-/*** Generate value strings
+/*** rpt_internal_ChartText() - prepares text for the chart engine, escaping
+ *** the characters it reads as markup unless the chart disables that.
+ ***
+ *** @param ctx The chart context, which frees the escaped text when done.
+ *** @param text The text to draw.
+ *** @returns The text to pass to the chart engine, or NULL on failure.
+ ***/
+static char*
+rpt_internal_ChartText(pRptChartContext ctx, char* text)
+    {
+    char* escaped;
+    size_t len = 0;
+
+	if (!ctx->auto_escape) return text;
+
+	/** Put a backslash before each markup character. **/
+	escaped = nmSysMalloc(strlen(text) * 2 + 1);
+	if (!escaped)
+	    {
+	    mssError(1, "RPT", "nmSysMalloc(%zu) failed.", strlen(text) * 2 + 1);
+	    return NULL;
+	    }
+	for (const char* scan = text; *scan; scan++)
+	    {
+	    if (strchr("\\_^{}", *scan)) escaped[len++] = '\\';
+	    escaped[len++] = *scan;
+	    }
+	escaped[len] = '\0';
+
+	/** Keep it for freeing with the context. **/
+	if (xaAddItem(ctx->texts, escaped) < 0)
+	    {
+	    mssError(1, "RPT", "Failed to keep escaped chart text \"%s\".", text);
+	    nmSysFree(escaped);
+	    return NULL;
+	    }
+
+    return escaped;
+    }
+
+
+/*** rpt_internal_FindSeries() - finds a series in a chart value set.
+ ***
+ *** @param values The value set.
+ *** @param targetSer The series to find.
+ *** @returns The index of the series in the value set, or -1 if it is missing.
+ ***/
+static int
+rpt_internal_FindSeries(pRptChartValues values, int targetSer)
+    {
+
+	for (int j = 0; j < values->nItems; j++)
+	    if (values->Series[j] == targetSer) return j;
+
+    return -1;
+    }
+
+
+/*** Generate value strings, showing each value, its percentage of the series
+ *** total, or both.
  ***/
 pXArray
-rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_pct, int targetSer)
+rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int show_value, int show_pct, int targetSer)
     {
     pXArray labels;
-    char str[32];
-    int i,j;
+    char str[64];
+    char valstr[32];
+    int i;
     double val;
     int prec;
-    int indexSer = -1;
+    int indexSer;
+    double total = 0.0;
 
 	labels = xaNew(n_vals);
 	if (!labels)
 	    return NULL;
 
+	/** Total the series for percentages **/
+	for(i=startval; i<startval+n_vals && show_pct; i++)
+	    {
+	    indexSer = rpt_internal_FindSeries((pRptChartValues)ctx->values->Items[i], targetSer);
+	    if (indexSer != -1) total += ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
+	    }
+
 	/** Format the label strings **/
 	for(i=startval; i<startval+n_vals; i++)
 	    {
 	    /** see if the serries is in the item. Skip if not. **/
-	    for(j=0; j<((pRptChartValues)ctx->values->Items[i])->nItems; j++)
-		{
-		if(targetSer == ((pRptChartValues)ctx->values->Items[i])->Series[j])
-		    {
-		    indexSer = j;
-		    break;
-		    }
-		}
+	    indexSer = rpt_internal_FindSeries((pRptChartValues)ctx->values->Items[i], targetSer);
 	    if(indexSer == -1) continue; /* the series was missing from the value set */
 
 	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
@@ -3246,15 +3342,21 @@ rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int
 	    if (prec == 0)
 		{
 		/** Integer **/
-		snprintf(str, sizeof(str), "%d%s", (int)round(val), show_pct?"%":"");
+		snprintf(valstr, sizeof(valstr), "%d", (int)round(val));
 		}
 	    else
 		{
 		/** Double **/
-		snprintf(str, sizeof(str), "%.*f%s", prec, val, show_pct?"%":"");
+		snprintf(valstr, sizeof(valstr), "%.*f", prec, val);
 		}
+	    const int pct = (total != 0.0) ? (int)round(val / total * 100.0) : 0;
+	    if (show_value && show_pct)
+		snprintf(str, sizeof(str), "%s (%d%%)", valstr, pct);
+	    else if (show_pct)
+		snprintf(str, sizeof(str), "%d%%", pct);
+	    else
+		snprintf(str, sizeof(str), "%s", valstr);
 	    xaAddItem(labels, nmSysStrdup(str));
-	    indexSer = -1;
 	    }
 
     return labels;
@@ -3280,7 +3382,7 @@ rpt_internal_FreeValueStrings(pXArray labels)
 /*** Line/Bar Labels
  ***/
 int
-rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int targetSer, int n_ser, int bar, double fontsize, int show_pct, double offset)
+rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int total_n_vals, int targetSer, int n_ser, int bar, double fontsize, int show_value, int show_pct, double offset)
     {
     int i,j;
     double val, valoffset;
@@ -3290,7 +3392,7 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
     int indexSer = -1;
     int labelIndex = 0;
 
-	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_pct, targetSer);
+	labels = rpt_internal_GetValueStrings(ctx, startval, n_vals, show_value, show_pct, targetSer);
 	if (!labels)
 	    return -1;
 
@@ -3320,14 +3422,19 @@ rpt_internal_DrawValueLabels(pRptChartContext ctx, int startval, int n_vals, int
 	    if(indexSer == -1) continue;
 	    val = ((pRptChartValues)ctx->values->Items[i])->Values[indexSer];
 	    valoffset = (ctx->max - ctx->min)*0.02;
+
+	    /** A line chart's end points sit on the plot edges, so align their labels inward. **/
+	    const char* align = "";
+	    if (!bar && i == 0) align = ":L";
+	    else if (!bar && i == total_n_vals - 1) align = ":R";
 #ifdef HAVE_MGL2
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.022;
-	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor);
+	    mgl_puts(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], align, fs * ctx->font_scale_factor);
 #else
 	    if (val < 0)
 		valoffset = 0 - valoffset - (fs * ctx->font_scale_factor) * (ctx->max - ctx->min) * 0.013;
-	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], "", fs * ctx->font_scale_factor, '\0');
+	    mgl_puts_ext(ctx->gr, offset + i*2 + (bar?(-0.7 + (0.5 + targetSer) * (1.4 / n_ser)):0.0), val + valoffset, 0.0, (char*)labels->Items[labelIndex], align, fs * ctx->font_scale_factor, '\0');
 #endif
 	    /** reset the index of the series and move on to the next label **/
 	    indexSer = -1;
@@ -3520,15 +3627,17 @@ rpt_internal_BarChart_Generate(pRptChartContext ctx)
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
 #ifdef HAVE_MGL2
-		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 1.0);
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_value, show_percent, 1.0);
 #else
-		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_percent, 0.0);
+		rpt_internal_DrawValueLabels(ctx, 1, reccnt-2, reccnt, i, ctx->series->nItems, 1, series_fontsize, show_value, show_percent, 0.0);
 #endif
 	    /** Generate the legend **/
 	    if(ctx->show_legend)
 		{
 		snprintf(lineStyle, sizeof(lineStyle), "%s-9", color); /* make the line in the legend appear thicker*/
 		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		ptr = rpt_internal_ChartText(ctx, ptr);
+		if (!ptr) return -1;
 		mgl_add_legend(ctx->gr, ptr, lineStyle);
 		}
 	    }
@@ -3662,11 +3771,13 @@ rpt_internal_LineChart_Generate(pRptChartContext ctx)
 
 	    /** Generate the numeric bar labels **/
 	    if (show_value || show_percent)
-		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_percent, 0.0);
+		rpt_internal_DrawValueLabels(ctx, 0, reccnt, reccnt, i, 1, 0, series_fontsize, show_value, show_percent, 0.0);
 	    /** Generate the legend **/
 	    if(ctx->show_legend)
 		{
 		rpt_internal_GetString(ctx->inf, one_series, "legend_name", &ptr, one_series->Name, 0);
+		ptr = rpt_internal_ChartText(ctx, ptr);
+		if (!ptr) return -1;
 		mgl_add_legend(ctx->gr, ptr, lineStyle);
 		}
 	    }
@@ -3779,7 +3890,7 @@ rpt_internal_PieChart_Generate(pRptChartContext ctx)
 	pcolor = ":bgrhBGRHWcmywpCMYkPlenuqLENUQ"; 
 	for(i=0; i<reccnt; i++)
 	    sumValues += ((pRptChartValues)ctx->values->Items[i])->Values[0];
-	labels = rpt_internal_GetValueStrings(ctx, 0, reccnt, 0, 0);
+	labels = rpt_internal_GetValueStrings(ctx, 0, reccnt, 1, 0, 0);
 	if (!labels)
 	    return -1;
 
@@ -4047,7 +4158,6 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 		    childexp->DataType = DATA_T_STRING;
 		    childexp->Alloc = 1;
 		    childexp->String = nmSysStrdup(ptr);
-		    paletteInd++;
 		    childobj->Value = childexp;
 		    stAddInf(subobj, childobj);
 		    }
@@ -4195,6 +4305,10 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
 	ctx->show_legend = rpt_internal_GetBool(inf, chart, "show_legend", false, 0);
+	ctx->auto_escape = !rpt_internal_GetBool(inf, chart, "disable_auto_escaping", false, 0);
+	ctx->texts = xaNew(8);
+	if (!ctx->texts)
+	    goto error;
 	/** Determine axis/series counts **/
 	ctx->series = xaNew(4);
 
@@ -4280,6 +4394,11 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	rpt_internal_GetString(inf, chart, "title", &title, "", 0);
 	rpt_internal_GetString(inf, ctx->x_axis, "label", &x_axis_label, "", 0);
 	rpt_internal_GetString(inf, ctx->y_axis, "label", &y_axis_label, "", 0);
+	title = rpt_internal_ChartText(ctx, title);
+	x_axis_label = rpt_internal_ChartText(ctx, x_axis_label);
+	y_axis_label = rpt_internal_ChartText(ctx, y_axis_label);
+	if (!title || !x_axis_label || !y_axis_label)
+	    goto error;
 
 	/** Start the query to get the chart values. **/
 	if ((ac = rpt_internal_Activate(inf, chart, rs)) == NULL)
@@ -4330,7 +4449,9 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	for(i=0; i<ctx->values->nItems; i++)
 	    {
 	    value = (pRptChartValues)ctx->values->Items[i];
-	    ctx->x_labels[i] = value->Label;
+	    ctx->x_labels[i] = rpt_internal_ChartText(ctx, value->Label);
+	    if (!ctx->x_labels[i])
+		goto error;
 	    /* auto series can be sparsely pupolated and thus require initialization */
 	    if(isAuto)
 		{
@@ -4416,7 +4537,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    goto error;
 	mgl_set_rotated_text(ctx->gr, ctx->rotation?1:0);
 	if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
-	    mgl_set_plotfactor(ctx->gr, 1.55*ctx->zoom);
+	    mgl_set_plotfactor(ctx->gr, 1.55/ctx->zoom);
 
 	/** Decimal precision **/
 	prec = rpt_internal_GetYDecimalPrecision(ctx, -1, -1);
@@ -4443,7 +4564,13 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	/** Title and axis labels **/
 	if (*title)
 #ifdef HAVE_MGL2
+	    {
+	    /** An explicit plot factor puts the title off the chart; use the automatic one **/
+	    mgl_set_plotfactor(ctx->gr, 0.0);
 	    mgl_puts(ctx->gr, 0.5, 0.9, 0.0, title, "A", ctx->fontsize * ctx->font_scale_factor);
+	    if (ctx->zoom < 0.999 || ctx->zoom > 1.001)
+		mgl_set_plotfactor(ctx->gr, 1.55/ctx->zoom);
+	    }
 #else
 	    mgl_title(ctx->gr, title, "", ctx->fontsize * ctx->font_scale_factor);
 #endif
@@ -4535,6 +4662,12 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    mgl_delete_graph(ctx->gr);
 	if (img)
 	    prtFreeImage(img);
+	if (ctx && ctx->texts)
+	    {
+	    for(i=0; i<ctx->texts->nItems; i++)
+		nmSysFree(ctx->texts->Items[i]);
+	    xaFree(ctx->texts);
+	    }
 	if (ctx)
 	    nmFree(ctx, sizeof(RptChartContext));
 	return errval;
@@ -5268,6 +5401,7 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	    {
 	    title_str = rpt_internal_SubstParam(inf, title);
 	    title = title_str->String;
+	    prtSetSessionParam(ps, "title", title);
 	    }
 
 	/** Resolution specified? **/
@@ -5642,7 +5776,11 @@ rpt_internal_Generator(void* v)
 	    }
 
 	/** Close the slave side and exit. **/
-	prtCloseSession(ps);
+	if (prtCloseSession(ps) < 0)
+	    {
+	    mssError(1,"RPT","Failed to generate the report");
+	    inf->Flags |= RPT_F_ERROR;
+	    }
 	fdClose(inf->SlaveFD,0);
 	inf->SlaveFD = NULL;
 	rpt_internal_Close(inf, NULL);
