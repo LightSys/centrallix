@@ -74,6 +74,8 @@ start(void* v)
 	/** Print test results. **/
 	if (rval < 0)
 	    printf("%-62.62s  FAIL\n", tname);
+	else if (rval == 0)
+	    printf("%-62.62s  SKIP\n", tname);
 	else
 	    {
 	    long long duration = end - start;
