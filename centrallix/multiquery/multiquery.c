@@ -12,6 +12,7 @@
 #include "expression.h"
 #include "cxlib/xstring.h"
 #include "multiquery.h"
+#include "multiquery_private.h"
 #include "cxlib/mtsession.h"
 #include "application.h"
 #include "cxlib/xhandle.h"

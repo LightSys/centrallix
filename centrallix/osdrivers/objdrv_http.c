@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <regex.h>
 #include "obj.h"
+#include "obj_private.h"
 #include "cxlib/mtask.h"
 #include "stparse.h"
 #include "st_node.h"
