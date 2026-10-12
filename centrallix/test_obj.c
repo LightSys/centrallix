@@ -1329,6 +1329,40 @@ testobj_i_printCsvField(pObject row, char* attrname, bool present, bool first)
     }
 
 
+/*** testobj_i_addCsvExtra - records an attribute that is left out of the csv,
+ *** so that later rows do not warn about it again.
+ ***
+ *** @param columns The csv column table to add the attribute to.
+ *** @param extras The list that owns the copied attribute names.
+ *** @param attrname The attribute.
+ *** @param unused_present The presence flag shared by all left out attributes.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+testobj_i_addCsvExtra(pXHashTable columns, pXArray extras, char* attrname, bool* unused_present)
+    {
+	char* const extra = nmSysStrdup(attrname);
+	if (UNLIKELY(extra == NULL))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to copy attribute name \"%s\".", attrname);
+	    return -1;
+	    }
+	if (UNLIKELY(xaAddItem(extras, extra) < 0))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to record extra attribute \"%s\".", attrname);
+	    nmSysFree(extra);
+	    return -1;
+	    }
+	if (UNLIKELY(xhAdd(columns, extra, (char*)unused_present) < 0))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to add extra attribute \"%s\".", attrname);
+	    return -1;
+	    }
+
+	return 0;
+    }
+
+
 /*** testobj_i_cmdCsv - runs a query and prints the results as csv.
  ***
  *** @param s The OSML session.
@@ -1389,7 +1423,15 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 	    }
 	for (char* attrname = objGetFirstAttr(row); attrname != NULL; attrname = objGetNextAttr(row))
 	    {
-	    if (n_attrs >= CSV_MAX_ATTRS) continue;
+	    if (n_attrs >= CSV_MAX_ATTRS)
+		{
+		if (UNLIKELY(testobj_i_addCsvExtra(columns, extras, attrname, &unused_present) < 0)) goto end;
+		fprintf(stderr,
+		    "Warning: Attribute \"%s\" is left out of the csv because the limit is %d columns.\n",
+		    attrname, CSV_MAX_ATTRS
+		);
+		continue;
+		}
 	    attrnames[n_attrs] = nmSysStrdup(attrname);
 	    if (UNLIKELY(attrnames[n_attrs] == NULL))
 		{
@@ -1435,26 +1477,8 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 		    continue;
 		    }
 
-		/*** Warn once for each attribute left out of the header.
-		 *** Add the attribute to the table to prevent repeat warnings.
-		 ***/
-		char* extra = nmSysStrdup(attrname);
-		if (UNLIKELY(extra == NULL))
-		    {
-		    mssError(1, "TESTOBJ", "Failed to copy attribute name \"%s\".", attrname);
-		    goto end;
-		    }
-		if (UNLIKELY(xaAddItem(extras, extra) < 0))
-		    {
-		    mssError(1, "TESTOBJ", "Failed to record extra attribute \"%s\".", attrname);
-		    nmSysFree(extra);
-		    goto end;
-		    }
-		if (UNLIKELY(xhAdd(columns, extra, (char*)&unused_present) < 0))
-		    {
-		    mssError(1, "TESTOBJ", "Failed to add extra attribute \"%s\".", attrname);
-		    goto end;
-		    }
+		/** Warn once for each attribute left out of the header. **/
+		if (UNLIKELY(testobj_i_addCsvExtra(columns, extras, attrname, &unused_present) < 0)) goto end;
 		fprintf(stderr,
 		    "Warning: Attribute \"%s\" in csv row %d is not in the header, so it is left out.\n",
 		    attrname, n_rows
