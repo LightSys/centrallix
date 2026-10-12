@@ -2739,7 +2739,7 @@ objStringToEncoding(char* code_str)
  *** @returns 0 if the byte is valid, or -1 on failure
  ***/
 int
-obj_internal_validCharCP_1255(const unsigned char byte)
+obj_internal_validCharCP_1252(const unsigned char byte)
     {
 	if(byte == 0x81u || byte == 0x8Du || byte == 0x8Fu 
 		|| byte == 0x90u || byte == 0x9Du)
@@ -2866,7 +2866,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 				" large for vanco encoding",
 				cur, peek, i
 				);
-				goto error;
+			    goto error;
 			    }
 
 			/** Write the first 3 bits from the header as a byte **/
@@ -2904,7 +2904,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			    goto error;
 			    }
 			/** check for surrogate bytes */
-			if(UNLIKELY(cur == 0xEDu && peek >= 0xA0U))
+			if(UNLIKELY(cur == 0xEDu && peek >= 0xA0U && peek != 0xFFu))
 			    {
 			    mssError(1, "OBJ", 
 				"Invalid 3 byte character. Possible surrogate starting"
@@ -2917,7 +2917,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			if(UNLIKELY(validate))
 			    {
 			    mssError(1, "OBJ", 
-				"Unsupported 3 byte characterfor vanco encoding at"
+				"Unsupported 3 byte character for vanco encoding at"
 				" index %zu", 
 				i
 				);
@@ -2971,7 +2971,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			if(UNLIKELY(validate))
 			    {
 			    mssError(1, "OBJ", 
-				"Unsupported 4 byte characterfor vanco encoding at"
+				"Unsupported 4 byte character for vanco encoding at"
 				" index %zu", 
 				i
 				);
@@ -3053,8 +3053,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    buf_char |= (0b00111111 & cur);
 		    
 		    /** vanco does not support all possible bytes. **/
-		    int is_valid = obj_internal_validCharCP_1255(buf_char);
-		    if(UNLIKELY(validate && is_valid == -1))
+		    if(UNLIKELY(validate && obj_internal_validCharCP_1252(buf_char) == -1))
 			{
 			mssError(1, "OBJ", 
 			    "Unsupported code point %02hhX for vanco encoding at"
