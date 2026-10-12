@@ -1435,7 +1435,7 @@ testobj_i_cmdCsv(pObjSession s, char* query_text)
 		    }
 
 		/*** Warn once for each attribute left out of the header.
-		 *** Add the attribute to the to prevent repeat warnings.
+		 *** Add the attribute to the table to prevent repeat warnings.
 		 ***/
 		char* extra = nmSysStrdup(attrname);
 		if (UNLIKELY(extra == NULL))
@@ -2687,7 +2687,7 @@ testobj_i_cmdExec(pObjSession s, char* path, pLxSession ls)
 
 
 /*** testobj_i_cmdHints - prints presentation hints for the command:
- *** hints <obj> [attribute]
+ *** hints [<obj> [<attribute>]]
  ***
  *** @param s The OSML session.
  *** @param path The path of the object, or NULL for the working directory.
