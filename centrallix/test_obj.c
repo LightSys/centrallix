@@ -778,27 +778,29 @@ testobj_i_hasChildren(char* path, bool* has_children)
 	    goto end;
 	    }
 
-	/** Use the driver's info, if provided. **/
+	/** Use the driver's info, if it answers the question. **/
 	const pObjectInfo info = objInfo(obj);
-	if (info != NULL)
+	if (UNLIKELY(info == NULL))
 	    {
-	    if ((info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)) != 0)
-		{
-		rval = 0;
-		goto end;
-		}
-	    if ((info->Flags & OBJ_INFO_F_HAS_SUBOBJ) != 0)
-		{
-		*has_children = true;
-		rval = 0;
-		goto end;
-		}
-	    if ((info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) != 0)
-		{
-		*has_children = (info->nSubobjects > 0);
-		rval = 0;
-		goto end;
-		}
+	    mssError(0, "TESTOBJ", "Failed to get info for \"%s\".", path);
+	    goto end;
+	    }
+	if ((info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)) != 0)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+	if ((info->Flags & OBJ_INFO_F_HAS_SUBOBJ) != 0)
+	    {
+	    *has_children = true;
+	    rval = 0;
+	    goto end;
+	    }
+	if ((info->Flags & OBJ_INFO_F_SUBOBJ_CNT_KNOWN) != 0)
+	    {
+	    *has_children = (info->nSubobjects > 0);
+	    rval = 0;
+	    goto end;
 	    }
 
 	/** Fetch one child. **/
