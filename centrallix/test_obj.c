@@ -1936,8 +1936,7 @@ testobj_i_printListRow(pObject obj, char* dir_path, int indent)
 
 
 /*** testobj_i_listDir - prints the objects in a directory, each followed by
- *** the listing of its own subobjects, down to a given depth.  A
- *** subdirectory that cannot be listed gets a warning instead.
+ *** the listing of its own subobjects, down to a given depth.
  ***
  *** @param s The OSML session.
  *** @param dir_path The directory to list.
@@ -2035,14 +2034,15 @@ testobj_i_listDir(pObjSession s, char* dir_path, char* where, char* order_by, in
 		bool has_children = false;
 		if (UNLIKELY(testobj_i_hasChildren(xsString(child_path), &has_children) < 0))
 		    {
-		    mssWarnError("Failed to check \"%s\" for children, skipping them.", xsString(child_path));
+		    mssError(0, "TESTOBJ", "Failed to check \"%s\" for children.", xsString(child_path));
+		    goto end;
 		    }
-		else if (has_children)
+		if (has_children)
 		    {
-		    const int next_levels = (levels == 0) ? 0 : levels - 1;
-		    if (UNLIKELY(testobj_i_listDir(s, xsString(child_path), where, order_by, next_levels, indent + 2) < 0))
+		    if (UNLIKELY(testobj_i_listDir(s, xsString(child_path), where, order_by, depth - 1, indent + 2) < 0))
 			{
-			mssWarnError("Failed to list \"%s\", skipping it.", xsString(child_path));
+			mssError(0, "TESTOBJ", "Failed to list \"%s\".", xsString(child_path));
+			goto end;
 			}
 		    }
 		}
