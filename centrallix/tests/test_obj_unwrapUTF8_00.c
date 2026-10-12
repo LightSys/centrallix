@@ -11,7 +11,7 @@ test_unwrap_success(char* in_buf, size_t in_len, char* expect_buf, size_t expect
     int ret = 0;
 
     /** test normal **/
-    if(objUnwrapUTF8(in_buf, in_len, &out_buf, &out_len) != 0)
+    if(objUnwrapUTF8(in_buf, in_len, &out_buf, &out_len, 0) != 0)
 	{
 	ret = -1;
 	goto end;
@@ -38,7 +38,7 @@ test_unwrap_fail(char* in_buf, size_t in_len)
     char* out_buf = NULL;
 
     /** test failure **/
-    if(objUnwrapUTF8(in_buf, in_len, &out_buf, &out_len) != -1) return -1;
+    if(objUnwrapUTF8(in_buf, in_len, &out_buf, &out_len, 0) != -1) return -1;
     if(out_len != 0) return -2;
     if(out_buf != NULL) return -3;
     return 0;

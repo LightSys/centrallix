@@ -43,13 +43,13 @@ Attribute [utf8: NULL]:   binary  NULL
 ""
 Attribute [cp1252: NULL]:   binary  NULL
 "vanco to ascii"
-"EUR,f,,...+???S<OEZZ''""""o---~(TM)s>oezY	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~!cGBP?JPY|??(C)a<<!(R)??+-23'u?.,1o>> 1/4  1/2  3/4 ?AAAAAAAECEEEEIIIIDNOOOOOxOUUUUYTHssaaaaaaaeceeeeiiiidnooooo/ouuuuythy"
+"EUR,f,,...+?^?S<OEZ''""""o---~(TM)s>oezY	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~!cGBP?JPY|??(C)a<<!(R)??+-23'u?.,1o>> 1/4  1/2  3/4 ?AAAAAAAECEEEEIIIIDNOOOOOxOUUUUYTHssaaaaaaaeceeeeiiiidnooooo/ouuuuythy"
 "vanco to latin1"
-"EUR,f,,...+???S<OEZZ''""""o---~(TM)s>oezY	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~΅Ά£¤¥¦§¨©ª«¬®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡÒΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώÿ"
+"EUR,f,,...+?^?S<OEZ''""""o---~(TM)s>oezY	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~΅Ά£¤¥¦§¨©ª«¬®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡÒΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώÿ"
 "vanco to cp1252"
-"€‚ƒ„…†‡‰‰‹‘’“”•–—™›	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~΅Ά£¤¥¦§¨©ª«¬®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡÒΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώÿ"
+"€‚ƒ„…†‡‰‹‘’“”•–—™›	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~΅Ά£¤¥¦§¨©ª«¬®―°±²³΄µ¶·ΈΉΊ»Ό½ΎΏΐΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡÒΣΤΥΦΧΨΩΪΫάέήίΰαβγδεζηθικλμνξοπρςστυφχψωϊϋόύώÿ"
 "vanco to utf8"
-"β‚¬β€Ζ’β€β€¦β€ β€΅β€°β€°Ε β€ΉΕ’Ε½Ε½β€β€™β€β€β€Άβ€“β€”Λβ„ΆΕ΅β€ΊΕ“ΕΎΕΈ	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~Β΅ΒΆΒ£Β¤Β¥Β¦Β§Β¨Β©ΒªΒ«Β¬Β®Β―Β°Β±Β²Β³Β΄ΒµΒ¶Β·ΒΈΒΉΒΊΒ»ΒΌΒ½ΒΎΒΏΓ€ΓΓ‚ΓƒΓ„Γ…Γ†Γ‡ΓΓ‰ΓΓ‹ΓΓΓΓΓΓ‘Γ’Γ“Γ”Γ•Γ–Γ—ΓΓ™ΓΓ›ΓΓΓΓΓ Γ΅ΓΆΓ£Γ¤Γ¥Γ¦Γ§Γ¨Γ©ΓªΓ«Γ¬Γ­Γ®Γ―Γ°Γ±Γ²Γ³Γ΄ΓµΓ¶Γ·ΓΈΓΉΓΊΓ»ΓΌΓ½ΓΎΓΏ"
+"β‚¬β€Ζ’β€β€¦β€ β€΅Λ†β€°Ε β€ΉΕ’Ε½β€β€™β€β€β€Άβ€“β€”Λβ„ΆΕ΅β€ΊΕ“ΕΎΕΈ	   !""#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~Β΅ΒΆΒ£Β¤Β¥Β¦Β§Β¨Β©ΒªΒ«Β¬Β®Β―Β°Β±Β²Β³Β΄ΒµΒ¶Β·ΒΈΒΉΒΊΒ»ΒΌΒ½ΒΎΒΏΓ€ΓΓ‚ΓƒΓ„Γ…Γ†Γ‡ΓΓ‰ΓΓ‹ΓΓΓΓΓΓ‘Γ’Γ“Γ”Γ•Γ–Γ—ΓΓ™ΓΓ›ΓΓΓΓΓ Γ΅ΓΆΓ£Γ¤Γ¥Γ¦Γ§Γ¨Γ©ΓªΓ«Γ¬Γ­Γ®Γ―Γ°Γ±Γ²Γ³Γ΄ΓµΓ¶Γ·ΓΈΓΉΓΊΓ»ΓΌΓ½ΓΎΓΏ"
 "vanco: empty str"
 ""
 Attribute [vanco: NULL]:   binary  NULL
