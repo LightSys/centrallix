@@ -769,11 +769,12 @@ testobj_i_hasChildren(char* path, bool* has_children)
 	/** Assume no children. **/
 	*has_children = false;
 
-	/** Open the object. **/
+	/** An object that cannot be opened as a directory has no children. **/
 	obj = objOpen(s, path, O_RDONLY, 0400, "system/directory");
-	if (UNLIKELY(obj == NULL))
+	if (obj == NULL)
 	    {
-	    mssError(0, "TESTOBJ", "Failed to open \"%s\".", path);
+	    mssClearError();
+	    rval = 0;
 	    goto end;
 	    }
 
