@@ -1942,12 +1942,12 @@ testobj_i_printListRow(pObject obj, char* dir_path, int indent)
  *** @param dir_path The directory to list.
  *** @param where The criteria for the objects to list, or NULL for all.
  *** @param order_by The order to list them in, or NULL for any order.
- *** @param levels The number of levels to list, or 0 for all.
+ *** @param depth The number of levels of subobjects to list below the directory.
  *** @param indent The number of spaces to indent each row.
  *** @returns 0 on success, or -1 on failure.
  ***/
 static int
-testobj_i_listDir(pObjSession s, char* dir_path, char* where, char* order_by, int levels, int indent)
+testobj_i_listDir(pObjSession s, char* dir_path, char* where, char* order_by, int depth, int indent)
     {
     int rval = -1;
     pObject dir = NULL;
@@ -1986,7 +1986,7 @@ testobj_i_listDir(pObjSession s, char* dir_path, char* where, char* order_by, in
 	    );
 	    goto end;
 	    }
-	if (levels != 1)
+	if (depth > 0)
 	    {
 	    child_path = xsNew();
 	    if (UNLIKELY(child_path == NULL))
@@ -2003,7 +2003,7 @@ testobj_i_listDir(pObjSession s, char* dir_path, char* where, char* order_by, in
 
 	    /** Build the child's path. The row printed a warning if the name is unreadable. **/
 	    bool has_path = false;
-	    if (levels != 1)
+	    if (depth > 0)
 		{
 		char* name = NULL;
 		if (objGetAttrValue(child, "name", DATA_T_STRING, POD(&name)) == 0)
@@ -2080,20 +2080,20 @@ testobj_i_cmdList(pObjSession s, char* first_arg, pLxSession ls)
     char* order_by = NULL;
 
 	/** Read the depth. **/
-	int levels = 1;
+	int depth = 0;
 	if (first_arg != NULL && strncmp(first_arg, "-r", 2) == 0)
 	    {
-	    levels = 0;
-	    char* const depth = first_arg + 2;
-	    if (depth[0] != '\0')
+	    depth = 1;
+	    char* const depth_text = first_arg + 2;
+	    if (depth_text[0] != '\0')
 		{
 		char* num_end = NULL;
-		levels = strtoi(depth, &num_end, 10);
-		if (UNLIKELY(num_end == depth || *num_end != '\0' || levels < 1 || levels == INT_MAX))
+		depth = strtoi(depth_text, &num_end, 10);
+		if (UNLIKELY(num_end == depth_text || *num_end != '\0' || depth < 1 || depth == INT_MAX))
 		    {
 		    mssError(1, "TESTOBJ",
 			"Failed to parse depth \"%s\" as a whole number from 1 to %d. %s",
-			depth, INT_MAX - 1, usage
+			depth_text, INT_MAX - 1, usage
 		    );
 		    goto end;
 		    }
@@ -2167,7 +2167,7 @@ testobj_i_cmdList(pObjSession s, char* first_arg, pLxSession ls)
 	    goto end;
 	    }
 
-	if (UNLIKELY(testobj_i_listDir(s, dir_path, where, order_by, levels, 0) < 0)) goto end;
+	if (UNLIKELY(testobj_i_listDir(s, dir_path, where, order_by, depth, 0) < 0)) goto end;
 
 	rval = 0;
 
@@ -3189,7 +3189,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  hints     - Show the presentation hints of an attribute (or object)\n");
 	    printf("  help      - Displays this help screen.\n");
 	    printf("  list, ls  - Lists the objects in the current \"directory\" in the objectsystem.\n");
-	    printf("              -r lists all subobjects, -r<depth> only that many levels; where filters each level.\n");
+	    printf("              -r lists one level of subobjects, -r<depth> that many levels; where filters each level.\n");
 	    printf("  mem       - Print memory statistics and the allocation changes since the last mem.\n");
 	    printf("  mlquery   - Runs a SQL query, reading in multiple lines until a blank line.\n");
 	    printf("  obfuscate - Begins obfuscation of CSV and query output, given an obfuscation key and optional rule file\n");
