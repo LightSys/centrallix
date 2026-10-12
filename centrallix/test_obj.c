@@ -2838,6 +2838,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     char first_arg[256];
     char* arg = NULL;
 
+	cmd += strspn(cmd, " \t"); /* Ignore indentation. */
 	if (cmd[0] == '#') return 0;
 
 	ls = mlxStringSession(cmd, MLX_F_ICASE | MLX_F_EOF);
@@ -3533,7 +3534,7 @@ testobj_i_readPassword(void)
  *** -C command, the -f command file, or the interactive prompt.  Never
  *** returns: exits with status 1 if startup or the command file fails.
  *** Failed commands print a warning and do not stop the run, unless -e
- *** was given.
+ *** was given and the command came from -C or -f.
  ***
  *** @param unused Unused.
  ***/
