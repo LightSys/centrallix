@@ -939,7 +939,7 @@ handle_tab(int unused_1, int unused_2)
 	    }
 
 	/** Open the directory. **/
-	obj = objOpen(s, xsString(dir), O_RDONLY, 0400, NULL);
+	obj = objOpen(s, xsString(dir), O_RDONLY, 0400, "system/directory");
 	if (UNLIKELY(obj == NULL))
 	    {
 	    mssError(0, "TESTOBJ", "Failed to open directory \"%s\".", xsString(dir));
