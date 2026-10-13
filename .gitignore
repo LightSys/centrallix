@@ -66,3 +66,24 @@ perf.data.old
 .idea/
 .vscode/
 centrallix-os/tmp/*
+
+# Rebuild Temp Files
+/centrallix/confdefs.h
+/centrallix/conftest.c
+/centrallix/conftest.err
+/centrallix-lib/confdefs.h
+
+# Claude Code & Sandbox Files
+**/.claude/**
+.mcp.json
+.ripgreprc
+.bash_profile
+.bashrc
+.profile
+.zprofile
+.zshrc
+
+# IDE Files
+**/.idea/
+.idea
+**/.vscode/
