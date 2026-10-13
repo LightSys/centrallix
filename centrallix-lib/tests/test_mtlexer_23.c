@@ -105,6 +105,7 @@ test(char** tname)
 		assert(!strcmp(currentToken, token->Buffer));
 		assert(mlxGetOffset(lex) == token->Offset);
 		assert(mlxGetCurOffset(lex) == token->CurOffset);
+		nmSysFree(currentToken);
 		}
 
 	    /** Generate a list of token aligned jumps. **/
@@ -140,6 +141,7 @@ test(char** tname)
 		    assert(!strcmp(currentToken, token->Buffer));
 		    assert(mlxGetOffset(lex) == token->Offset);
 		    assert(mlxGetCurOffset(lex) == token->CurOffset);
+		    nmSysFree(currentToken);
 		    }
 		}
 
@@ -174,6 +176,7 @@ test(char** tname)
 		assert(!strcmp(currentToken, token->Buffer + token->Length - strlen(currentToken)));
 		assert(mlxGetOffset(lex) == jumps[i] || mlxGetOffset(lex) == jumps[i] + 1);
 		assert(mlxGetCurOffset(lex) == token->CurOffset);
+		nmSysFree(currentToken);
 	    
 		/** Get the next token information. **/
 		/**(This line probably has too much magic in it) **/
@@ -192,6 +195,7 @@ test(char** tname)
 		assert(!strcmp(currentToken, token->Buffer));
 		assert(mlxGetOffset(lex) == token->Offset);
 		assert(mlxGetCurOffset(lex) == token->CurOffset);
+		nmSysFree(currentToken);
 		}
 
 	    /** Close the lexer session. **/
@@ -203,6 +207,7 @@ test(char** tname)
 	for (i = 0; i < xaCount(tokens); i++)
 	    {
 	    token = (pOffsetData)xaGetItem(tokens, i);
+	    nmSysFree(token->Buffer);
 	    nmFree(token, sizeof(OffsetData));
 	    }
 
