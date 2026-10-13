@@ -60,7 +60,7 @@ The SMTP OS Driver provides the capability for the Centrallix Object System to s
 
 
 ## II Usage
-In order to use the SMTP driver, the root node must first have all required [node attributes](#node-attributes).  Of these, `spool_dir` is the most important attribute, and the optional `expire_time`, `content_has_headers`, and `local_host_name` attributes may also be helpful for defining how emails are created and sent.
+In order to use the SMTP driver, `spool_dir` must be set in `centrallix.conf` (see [Initialization](#a-initialization)).  Every SMTP node uses that spool directory.  The optional `content_has_headers` and `local_host_name` [node attributes](#node-attributes) may also be helpful for defining how emails are created and sent.
 
 Email objects are created as children of the root SMTP node and, when created, contain no content or headers.  Further modification of the email object should be accomplished through the MIME driver; however, this is not currently supported, so the SMTP driver provides several [email node attributes](#email-attributes) for setting certain, important headers (e.g. `To`, `From`, etc.).
 
@@ -68,7 +68,7 @@ Email objects are created as children of the root SMTP node and, when created, c
 
 Email recipients should be determined from the email message itself; however, additional recipients may be added by using the `envelope_to` attribute.
 
-To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  When an email is sent, the driver reads the lines Postfix added to `/var/log/maillog` since its spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  Each spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  Opening an email or using its attributes also reads the log, if the spool directory has not read it in the last `log_read_interval` seconds.  To read it sooner, call the `read_mail_log` method of the SMTP node.  Centrallix processes that share a spool directory take turns using it by locking `.spool_lock`.  An email that is still Pending 6 days after `last_try_date` becomes Error, or 2 minutes after it if sendmail never reported a result and Postfix never logged it.  Writing the content or setting the attributes of a Pending email fails.
+To send an email, set the `is_ready` attribute to 1.  The driver hands the email to Postfix through `sendmail` and sets `status` to Pending.  When an email is sent, the driver reads the lines Postfix added to `/var/log/maillog` since the spool directory last read it, records their results in the structs of the spool's Pending emails, and sets `status` to Sent or Error once Postfix finishes.  The spool directory records where it stopped in `.mail_log_cursor`, so it continues there after a restart.  Opening an email or using its attributes also reads the log, if the spool directory has not read it in the last `log_read_interval` seconds.  To read it sooner, call the `read_mail_log` method of the SMTP node.  Centrallix processes that share a spool directory take turns using it by locking `.spool_lock`.  An email that is still Pending 6 days after `last_try_date` becomes Error, or 2 minutes after it if sendmail never reported a result and Postfix never logged it.  Writing the content or setting the attributes of a Pending email fails.
 
 Sent means the next mail server accepted the email for every recipient.
 
@@ -81,14 +81,22 @@ The SMTP driver does not implement the entire OS driver interface.  Its function
 ### A. Initialization
 The SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
 
-The driver opens `/var/log/maillog` as root to read the results of emails handed to Postfix, so Centrallix must run as root.  To read a different log, set `mail_log` in an `smtp` block of `centrallix.conf`:
+The driver reads its settings from the `smtp` block of `centrallix.conf`:
 
 ```
 smtp "system/config"
     {
-    mail_log = "/var/log/maillog";
+    spool_dir = "/var/spool/centrallix-smtp";
     }
 ```
+
+| Setting             | Description
+| ------------------- | -----------
+| spool_dir           | The absolute path of the directory that stores the emails of every SMTP node.  Required: without it, the driver does not load.
+| mail_log            | The path to the Postfix log to read for results from sent emails (defaults to `/var/log/maillog`).  The driver opens this log as root, so Centrallix must run as root.
+| expire_time         | The number of seconds to keep a sent or failed email (defaults to 3 days).  Negative values keep it forever.  This is done by setting the `expire_date` [Email Attribute](#email-attributes) on an email when it is sent or fails to send.
+| log_read_interval   | The minimum number of seconds between reads of the mail log when emails are opened or their attributes are used (defaults to 1 hour).  See [Usage](#ii-usage).
+| sweep_interval      | The minimum number of seconds between checks to delete expired emails from the spool directory (default to 1 hour).  See `expire_date` in [Email Attributes](#email-attributes).
 
 > ⚠️ **Warning**: The driver expects to only be initialized once. It initializes global values that are never deinitialized, so multiple initialization calls may cause memory leaks.
 
@@ -133,7 +141,7 @@ Encoding and decoding of emails is performed by the MIME driver.
 ### E. Querying for Child Objects
 The only query-able SMTP object is the root node.  The email objects may be query-able; however, this functionality will be provided by the MIME driver.
 
-When the root node is queried, it opens the spool directory.  Each subsequent `smtpQueryFetch()` returns the next email object in the spool directory.  This means that, if two root nodes share the same spool directory, they will also share children (which are emails).  Any changes made to the children of one such root node will change the children of the other root node because the children are the same objects (although the OSML may create a second object because of the OSML pathname difference).
+When the root node is queried, it opens the spool directory.  Each subsequent `smtpQueryFetch()` returns the next email object in the spool directory.  This means that all root nodes share children (which are emails).  Any changes made to the children of one root node will change the children of the others because the children are the same objects (although the OSML may create a second object because of the OSML pathname difference).
 
 
 ### F. Managing Object Attributes
@@ -147,16 +155,12 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | *send_method*\*     | Specifies how emails are to be sent.  The SMTP driver currently supports only the sendmail utility for sending emails.  As a result, this attribute is useless.
 | *server*\*          | The DNS name or IP address of the server to use when sending via direct-to-MTA SMTP.  Not used by sendmail.
 | *port*\*            | The TCP port to use on the remote server when sending via direct-to-MTA SMTP.  Not used by sendmail.
-| spool_dir           | The file path of the spool directory that will be used for storing messages that have not yet been sent.  This should be a location that supports the storage of arbitrary files.
 | *log_dir*\*         | The OSML directory in which to place log messages about the success or failure of transmitting email messages.  This should be a location that supports the log attributes listed below.
 | *log_date_attr*\*   | The attribute name in which to place the date that the log message was created.
 | *log_msgid_attr*\*  | The attribute name in which to place the Message-ID of the email message being referenced by the log message.
 | *log_info_attr*\*   | The attribute name in which to place the content of the log message itself.
 | *ratelimit_time*\*  | The minimum number of seconds between each email sent.  This can be a floating-point value and so can be fractional (such as 0.5 to send at most two emails per second).  This defaults to 1 second (60 emails per minute).  Since it is not relevant to sendmail, it is not functional.
 | *domlimit_time*\*   | The minimum number of seconds between each email sent to recipients at a given domain name.  This defaults to 5 seconds (12 emails per minute).
-| expire_time         | The number of seconds to keep a sent or failed email (default 3 days).  Negative values keep it forever.
-| log_read_interval   | The minimum number of seconds between reads of the mail log when emails are opened or their attributes are used (default 1 hour).  See [Usage](#ii-usage).
-| sweep_interval      | The minimum number of seconds between deletions of expired emails from the spool directory (default 1 hour).  See `expire_date` in [Email Attributes](#email-attributes).
 | content_has_headers | Whether the content written to an email begins with its own headers (default 1).  When 0, the driver adds a blank line after the headers it writes when sending, so the whole content is treated as the body.
 | local_host_name     | The host name used in generated Message-IDs (default: this machine's host name).
 
@@ -196,7 +200,7 @@ When the email is sent, `message_id` and each non-empty `header_*` attribute are
 
 
 ### G. Managing Object Methods
-The SMTP node has a `read_mail_log` method, which reads the mail log even if its spool directory read it in the last `log_read_interval` seconds.
+The SMTP node has a `read_mail_log` method, which reads the mail log even if the spool directory read it in the last `log_read_interval` seconds.
 
 
 

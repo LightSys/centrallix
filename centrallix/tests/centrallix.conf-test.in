@@ -85,8 +85,10 @@ centrallix "system/config"
     // The SMTP ObjectSystem driver.
     smtp "system/config"
 	{
-	// A sample Postfix mail log for the SMTP tests.
+	// A sample Postfix mail log and spool directory for the SMTP tests.
 	mail_log = "/usr/local/src/cx-git/centrallix-os/tests/smtp/maillog";
+	spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/spool";
+	expire_time = -1;
 	}
 
     // Loadable Modules

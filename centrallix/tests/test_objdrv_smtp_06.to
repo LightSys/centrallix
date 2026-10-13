@@ -1,6 +1,13 @@
 ##NAME Bounce while Pending
-##UNDO /tests/smtp/PartialBounce/PartialBounce.struct
-##UNDO /tests/smtp/PartialBounce/.mail_log_cursor
-##UNDO /tests/smtp/PartialBounce/.spool_lock
+##UNDO /tests/smtp/spool/Bounced.struct
+##UNDO /tests/smtp/spool/Deferred.struct
+##UNDO /tests/smtp/spool/DeferredSent.struct
+##UNDO /tests/smtp/spool/Expired.struct
+##UNDO /tests/smtp/spool/PartialBounce.struct
+##UNDO /tests/smtp/spool/Resent.struct
+##UNDO /tests/smtp/spool/Restarted.struct
+##UNDO /tests/smtp/spool/Sent.struct
+##UNDO /tests/smtp/spool/.mail_log_cursor
+##UNDO /tests/smtp/spool/.spool_lock
 
-query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/PartialBounce.smtp
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/emails.smtp where :name = 'PartialBounce.eml'

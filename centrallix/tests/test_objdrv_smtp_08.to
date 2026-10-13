@@ -1,6 +1,13 @@
 ##NAME Restarted while deferred
-##UNDO /tests/smtp/Restarted/Restarted.struct
-##UNDO /tests/smtp/Restarted/.mail_log_cursor
-##UNDO /tests/smtp/Restarted/.spool_lock
+##UNDO /tests/smtp/spool/Bounced.struct
+##UNDO /tests/smtp/spool/Deferred.struct
+##UNDO /tests/smtp/spool/DeferredSent.struct
+##UNDO /tests/smtp/spool/Expired.struct
+##UNDO /tests/smtp/spool/PartialBounce.struct
+##UNDO /tests/smtp/spool/Resent.struct
+##UNDO /tests/smtp/spool/Restarted.struct
+##UNDO /tests/smtp/spool/Sent.struct
+##UNDO /tests/smtp/spool/.mail_log_cursor
+##UNDO /tests/smtp/spool/.spool_lock
 
-query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/Restarted.smtp
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/emails.smtp where :name = 'Restarted.eml'
