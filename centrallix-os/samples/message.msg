@@ -3,9 +3,9 @@ Subject: Test BASE64 Message
 To: luke@usa.om.org
 Date: Tue, Aug 27 2002 11:23:14 EDT
 MIME-Version: 1.0
-Content-Type: multipart/mixed
+Content-Type: multipart/mixed; boundary="CENTRALLIX_ROCKS_MY_WORLD"
 Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment; boundary="CENTRALLIX_ROCKS_MY_WORLD"
+Content-Disposition: attachment
 X-Mailer: Luke's Keyboard (v1.0)
 
 --CENTRALLIX_ROCKS_MY_WORLD
@@ -27,4 +27,3 @@ BZCkIgRSBIIEsgTiBRIFQgVyBaCkMgRiBJIEwgTyBSIFUgWApXZWxsLCBJIGd1ZXNzIHRo
 YXQncyBhbGwgSSBoYXZlIHRvIHNheSBhYm91dCB0aGF0LiAgU2VlIHlvdSBhcm91bmQhCk
 x1a2U=
 --CENTRALLIX_ROCKS_MY_WORLD--
-

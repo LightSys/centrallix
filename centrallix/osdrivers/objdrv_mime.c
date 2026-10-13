@@ -382,12 +382,19 @@ mimeOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pMimeQuery qy;
     pMimeInfo inf;
+    int main_type;
 
     inf = (pMimeInfo)inf_v;
 
-    /** Don't open a query when there are no attachments **/
-    if ( xaCount(&(inf->Header->Parts)) == 0)
+    /** Only multipart messages have parts to query. **/
+    if (libmime_GetIntAttr(inf->Header, "Content-Type", "ContentMainType", &main_type) < 0 || main_type != MIME_TYPE_MULTIPART)
+	{
+	mssError(1, "MIME",
+	    "Failed to query \"%s\": not a multipart message.",
+	    obj_internal_PathPart(inf->Obj->Pathname, 0, inf->Obj->SubPtr + inf->Obj->SubCnt - 1)
+	);
 	return NULL;
+	}
 
     qy = (pMimeQuery)nmMalloc(sizeof(MimeQuery));
     if (!qy) return NULL;
@@ -916,9 +923,10 @@ mimeInfo(void* inf_v, pObjectInfo info)
 	info->Flags |= ( OBJ_INFO_F_CANT_ADD_ATTR | OBJ_INFO_F_CANT_SEEK );
 	if (!libmime_GetIntAttr(inf->Header, "Content-Type", "ContentMainType", &main_type) && main_type == MIME_TYPE_MULTIPART)
 	    {
-	    info->Flags |= ( OBJ_INFO_F_HAS_SUBOBJ | OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
+	    info->Flags |= ( OBJ_INFO_F_CAN_HAVE_SUBOBJ | OBJ_INFO_F_SUBOBJ_CNT_KNOWN |
 		OBJ_INFO_F_CANT_HAVE_CONTENT | OBJ_INFO_F_NO_CONTENT );
 	    info->nSubobjects = xaCount(&(inf->Header->Parts));
+	    info->Flags |= (info->nSubobjects > 0) ? OBJ_INFO_F_HAS_SUBOBJ : OBJ_INFO_F_NO_SUBOBJ;
 	    }
 	else
 	    {
