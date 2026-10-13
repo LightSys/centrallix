@@ -1,0 +1,18 @@
+Attribute [name]:   string   "M3-1.eml" 
+Attribute [start]:   string   "This email is not marked as being text, " 
+Attribute [name]:   string   "M4.1.1.eml" 
+Attribute [start]:   string   "  M4.1.1
+    Recognize and display \"text" 
+Attribute [name]:   string   "M4.1.4.eml" 
+Attribute [start]:   string   "This email is marked as being text, but " 
+Attribute [name]:   string   "M5.eml" 
+Attribute [start]:   string   "  M5   
+       Upon encountering any unr" 
+Attribute [name]:   string   "EM1.2.eml" 
+Attribute [start]:   string   "<bold>EM1.2</bold>
+
+<center>This is <ita" 
+Attribute [name]:   string   "EM4.2.eml" 
+Attribute [start]:   string   "%!
+/Times-Roman findfont
+20 scalefont se" 

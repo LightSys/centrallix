@@ -1,0 +1,3 @@
+##NAME Stray bracket before an unclosed address
+
+query select :name, from_hdr = :"From" from /tests/MimeAddressBracket.eml

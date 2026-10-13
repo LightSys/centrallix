@@ -81,4 +81,11 @@ typedef struct
 #define MGK_SMREGION	0x1200345c	/* smmalloc.h::SmRegion */
 #define MGK_SMBLOCK	0x1200349a	/* smmalloc_private.h::SmBlock */
 
+#define	MGK_SMTP_ATTRIBUTE	0x12340e19	/* objdrv_smtp.c::SmtpAttribute */
+#define	MGK_SMTP_DATA		0x12340e28	/* objdrv_smtp.c::SmtpData */
+#define	MGK_SMTP_QUERY_DATA	0x12340e37	/* objdrv_smtp.c::SmtpQueryData */
+#define	MGK_SMTP_SPOOL		0x12340e46	/* objdrv_smtp.c::SmtpSpool */
+#define	MGK_SMTP_INDEX_ENTRY	0x12340e55	/* objdrv_smtp.c::SmtpIndexEntry */
+#define	MGK_SMTP_LOG_EMAIL	0x12340e64	/* objdrv_smtp.c::SmtpLogEmail */
+
 #endif /* not defined _MAGIC_H */
