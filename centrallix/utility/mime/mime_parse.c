@@ -301,8 +301,7 @@ libmime_SetContentType(pMimeHeader msg, char *buf)
 	    {
 	    len = cptr - ptr;
 	    if (len>=sizeof(maintype)) len=sizeof(maintype)-1;
-	    strncpy(maintype, ptr, len);
-	    maintype[len] = 0;
+	    strtcpy(maintype, ptr, len+1);
 	    libmime_StringToLower(cptr+1);
 	    libmime_SetStringAttr(msg, "Content-Type", "ContentSubType", cptr+1, -1);
 	    }

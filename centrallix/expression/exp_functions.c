@@ -4675,6 +4675,7 @@ int exp_fn_path_params(pExpression tree, pParamObjects objlist, pExpression i0, 
 	    tree->Alloc = 1;
 	    }
 	xsFree(dest);
+	tree->DataType = DATA_T_STRING;
 
 	return 0;
 

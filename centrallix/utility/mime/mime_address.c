@@ -426,7 +426,7 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	    if (e_ptr[1] == ' ')
 		e_ptr++;
 	    memcpy(t_str, buf, s_ptr-buf);
-	    strcpy(t_str+(s_ptr-buf), e_ptr+1);
+	    strtcpy(t_str+(s_ptr-buf), e_ptr+1, strlen(buf)+1-(s_ptr-buf));
 	    strtcpy(addr->Display, t_str, sizeof(addr->Display));
 	    nmSysFree(t_str);
 	    }

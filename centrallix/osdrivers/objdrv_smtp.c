@@ -7106,7 +7106,7 @@ smtpInitialize()
 	    goto error;
 
 	/** Set up the structure **/
-	strcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver");
+	strtcpy(drv->Name,"SMTP - Simple Mail Transfer Protocol OS Driver", sizeof(drv->Name));
 	drv->Capabilities = 0;
 	if (UNLIKELY(xaInit(&(drv->RootContentTypes),1) != 0))
 	    {

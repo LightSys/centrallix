@@ -68,6 +68,12 @@ libmime_DeallocateHeader(pMimeHeader msg)
     {
     int i;
 
+	if (thExcessiveRecursion())
+	    {
+	    fprintf(stderr, "Warning: Failed to free a MIME header: resource exhaustion occurred.\n");
+	    return;
+	    }
+
 	for (i = 0; i < msg->Parts.nItems; i++)
 	    {
 	    libmime_DeallocateHeader(msg->Parts.Items[i]);
@@ -203,6 +209,15 @@ void
 libmime_FreeAddress(pEmailAddr addr)
     {
     int i;
+
+	if (thExcessiveRecursion())
+	    {
+	    fprintf(stderr,
+		"Warning: Failed to free email address \"%s\": resource exhaustion occurred.\n",
+		addr->AddressLine
+	    );
+	    return;
+	    }
 
 	/** Free the group's members. **/
 	if (addr->Group)
