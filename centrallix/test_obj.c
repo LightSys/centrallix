@@ -2877,6 +2877,15 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
     char first_arg[256];
     char* arg = NULL;
 
+	if (UNLIKELY(thExcessiveRecursion()))
+	    {
+	    mssError(1, "TESTOBJ",
+		"Failed to run command \"%.*s\": resource exhaustion occurred.",
+		(int)strcspn(cmd, "\r\n"), cmd
+	    );
+	    goto end;
+	    }
+
 	cmd += strspn(cmd, " \t"); /* Ignore indentation. */
 	if (cmd[0] == '#') return 0;
 
