@@ -1280,14 +1280,15 @@ testobj_i_getCsvText(pObject row, char* attrname, int* type, char** text)
 
 
 /*** testobj_i_printCsvField - prints one csv field.  A field that cannot be
- *** read gets a warning and is left empty.
+ *** read gets a warning and is left empty, unless -e is set.
  ***
  *** @param row The query result row.
  *** @param attrname The attribute to print.
  *** @param present Whether the row has this attribute.  If not, the field is
  *** 	left empty.
  *** @param first Whether this is the first field of the row.
- *** @returns 0 on success, or -1 if writing the output fails.
+ *** @returns 0 on success, or -1 if writing the output fails or the field
+ *** 	cannot be read and -e is set.
  ***/
 static int
 testobj_i_printCsvField(pObject row, char* attrname, bool present, bool first)
@@ -1299,6 +1300,11 @@ testobj_i_printCsvField(pObject row, char* attrname, bool present, bool first)
 	const int text_result = (present) ? testobj_i_getCsvText(row, attrname, &type, &text) : 1;
 	if (UNLIKELY(text_result < 0))
 	    {
+	    if (TESTOBJ.StopOnError)
+		{
+		mssError(0, "TESTOBJ", "Failed to read csv field \"%s\".", attrname);
+		return -1;
+		}
 	    mssWarnError(
 		"Failed to read csv field \"%s\", leaving it empty.",
 		attrname
@@ -1614,11 +1620,12 @@ testobj_i_getQueryText(pObject row, char* attrname, int* type, pObjData shown, c
 
 
 /*** testobj_i_printQueryAttr - prints one attribute of a query result row.
- *** An attribute that cannot be read gets a warning instead.
+ *** An attribute that cannot be read gets a warning instead, unless -e is set.
  ***
  *** @param row The query result row.
  *** @param attrname The attribute to print.
- *** @returns 0 on success, or -1 if writing the output fails.
+ *** @returns 0 on success, or -1 if writing the output fails or the
+ *** 	attribute cannot be read and -e is set.
  ***/
 static int
 testobj_i_printQueryAttr(pObject row, char* attrname)
@@ -1630,6 +1637,11 @@ testobj_i_printQueryAttr(pObject row, char* attrname)
 	const int text_result = testobj_i_getQueryText(row, attrname, &type, &shown, &text);
 	if (UNLIKELY(text_result < 0))
 	    {
+	    if (TESTOBJ.StopOnError)
+		{
+		mssError(0, "TESTOBJ", "Failed to read attribute \"%s\".", attrname);
+		return -1;
+		}
 	    mssWarnError("Failed to read attribute \"%s\", skipping it.", attrname);
 	    return 0;
 	    }
