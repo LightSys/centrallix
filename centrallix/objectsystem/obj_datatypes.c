@@ -18,7 +18,6 @@
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
 #include "cxss/cxss.h"
-#include "cxlib/expect.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -2706,7 +2705,7 @@ objDateAdd(pDateTime dt, int diff_sec, int diff_min, int diff_hr, int diff_day, 
 
 /*** objStringToEncoding - Convert a string to an encoding ID.
  ***
- *** @param code_str The encoding string to be compared against accepted name. Case insensitive. 
+ *** @param code_str The encoding string to be compared against accepted names. Case insensitive. 
  *** @return The ID of the encoding matched, or `ENCODING_INVALID` on error. 
  ***/
 int 
@@ -2733,7 +2732,7 @@ objStringToEncoding(char* code_str)
     return ENCODING_INVALID;
     }
 
- /*** objValidateVanco - verify a btye is a valid CP-1252 character
+/*** obj_internal_validCharCP_1252 - verify a byte is a valid CP-1252 character
  ***
  *** @param byte The char to be checked
  *** @returns 0 if the byte is valid, or -1 on failure
@@ -2751,7 +2750,7 @@ obj_internal_validCharCP_1252(const unsigned char byte)
 
 /*** objUnwrapUTF8 - extract the code point from UTF-8 encoding. Standard UTF-8
  *** encoding rules are enforced. 
- *** This function can also validate that the unwraped code points match valid
+ *** This function can also validate that the unwrapped code points match valid
  *** ENCODING_VANCO_UTF8 bytes
  ***
  *** @warning If the code point is larger than 0xFF, it will be spread across multiple
@@ -2760,7 +2759,7 @@ obj_internal_validCharCP_1252(const unsigned char byte)
  *** @param src_len the length of the data coming in.
  *** @param dest a pointer to redirect to the generated output. The initial pointer
  ***        will be overwritten, and the output is allocated with nmSysMalloc.
- ***        The pointer will be `malloc(0)` if src_len was 0
+ ***        The pointer will be `nmSysMalloc(0)` if src_len was 0
  *** @param dest_len a pointer to where the final output length should be stored.
  ***        The initial value is ignored
  *** @param validate set to validate the code points match ENCODING_VANCO_UTF8, or
@@ -2778,7 +2777,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 	/** make sure the parameters are valid **/
 	if(src == NULL || dest == NULL || dest_len == NULL)
 	    {
-	    mssError(1, "OBJ", "objUnwrapUTF8 requires src, dest, and dest_len to not be NULL");
+	    mssError(1, "OBJ", "objUnwrapUTF8 requires src, dest, and dest_len to not be NULL.");
 	    goto error;
 	    }
 
@@ -2836,7 +2835,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else if (cur <= 0xDFu) /* header for a 2 byte character */
 			{
-			/*** 2 Bytes Characters
+			/*** 2 Byte Characters
 			 *** Numbered backwards for consistency:
 			 *** header:  1  1  0 b4 b3 b2 b1 b0
 			 *** cont 1:  1  0 a5 a4 a3 a2 a1 a0
@@ -2858,12 +2857,12 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			    goto error;
 			    }
 			
-			/** vanco does not support anything above C3 BF (FF) **/
+			/** Vanco does not support anything above C3 BF (FF) **/
 			if(UNLIKELY(validate && cur >= 0xC4u))
 			    {
 			    mssError(1, "OBJ", 
 				"Character %02hhX %02hhX starting at index %zu too"
-				" large for vanco encoding",
+				" large for Vanco encoding.",
 				cur, peek, i
 				);
 			    goto error;
@@ -2873,7 +2872,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			char temp_char = (0b00011100u & cur) >> 2;
 			if(temp_char != '\0') buf[buf_len++] = temp_char;
 			
-			/** store the remaining 2 bits as the start of the next char*/
+			/** store the remaining 2 bits as the start of the next char **/
 			buf_char = (0b00000011u & cur) << 6;
 
 			/** expect 1 continuation byte **/
@@ -2881,7 +2880,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else if (cur <= 0xEFu) /* header for a 3 byte character */
 			{
-			/*** 3 Bytes Characters
+			/*** 3 Byte Characters
 			 *** Numbered backwards for consistency:
 			 *** header:  1  1  1  0 c3 c2 c1 c0
 			 *** cont 2:  1  0 b5 b4 b3 b2 b1 b0
@@ -2903,7 +2902,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 				);
 			    goto error;
 			    }
-			/** check for surrogate bytes */
+			/** check for surrogate bytes **/
 			if(UNLIKELY(cur == 0xEDu && peek >= 0xA0U && peek != 0xFFu))
 			    {
 			    mssError(1, "OBJ", 
@@ -2913,12 +2912,12 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 				);
 			    goto error;
 			    }
-			/** vanco does not support 3 byte characters **/
+			/** Vanco does not support 3 byte characters **/
 			if(UNLIKELY(validate))
 			    {
 			    mssError(1, "OBJ", 
-				"Unsupported 3 byte character for vanco encoding at"
-				" index %zu", 
+				"Unsupported 3 byte character for Vanco encoding at"
+				" index %zu.", 
 				i
 				);
 			    goto error;
@@ -2932,7 +2931,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			}
 		    else if (cur <= 0xF4u) /* header for a 4 byte character */
 			{
-			/*** 4 Bytes Characters
+			/*** 4 Byte Characters
 			 *** Numbered backwards for consistency:
 			 *** header:  1  1  1  1  0 d2 d1 d0
 			 *** cont 3:  1  0 c5 c4 c3 c2 c1 c0
@@ -2967,18 +2966,18 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			    goto error;
 			    }
 
-			/** vanco does not support 4 byte characters **/
+			/** Vanco does not support 4 byte characters **/
 			if(UNLIKELY(validate))
 			    {
 			    mssError(1, "OBJ", 
-				"Unsupported 4 byte character for vanco encoding at"
-				" index %zu", 
+				"Unsupported 4 byte character for Vanco encoding at"
+				" index %zu.", 
 				i
 				);
 			    goto error;
 			    }
 
-			/** store the 3 bits from the header, leaving room for 2 more bits */
+			/** store the 3 bits from the header, leaving room for 2 more bits **/
 			buf_char = (0b00000111u & cur) << 2; 
 
 			/** expect 3 continuation bytes **/
@@ -3027,7 +3026,7 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 			goto error;
 			}
 
-		    /** write first 4 bits alongside stored**/
+		    /** write first 4 bits alongside stored bits **/
 		    buf[buf_len++] = buf_char | ((0b00111100u & cur) >> 2);
 		    
 		    /** store the last 2 bits **/
@@ -3052,12 +3051,12 @@ objUnwrapUTF8(const char* src, const size_t src_len, char** dest, size_t* dest_l
 		    /** write all 6 bits **/
 		    buf_char |= (0b00111111 & cur);
 		    
-		    /** vanco does not support all possible bytes. **/
+		    /** Vanco does not support all possible bytes. **/
 		    if(UNLIKELY(validate && obj_internal_validCharCP_1252(buf_char) == -1))
 			{
 			mssError(1, "OBJ", 
-			    "Unsupported code point %02hhX for vanco encoding at"
-			    " index %zu", 
+			    "Unsupported code point %02hhX for Vanco encoding at"
+			    " index %zu.", 
 			    buf_char, i
 			    );
 			goto error;

@@ -99,7 +99,7 @@ int exp_fn_user_name(pExpression tree, pParamObjects objlist, pExpression i0, pE
 /*** exp_fn_internal_encoding_convert - Convert a string from one encoding to another.
  *** If a character in the provided data is unsupported in the target encoding, it
  *** attempts to transliterate the data.
- *** The tree is marked as bianry data as not all encodings may neccesarily fit the 
+ *** The tree is marked as binary data as not all encodings may necessarily fit the 
  *** expected NULL terminated string format. 
  ***
  *** @param tree The expression tree node to store the results in
@@ -262,7 +262,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 				);
 			else
 			    mssError(1,"EXP",
-				"convert(): Unknown error converting"" string '%s'"
+				"convert(): Unknown error converting string '%s'"
 				" from '%s' to '%s'. Error message: \"%s\"",
 				data_exp->String, from_code, to_code, strerror(errno)
 				);
@@ -275,7 +275,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	warnFail(iconv_close(conv_desc));
 	conv_desc = (iconv_t)0;
 
-	/** if the encoding required preprocessing, need to free the buffer */
+	/** if the encoding required preprocessing, need to free the buffer **/
 	if(pre_buf != NULL)
 	    {
 	    nmSysFree(pre_buf);
@@ -284,7 +284,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	/** whether freed or not, should not need in_buf anymore **/
 	in_buf = NULL;
 
-	/** if there was space leftover, shrink it back */
+	/** if there was space leftover, shrink it back **/
 	if(out_len > 0)
 	    {
 	    size_t final_len = ret_len - out_len;
@@ -299,7 +299,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 		char* realloc_buf = nmSysRealloc(ret_buf, final_len);
 		if(realloc_buf == NULL)
 		    {
-		    mssError(1,"EXP","convert(): nmSysRaalloc to size %zu failed.", final_len);
+		    mssError(1,"EXP","convert(): nmSysRealloc() to size %zu failed.", final_len);
 		    goto error;
 		    }
 		ret_buf = realloc_buf;
@@ -308,7 +308,7 @@ int exp_fn_internal_encoding_convert(pExpression tree, pExpression data_exp, pEx
 	    }
 
 	/** set up the tree. **/
-	/** The return type must be bianry to support encodings that are not NULL temrinated **/
+	/** The return type must be binary to support encodings that are not NULL terminated **/
 	tree->DataType = DATA_T_BINARY;
 	if (tree->Alloc && tree->String)
 	    {
