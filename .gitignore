@@ -1,4 +1,3 @@
-*.idea/*
 .depend
 Makefile
 config.log
@@ -37,7 +36,6 @@ centrallix-os/apps/kardia
 centrallix-lib/include/cxlib
 centrallix-lib/autom4te.cache
 */nbproject/
-centrallix-lib/tests/test_*.bin
 centrallix/tests/*.out
 centrallix/tests/*.bin
 centrallix/tests/*.to.tmp
@@ -63,8 +61,6 @@ centrallix-ui-test/tests/__pycache__
 lcov.info
 perf.data
 perf.data.old
-.idea/
-.vscode/
 centrallix-os/tmp/*
 
 # Rebuild Temp Files
@@ -84,6 +80,5 @@ centrallix-os/tmp/*
 .zshrc
 
 # IDE Files
-**/.idea/
 .idea
-**/.vscode/
+.vscode
