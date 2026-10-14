@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdbool.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -172,15 +173,18 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 		break;
 
 	    case PRT_OBJ_T_TABLE:
-		/** Table.  We need to break it, but also include the header if there is one. **/
+		/** Table.  We need to break it, but also include the header rows if there are any. **/
 		new_obj = prt_internal_Duplicate(this,0);
 		new_lm_inf = (pPrtTabLMData)(new_obj->LMData);
 		cur_parent = this->Parent;
 		prtUpdateHandleByPtr(this, new_obj);
-		if (lm_inf->HeaderRow)
+		new_lm_inf->HeaderRow = NULL;
+		for (search_obj = lm_inf->HeaderRow; search_obj != NULL; search_obj = search_obj->Next)
 		    {
-		    new_lm_inf->HeaderRow = prt_internal_Duplicate(lm_inf->HeaderRow, 1);
-		    prt_internal_Add(new_obj, new_lm_inf->HeaderRow);
+		    if (!(((pPrtTabLMData)(search_obj->LMData))->Flags & PRT_TABLM_F_ISHEADER)) break;
+		    pPrtObjStream new_header = prt_internal_Duplicate(search_obj, 1);
+		    if (!new_lm_inf->HeaderRow) new_lm_inf->HeaderRow = new_header;
+		    prt_internal_Add(new_obj, new_header);
 		    }
 		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
 		    {
@@ -231,6 +235,39 @@ prt_tablm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *
     }
 
 
+/*** prt_tablm_FitToRows() - shrinks a table to fit its rows, such as after
+ *** a row moves to the next page.  The table keeps at least its configured
+ *** height.
+ ***
+ *** @param table The table.
+ ***/
+static void
+prt_tablm_FitToRows(pPrtObjStream table)
+    {
+    double height = 0.0;
+
+	if (table->Flags & PRT_OBJ_F_FIXEDSIZE) return;
+
+	/** Find the height the rows need. **/
+	for (pPrtObjStream row = table->ContentHead; row != NULL; row = row->Next)
+	    {
+	    if (row->Flags & PRT_OBJ_F_MARGINRELEASE) continue;
+	    if (row->Y + row->Height > height) height = row->Y + row->Height;
+	    }
+	height += table->MarginTop + table->MarginBottom + table->BorderTop + table->BorderBottom;
+	if (height < table->ConfigHeight) height = table->ConfigHeight;
+	if (height >= table->Height) return;
+
+	/** Shrink the table. **/
+	const double old_height = table->Height;
+	table->Height = height;
+	if (table->Parent != NULL)
+	    table->Parent->LayoutMgr->ChildResized(table->Parent, table, table->Width, old_height);
+
+    return;
+    }
+
+
 /*** prt_tablm_ChildResizeReq() - this is called when a child object
  *** within this one is about to be resized.  This method gives this
  *** layout manager a chance to prevent the resize operation (return -1).  
@@ -277,12 +314,17 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		}
 
 	    /** Ok, couldn't resize.  If we are in the header row, or in the first
-	     ** data row, try moving the table to the next page altogether.
+	     ** data row, or in a table that cannot break, try moving the table to
+	     ** the next page altogether.  A row moves to the next page only once.
 	     **/
+	    pPrtTabLMData row_inf = (pPrtTabLMData)(this->LMData);
 	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
 		{
-		if (!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER))
+		if (((!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER))
+			&& !(row_inf->Flags & PRT_TABLM_F_MOVED))
+			|| !(this->Parent->Flags & PRT_OBJ_F_ALLOWBREAK))
 		    {
+		    row_inf->Flags |= PRT_TABLM_F_MOVED;
 		    table_obj = this->Parent;
 		    new_parent = old_parent;
 		    old_parent = table_obj->Parent;
@@ -320,12 +362,15 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		}
 
 	    /** If we are inside a row, and row cannot break (or row is empty), 
-	     ** break table and move entire row to next page.
+	     ** break table and move entire row to next page.  A row that can
+	     ** break moves once, and only splits if it still does not fit.
 	     **/
-	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && (!(this->Flags & PRT_OBJ_F_ALLOWBREAK) || this->Height == 0))
+	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && (!(this->Flags & PRT_OBJ_F_ALLOWBREAK) || this->Height == 0 || !(row_inf->Flags & PRT_TABLM_F_MOVED)))
 		{
+		row_inf->Flags |= PRT_TABLM_F_MOVED;
 		table_obj = this->Parent;
 		prt_internal_MakeOrphan(this);
+		prt_tablm_FitToRows(table_obj);
 		new_parent = table_obj;
 		if (table_obj->LayoutMgr->Break(table_obj, &new_parent) >= 0)
 		    {
@@ -524,7 +569,9 @@ prt_tablm_DetermineGeometry(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Check for a header/footer **/
 	    if (lm_inf->Flags & PRT_TABLM_F_ISHEADER)
-		parent_lm_inf->HeaderRow = new_child_obj;
+		{
+		if (!parent_lm_inf->HeaderRow) parent_lm_inf->HeaderRow = new_child_obj;
+		}
 	    else if (lm_inf->Flags & PRT_TABLM_F_ISFOOTER)
 		parent_lm_inf->FooterRow = new_child_obj;
 	    }
@@ -786,35 +833,31 @@ prt_tablm_InitTable(pPrtObjStream this, pPrtTabLMData old_lm_data, va_list va)
 			}
 		    }
 		}
+	    /** A null border leaves the side as set by outerborder **/
 	    else if (!strcmp(attrname, "topborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->TopBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "bottomborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->BottomBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "leftborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->LeftBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "rightborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "innerborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
 		}
 	    }
 
@@ -923,35 +966,31 @@ prt_tablm_InitRow(pPrtObjStream row, pPrtTabLMData old_lm_data, va_list va)
 			}
 		    }
 		}
+	    /** A null border leaves the side as set by outerborder **/
 	    else if (!strcmp(attrname, "topborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->TopBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->TopBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "bottomborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->BottomBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->BottomBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "leftborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->LeftBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->LeftBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "rightborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->RightBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->RightBorder), 0, sizeof(PrtBorder));
 		}
 	    else if (!strcmp(attrname, "innerborder"))
 		{
 		b = va_arg(va, pPrtBorder);
 		if (b) memcpy(&(lm_inf->InnerBorder), b, sizeof(PrtBorder));
-		else memset(&(lm_inf->InnerBorder), 0, sizeof(PrtBorder));
 		}
 	    }
 
@@ -1121,6 +1160,29 @@ prt_tablm_SetValue(pPrtObjStream this, char* attrname, va_list va)
     }
 
 
+/*** prt_tablm_CellStartsAt() - checks whether a cell in a table row starts
+ *** at the given column.
+ ***
+ *** @param row The table row.
+ *** @param col The column index.
+ *** @returns true if a cell starts at the column, or false otherwise.
+ ***/
+static bool
+prt_tablm_CellStartsAt(pPrtObjStream row, int col)
+    {
+    int cur_col = 0;
+
+	for (pPrtObjStream cell = row->ContentHead; cell != NULL && cur_col <= col; cell = cell->Next)
+	    {
+	    if (cell->ObjType->TypeID != PRT_OBJ_T_TABLECELL) continue;
+	    if (cur_col == col) return true;
+	    cur_col += ((pPrtTabLMData)(cell->LMData))->ColSpan;
+	    }
+
+    return false;
+    }
+
+
 /*** prt_tablm_Finalize() - puts the finishing touches on a table just before
  *** the page is printed.  This mainly means adding the nice graphics for the
  *** table's borders and shadow now that the geometry of the table is stable.
@@ -1176,15 +1238,40 @@ prt_tablm_Finalize(pPrtObjStream this)
 		    PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_MARGINRELEASE,
 		    &(lm_inf->RightBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
 
-	/** Inner table borders (between columns) **/
+	/** Inner table borders (between columns), only beside rows with a cell starting at the column **/
 	if (lm_inf->InnerBorder.nLines > 0)
 	    {
-	    for(i=0;i<lm_inf->nColumns-1;i++)
+	    pPrtObjStream first_row = NULL, last_row = NULL;
+	    for(row=this->ContentHead;row;row=row->Next)
 		{
-		prt_internal_MakeBorder(this, this->MarginLeft + this->BorderLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep, 0.0,
-			this->Height, // - lm_inf->ShadowWidth*PRT_XY_CORRECTION_FACTOR,
-			PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
-			&(lm_inf->InnerBorder), &(lm_inf->TopBorder), &(lm_inf->BottomBorder));
+		if (row->ObjType->TypeID != PRT_OBJ_T_TABLEROW) continue;
+		if (!first_row) first_row = row;
+		last_row = row;
+		}
+	    for(i=0;i<lm_inf->nColumns-1 && first_row;i++)
+		{
+		/** Draw one line per run of rows that have the column edge. **/
+		const double x = this->MarginLeft + this->BorderLeft + lm_inf->ColX[i+1] - 0.5*lm_inf->ColSep;
+		double run_top = -1.0;
+		for(row=first_row;row;row=row->Next)
+		    {
+		    if (row->ObjType->TypeID != PRT_OBJ_T_TABLEROW) continue;
+		    const double row_top = (row == first_row) ? 0.0 : this->MarginTop + this->BorderTop + row->Y;
+		    const double row_bottom = (row == last_row) ? this->Height : this->MarginTop + this->BorderTop + row->Y + row->Height;
+		    const bool has_edge = prt_tablm_CellStartsAt(row, i+1);
+		    if (has_edge && run_top < 0.0) run_top = row_top;
+		    if (run_top >= 0.0 && (!has_edge || row == last_row))
+			{
+			const double run_bottom = (has_edge) ? row_bottom : row_top;
+			prt_internal_MakeBorder(this, x, run_top, run_bottom - run_top,
+				PRT_MKBDR_F_RIGHT | PRT_MKBDR_F_LEFT | PRT_MKBDR_F_MARGINRELEASE,
+				&(lm_inf->InnerBorder),
+				(run_top == 0.0) ? &(lm_inf->TopBorder) : NULL,
+				(run_bottom == this->Height) ? &(lm_inf->BottomBorder) : NULL);
+			run_top = -1.0;
+			}
+		    if (row == last_row) break;
+		    }
 		}
 	    }
 
@@ -1224,11 +1311,11 @@ prt_tablm_Finalize(pPrtObjStream this)
 		    {
 		    rowtop = NULL;
 		    }
-		if (lm_inf->LeftBorder.nLines > 0 && this->MarginLeft == 0.0)
+		if (lm_inf->LeftBorder.nLines > 0 && this->MarginLeft == 0.0 && lm_inf->LeftBorder.TotalWidth >= row_inf->LeftBorder.TotalWidth)
 		    rowleft = &(lm_inf->LeftBorder);
 		else
 		    rowleft = NULL;
-		if (lm_inf->RightBorder.nLines > 0 && this->MarginRight == 0.0)
+		if (lm_inf->RightBorder.nLines > 0 && this->MarginRight == 0.0 && lm_inf->RightBorder.TotalWidth >= row_inf->RightBorder.TotalWidth)
 		    rowright = &(lm_inf->RightBorder);
 		else
 		    rowright = NULL;

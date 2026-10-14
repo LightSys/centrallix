@@ -1,13 +1,17 @@
 #ifndef _PRTMGMT_V3_FM_HTML_H
 #define _PRTMGMT_V3_FM_HTML_H
 
+#include <math.h>
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "prtmgmt_v3/prtmgmt_v3.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -40,13 +44,89 @@
 #define PRT_HTMLFM_FONTSIZE_OFFSET      (+1)
 #define PRT_HTMLFM_FONTSIZE_DEFAULT     (12)
 
+/*** MIME boundary for email reports: a fixed prefix plus random hex chars
+ *** generated per message.  The random part keeps report data (which is not
+ *** transfer-encoded) from being able to contain a delimiter line and thereby
+ *** truncate the message or inject MIME parts of its own.
+ ***/
+#define PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX "cx-email-boundary-"
+#define PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN (32)
+#define PRT_HTMLFM_EMAIL_BOUNDARY_SIZE  (sizeof(PRT_HTMLFM_EMAIL_BOUNDARY_PREFIX) + PRT_HTMLFM_EMAIL_BOUNDARY_RANDLEN)
+
 #define PRT_HTMLFM_MAX_TABSTOP          (32)
-#define PRT_HTMLFM_XPIXEL               (7)
+/*** Pixels per layout unit.  An X unit is 0.1in at 72px/in, the width of a
+ *** 12px monospace character, which the font metrics also assume.
+ ***/
+#define PRT_HTMLFM_XPIXEL               (7.2)
 #define PRT_HTMLFM_YPIXEL               (12)
 
+/** Pixels for a border width, rounded up so no border is drawn thinner than its width. **/
+#define PRT_HTMLFM_BORDER_PIXELS(w)     ((int)ceil((w) * PRT_HTMLFM_XPIXEL - 0.001))
 
-/** incomplete struct def'n - don't need whole thing here **/
-typedef struct _PSFI PrtHTMLfmInf, *pPrtHTMLfmInf;
+/** Session flags **/
+typedef unsigned char SessionFlags; /* A type holding 0 or more session flags. */
+#define PRT_HTMLFM_F_NO_FLAGS		((SessionFlags)0b00000000u)
+#define PRT_HTMLFM_F_PAGINATED          ((SessionFlags)0b00000001u)
+#define PRT_HTMLFM_F_EMAIL              ((SessionFlags)0b00000010u)
+
+/** Style Flags **/
+typedef unsigned char StyleFlags; /* A type holding 0 or more style flags. */
+#define PRT_HTMLFM_SF_NO_FLAGS		((StyleFlags)0b00000000u)
+#define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)0b00000001u) /** Set after newlines to keep space-padding. **/
+#define PRT_HTMLFM_SF_FONTDIRTY		((StyleFlags)0b00000010u)
+#define PRT_HTMLFM_SF_UNDERLINEDIRTY	((StyleFlags)0b00000100u)
+#define PRT_HTMLFM_SF_ITALICDIRTY	((StyleFlags)0b00001000u)
+#define PRT_HTMLFM_SF_BOLDDIRTY		((StyleFlags)0b00010000u)
+
+/*** MIME media types ***/
+typedef struct
+    {
+    char*		MimeType;
+    char*		OutputMimeType;
+    int			SessionFlags;
+    }
+    PrtHTMLfmSubtype, *pPrtHTMLfmSubtype;
+
+/** HTML Report Inf **/
+typedef struct _PSFI
+    {
+    pPrtSession		Session;
+    pPrtResolution	SelectedRes;
+    PrtTextStyle	CurStyle;
+    int			InitStyle;
+    int			ExitStyle;
+    pPrtHTMLfmSubtype	Subtype;
+    SessionFlags	Flags;
+    StyleFlags		StyleFlags;
+    int			BGColor;	/* The current background color showing through. */
+    pXArray		Attachments;	/* Images (pPrtHTMLfmImage) to attach to an email report. */
+    char		Boundary[PRT_HTMLFM_EMAIL_BOUNDARY_SIZE];
+    int			QPEncode;	/* Whether email output is quoted-printable (the HTML part). */
+    int			QPLineLen;	/* Characters on the current quoted-printable line. */
+    char		QPPending;	/* A held space or tab, encoded if a line break follows; or 0. */
+    int			WroteHeader;	/* Whether the document header has been written. */
+    }
+    PrtHTMLfmInf, *pPrtHTMLfmInf;
+
+
+/** An image attached to an email report, written when the report closes. **/
+typedef struct
+    {
+    unsigned long	ID;		/* Content-ID number, referenced as "cid:image_<ID>". */
+    bool		IsPng;		/* Whether the image is a PNG (or else an SVG). */
+    char*		Base64;		/* The image data, base64 encoded. */
+    size_t		Base64Size;	/* Allocated size of Base64, including the null. */
+    }
+    PrtHTMLfmImage, *pPrtHTMLfmImage;
+
+
+/** Snapshot of the style rendering state, including the text style and dirty flags. **/
+typedef struct
+    {
+    PrtTextStyle	Style;
+    StyleFlags		Flags;
+    }
+    PrtHTMLfmSavedStyle, *pPrtHTMLfmSavedStyle;
 
 
 /** Component generator support functions **/
@@ -56,13 +136,19 @@ int prt_htmlfm_OutputEncoded(pPrtHTMLfmInf context, char* str, int len);
 
 int prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj);
 
-int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
-int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtTextStyle origstyle);
+int prt_htmlfm_SaveStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved);
+int prt_htmlfm_ResetStyle(pPrtHTMLfmInf context, pPrtHTMLfmSavedStyle saved);
+void prt_htmlfm_SetKeepSpaces(pPrtHTMLfmInf context);
 
+const char * prt_htmlfm_GetFont(pPrtTextStyle style);
 int prt_htmlfm_InitStyle(pPrtHTMLfmInf context, pPrtTextStyle initial_style);
 int prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle newstyle);
+int prt_htmlfm_WriteStyle(pPrtHTMLfmInf context);
 int prt_htmlfm_EndStyle(pPrtHTMLfmInf context);
 
+int prt_htmlfm_OutputBGColor(pPrtHTMLfmInf context, int bgcolor);
+int prt_htmlfm_OutputPaddingRule(pPrtHTMLfmInf context, int top, int right, int bottom, int left);
+int prt_htmlfm_OutputPadding(pPrtHTMLfmInf context, pPrtObjStream obj);
 int prt_htmlfm_Border(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 int prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream obj);
 
@@ -71,7 +157,19 @@ int prt_htmlfm_EndBorder(pPrtHTMLfmInf context, pPrtBorder border, pPrtObjStream
 int prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area);
 int prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table);
 int prt_htmlfm_GenerateMultiCol(pPrtHTMLfmInf context, pPrtObjStream section);
+bool prt_htmlfm_IsBareArea(pPrtHTMLfmInf context, pPrtObjStream area, int* justification);
+
+
+/*** prt_htmlfm_OutputStrLiteral() - Helper function to output a statically
+ *** defined string literal into an HTML document.
+ *** 
+ *** For str literals, the length is known at compile time, so we have the
+ *** compiler output the length (-1 to skip the null character), saving a
+ *** strlen() call at runtime.  Also, we don't have to worry about multi-eval
+ *** of str_literal because the caller promises it is a string literal.
+ ***/
+#define prt_htmlfm_OutputStrLiteral(context, str_literal) \
+    prt_htmlfm_Output((context), (str_literal), sizeof(str_literal) - 1)
 
 
 #endif /* not defined _PRTMGMT_V3_FM_HTML_H */
-

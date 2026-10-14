@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdbool.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -172,12 +173,13 @@ prt_textlm_Resize(pPrtObjStream this, double new_width, double new_height)
 
 
 /*** prt_textlm_ChildBreakReq() - a child object is requesting a page break
- *** operation.  Right now, we ain't gonna support such thangs in this lm.
+ *** operation, which breaks this area so the child can continue in the
+ *** area's continuation.
  ***/
 int
 prt_textlm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *new_this)
     {
-    return -1;
+    return this->LayoutMgr->Break(this, new_this);
     }
 
 
@@ -978,12 +980,8 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream search;
     double x,y;
     int handle_id;
-
-	/** Need to adjust the height/width if unspecified? **/
-	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = prtInnerWidth(this);
-	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = prtInnerHeight(this);
+    bool is_block;
+    bool is_marker;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
@@ -1003,6 +1001,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Get geometries for current line. **/
 	    prt_textlm_LineGeom(this->ContentTail, &bottom, &top);
+
+	    /** Containers with no X position go on lines of their own **/
+	    is_block = !(objptr->Flags & PRT_OBJ_F_XSET) && (objptr->ObjType->TypeID == PRT_OBJ_T_AREA
+		|| objptr->ObjType->TypeID == PRT_OBJ_T_TABLE || objptr->ObjType->TypeID == PRT_OBJ_T_SECTION);
+	    if (is_block && this->ContentTail->X + this->ContentTail->Width > PRT_FP_FUDGE)
+		this->ContentTail->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 
 	    /** Determine X and Y for the new object.  Skip to next line if newline
 	     ** is indicated.
@@ -1068,6 +1072,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    }
 		}
 
+	    /** Fill the width if unspecified; start the height at 0 and let it grow **/
+	    if (objptr->Width < 0)
+		objptr->Width = prtInnerWidth(this);
+	    if (objptr->Height < 0)
+		objptr->Height = 0;
+
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
@@ -1119,14 +1129,19 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** Ok, done any initial splitting or moving that was needed. **/
 	    /** Add the objptr, and then see about adding split_obj if needed. **/
 	    /** First, do we need to request more room in the 'area'? **/
+	    /** Empty strings that do not end a line (style changes) need no room. **/
 	    new_parent = NULL;
-	    if (objptr->Y + objptr->Height - PRT_FP_FUDGE > prtInnerHeight(this))
+	    is_marker = (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && objptr->Content[0] == '\0'
+		&& !(objptr->Flags & PRT_OBJ_F_NEWLINE));
+	    if (!is_marker && objptr->Y + objptr->Height - PRT_FP_FUDGE > prtInnerHeight(this))
 	        {
 		/** Request the additional space, if allowed **/
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 		    {
-		    /** Resize denied.  If container is empty, we can't do a Break. **/
-		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
+		    /*** Resize denied.  If container is empty and already at the top of
+		     *** its parent, a Break can't give it any more room.
+		     ***/
+		    if (this->Y < PRT_FP_FUDGE && (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next)))
 			{
 			/** Try rescale if possible. **/
 			if (prt_textlm_Rescale(this, objptr) < 0)
@@ -1174,6 +1189,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Now add the object to the container **/
 	    prt_internal_Add(this, objptr);
+	    if (is_block) objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 
 	    /** Repeat the procedure for the split-off part of the object **/
 	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
