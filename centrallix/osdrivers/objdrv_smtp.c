@@ -5167,10 +5167,15 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 
     end:
 	if (UNLIKELY(rval != 0))
-	    mssError(0, "SMTP",
-		"Failed to open email: %s.",
-		(inf->Name != NULL) ? inf->Name : "unknown name"
-	    );
+	    {
+	    if ((inf->Obj->Mode & OBJ_O_AUTONAME) && inf->Name != NULL && strcmp(inf->Name, "*") == 0)
+		mssError(0, "SMTP", "Failed to open a new email.");
+	    else
+		mssError(0, "SMTP",
+		    "Failed to open email: %s.",
+		    (inf->Name != NULL) ? inf->Name : "unknown name"
+		);
+	    }
 
 	if (UNLIKELY(fd != NULL)) fdClose(fd, 0);
 	if (LIKELY(emailStructureFile != NULL)) fdClose(emailStructureFile, 0);
