@@ -8,10 +8,10 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_testutils_00.c					*/
+/* Module:	test_t_utils_00.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	October 14th, 2026					*/
-/* Description:	Test the assertion macros in test_utils.h.  These tests	*/
+/* Description:	Test the assertion macros in t_utils.h.  These tests	*/
 /*		are a little fragile, but I don't expect error messages	*/
 /*		to change often and devs running tests should probably	*/
 /*		know if they do.					*/
@@ -22,7 +22,7 @@
 #include <string.h>
 
 /** Tested module. **/
-#include "test_utils.h"
+#include "t_utils.h"
 
 #define MSG_SIZE	512
 #define COPY_SIZE	8
@@ -166,7 +166,7 @@ static bool doTest(void)
 
 long long test(char** tname)
     {
-    *tname = "testutils-00 Assertions";
+    *tname = "t_utils-00 Assertions";
     return loopTest(doTest) * 22ll;
     }
 

@@ -10,7 +10,7 @@
 #include <sys/msg.h>
 #include <sys/wait.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Blocks handed from the parent to the child in each pass. **/
 #define N_BLOCKS	2000

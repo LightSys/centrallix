@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Integers in the data file. **/
 #define N_INTS		12

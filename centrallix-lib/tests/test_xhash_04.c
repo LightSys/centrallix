@@ -19,7 +19,7 @@
 #include <stdio.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Tested module. **/
 #include "xhash.h"

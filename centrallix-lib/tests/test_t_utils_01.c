@@ -8,10 +8,10 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_testutils_01.c					*/
+/* Module:	test_t_utils_01.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	October 14th, 2026					*/
-/* Description:	Test loopTest() from test_utils.h.			*/
+/* Description:	Test loopTest() from t_utils.h.			*/
 /************************************************************************/
 
 #include <stdbool.h>
@@ -20,7 +20,7 @@
 #include "timer.h"
 
 /** Tested module. **/
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Calls to countCalls(), and the call that fails (0 for none). **/
 static long long calls;
@@ -38,7 +38,7 @@ long long test(char** tname)
     long long iterations;
     Timer timer_buf, *timer;
 
-	*tname = "testutils-01 loopTest()";
+	*tname = "t_utils-01 loopTest()";
 
 	/** A passing test repeats until the time window has passed. **/
 	calls = 0ll;

@@ -11,7 +11,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_utils.h						*/
+/* Module:	t_utils.h						*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 24th, 2025					*/
 /* Description:	Useful utils to improve the developer experience when   */

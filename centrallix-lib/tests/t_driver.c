@@ -22,7 +22,7 @@
 
 #include "cxlibconfig-internal.h"
 #include "mtask.h"
-#include "test_utils.h"
+#include "t_utils.h"
 #include "util.h"
 
 
@@ -82,7 +82,7 @@ start(void* v)
 	    if (duration == 0)
 		{
 		printf("%-62.62s  PASS ???\n", tname);
-		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTest() from test_utils.h.\n");
+		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTest() from t_utils.h.\n");
 		return;
 		}
 	    double ops_per_second = rval * (100.0 / duration);

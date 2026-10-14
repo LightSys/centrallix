@@ -6,7 +6,7 @@
 #include <time.h>
 #include "smmalloc.h"
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Region shared by every pass; created and destroyed by test(). **/
 static pSmRegion region = NULL;
