@@ -31,6 +31,7 @@
 /* 		a strict formatting language.				*/
 /************************************************************************/
 
+#include <ctype.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdarg.h>
@@ -1307,6 +1308,34 @@ base64_encode(const unsigned char *input, size_t len)
     }
 
 
+/*** prt_htmlfm_OutputURL() - write a URL into an href attribute, adding
+ *** "https://" if the URL does not specify a scheme (such as "mailto:").
+ *** Relative URLs starting with "/", ".", "#", or "?" are written as-is.
+ ***
+ *** @param context The report formatter context.
+ *** @param url The URL to write.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+prt_htmlfm_OutputURL(pPrtHTMLfmInf context, char* url)
+    {
+	/** Find the scheme, if there is one (RFC 3986 section 3.1). **/
+	const char* ch = url;
+	if (isalpha((unsigned char)*ch))
+	    {
+	    while (isalnum((unsigned char)*ch) || *ch == '+' || *ch == '-' || *ch == '.') ch++;
+	    }
+	const bool has_scheme = (ch > url && *ch == ':');
+	const bool is_relative = (strchr("/.#?", url[0]) != NULL);
+
+	/** Write the URL. **/
+	if (!has_scheme && !is_relative && UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "https://") < 0)) return -1;
+	if (UNLIKELY(prt_htmlfm_OutputEncoded(context, url, -1) < 0)) return -1;
+
+	return 0;
+    }
+
+
 /*** prt_htmlfm_Generate_r() - recursive worker routine to do the bulk
  *** of page generation.
  ***/
@@ -1338,7 +1367,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		if (has_url)
 		    {
 		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<a href=\"") < 0
-			|| prt_htmlfm_OutputEncoded(context, obj->URL, -1) < 0
+			|| prt_htmlfm_OutputURL(context, obj->URL) < 0
 			|| prt_htmlfm_OutputStrLiteral(context, "\">") < 0
 		    ))  {
 			mssError(0, "PRT", "Failed to write URL opening tag.");
@@ -1480,7 +1509,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		if (has_url)
 		    {
 		    if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "<a href=\"") < 0
-			|| prt_htmlfm_OutputEncoded(context, obj->URL, -1) < 0
+			|| prt_htmlfm_OutputURL(context, obj->URL) < 0
 			|| prt_htmlfm_OutputStrLiteral(context, "\">") < 0
 		    ))  {
 			mssError(0, "PRT", "Failed to write URL opening tag.");
