@@ -60,7 +60,7 @@ The SMTP OS Driver provides the capability for the Centrallix Object System to s
 
 
 ## II Usage
-In order to use the SMTP driver, `spool_dir` must be set in `centrallix.conf` (see [Initialization](#a-initialization)).  Every SMTP node uses that spool directory.  The optional `content_has_headers` and `local_host_name` [node attributes](#node-attributes) may also be helpful for defining how emails are created and sent.
+In order to use the SMTP driver, the top-level `spool_dir` must be set in `centrallix.conf` (see [Initialization](#a-initialization)).  Every SMTP node stores its emails in the `smtp` directory inside it.  The optional `content_has_headers` and `local_host_name` [node attributes](#node-attributes) may also be helpful for defining how emails are created and sent.
 
 Email objects are created as children of the root SMTP node and, when created, contain no content or headers.  Further modification of the email object should be accomplished through the MIME driver; however, this is not currently supported, so the SMTP driver provides several [email node attributes](#email-attributes) for setting certain, important headers (e.g. `To`, `From`, etc.).
 
@@ -81,18 +81,23 @@ The SMTP driver does not implement the entire OS driver interface.  Its function
 ### A. Initialization
 The SMTP driver registers itself for the `"system/smtp"` content type.  This identifies the SMTP root node and is a `"system/structure"` type file.
 
-The driver reads its settings from the `smtp` block of `centrallix.conf`:
+The driver stores emails in `<spool_dir>/smtp`, creating it if needed, where `spool_dir` is the top-level setting in `centrallix.conf`:
 
 ```
-smtp "system/config"
+centrallix "system/config"
     {
-    spool_dir = "/var/spool/centrallix-smtp";
+    spool_dir = "/var/spool/centrallix";
+    smtp "system/config"
+	{
+	mail_log = "/var/log/maillog";
+	}
     }
 ```
 
+`spool_dir` is required: without it, the driver does not load.  The other settings go in the `smtp` block:
+
 | Setting             | Description
 | ------------------- | -----------
-| spool_dir           | The absolute path of the directory that stores the emails of every SMTP node.  Required: without it, the driver does not load.
 | mail_log            | The path to the Postfix log to read for results from sent emails (defaults to `/var/log/maillog`).  The driver opens this log as root, so Centrallix must run as root.
 | expire_time         | The number of seconds to keep a sent or failed email (defaults to 3 days).  Negative values keep it forever.  This is done by setting the `expire_date` [Email Attribute](#email-attributes) on an email when it is sent or fails to send.
 | log_read_interval   | The minimum number of seconds between reads of the mail log when emails are opened or their attributes are used (defaults to 1 hour).  See [Usage](#ii-usage).
@@ -212,7 +217,7 @@ The SMTP node has a `read_mail_log` method, which reads the mail log even if the
 - A deferred email cannot be resent or cancelled until Postfix gives up on it (`maximal_queue_lifetime`), because setting `is_ready` fails while the email is Pending.
 - The driver only supports Postfix: it runs `/usr/sbin/sendmail` and reads Postfix's log format.
 - Centrallix must run as root to read the mail log (see [Initialization](#a-initialization)).
-- `spool_dir` must be an absolute path, because Centrallix runs from `/`.
+- The top-level `spool_dir` must be an absolute path, because Centrallix runs from `/`.
 - When an email is opened by its path (instead of by querying the SMTP node), the MIME driver handles it and passes the SMTP attributes through to this driver.  They can be read and set by name, but they do not appear in attribute listings such as `select *`.
 - Rarely, a status is wrong:
     - Results added to the Postfix logs while they are rotated can be missed, so the email becomes Error with an unknown send status.

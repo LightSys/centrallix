@@ -16,6 +16,9 @@ centrallix "system/config"
     theme_dir = "/sys/themes";	    // OSML path
     transaction_log_file = "/var/log/cx_transaction_log";
 
+    // A sample spool directory for the SMTP tests.
+    spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/spool";
+
     // Set this to 1 to allow Centrallix to send a user's login credentials
     // to another server, as a part of "single sign on" type authentication.
     // This is disabled here because it is dangerous apart from the RBAC
@@ -85,9 +88,8 @@ centrallix "system/config"
     // The SMTP ObjectSystem driver.
     smtp "system/config"
 	{
-	// A sample Postfix mail log and spool directory for the SMTP tests.
+	// A sample Postfix mail log for the SMTP tests.
 	mail_log = "/usr/local/src/cx-git/centrallix-os/tests/smtp/maillog";
-	spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/spool";
 	expire_time = -1;
 	}
 

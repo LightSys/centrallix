@@ -1,13 +1,13 @@
 ##NAME Expired in the queue
-##UNDO /tests/smtp/spool/Bounced.struct
-##UNDO /tests/smtp/spool/Deferred.struct
-##UNDO /tests/smtp/spool/DeferredSent.struct
-##UNDO /tests/smtp/spool/Expired.struct
-##UNDO /tests/smtp/spool/PartialBounce.struct
-##UNDO /tests/smtp/spool/Resent.struct
-##UNDO /tests/smtp/spool/Restarted.struct
-##UNDO /tests/smtp/spool/Sent.struct
-##UNDO /tests/smtp/spool/.mail_log_cursor
-##UNDO /tests/smtp/spool/.spool_lock
+##UNDO /tests/spool/smtp/Bounced.struct
+##UNDO /tests/spool/smtp/Deferred.struct
+##UNDO /tests/spool/smtp/DeferredSent.struct
+##UNDO /tests/spool/smtp/Expired.struct
+##UNDO /tests/spool/smtp/PartialBounce.struct
+##UNDO /tests/spool/smtp/Resent.struct
+##UNDO /tests/spool/smtp/Restarted.struct
+##UNDO /tests/spool/smtp/Sent.struct
+##UNDO /tests/spool/smtp/.mail_log_cursor
+##UNDO /tests/spool/smtp/.spool_lock
 
 query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/emails.smtp where :name = 'Expired.eml'

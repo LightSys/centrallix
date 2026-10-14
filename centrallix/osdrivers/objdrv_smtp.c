@@ -68,6 +68,7 @@
 #define SMTP_DEFAULT_SWEEP_INTERVAL	(60 * 60)
 
 /** Define file names. **/
+#define SMTP_SPOOL_SUBDIR       "smtp"             /* The driver's directory in the top-level spool_dir. */
 #define SMTP_CURSOR_FILE        ".mail_log_cursor" /* Stores a spool dir's mail log position. */
 #define SMTP_LOCK_FILE          ".spool_lock"      /* Locks a spool dir and alerts when pending emails update. */
 
@@ -1596,10 +1597,17 @@ smtp_internal_InitGlobals()
 	    }
 
 	/** Get the spool directory path, which smtpInitialize() requires. **/
-	stAttrValue(stLookup(config, "spool_dir"), NULL, &spoolDir, 0);
-	if (UNLIKELY(strtcpy(SMTP_INF.SpoolDir, spoolDir, sizeof(SMTP_INF.SpoolDir)) < 0))
+	stAttrValue(stLookup(CxGlobals.ParsedConfig, "spool_dir"), NULL, &spoolDir, 0);
+	if (UNLIKELY(snprintf(SMTP_INF.SpoolDir, sizeof(SMTP_INF.SpoolDir), "%s/%s", spoolDir, SMTP_SPOOL_SUBDIR) >= (int)sizeof(SMTP_INF.SpoolDir)))
 	    {
-	    mssError(1, "SMTP", "Failed to set the spool directory path: \"%s\" is too long.", spoolDir);
+	    mssError(1, "SMTP", "Failed to set the spool directory path: \"%s/%s\" is too long.", spoolDir, SMTP_SPOOL_SUBDIR);
+	    goto error;
+	    }
+
+	/** Create the spool directory if it does not exist. **/
+	if (mkdir(SMTP_INF.SpoolDir, 0777) != 0 && UNLIKELY(errno != EEXIST))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to create spool directory \"%s\".", SMTP_INF.SpoolDir);
 	    goto error;
 	    }
 
@@ -6988,10 +6996,10 @@ smtpInitialize()
     bool typesInitialized = false;
 
 	/** Require a spool directory. **/
-	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "smtp"), "spool_dir"), NULL, &spoolDir, 0);
+	stAttrValue(stLookup(CxGlobals.ParsedConfig, "spool_dir"), NULL, &spoolDir, 0);
 	if (UNLIKELY(spoolDir == NULL || spoolDir[0] == '\0'))
 	    {
-	    mssError(1, "SMTP", "Failed to find the spool directory: the smtp config does not set a 'spool_dir' string.");
+	    mssError(1, "SMTP", "Failed to find the spool directory: centrallix.conf does not set a 'spool_dir' string.");
 	    goto error;
 	    }
 
