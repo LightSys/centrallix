@@ -1912,7 +1912,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		/** Update the lowest bottom edge for this row. **/
 		if (subobj->Y + subobj->Height > last_height)
 		    last_height = subobj->Y + subobj->Height;
-		
+
+		/** Blank lines need an explicit height. **/
+		const bool blank = (subobj->ObjType->TypeID == PRT_OBJ_T_STRING && ((char*)subobj->Content)[0] == '\0');
+
 		/*** Write container HTML, skipping default values
 		 *** (colspan/rowspan="1", align="left") to reduce HTML size.
 		 ***/
@@ -1921,6 +1924,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    || (rs > 1 && prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs) < 0)
 		    || (subobj->Justification != PRT_JUST_T_LEFT
 			&& prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[subobj->Justification]) < 0)
+		    || (blank && prt_htmlfm_OutputPrintf(context,
+			" style=\"height:%dpx;\"", (int)(subobj->Height * PRT_HTMLFM_YPIXEL + 0.5)) < 0)
 		    || prt_htmlfm_OutputStrLiteral(context, ">") < 0
 		))  {
 		    mssError(0, "PRT", "Failed to write container opening tag.");

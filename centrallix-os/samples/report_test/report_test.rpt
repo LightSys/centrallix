@@ -190,12 +190,17 @@ report_test "system/report"
     toplevel_data "report/data"
 	{
 	style=bold;
-	value=runserver("Top-level report/data with no area (bold).\n");
+	value=runserver("Top-level report/data with no area (bold).");
 	}
 
     toplevel_data2 "report/data"
 	{
-	value=runserver("Expect: this second top-level line is not bold.\n");
+	value=runserver("Expect: this second top-level line is not bold, and sits below the first without a newline.");
+	}
+
+    toplevel_data3 "report/data"
+	{
+	value=runserver("Expect: a blank line follows this one, from its trailing newline.\n");
 	}
 
     // Sections 1-8 need values_qy to be active.
