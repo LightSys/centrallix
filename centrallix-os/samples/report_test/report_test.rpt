@@ -195,7 +195,7 @@ report_test "system/report"
 
     toplevel_data2 "report/data"
 	{
-	value=runserver("Expect: this second top-level line is not bold, and sits below the first without a newline.");
+	value=runserver("Expect: not bold, and on its own line without a newline.");
 	}
 
     toplevel_data3 "report/data"
@@ -209,7 +209,7 @@ report_test "system/report"
 	source=values_qy;
 
 	// 1. Text styles.
-	s1_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n1. Text styles\n"); }
+	s1_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n1. Text styles"); }
 	// Inline style changes share one area.
 	s1_area "report/area"
 	    {
@@ -258,7 +258,7 @@ report_test "system/report"
 	    }
 
 	// 2. Alignment.
-	s2_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n2. Alignment\n"); }
+	s2_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n2. Alignment"); }
 	s2_left "report/area" { width=80; height=0; align=left; s2_left_d "report/data" { value=runserver("Left aligned."); } }
 	s2_center "report/area" { width=80; height=0; align=center; s2_center_d "report/data" { value=runserver("Center aligned."); } }
 	s2_right "report/area" { width=80; height=0; align=right; s2_right_d "report/data" { value=runserver("Right aligned."); } }
@@ -281,25 +281,41 @@ report_test "system/report"
 	    }
 
 	// 3. Whitespace and wrapping.
-	s3_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n3. Whitespace and wrapping\n"); }
-	s3_lead "report/data" { value=runserver("    Four leading spaces.\n        Eight leading spaces.\n"); }
-	s3_inner "report/data" { value=runserver("Five     inner     spaces (Expect: kept as five, compare with PDF).\n"); }
-	s3_tab "report/data" { value=runserver("Tab:\tone\ttwo\tthree (Expect: words start on 8-column tab stops)\n"); }
-	s3_nl "report/data" { value=runserver("Line A\nLine B\n\nLine D (after one blank line)\n"); }
+	s3_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n3. Whitespace and wrapping"); }
+	// Text wraps and keeps its whitespace inside an area.
+	s3_area "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    s3_lead "report/data" { value=runserver("    Four leading spaces.\n        Eight leading spaces.\n"); }
+	    s3_inner "report/data" { value=runserver("Five     inner     spaces (Expect: kept as five, compare with PDF).\n"); }
+	    s3_tab "report/data" { value=runserver("Tab:\tone\ttwo\tthree (Expect: words start on 8-column tab stops)\n"); }
+	    s3_nl "report/data" { value=runserver("Line A\nLine B\n\nLine D (after one blank line)\n"); }
+	    }
 	s3_lh "report/area" { width=80; height=0; lineheight=2; s3_lh_d "report/data" { value=runserver("lineheight=2, line one\nline two (Expect: double spaced)\n"); } }
-	s3_auto1 "report/data" { autonewline=yes; value=runserver("autonewline one"); }
-	s3_auto2 "report/data" { autonewline=yes; value=runserver("autonewline two"); }
-	s3_long_hdr "report/data" { style=bold; value=runserver("Long paragraph (over 1000 bytes, soft wraps only):\n"); }
-	s3_long "report/data" { value=runserver(:values_qy:v_long + "\n"); }
-	s3_token_hdr "report/data" { style=bold; value=runserver("200-character token with no spaces:\n"); }
-	s3_token "report/data" { value=runserver(:values_qy:v_token + "\n"); }
-	s3_token_note "report/data" { value=runserver("Expect: the token wraps or is cut inside the page width; the page does not get wider.\n"); }
+	s3_area2 "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    s3_auto1 "report/data" { autonewline=yes; value=runserver("autonewline one"); }
+	    s3_auto2 "report/data" { autonewline=yes; value=runserver("autonewline two"); }
+	    s3_long_hdr "report/data" { style=bold; value=runserver("Long paragraph (over 1000 bytes, soft wraps only):\n"); }
+	    s3_long "report/data" { value=runserver(:values_qy:v_long + "\n"); }
+	    s3_token_hdr "report/data" { style=bold; value=runserver("200-character token with no spaces:\n"); }
+	    s3_token "report/data" { value=runserver(:values_qy:v_token + "\n"); }
+	    s3_token_note "report/data" { value=runserver("Expect: the token wraps or is cut inside the page width; the page does not get wider.\n"); }
+	    }
 
 	// 4. Escaping and encoding.
-	s4_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n4. HTML escaping and UTF-8\n"); }
-	s4_lit "report/data" { value=runserver("Literal: <b>not bold</b> & &amp; &lt; \"double\" 'single' <!-- not a comment --> \\backslash\n"); }
-	s4_param "report/data" { value=runserver("Parameter: " + :this:p_string + "\n"); }
-	s4_note "report/data" { value=runserver("Expect: every character above prints literally, nothing is interpreted as markup.\n"); }
+	s4_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n4. HTML escaping and UTF-8"); }
+	s4_area "report/area"
+	    {
+	    width=80;
+	    height=0;
+	    s4_lit "report/data" { value=runserver("Literal: <b>not bold</b> & &amp; &lt; \"double\" 'single' <!-- not a comment --> \\backslash\n"); }
+	    s4_param "report/data" { value=runserver("Parameter: " + :this:p_string + "\n"); }
+	    s4_note "report/data" { value=runserver("Expect: every character above prints literally, nothing is interpreted as markup.\n"); }
+	    }
 	s4_table "report/table"
 	    {
 	    width=80;
@@ -313,7 +329,7 @@ report_test "system/report"
 	    }
 
 	// 5. Hyperlinks.
-	s5_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n5. Hyperlinks\n"); }
+	s5_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n5. Hyperlinks"); }
 	// Links and plain text share one area.
 	s5_area "report/area"
 	    {
@@ -330,7 +346,7 @@ report_test "system/report"
 	    }
 
 	// 6. Data types and formats.
-	s6_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n6. Data types and formats\n"); }
+	s6_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n6. Data types and formats"); }
 	s6_t "report/table"
 	    {
 	    width=80;
@@ -359,7 +375,7 @@ report_test "system/report"
 	    }
 
 	// 7. Horizontal positioning within an area.
-	s7_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n7. Horizontal positioning (xpos)\n"); }
+	s7_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n7. Horizontal positioning (xpos)"); }
 	// Positions are relative to this area.
 	s7_area "report/area"
 	    {
@@ -381,7 +397,7 @@ report_test "system/report"
 	    }
 
 	// 8. Areas.
-	s8_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n8. Areas\n"); }
+	s8_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n8. Areas"); }
 	s8_thin "report/area" { width=80; height=0; border=0.01; s8_thin_d "report/data" { value=runserver("Thin border (0.01)."); } }
 	s8_thick "report/area" { width=80; height=0; border=0.2; margintop=0.5; marginbottom=0.5; marginleft=1; marginright=1; s8_thick_d "report/data" { value=runserver("Thick border (0.2) with margins."); } }
 	s8_lmargin "report/area" { width=80; height=0; border=0.01; marginleft=10; s8_lmargin_d "report/data" { value=runserver("Left margin 10 only (Expect: indented on the left, compare others with PDF)."); } }
@@ -435,13 +451,13 @@ report_test "system/report"
 	    }
 	s8_cond_t "report/area" { width=80; height=0; condition=runserver(:this:p_integer = 42); s8_cond_t_d "report/data" { value=runserver("Expect: this line appears (condition true)."); } }
 	s8_cond_f "report/area" { width=80; height=0; condition=runserver(:this:p_hidden); s8_cond_f_d "report/data" { value=runserver("FAIL: this area has a false condition."); } }
-	s8_cond_d "report/data" { condition=runserver(1 = 0); value=runserver("FAIL: this data has a false condition.\n"); }
+	s8_cond_d "report/data" { condition=runserver(1 = 0); value=runserver("FAIL: this data has a false condition."); }
 	}
 
     // 9. Static tables.
-    s9_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n9. Static tables (no source)\n"); }
+    s9_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n9. Static tables (no source)"); }
 
-    s9_note "report/data" { value=runserver("Expect: only the dark header and summary rows are bold; the fixed-height row has lines between its cells and thick left and right edges.\n"); }
+    s9_note_area "report/area" { width=80; height=0; s9_note "report/data" { value=runserver("Expect: only the dark header and summary rows are bold; the fixed-height row has lines between its cells and thick left and right edges."); } }
     s9a "report/table"
 	{
 	width=80;
@@ -561,7 +577,7 @@ report_test "system/report"
 	    }
 	}
 
-    s9_gap1 "report/data" { value=runserver("\nWidths from header cells, autowidth, and a shadow:\n"); }
+    s9_gap1 "report/data" { value=runserver("\nWidths from header cells, autowidth, and a shadow:"); }
     s9b "report/table"
 	{
 	width=80;
@@ -588,7 +604,7 @@ report_test "system/report"
 	    }
 	}
 
-    s9_gap2 "report/data" { value=runserver("\nSeparate top, bottom, left, and right table borders (0.02, 0.1, 0.05, 0.2):\n"); }
+    s9_gap2 "report/data" { value=runserver("\nSeparate top, bottom, left, and right table borders (0.02, 0.1, 0.05, 0.2):"); }
     s9c "report/table"
 	{
 	width=60;
@@ -607,8 +623,8 @@ report_test "system/report"
 	}
 
     // 10. Data-driven table with grouping, totals, and a page break.
-    s10_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n10. Data table with groups and totals\n"); }
-    s10_note "report/data" { value=runserver("Expect: the header repeats after each page break; subtotals East 224 / $ 4,365.06, North 252 / $ 61,977.48, South 192 / $ 6,686.55, West 263 / $ 81,254.42; total 931 / $ 154,283.51, avg rating 2.73, price range $-19.95 to $ 1,234.56; row 23 has red Qty and Price; only header and total rows are bold; rows 8, 14, and 30 show the CX icon; every row with a note (3, 5, 8, 11, 14, 17, 20, 23, 26) shows it.\n"); }
+    s10_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n10. Data table with groups and totals"); }
+    s10_note_area "report/area" { width=80; height=0; s10_note "report/data" { value=runserver("Expect: the header repeats after each page break; subtotals East 224 / $ 4,365.06, North 252 / $ 61,977.48, South 192 / $ 6,686.55, West 263 / $ 81,254.42; total 931 / $ 154,283.51, avg rating 2.73, price range $-19.95 to $ 1,234.56; row 23 has red Qty and Price; only header and total rows are bold; rows 8, 14, and 30 show the CX icon; every row with a note (3, 5, 8, 11, 14, 17, 20, 23, 26) shows it."); } }
     s10_t "report/table"
 	{
 	width=80;
@@ -683,12 +699,12 @@ report_test "system/report"
 	    value=runserver("Price range: " + :table_qy:tot_min + " to " + :table_qy:tot_max);
 	    }
 	}
-    s10_out "report/data" { value=runserver("Out parameter out_qty: " + :this:out_qty + " (Expect: 931)\n"); }
+    s10_out "report/data" { value=runserver("Out parameter out_qty: " + :this:out_qty + " (Expect: 931)"); }
 
     // 11. Other query-driven tables.
-    s11_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n11. Empty, limited, parameterized, and nested tables\n"); }
+    s11_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n11. Empty, limited, parameterized, and nested tables"); }
 
-    s11_l1 "report/data" { value=runserver("Empty result, default nodatamsg (Expect: a no-data message and no header):\n"); }
+    s11_l1 "report/data" { value=runserver("Empty result, default nodatamsg (Expect: a no-data message and no header):"); }
     s11a "report/table"
 	{
 	width=40; columns=2; widths=19,19; source=empty_qy; outerborder=0.01;
@@ -697,7 +713,7 @@ report_test "system/report"
 	s11a_r "report/table-row" { s11a_r1 "report/table-cell" { value=runserver(:empty_qy:id); } s11a_r2 "report/table-cell" { value=runserver(:empty_qy:product); } }
 	}
 
-    s11_l2 "report/data" { value=runserver("\nEmpty result, nodatamsg=no (Expect: nothing between this line and the next):\n"); }
+    s11_l2 "report/data" { value=runserver("\nEmpty result, nodatamsg=no (Expect: nothing between this line and the next):"); }
     s11b "report/table"
 	{
 	width=40; columns=2; widths=19,19; source=empty_qy; nodatamsg=no;
@@ -705,7 +721,7 @@ report_test "system/report"
 	s11b_r "report/table-row" { s11b_r1 "report/table-cell" { value=runserver(:empty_qy:id); } s11b_r2 "report/table-cell" { value=runserver(:empty_qy:product); } }
 	}
 
-    s11_l3 "report/data" { value=runserver("reclimit=3 (Expect: ids 1, 2, 3, then a summary row):\n"); }
+    s11_l3 "report/data" { value=runserver("reclimit=3 (Expect: ids 1, 2, 3, then a summary row):"); }
     s11c "report/table"
 	{
 	width=40; columns=2; widths=10,29; source=limit_qy; reclimit=3;
@@ -714,7 +730,7 @@ report_test "system/report"
 	s11c_s "report/table-row" { summary=yes; margintop=0; marginbottom=0; s11c_s1 "report/table-cell" { value=runserver("Summary"); } s11c_s2 "report/table-cell" { value=runserver(convert('string', :limit_qy:limit_count) + " rows (Expect: 3 rows)"); } }
 	}
 
-    s11_l4 "report/data" { value=runserver("\n&p_region substitution in SQL (Expect: ids 23-33, all South):\n"); }
+    s11_l4 "report/data" { value=runserver("\n&p_region substitution in SQL (Expect: ids 23-33, all South):"); }
     s11d "report/table"
 	{
 	width=40; columns=3; widths=8,20,10; source=param_qy;
@@ -722,7 +738,7 @@ report_test "system/report"
 	s11d_r "report/table-row" { margintop=0; marginbottom=0; s11d_r1 "report/table-cell" { value=runserver(:param_qy:id); } s11d_r2 "report/table-cell" { value=runserver(:param_qy:product); } s11d_r3 "report/table-cell" { value=runserver(:param_qy:qty); } }
 	}
 
-    s11_l5 "report/data" { value=runserver("\nSQL built by an expression (Expect: ids 1-4):\n"); }
+    s11_l5 "report/data" { value=runserver("\nSQL built by an expression (Expect: ids 1-4):"); }
     s11e "report/table"
 	{
 	width=40; columns=2; widths=10,29; source=expr_qy;
@@ -730,7 +746,7 @@ report_test "system/report"
 	s11e_r "report/table-row" { margintop=0; marginbottom=0; s11e_r1 "report/table-cell" { value=runserver(:expr_qy:id); } s11e_r2 "report/table-cell" { value=runserver(:expr_qy:product); } }
 	}
 
-    s11_l6 "report/data" { value=runserver("\nNested tables (inner query uses the outer row):\n"); }
+    s11_l6 "report/data" { value=runserver("\nNested tables (inner query uses the outer row):"); }
     s11f "report/table"
 	{
 	width=80;
@@ -795,8 +811,8 @@ report_test "system/report"
 	}
 
     // 12. Multi-column sections.
-    s12_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n12. Multi-column sections\n"); }
-    s12_l1 "report/data" { value=runserver("Two balanced columns, colsep=4, with a separator line (Expect: the text is split evenly between the columns):\n"); }
+    s12_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n12. Multi-column sections"); }
+    s12_l1_area "report/area" { width=80; height=0; s12_l1 "report/data" { value=runserver("Two balanced columns, colsep=4, with a separator line (Expect: the text is split evenly between the columns):"); } }
     s12a "report/section"
 	{
 	width=80;
@@ -807,7 +823,7 @@ report_test "system/report"
 	balanced=yes;
 	s12a_d "report/data" { value=runserver(replicate("Column text flows from one column into the next. ", 14)); }
 	}
-    s12_l2 "report/data" { value=runserver("\nThree balanced columns of records from a form, fontsize 9 (Expect: 24 records, 8 per column):\n"); }
+    s12_l2_area "report/area" { width=80; height=0; s12_l2 "report/data" { value=runserver("\nThree balanced columns of records from a form, fontsize 9 (Expect: 24 records, 8 per column):"); } }
     s12b "report/section"
 	{
 	width=80;
@@ -825,38 +841,43 @@ report_test "system/report"
 	}
 
     // 13. Forms.
-    s13_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n13. Forms\n"); }
+    s13_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n13. Forms"); }
 
-    s13_l1 "report/data" { style=bold; value=runserver("One paragraph per record, directly on the page (Expect: one line per record):\n"); }
-    s13a "report/form"
+    s13_l1 "report/data" { style=bold; value=runserver("One paragraph per record, in an area (Expect: one line per record):"); }
+    s13a_area "report/area"
 	{
-	source=form_regions_qy;
-	moneyformat="$###,###,##0";
-	s13a_d1 "report/data" { style=bold; value=runserver(:form_regions_qy:region); }
-	s13a_d2 "report/data" { value=runserver(" is managed by " + condition(char_length(:form_regions_qy:manager) > 0, :form_regions_qy:manager, "nobody") + " with a target of "); }
-	s13a_d3 "report/data" { value=runserver(:form_regions_qy:target); }
-	s13a_d4 "report/data" { value=runserver(" (form moneyformat, no cents).\n"); }
+	width=80;
+	height=0;
+	s13a "report/form"
+	    {
+	    source=form_regions_qy;
+	    moneyformat="$###,###,##0";
+	    s13a_d1 "report/data" { style=bold; value=runserver(:form_regions_qy:region); }
+	    s13a_d2 "report/data" { value=runserver(" is managed by " + condition(char_length(:form_regions_qy:manager) > 0, :form_regions_qy:manager, "nobody") + " with a target of "); }
+	    s13a_d3 "report/data" { value=runserver(:form_regions_qy:target); }
+	    s13a_d4 "report/data" { value=runserver(" (form moneyformat, no cents).\n"); }
+	    }
 	}
 
-    s13_l2 "report/data" { style=bold; value=runserver("\nreclimit=2, form style italic teal (Expect: East and North, italic teal):\n"); }
+    s13_l2 "report/data" { style=bold; value=runserver("\nreclimit=2, form style italic teal (Expect: East and North, italic teal):"); }
     s13b "report/form"
 	{
 	source=form_regions_qy;
 	reclimit=2;
 	style=italic;
 	fontcolor="#006060";
-	s13b_d "report/data" { value=runserver("  " + :form_regions_qy:region + "\n"); }
+	s13b_d "report/data" { value=runserver("  " + :form_regions_qy:region); }
 	}
 
-    s13_l3 "report/data" { style=bold; value=runserver("\nmultimode=parallel (Expect: four pairs, region beside product):\n"); }
+    s13_l3 "report/data" { style=bold; value=runserver("\nmultimode=parallel (Expect: four pairs, region beside product):"); }
     s13c "report/form"
 	{
 	source=form_regions_qy, products_qy;
 	multimode=parallel;
-	s13c_d "report/data" { value=runserver("  " + :form_regions_qy:region + " / " + :products_qy:product + "\n"); }
+	s13c_d "report/data" { value=runserver("  " + :form_regions_qy:region + " / " + :products_qy:product); }
 	}
 
-    s13_l4 "report/data" { style=bold; value=runserver("\nmultimode=nested in 4 balanced columns (Expect: each product once per region, 4 lines per column):\n"); }
+    s13_l4_area "report/area" { width=80; height=0; s13_l4 "report/data" { style=bold; value=runserver("\nmultimode=nested in 4 balanced columns (Expect: each product once per region, 4 lines per column):"); } }
     s13d_sec "report/section"
 	{
 	width=80;
@@ -872,23 +893,28 @@ report_test "system/report"
 	    }
 	}
 
-    s13_l5 "report/data" { style=bold; value=runserver("\nOuter/inner forms, inner reclimit=3 (Expect: the qty>=30 ids, three per line):\n"); }
-    s13e "report/form"
+    s13_l5 "report/data" { style=bold; value=runserver("\nOuter/inner forms, inner reclimit=3 (Expect: the qty>=30 ids, three per line):"); }
+    s13e_area "report/area"
 	{
-	source=group_qy;
-	mode=outer;
-	s13e_d1 "report/data" { value=runserver("  >>> "); }
-	s13e_in "report/form"
+	width=80;
+	height=0;
+	s13e "report/form"
 	    {
 	    source=group_qy;
-	    mode=inner;
-	    reclimit=3;
-	    s13e_d2 "report/data" { value=runserver(convert('string', :group_qy:id) + " "); }
+	    mode=outer;
+	    s13e_d1 "report/data" { value=runserver("  >>> "); }
+	    s13e_in "report/form"
+		{
+		source=group_qy;
+		mode=inner;
+		reclimit=3;
+		s13e_d2 "report/data" { value=runserver(convert('string', :group_qy:id) + " "); }
+		}
+	    s13e_d3 "report/data" { value=runserver("<<<\n"); }
 	    }
-	s13e_d3 "report/data" { value=runserver("<<<\n"); }
 	}
 
-    s13_l6 "report/data" { style=bold; value=runserver("\nInner table under an outer form, reclimit=3 (Expect: the same ids as above, one small table per group):\n"); }
+    s13_l6_area "report/area" { width=80; height=0; s13_l6 "report/data" { style=bold; value=runserver("\nInner table under an outer form, reclimit=3 (Expect: the same ids as above, one small table per group):"); } }
     s13g "report/form"
 	{
 	source=group_qy;
@@ -907,17 +933,17 @@ report_test "system/report"
 	    }
 	}
 
-    s13_l7 "report/data" { style=bold; value=runserver("\nmultimode=multinested (Expect: each region alone, then that region with each product):\n"); }
+    s13_l7_area "report/area" { width=80; height=0; s13_l7 "report/data" { style=bold; value=runserver("\nmultimode=multinested (Expect: each region alone, then that region with each product):"); } }
     s13f "report/form"
 	{
 	source=form_regions_qy, products_qy;
 	multimode=multinested;
-	s13f_d "report/data" { value=runserver(:form_regions_qy:region + " / " + isnull(:products_qy:product, "-") + "\n"); }
+	s13f_d "report/data" { value=runserver(:form_regions_qy:region + " / " + isnull(:products_qy:product, "-")); }
 	}
 
     // 14. Images and SVG.
-    s14_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n14. Images and SVG\n"); }
-    s14_l1 "report/data" { value=runserver("RGB PNG, RGBA PNG, 8-bit grey PNG, and 1-bit grey PNG:\n"); }
+    s14_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n14. Images and SVG"); }
+    s14_l1 "report/data" { value=runserver("RGB PNG, RGBA PNG, 8-bit grey PNG, and 1-bit grey PNG:"); }
     s14_row1 "report/area"
 	{
 	width=80;
@@ -928,7 +954,7 @@ report_test "system/report"
 	s14_g8 "report/image" { x=46; y=1; width=16; height=2; source="/samples/report_test/grey8.png"; }
 	s14_g1 "report/image" { x=66; y=0; width=8; height=4; source="/samples/report_test/grey1.png"; }
 	}
-    s14_l1b "report/data" { value=runserver("\n4-bit grey PNG, 16-bit grey PNG (Expect: two left-to-right grey ramps, then one top-to-bottom ramp):\n"); }
+    s14_l1b_area "report/area" { width=80; height=0; s14_l1b "report/data" { value=runserver("\n4-bit grey PNG, 16-bit grey PNG (Expect: two left-to-right grey ramps, then one top-to-bottom ramp):"); } }
     s14_row2 "report/area"
 	{
 	width=80;
@@ -937,7 +963,7 @@ report_test "system/report"
 	s14_g4 "report/image" { x=0; y=0; width=16; height=2; source="/samples/report_test/grey4.png"; }
 	s14_g16 "report/image" { x=20; y=0; width=16; height=2; source="/samples/report_test/grey16.png"; }
 	}
-    s14_l2 "report/data" { value=runserver("\nSVG (Expect: vector logo; some email clients do not show SVG):\n"); }
+    s14_l2 "report/data" { value=runserver("\nSVG (Expect: vector logo; some email clients do not show SVG):"); }
     s14_svg "report/svg" { width=30; height=3; source="/sys/images/centrallix_374x66.svg"; }
     // Inline images share one area with text.
     s14_area "report/area"
@@ -958,7 +984,7 @@ report_test "system/report"
 	}
 
     // 15. Charts.
-    s15_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n15. Charts\n"); }
+    s15_hdr "report/data" { fontsize=14; style=bold; font=helvetica; value=runserver("\n15. Charts"); }
     s15_charts "report/area"
 	{
 	width=80;
@@ -1025,7 +1051,7 @@ report_test "system/report"
 	    }
 	}
 
-    s15_note "report/data" { value=runserver("Expect: bar chart with blue and dark red series; orange line chart labeled with values and their share of the total, such as 248 (27%); pie with percents on the slices and values in the legend; auto-series bars in four different colors for East, North, South, and West.\n"); }
+    s15_note_area "report/area" { width=80; height=0; s15_note "report/data" { value=runserver("Expect: bar chart with blue and dark red series; orange line chart labeled with values and their share of the total, such as 248 (27%); pie with percents on the slices and values in the legend; auto-series bars in four different colors for East, North, South, and West."); } }
 
     // 16. Table inside an area, long enough to cross a page break.
     s16 "report/area"
