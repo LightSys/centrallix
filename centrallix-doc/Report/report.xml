@@ -28,6 +28,7 @@
 			<property name="marginbottom" type="double">The height of the bottom margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
 			<property name="marginleft" type="double">The width of the left margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
 			<property name="marginright" type="double">The width of the right margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
+			<property name="min_fontsize" type="double">The smallest font size in points that text may shrink to when it does not fit in an area, table cell, or row that cannot grow.  If unset, text never shrinks.  Available on all objects except image, query, and parameter.</property>
 			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.  Available on all objects except image, query, and parameter.</property>
 			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.  Available on all objects except image, query, and parameter.</property>
 			<property name="rightborder" type="double">Width of the outside border at the right side of the table, table-row, or area.</property>
