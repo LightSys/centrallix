@@ -980,7 +980,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream search;
     double x,y;
     int handle_id;
-    bool is_block;
     bool is_marker;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
@@ -1001,12 +1000,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Get geometries for current line. **/
 	    prt_textlm_LineGeom(this->ContentTail, &bottom, &top);
-
-	    /** Containers with no X position go on lines of their own **/
-	    is_block = !(objptr->Flags & PRT_OBJ_F_XSET) && (objptr->ObjType->TypeID == PRT_OBJ_T_AREA
-		|| objptr->ObjType->TypeID == PRT_OBJ_T_TABLE || objptr->ObjType->TypeID == PRT_OBJ_T_SECTION);
-	    if (is_block && this->ContentTail->X + this->ContentTail->Width > PRT_FP_FUDGE)
-		this->ContentTail->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 
 	    /** Determine X and Y for the new object.  Skip to next line if newline
 	     ** is indicated.
@@ -1189,7 +1182,6 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Now add the object to the container **/
 	    prt_internal_Add(this, objptr);
-	    if (is_block) objptr->Flags |= PRT_OBJ_F_SOFTNEWLINE;
 
 	    /** Repeat the procedure for the split-off part of the object **/
 	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
