@@ -1131,40 +1131,24 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** Request the additional space, if allowed **/
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 		    {
-		    /*** Resize denied.  If container is empty and already at the top of
-		     *** its parent, a Break can't give it any more room.
+		    /** Resize denied.  Shrink the text to fit if min_fontsize is set. **/
+		    if (objptr->TextStyle.MinFontSize > 0.0 && prt_textlm_Rescale(this, objptr) == 0)
+			continue;
+
+		    /*** If container is empty and already at the top of its parent, a
+		     *** Break can't give it any more room.
 		     ***/
 		    if (this->Y < PRT_FP_FUDGE && (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next)))
 			{
-			/** Try rescale if possible. **/
-			if (prt_textlm_Rescale(this, objptr) < 0)
-			    {
-			    /** Resize and Rescale denied?  Fail if so. **/
-			    mssError(1,"PRT","Could not fit new object into layout area");
-			    goto error;
-			    }
-			else
-			    {
-			    /** Reposition wrapped item **/
-			    continue;
-			    }
+			mssError(1,"PRT","Could not fit new object into layout area");
+			goto error;
 			}
 
 		    /** Try a break operation. **/
 		    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
 			{
-			/** Unable to break.  Try rescale if possible. **/
-			if (prt_textlm_Rescale(this, objptr) < 0)
-			    {
-			    /** Resize, Break and Rescale all denied?  Fail if so. **/
-			    mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
-			    goto error;
-			    }
-			else
-			    {
-			    /** Reposition wrapped item **/
-			    continue;
-			    }
+			mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
+			goto error;
 			}
 		    }
 
