@@ -1135,10 +1135,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    if (objptr->TextStyle.MinFontSize > 0.0 && prt_textlm_Rescale(this, objptr) == 0)
 			continue;
 
-		    /*** If container is empty and already at the top of its parent, a
-		     *** Break can't give it any more room.
+		    /*** If container is empty, a Break can't give it more room when it is
+		     *** at the top of its parent, fixed in size, or fixed in position.
 		     ***/
-		    if (this->Y < PRT_FP_FUDGE && (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next)))
+		    if ((this->Y < PRT_FP_FUDGE || (this->Flags & (PRT_OBJ_F_FIXEDSIZE | PRT_OBJ_F_YSET))) && (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next)))
 			{
 			mssError(1,"PRT","Could not fit new object into layout area");
 			goto error;
