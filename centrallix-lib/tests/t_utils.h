@@ -54,10 +54,11 @@
 #define ASSERT_TRUE(v) \
     ({ \
     const bool success = !!(v); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s to be true at %s:%d\n", \
-	#v, __FILE__, __LINE__ \
-    ); \
+    if (UNLIKELY(!success)) \
+	fprintf(stderr, \
+	    "  > Expected %s to be true at %s:%d\n", \
+	    #v, __FILE__, __LINE__ \
+	); \
     success; \
     })
 
@@ -75,10 +76,11 @@
     __typeof__ (v1) _v1 = (v1); \
     __typeof__ (v2) _v2 = (v2); \
     const bool success = (_v1 == _v2); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s ("sp") to equal %s ("sp") at %s:%d\n", \
-	#v1, _v1, #v2, _v2, __FILE__, __LINE__ \
-    ); \
+    if (UNLIKELY(!success)) \
+	fprintf(stderr, \
+	    "  > Expected %s ("sp") to equal %s ("sp") at %s:%d\n", \
+	    #v1, _v1, #v2, _v2, __FILE__, __LINE__ \
+	); \
     success; \
     })
 
@@ -95,10 +97,11 @@
     const bool both_null = (_str1 == NULL && _str2 == NULL); \
     const bool both_eql = (_str1 != NULL && _str2 != NULL && strcmp(_str1, _str2) == 0); \
     const bool success = (both_null || both_eql); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n", \
-	#str1, _str1, #str2, _str2, __FILE__, __LINE__ \
-    ); \
+    if (UNLIKELY(!success)) \
+	fprintf(stderr, \
+	    "  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n", \
+	    #str1, _str1, #str2, _str2, __FILE__, __LINE__ \
+	); \
     success; \
     })
 
@@ -153,10 +156,11 @@
     __typeof__ (min_v) _min = (min_v); \
     __typeof__ (max_v) _max = (max_v); \
     const bool success = (_min <= _v && _v <= _max); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s ("sp") to be in the range %s ("sp") - %s ("sp") at %s:%d\n", \
-	#v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
-    ); \
+    if (UNLIKELY(!success)) \
+	fprintf(stderr, \
+	    "  > Expected %s ("sp") to be in the range %s ("sp") - %s ("sp") at %s:%d\n", \
+	    #v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
+	); \
     success; \
     })
 
@@ -170,10 +174,11 @@
     ({ \
     __typeof__ (ptr) _ptr = (ptr); \
     const bool success = (_ptr != NULL); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s (%p) to be non null at %s:%d\n", \
-	#ptr, _ptr, __FILE__, __LINE__ \
-    ); \
+    if (UNLIKELY(!success)) \
+	fprintf(stderr, \
+	    "  > Expected %s (%p) to be non null at %s:%d\n", \
+	    #ptr, _ptr, __FILE__, __LINE__ \
+	); \
     success; \
     })
 
