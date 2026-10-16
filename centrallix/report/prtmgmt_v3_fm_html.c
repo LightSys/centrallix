@@ -47,6 +47,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/qprintf.h"
 #include "cxlib/range.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
@@ -1280,33 +1281,6 @@ ImageWriteFn(void* arg, char* data, int len, int offset, int flags)
 	return len;
     }
 
-//TODO CSMITH put in .h
-/** Encodes a char* input to base64 **/
-char*
-base64_encode(const unsigned char *input, size_t len)
-    {
-	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-	size_t out_len = 4 * ((len + 2) / 3);
-	char *output = (char *)nmSysMalloc(out_len + 1);
-	if (UNLIKELY(output == NULL))
-	    {
-	    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", out_len + 1);
-	    return NULL;
-	    }
-
-	char *p = output;
-	for (size_t i = 0; i < len; i += 3)
-	    {
-	    int val = (input[i] << 16) | ((i + 1 < len ? input[i + 1] : 0) << 8) | (i + 2 < len ? input[i + 2] : 0);
-	    *p++ = b64_table[(val >> 18) & 0x3F];
-	    *p++ = b64_table[(val >> 12) & 0x3F];
-	    *p++ = (i + 1 < len) ? b64_table[(val >> 6) & 0x3F] : '=';
-	    *p++ = (i + 2 < len) ? b64_table[val & 0x3F] : '=';
-	    }
-	*p = '\0';
-	return output;
-    }
-
 
 /*** prt_htmlfm_OutputURL() - write a URL into an href attribute, adding
  *** "https://" if the URL does not specify a scheme (such as "mailto:").
@@ -1497,9 +1471,18 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Encode the image to base64. **/
-		base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
-		if (UNLIKELY(base64Image == NULL)) goto error_image;
-		base64Size = strlen(base64Image) + 1;
+		base64Size = 4 * ((imgBuf.size + 2) / 3) + 1;
+		base64Image = nmSysMalloc(base64Size);
+		if (UNLIKELY(base64Image == NULL))
+		    {
+		    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", base64Size);
+		    goto error_image;
+		    }
+		if (UNLIKELY(qpfPrintf(NULL, base64Image, base64Size, "%*STR&B64", (int)imgBuf.size, imgBuf.buffer) < 0))
+		    {
+		    mssError(1, "PRT", "Failed to base64-encode %zu-byte image.", imgBuf.size);
+		    goto error_image;
+		    }
 
 		/** Clean up unused buffer. **/
 		nmSysFree(imgBuf.buffer);
