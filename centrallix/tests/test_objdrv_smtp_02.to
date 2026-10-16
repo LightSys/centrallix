@@ -1,12 +1,12 @@
 ##NAME Deferred recipient
-##UNDO /tests/spool/smtp/Bounced.struct
-##UNDO /tests/spool/smtp/Deferred.struct
-##UNDO /tests/spool/smtp/DeferredSent.struct
-##UNDO /tests/spool/smtp/Expired.struct
-##UNDO /tests/spool/smtp/PartialBounce.struct
-##UNDO /tests/spool/smtp/Resent.struct
-##UNDO /tests/spool/smtp/Restarted.struct
-##UNDO /tests/spool/smtp/Sent.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/Bounced.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/Deferred.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/DeferredSent.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/Expired.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/PartialBounce.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/Resent.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/Restarted.struct
+##UNDO /tests/spool/smtp/6ce5e6456e3544ee/Sent.struct
 ##UNDO /tests/spool/smtp/.mail_log_cursor
 ##UNDO /tests/spool/smtp/.spool_lock
 
