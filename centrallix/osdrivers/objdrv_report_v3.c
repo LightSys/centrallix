@@ -4315,7 +4315,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
 	ctx->show_legend = rpt_internal_GetBool(inf, chart, "show_legend", false, 0);
-	ctx->auto_escape = !rpt_internal_GetBool(inf, chart, "disable_auto_escaping", false, 0);
+	ctx->auto_escape = rpt_internal_GetBool(inf, chart, "auto_escaping", true, 0);
 	ctx->texts = xaNew(8);
 	if (!ctx->texts)
 	    goto error;
