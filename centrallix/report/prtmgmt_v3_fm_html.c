@@ -764,7 +764,7 @@ prt_htmlfm_FreeImage(void* image_v, void* arg)
     {
     pPrtHTMLfmImage image = (pPrtHTMLfmImage)image_v;
 
-	nmFree(image->Base64, image->Base64Size);
+	nmSysFree(image->Base64);
 	nmFree(image, sizeof(PrtHTMLfmImage));
 
     return 0;
@@ -1287,10 +1287,10 @@ base64_encode(const unsigned char *input, size_t len)
     {
 	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 	size_t out_len = 4 * ((len + 2) / 3);
-	char *output = (char *)nmMalloc(out_len + 1);
+	char *output = (char *)nmSysMalloc(out_len + 1);
 	if (UNLIKELY(output == NULL))
 	    {
-	    mssError(1, "PRT", "nmMalloc(%zu) failed.", out_len + 1);
+	    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", out_len + 1);
 	    return NULL;
 	    }
 
@@ -1474,10 +1474,10 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
 
 		/** Allocate image buffer. **/
-		imgBuf.buffer = nmMalloc(MAX_IMAGE_SIZE);
+		imgBuf.buffer = nmSysMalloc(MAX_IMAGE_SIZE);
 		if (UNLIKELY(imgBuf.buffer == NULL))
 		    {
-		    mssError(1, "PRT", "nmMalloc(%zu) failed.", MAX_IMAGE_SIZE);
+		    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", MAX_IMAGE_SIZE);
 		    goto error_image;
 		    }
 
@@ -1502,7 +1502,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		base64Size = strlen(base64Image) + 1;
 
 		/** Clean up unused buffer. **/
-		nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
+		nmSysFree(imgBuf.buffer);
 		imgBuf.buffer = NULL;
 
 		/** Write opening URL tag. **/
@@ -1605,7 +1605,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Clean up. **/
-		if (base64Image != NULL) nmFree(base64Image, base64Size);
+		if (base64Image != NULL) nmSysFree(base64Image);
 		base64Image = NULL;
 
 		/** Success. **/
@@ -1615,8 +1615,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		mssError(0, "PRT", "Failed to write %s.", (is_png) ? "image" : "svg");
 
 		/** Clean up. **/
-		if (imgBuf.buffer != NULL) nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
-		if (base64Image != NULL) nmFree(base64Image, base64Size);
+		if (imgBuf.buffer != NULL) nmSysFree(imgBuf.buffer);
+		if (base64Image != NULL) nmSysFree(base64Image);
 
 		return -1;
 		}
