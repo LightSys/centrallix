@@ -196,11 +196,11 @@
 
 /*** Font size range, in CSS pixels.
  ***/
-#define PRT_HTMLFM_MIN_FONT_SIZE	(10.0)
-#define	PRT_HTMLFM_MAX_FONT_SIZE	(96.0)
+#define PRT_HTMLFM_MINFONTSIZE	(10.0)
+#define	PRT_HTMLFM_MAXFONTSIZE	(96.0)
 
 /** Pixels within which two font sizes are considered equal. **/
-#define PRT_HTMLFM_FONT_SIZE_PRECISION	(0.1)
+#define PRT_HTMLFM_FONTSIZE_PRECISION	(0.1)
 
 /*** Declare supported font family names.
  *** 
@@ -641,7 +641,7 @@ prt_htmlfm_GetOutputType(void* context_v)
 double
 prt_htmlfm_GetNearestFontSize(void* context_v, double req_size)
     {
-    return clamp(PRT_HTMLFM_MIN_FONT_SIZE, req_size, PRT_HTMLFM_MAX_FONT_SIZE);
+    return clamp(PRT_HTMLFM_MINFONTSIZE, req_size, PRT_HTMLFM_MAXFONTSIZE);
     }
 
 
@@ -891,7 +891,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	const bool font_changed =
 	    style->FontID != context->CurStyle.FontID ||
 	    style->Color != context->CurStyle.Color ||
-	    realComparePrecision(style->FontSize, context->CurStyle.FontSize, PRT_HTMLFM_FONT_SIZE_PRECISION) != 0;
+	    realComparePrecision(style->FontSize, context->CurStyle.FontSize, PRT_HTMLFM_FONTSIZE_PRECISION) != 0;
 
 	/*** The tags nest as <span><u><i><b>, so changing any one of them
 	 *** also requires rewriting every nested tag.  Entering or leaving
