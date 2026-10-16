@@ -64,19 +64,19 @@
 #define PRT_HTMLFM_BORDER_PIXELS(w)     ((int)ceil((w) * PRT_HTMLFM_XPIXEL - 0.001))
 
 /** Session flags **/
-typedef unsigned char SessionFlags; /* A type holding 0 or more session flags. */
-#define PRT_HTMLFM_F_NO_FLAGS		((SessionFlags)0b00000000u)
-#define PRT_HTMLFM_F_PAGINATED          ((SessionFlags)0b00000001u)
-#define PRT_HTMLFM_F_EMAIL              ((SessionFlags)0b00000010u)
+typedef unsigned char PrtHTMLSessionFlags; /* A type holding 0 or more session flags. */
+#define PRT_HTMLFM_F_NO_FLAGS		((PrtHTMLSessionFlags)0b00000000u)
+#define PRT_HTMLFM_F_PAGINATED          ((PrtHTMLSessionFlags)0b00000001u)
+#define PRT_HTMLFM_F_EMAIL              ((PrtHTMLSessionFlags)0b00000010u)
 
 /** Style Flags **/
-typedef unsigned char StyleFlags; /* A type holding 0 or more style flags. */
-#define PRT_HTMLFM_SF_NO_FLAGS		((StyleFlags)0b00000000u)
-#define PRT_HTMLFM_SF_KEEPSPACES	((StyleFlags)0b00000001u) /** Set after newlines to keep space-padding. **/
-#define PRT_HTMLFM_SF_FONTDIRTY		((StyleFlags)0b00000010u)
-#define PRT_HTMLFM_SF_UNDERLINEDIRTY	((StyleFlags)0b00000100u)
-#define PRT_HTMLFM_SF_ITALICDIRTY	((StyleFlags)0b00001000u)
-#define PRT_HTMLFM_SF_BOLDDIRTY		((StyleFlags)0b00010000u)
+typedef unsigned char PrtHTMLStyleFlags; /* A type holding 0 or more style flags. */
+#define PRT_HTMLFM_SF_NO_FLAGS		((PrtHTMLStyleFlags)0b00000000u)
+#define PRT_HTMLFM_SF_KEEPSPACES	((PrtHTMLStyleFlags)0b00000001u) /** Set after newlines to keep space-padding. **/
+#define PRT_HTMLFM_SF_FONTDIRTY		((PrtHTMLStyleFlags)0b00000010u)
+#define PRT_HTMLFM_SF_UNDERLINEDIRTY	((PrtHTMLStyleFlags)0b00000100u)
+#define PRT_HTMLFM_SF_ITALICDIRTY	((PrtHTMLStyleFlags)0b00001000u)
+#define PRT_HTMLFM_SF_BOLDDIRTY		((PrtHTMLStyleFlags)0b00010000u)
 
 /*** MIME media types ***/
 typedef struct
@@ -96,8 +96,8 @@ typedef struct _PSFI
     int			InitStyle;
     int			ExitStyle;
     pPrtHTMLfmSubtype	Subtype;
-    SessionFlags	Flags;
-    StyleFlags		StyleFlags;
+    PrtHTMLSessionFlags	Flags;
+    PrtHTMLStyleFlags	StyleFlags;
     int			BGColor;	/* The current background color showing through. */
     pXArray		Attachments;	/* Images (pPrtHTMLfmImage) to attach to an email report. */
     char		Boundary[PRT_HTMLFM_EMAIL_BOUNDARY_SIZE];
@@ -124,7 +124,7 @@ typedef struct
 typedef struct
     {
     PrtTextStyle	Style;
-    StyleFlags		Flags;
+    PrtHTMLStyleFlags	Flags;
     }
     PrtHTMLfmSavedStyle, *pPrtHTMLfmSavedStyle;
 
