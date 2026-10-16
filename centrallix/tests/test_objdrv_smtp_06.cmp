@@ -1,0 +1,4 @@
+Attribute [name]:   string   "PartialBounce.eml" 
+Attribute [status]:   string   "Pending" 
+Attribute [last_try_status]:   string   "Fail" 
+Attribute [last_try_msg]:   string   "Sent to 0 of 2 recipients. b@bounce.test: bounced: 550 5.1.1 User unknown" 

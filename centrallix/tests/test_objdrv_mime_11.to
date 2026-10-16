@@ -1,0 +1,4 @@
+##NAME Part named by filename over Content-ID
+
+query select :name from /tests/MimeContentId.eml
+print /tests/MimeContentId.eml/photo.txt

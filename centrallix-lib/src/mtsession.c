@@ -648,6 +648,47 @@ mssPrintError(pFile fd)
     }
 
 
+/*** mssWarnError - handles errors with a warning including the error stack
+ *** (unless the errors were logged when raised).
+ ***
+ *** Useful for handling errors in unimportant side-work (like cleaning up
+ *** temp files) that doesn't need to cause the main work to fail.
+ ***
+ *** @param message The warning, as a printf() format.
+ ***/
+void
+mssWarnError(char* message, ...)
+    {
+    va_list args;
+    XString str; str.String = NULL;
+
+	/** Print the warning. **/
+	fprintf(stderr, "Warning: ");
+	va_start(args, message);
+	vfprintf(stderr, message, args);
+	va_end(args);
+	fprintf(stderr, "\n");
+
+	/** Print the errors, unless mss_i_error() already logged them. **/
+	pMtSession s = thGetParam(NULL, "mss");
+	if (s != NULL && !MSS.LogAllErrors && s->ErrList.nItems > 0)
+	    {
+	    if (warnFail(xsInit(&str)) != 0 || warnFail(mssStringError(&str)) != 0)
+		fprintf(stderr, "Warning: Failed to print session errors.\n");
+	    else
+		fprintf(stderr, "%s", xsString(&str));
+	    }
+
+	/** Clean up. **/
+	if (LIKELY(str.String != NULL))
+	    warnFail(xsDeInit(&str));
+	mssClearError();
+	warnFail(fflush(stderr));
+
+	return;
+    }
+
+
 /*** mssStringError - copies the current error information into a newly
  *** allocated string.
  ***/

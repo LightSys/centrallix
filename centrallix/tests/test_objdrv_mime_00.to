@@ -1,0 +1,3 @@
+##NAME Parameters without values
+
+query select :name, flowed = :"Content-Type.flowed", charset = :"Content-Type.charset", delsp = :"Content-Type.delsp" from /tests/MimeParamNoValue.eml

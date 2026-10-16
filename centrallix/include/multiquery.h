@@ -300,6 +300,9 @@ int mqRegisterQueryDriver(pQueryDriver drv);
 
 /*** INTERNAL functions ***/
 char* mq_internal_QEGetNextAttr(pMultiQuery mq, pQueryElement qe, pParamObjects objlist, int* attrid, int* astobjid);
+pExpression mq_internal_ContentRef(pExpression exp);
+pObject mq_internal_ContentSource(pExpression exp, pParamObjects objlist);
+int mq_internal_CopyContent(pObject src, pObject dst);
 int mq_internal_FreeQS(pQueryStructure qstree);
 pQueryStructure mq_internal_AllocQS(int type);
 pQueryStructure mq_internal_FindItem(pQueryStructure tree, int type, pQueryStructure next);

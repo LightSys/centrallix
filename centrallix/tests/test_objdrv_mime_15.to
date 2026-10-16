@@ -1,0 +1,3 @@
+##NAME Epilogue after the closing boundary
+
+query select :name, epilogue = charindex("epilogue", :objcontent) from /tests/MimeEpilogue.eml

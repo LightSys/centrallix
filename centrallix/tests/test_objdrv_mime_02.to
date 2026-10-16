@@ -1,0 +1,3 @@
+##NAME Missing headers and parameters
+
+query select :name, subject = :Subject, charset = :"Content-Type.charset" from /tests/MimeMissingHeader.eml
