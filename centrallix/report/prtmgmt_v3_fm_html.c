@@ -1285,6 +1285,7 @@ ImageWriteFn(void* arg, char* data, int len, int offset, int flags)
 /*** prt_htmlfm_OutputURL() - write a URL into an href attribute, adding
  *** "https://" if the URL does not specify a scheme (such as "mailto:").
  *** Relative URLs starting with "/", ".", "#", or "?" are written as-is.
+ *** URLs on a link signing site are signed.
  ***
  *** @param context The report formatter context.
  *** @param url The URL to write.
@@ -1293,6 +1294,10 @@ ImageWriteFn(void* arg, char* data, int len, int offset, int flags)
 static int
 prt_htmlfm_OutputURL(pPrtHTMLfmInf context, char* url)
     {
+    pXString full_url = NULL;
+    pXString signed_url = NULL;
+    int rval = -1;
+
 	/** Find the scheme, if there is one (RFC 3986 section 3.1). **/
 	const char* ch = url;
 	if (isalpha((unsigned char)*ch))
@@ -1302,11 +1307,24 @@ prt_htmlfm_OutputURL(pPrtHTMLfmInf context, char* url)
 	const bool has_scheme = (ch > url && *ch == ':');
 	const bool is_relative = (strchr("/.#?", url[0]) != NULL);
 
-	/** Write the URL. **/
-	if (!has_scheme && !is_relative && UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "https://") < 0)) return -1;
-	if (UNLIKELY(prt_htmlfm_OutputEncoded(context, url, -1) < 0)) return -1;
+	/** Add the default scheme. **/
+	full_url = xsNew();
+	if (UNLIKELY(full_url == NULL)) goto end;
+	if (UNLIKELY(xsQPrintf(full_url, "%STR%STR", (!has_scheme && !is_relative) ? "https://" : "", url) < 0)) goto end;
 
-	return 0;
+	/** Sign the URL, if allowed. **/
+	signed_url = cxssLinkSign(xsString(full_url));
+
+	/** Write the URL. **/
+	if (UNLIKELY(prt_htmlfm_OutputEncoded(context, xsString((signed_url != NULL) ? signed_url : full_url), -1) < 0)) goto end;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (signed_url != NULL) xsFree(signed_url);
+	if (full_url != NULL) xsFree(full_url);
+	return rval;
     }
 
 
