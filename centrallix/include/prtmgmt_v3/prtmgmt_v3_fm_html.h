@@ -41,8 +41,8 @@
 
 
 
-#define PRT_HTMLFM_FONTSIZE_OFFSET      (+1)
-#define PRT_HTMLFM_FONTSIZE_DEFAULT     (12)
+#define PRT_HTMLFM_FONT_SIZE_OFFSET      (+1)
+#define PRT_HTMLFM_FONT_SIZE_DEFAULT     (12)
 
 /*** MIME boundary for email reports: a fixed prefix plus random hex chars
  *** generated per message.  The random part keeps report data (which is not

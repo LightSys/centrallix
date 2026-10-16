@@ -196,22 +196,22 @@
 
 /*** Font size range, in CSS pixels.
  ***/
-#define PRT_HTMLFM_MINFONTSIZE	(10.0)
-#define	PRT_HTMLFM_MAXFONTSIZE	(96.0)
+#define PRT_HTMLFM_MIN_FONT_SIZE	(10.0)
+#define	PRT_HTMLFM_MAX_FONT_SIZE	(96.0)
 
 /** Pixels within which two font sizes are considered equal. **/
-#define PRT_HTMLFM_FONTSIZE_PRECISION	(0.1)
+#define PRT_HTMLFM_FONT_SIZE_PRECISION	(0.1)
 
-/*** Declare supported font family styles.
+/*** Declare supported font family names.
  *** 
- *** PRT_HTMLFM_DEFAULT_FONTSTYLE is an index into prt_htmlfm_fontstyles[] for
+ *** PRT_HTMLFM_DEFAULT_FONT_NAME is an index into prt_htmlfm_font_names[] for
  *** the report's most common font. This is set on the body's wrapper element,
  *** so that later styling can skip setting it, reducing HTML size.
  ***/
-static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,monospace", "Arial,Helvetica,sans-serif", "Times New Roman,Times,serif"};
-#define PRT_HTMLFM_MINFONTSTYLE	(0)
-#define PRT_HTMLFM_MAXFONTSTYLE	(sizeof(prt_htmlfm_fontstyles) / sizeof(prt_htmlfm_fontstyles[0]) - 1)
-#define PRT_HTMLFM_DEFAULT_FONTSTYLE	(0)
+static char* prt_htmlfm_font_names[3] = { "Courier New,Courier,monospace", "Arial,Helvetica,sans-serif", "Times New Roman,Times,serif"};
+#define PRT_HTMLFM_MIN_FONT_NAME	(0)
+#define PRT_HTMLFM_MAX_FONT_NAME	(sizeof(prt_htmlfm_font_names) / sizeof(prt_htmlfm_font_names[0]) - 1)
+#define PRT_HTMLFM_DEFAULT_FONT_NAME	(0)
 
 static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     {
@@ -547,7 +547,7 @@ prt_htmlfm_WriteHeader(pPrtHTMLfmInf context)
 	 ***/
 	context->BGColor = 0xFFFFFF;
 	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
-	const char* font_family = prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE];
+	const char* font_family = prt_htmlfm_font_names[PRT_HTMLFM_DEFAULT_FONT_NAME];
 	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_HEADER_TITLE) < 0
 	    || prt_htmlfm_OutputEncoded(context, prtGetSessionParam(context->Session, "title", "Centrallix HTML Document"), -1) < 0
 	    || prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, background_color, font_family) < 0
@@ -641,7 +641,7 @@ prt_htmlfm_GetOutputType(void* context_v)
 double
 prt_htmlfm_GetNearestFontSize(void* context_v, double req_size)
     {
-    return clamp(PRT_HTMLFM_MINFONTSIZE, req_size, PRT_HTMLFM_MAXFONTSIZE);
+    return clamp(PRT_HTMLFM_MIN_FONT_SIZE, req_size, PRT_HTMLFM_MAX_FONT_SIZE);
     }
 
 
@@ -863,10 +863,10 @@ const char*
 prt_htmlfm_GetFont(pPrtTextStyle style)
     {
     int fontid = style->FontID - 1;
-    if (fontid < PRT_HTMLFM_MINFONTSTYLE || fontid > PRT_HTMLFM_MAXFONTSTYLE)
-	fontid = PRT_HTMLFM_MINFONTSTYLE;
+    if (fontid < PRT_HTMLFM_MIN_FONT_NAME || fontid > PRT_HTMLFM_MAX_FONT_NAME)
+	fontid = PRT_HTMLFM_MIN_FONT_NAME;
     
-    return prt_htmlfm_fontstyles[fontid];
+    return prt_htmlfm_font_names[fontid];
     }
 
 
@@ -891,7 +891,7 @@ prt_htmlfm_SetStyle(pPrtHTMLfmInf context, pPrtTextStyle style)
 	const bool font_changed =
 	    style->FontID != context->CurStyle.FontID ||
 	    style->Color != context->CurStyle.Color ||
-	    realComparePrecision(style->FontSize, context->CurStyle.FontSize, PRT_HTMLFM_FONTSIZE_PRECISION) != 0;
+	    realComparePrecision(style->FontSize, context->CurStyle.FontSize, PRT_HTMLFM_FONT_SIZE_PRECISION) != 0;
 
 	/*** The tags nest as <span><u><i><b>, so changing any one of them
 	 *** also requires rewriting every nested tag.  Entering or leaving
@@ -960,7 +960,7 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
 	char stylebuf[128];
 	const char* face = prt_htmlfm_GetFont(style);
 	truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, "<span style=\"font-size:%.4gpx", style->FontSize) < 0);
-	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) != 0)
+	if (strcmp(face, prt_htmlfm_font_names[PRT_HTMLFM_DEFAULT_FONT_NAME]) != 0)
 	    truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, ";font-family:%s", face) < 0);
 	if (style->Color != 0)
 	    truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, ";color:#%6.6X", style->Color) < 0);
