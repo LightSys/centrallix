@@ -61,6 +61,15 @@ bool t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int 
 #define ASSERT_TRUE(v) \
     t_i_assertTrue(!!(v), #v, __FILE__, __LINE__)
 
+/*** Assert that a value is NULL. While ASSERT_EQL(ptr, NULL) also does this,
+ *** ASSERT_NOT_NULL() is clearer to read and gives a distinct error message.
+ *** 
+ *** @param ptr The pointer.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define ASSERT_NOT_NULL(ptr) \
+    t_i_assertNotNull((ptr), #ptr, __FILE__, __LINE__)
+
 /*** Assert two values to be equal.
  *** 
  *** @param v1 The first value.
@@ -120,15 +129,6 @@ bool t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int 
 	#v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
     ); \
     })
-
-/*** Assert that a value is NULL. While ASSERT_EQL(ptr, NULL) also does this,
- *** ASSERT_NOT_NULL() is clearer to read and gives a distinct error message.
- *** 
- *** @param ptr The pointer.
- *** @returns true if successful, false otherwise.
- ***/
-#define ASSERT_NOT_NULL(ptr) \
-    t_i_assertNotNull((ptr), #ptr, __FILE__, __LINE__)
 
 /*** Copy n characters from src to dest, including null-terminators, which are
  *** replaced with the '_' character.
