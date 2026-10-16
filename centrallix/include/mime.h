@@ -213,7 +213,7 @@ int libmime_ClearSpecials(pTObjData ptod);
 /** mime_encode.c **/
 int libmime_EncodeQP();
 int libmime_DecodeQP();
-int libmime_EncodeBase64();
-int libmime_DecodeBase64();
+int libmime_EncodeBase64(unsigned char* dst, unsigned char* src, int maxdst, int srclen);
+int libmime_DecodeBase64(char* dst, char* src, int maxdst);
 
 #endif /** _MIME_H **/

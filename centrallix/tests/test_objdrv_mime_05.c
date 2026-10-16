@@ -44,7 +44,7 @@ file_add_base64(MsgFile* f, unsigned char* src, int len)
 	for(i=0;i<len;i+=57)
 	    {
 	    n = (len - i < 57) ? (len - i) : 57;
-	    f->Len += libmime_EncodeBase64(f->Data + f->Len, src + i, sizeof(f->Data) - f->Len, n);
+	    f->Len += libmime_EncodeBase64((unsigned char*)f->Data + f->Len, src + i, sizeof(f->Data) - f->Len, n);
 	    f->Data[f->Len++] = '\n';
 	    }
     }
