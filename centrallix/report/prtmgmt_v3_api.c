@@ -488,6 +488,8 @@ prtSetMinFontSize(int handle_id, double fontsize)
 	    set_obj->TextStyle.MinFontSize = 0;
 	else
 	    set_obj->TextStyle.MinFontSize = s->Formatter->GetNearestFontSize(s->FormatterData, fontsize);
+	if (obj->ObjType->TypeID == PRT_OBJ_T_AREA)
+	    obj->LayoutMgr->AddObject(obj,set_obj);
 
 	prt_internal_DispatchEvents(s);
 

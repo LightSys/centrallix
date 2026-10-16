@@ -593,6 +593,27 @@ rpt_internal_GetDouble(pRptData inf, pStructInf config, char* attr, double* val,
     }
 
 
+/*** rpt_internal_GetSideBorder - gets one side's border from its width property.
+ *** Returns NULL if the property is not given, or a border with no lines if it
+ *** is null or zero, so that it clears the side.
+ ***/
+pPrtBorder
+rpt_internal_GetSideBorder(pRptData inf, pStructInf config, char* attr)
+    {
+    double width;
+
+	/** Not given **/
+	if (stLookup(config, attr) == NULL)
+	    return NULL;
+
+	/** Null or zero **/
+	if (rpt_internal_GetDouble(inf, config, attr, &width, NAN, 0) < 0 || width <= RPT_FP_FUDGE)
+	    return prtAllocBorder(0, 0.0, 0.0);
+
+    return prtAllocBorder(1, 0.0, 0.0, width, 0x000000);
+    }
+
+
 /*** rpt_internal_GetBool - gets a boolean value, in the form of 0/1, true/false,
  *** on/off, or yes/no.
  ***/
@@ -2008,14 +2029,10 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 	    ob = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 	if (rpt_internal_GetDouble(inf, tablerow, "innerborder", &dbl, NAN, 0) >= 0)
 	    ib = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, tablerow, "topborder", &dbl, NAN, 0) >= 0)
-	    tb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, tablerow, "bottomborder", &dbl, NAN, 0) >= 0)
-	    bb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, tablerow, "leftborder", &dbl, NAN, 0) >= 0)
-	    lb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, tablerow, "rightborder", &dbl, NAN, 0) >= 0)
-	    rb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	tb = rpt_internal_GetSideBorder(inf, tablerow, "topborder");
+	bb = rpt_internal_GetSideBorder(inf, tablerow, "bottomborder");
+	lb = rpt_internal_GetSideBorder(inf, tablerow, "leftborder");
+	rb = rpt_internal_GetSideBorder(inf, tablerow, "rightborder");
 
 	/** Row geometry? **/
 	rpt_internal_GetDouble(inf, tablerow, "height", &h, -1.0, 0);
@@ -2324,14 +2341,10 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    innerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
 	if (rpt_internal_GetDouble(inf, table, "shadow", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    shadow = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, table, "topborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
-	    tb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, table, "bottomborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
-	    bb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, table, "leftborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
-	    lb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	if (rpt_internal_GetDouble(inf, table, "rightborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
-	    rb = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	tb = rpt_internal_GetSideBorder(inf, table, "topborder");
+	bb = rpt_internal_GetSideBorder(inf, table, "bottomborder");
+	lb = rpt_internal_GetSideBorder(inf, table, "leftborder");
+	rb = rpt_internal_GetSideBorder(inf, table, "rightborder");
 
 	/** Create the table **/
 	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags,
@@ -2492,9 +2505,6 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 	    if (err) break;
 	    if (ac) rval = rpt_internal_NextRecord(ac, inf, table, rs, 0);
 	    else rval = 1;
-
-	    /** The record limit ends the table, with its final summary, as the end of the data does **/
-	    if (rval == 0 && reclimit != -1 && reccnt + 1 >= reclimit) rval = 1;
 
 	    /** Emit summary rows? **/
 	    for(i=0;i<table->nSubInf;i++) if (stStructType(table->SubInf[i]) == ST_T_SUBGROUP)
@@ -4326,7 +4336,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	memset(ctx, 0, sizeof(RptChartContext));
 	ctx->inf = inf;
 	ctx->show_legend = rpt_internal_GetBool(inf, chart, "show_legend", false, 0);
-	ctx->auto_escape = !rpt_internal_GetBool(inf, chart, "disable_auto_escaping", false, 0);
+	ctx->auto_escape = rpt_internal_GetBool(inf, chart, "auto_escaping", true, 0);
 	ctx->texts = xaNew(8);
 	if (!ctx->texts)
 	    goto error;

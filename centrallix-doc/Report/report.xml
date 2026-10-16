@@ -28,6 +28,7 @@
 			<property name="marginbottom" type="double">The height of the bottom margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
 			<property name="marginleft" type="double">The width of the left margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
 			<property name="marginright" type="double">The width of the right margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
+			<property name="min_fontsize" type="double">The smallest font size in points that text may shrink to when it does not fit in an area, table cell, or row that cannot grow.  If unset, text never shrinks.  Available on all objects except image, query, and parameter.</property>
 			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.  Available on all objects except image, query, and parameter.</property>
 			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.  Available on all objects except image, query, and parameter.</property>
 			<property name="rightborder" type="double">Width of the outside border at the right side of the table, table-row, or area.</property>
@@ -286,7 +287,7 @@ outerForm "report/form"
 			<property name="mode" type="string">The mode of the table (see overview).  'normal' is the default.</property>
 			<property name="multimode" type="string">How the table handles multiple queries (see overview).  'nested' is the default.</property>
 			<property name="nodatamsg" type="yes/no">Whether to display the '(no data returned)' message below the table if no records were returned from the query source.  Default is 'yes' to display the no-data message.</property>
-			<property name="outerborder" type="double">Width of the outside border around the table.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</property>
+			<property name="outerborder" type="double">Width of the outside border around the table.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).  Setting one of those to null or 0 removes that side.</property>
 			<property name="reclimit" type="integer">Sets a limit on the number of records the table is to print.</property>
 			<property name="shadow" type="double">Width of the drop-shadow to the right and bottom of the table.</property>
 			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
@@ -294,11 +295,11 @@ outerForm "report/form"
 		</properties>
 		<children>
 			<child type="report/table-row">
-				<childproperty name="allowbreak" type="yes/no">Whether a row taller than a page may split across pages.  A row that fits on a page always moves to the next page whole.  Default "yes".</childproperty>
+				<childproperty name="allowbreak" type="yes/no">Whether to allow the row to span multiple pages in the report.</childproperty>
 				<childproperty name="fixedsize" type="yes/no">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the table row is allowed to grow vertically to fit its contents.</childproperty>
 				<childproperty name="header" type="yes/no">Whether the row is a header row (repeated on subsequent pages).</childproperty>
 				<childproperty name="innerborder" type="double">Width of the inside borders between cells in the row.</childproperty>
-				<childproperty name="outerborder" type="double">Width of the outside border around the row.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</childproperty>
+				<childproperty name="outerborder" type="double">Width of the outside border around the row.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).  Setting one of those to null or 0 removes that side.</childproperty>
 				<childproperty name="summary" type="yes/no">Whether the row is a summary row, emitted at the end of the table (no summarize_for) or at the end of each group of rows (if summarize_for is set).</childproperty>
 				<childproperty name="summarize_for" type="expression">An expression whose value uniquely defines the desired group of rows.  The summary row is printed at the end of each group of consecutive rows having the same value for this expression.</childproperty>
 			</child>
@@ -336,16 +337,16 @@ myTable "report/table"
 			<p>Charts can have a dynamic number of series by specifying the "series_value" parameter on the "report/chart" object. The "x_value" and "y_value" parameters will also need to be specified directly inside the "report/chart" rather than inside of a "report/chart-series". "report/chart-series" objects are ignored by charts with dynamic series.</p>
 			<p>Charts, like forms and tables, can have more than one data mode.  Like tables, charts only support 'normal' and 'inner'; 'outer' is not supported since charts do not contain other components.  See the form documentation for more on the data mode.</p>
 			<p>Charts also can handle multiple queries using a 'multimode' - see the form for more information.</p>
-			<p>Chart text (titles, axis labels, legend names, category labels, and value labels) prints exactly as written.  To use the chart engine's text markup instead, such as "x^2" for a superscript or "a_1" for a subscript, set "disable_auto_escaping" to "yes".  Then put a backslash before any _ ^ \ { or } that should print as itself (\\_ inside a structure file string).</p>
+			<p>Chart text (titles, axis labels, legend names, category labels, and value labels) prints exactly as written.  To use the chart engine's text markup instead, such as "x^2" for a superscript or "a_1" for a subscript, set "auto_escaping" to "no".  Then put a backslash before any _ ^ \ { or } that should print as itself (\\_ inside a structure file string).</p>
 		</overview>
 		<usage>
 			<p>Charts can be used inside any visual container or inside forms.  Charts can contain "report/chart-axis" and "report/chart-series" objects, and must contain both an X and a Y axis and at least one data series.  Charts cannot contain any other report components.</p>
 			<p>All chart elements also typically support the common property "fontsize".</p>
 		</usage>
 		<properties>
+			<property name="auto_escaping" type="yes/no">Whether to escape the chart engine's markup in chart text, so that it prints as written (see overview).  Default "yes".</property>
 			<property name="box" type="yes/no">Whether to draw a box around the chart's data area (the box is drawn just around the graph or chart itself, not around the axis and tick labels and titles).  Default "no".</property>
 			<property name="chart_type" type="string">The type of chart:  bar, line, or pie.</property>
-			<property name="disable_auto_escaping" type="yes/no">Whether to pass chart text to the chart engine as written, so that its markup applies (see overview).  Default "no".</property>
 			<property name="color" type="string">The default color to be used for the chart. If nothing is specified elsewhere, all series will be made this color. If a palette is also specified, this color will replace any invalid colors.</property>
 			<property name="palette" type="string">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green", "fake", "#014421" (or "green,fake,#014421", or any mixture of the two) would have series colored a bright green, the default, and then a dark green.  </property>
 			<property name="mode" type="string">The mode of the chart (see overview).  'normal' is the default.</property>

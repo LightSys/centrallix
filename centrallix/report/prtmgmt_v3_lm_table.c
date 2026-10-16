@@ -315,16 +315,13 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 
 	    /** Ok, couldn't resize.  If we are in the header row, or in the first
 	     ** data row, or in a table that cannot break, try moving the table to
-	     ** the next page altogether.  A row moves to the next page only once.
+	     ** the next page altogether.
 	     **/
-	    pPrtTabLMData row_inf = (pPrtTabLMData)(this->LMData);
 	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
 		{
-		if (((!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER))
-			&& !(row_inf->Flags & PRT_TABLM_F_MOVED))
+		if (!this->Prev || (((pPrtTabLMData)(this->Prev->LMData))->Flags & PRT_TABLM_F_ISHEADER)
 			|| !(this->Parent->Flags & PRT_OBJ_F_ALLOWBREAK))
 		    {
-		    row_inf->Flags |= PRT_TABLM_F_MOVED;
 		    table_obj = this->Parent;
 		    new_parent = old_parent;
 		    old_parent = table_obj->Parent;
@@ -362,12 +359,10 @@ prt_tablm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		}
 
 	    /** If we are inside a row, and row cannot break (or row is empty), 
-	     ** break table and move entire row to next page.  A row that can
-	     ** break moves once, and only splits if it still does not fit.
+	     ** break table and move entire row to next page.
 	     **/
-	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && (!(this->Flags & PRT_OBJ_F_ALLOWBREAK) || this->Height == 0 || !(row_inf->Flags & PRT_TABLM_F_MOVED)))
+	    if (this->ObjType->TypeID == PRT_OBJ_T_TABLEROW && (!(this->Flags & PRT_OBJ_F_ALLOWBREAK) || this->Height == 0))
 		{
-		row_inf->Flags |= PRT_TABLM_F_MOVED;
 		table_obj = this->Parent;
 		prt_internal_MakeOrphan(this);
 		prt_tablm_FitToRows(table_obj);

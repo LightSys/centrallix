@@ -47,6 +47,7 @@
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/qprintf.h"
 #include "cxlib/range.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
@@ -202,16 +203,16 @@
 /** Pixels within which two font sizes are considered equal. **/
 #define PRT_HTMLFM_FONTSIZE_PRECISION	(0.1)
 
-/*** Declare supported font family styles.
+/*** Declare supported font family names.
  *** 
- *** PRT_HTMLFM_DEFAULT_FONTSTYLE is an index into prt_htmlfm_fontstyles[] for
+ *** PRT_HTMLFM_DEFAULT_FONT_NAME is an index into prt_htmlfm_font_names[] for
  *** the report's most common font. This is set on the body's wrapper element,
  *** so that later styling can skip setting it, reducing HTML size.
  ***/
-static char* prt_htmlfm_fontstyles[3] = { "Courier New,Courier,monospace", "Arial,Helvetica,sans-serif", "Times New Roman,Times,serif"};
-#define PRT_HTMLFM_MINFONTSTYLE	(0)
-#define PRT_HTMLFM_MAXFONTSTYLE	(sizeof(prt_htmlfm_fontstyles) / sizeof(prt_htmlfm_fontstyles[0]) - 1)
-#define PRT_HTMLFM_DEFAULT_FONTSTYLE	(0)
+static char* prt_htmlfm_font_names[3] = { "Courier New,Courier,monospace", "Arial,Helvetica,sans-serif", "Times New Roman,Times,serif"};
+#define PRT_HTMLFM_MIN_FONT_NAME	(0)
+#define PRT_HTMLFM_MAX_FONT_NAME	(sizeof(prt_htmlfm_font_names) / sizeof(prt_htmlfm_font_names[0]) - 1)
+#define PRT_HTMLFM_DEFAULT_FONT_NAME	(0)
 
 static PrtHTMLfmSubtype prt_htmlfm_subtypes[] =
     {
@@ -547,7 +548,7 @@ prt_htmlfm_WriteHeader(pPrtHTMLfmInf context)
 	 ***/
 	context->BGColor = 0xFFFFFF;
 	const char* background_color = (context->Flags & PRT_HTMLFM_F_PAGINATED) ? "#c0c0c0" : "#ffffff";
-	const char* font_family = prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE];
+	const char* font_family = prt_htmlfm_font_names[PRT_HTMLFM_DEFAULT_FONT_NAME];
 	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, PRT_HTMLFM_HEADER_TITLE) < 0
 	    || prt_htmlfm_OutputEncoded(context, prtGetSessionParam(context->Session, "title", "Centrallix HTML Document"), -1) < 0
 	    || prt_htmlfm_OutputPrintf(context, PRT_HTMLFM_HEADER, background_color, background_color, font_family) < 0
@@ -764,7 +765,7 @@ prt_htmlfm_FreeImage(void* image_v, void* arg)
     {
     pPrtHTMLfmImage image = (pPrtHTMLfmImage)image_v;
 
-	nmFree(image->Base64, image->Base64Size);
+	nmSysFree(image->Base64);
 	nmFree(image, sizeof(PrtHTMLfmImage));
 
     return 0;
@@ -863,10 +864,10 @@ const char*
 prt_htmlfm_GetFont(pPrtTextStyle style)
     {
     int fontid = style->FontID - 1;
-    if (fontid < PRT_HTMLFM_MINFONTSTYLE || fontid > PRT_HTMLFM_MAXFONTSTYLE)
-	fontid = PRT_HTMLFM_MINFONTSTYLE;
+    if (fontid < PRT_HTMLFM_MIN_FONT_NAME || fontid > PRT_HTMLFM_MAX_FONT_NAME)
+	fontid = PRT_HTMLFM_MIN_FONT_NAME;
     
-    return prt_htmlfm_fontstyles[fontid];
+    return prt_htmlfm_font_names[fontid];
     }
 
 
@@ -960,7 +961,7 @@ prt_htmlfm_WriteStyle(pPrtHTMLfmInf context)
 	char stylebuf[128];
 	const char* face = prt_htmlfm_GetFont(style);
 	truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, "<span style=\"font-size:%.4gpx", style->FontSize) < 0);
-	if (strcmp(face, prt_htmlfm_fontstyles[PRT_HTMLFM_DEFAULT_FONTSTYLE]) != 0)
+	if (strcmp(face, prt_htmlfm_font_names[PRT_HTMLFM_DEFAULT_FONT_NAME]) != 0)
 	    truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, ";font-family:%s", face) < 0);
 	if (style->Color != 0)
 	    truncated |= (strtcatf(stylebuf, sizeof(stylebuf), &len, ";color:#%6.6X", style->Color) < 0);
@@ -1280,37 +1281,11 @@ ImageWriteFn(void* arg, char* data, int len, int offset, int flags)
 	return len;
     }
 
-//TODO CSMITH put in .h
-/** Encodes a char* input to base64 **/
-char*
-base64_encode(const unsigned char *input, size_t len)
-    {
-	const char b64_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-	size_t out_len = 4 * ((len + 2) / 3);
-	char *output = (char *)nmMalloc(out_len + 1);
-	if (UNLIKELY(output == NULL))
-	    {
-	    mssError(1, "PRT", "nmMalloc(%zu) failed.", out_len + 1);
-	    return NULL;
-	    }
-
-	char *p = output;
-	for (size_t i = 0; i < len; i += 3)
-	    {
-	    int val = (input[i] << 16) | ((i + 1 < len ? input[i + 1] : 0) << 8) | (i + 2 < len ? input[i + 2] : 0);
-	    *p++ = b64_table[(val >> 18) & 0x3F];
-	    *p++ = b64_table[(val >> 12) & 0x3F];
-	    *p++ = (i + 1 < len) ? b64_table[(val >> 6) & 0x3F] : '=';
-	    *p++ = (i + 2 < len) ? b64_table[val & 0x3F] : '=';
-	    }
-	*p = '\0';
-	return output;
-    }
-
 
 /*** prt_htmlfm_OutputURL() - write a URL into an href attribute, adding
  *** "https://" if the URL does not specify a scheme (such as "mailto:").
  *** Relative URLs starting with "/", ".", "#", or "?" are written as-is.
+ *** URLs on a link signing site are signed.
  ***
  *** @param context The report formatter context.
  *** @param url The URL to write.
@@ -1319,6 +1294,10 @@ base64_encode(const unsigned char *input, size_t len)
 static int
 prt_htmlfm_OutputURL(pPrtHTMLfmInf context, char* url)
     {
+    pXString full_url = NULL;
+    pXString signed_url = NULL;
+    int rval = -1;
+
 	/** Find the scheme, if there is one (RFC 3986 section 3.1). **/
 	const char* ch = url;
 	if (isalpha((unsigned char)*ch))
@@ -1328,11 +1307,24 @@ prt_htmlfm_OutputURL(pPrtHTMLfmInf context, char* url)
 	const bool has_scheme = (ch > url && *ch == ':');
 	const bool is_relative = (strchr("/.#?", url[0]) != NULL);
 
-	/** Write the URL. **/
-	if (!has_scheme && !is_relative && UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "https://") < 0)) return -1;
-	if (UNLIKELY(prt_htmlfm_OutputEncoded(context, url, -1) < 0)) return -1;
+	/** Add the default scheme. **/
+	full_url = xsNew();
+	if (UNLIKELY(full_url == NULL)) goto end;
+	if (UNLIKELY(xsQPrintf(full_url, "%STR%STR", (!has_scheme && !is_relative) ? "https://" : "", url) < 0)) goto end;
 
-	return 0;
+	/** Sign the URL, if allowed. **/
+	signed_url = cxssLinkSign(xsString(full_url));
+
+	/** Write the URL. **/
+	if (UNLIKELY(prt_htmlfm_OutputEncoded(context, xsString((signed_url != NULL) ? signed_url : full_url), -1) < 0)) goto end;
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (signed_url != NULL) xsFree(signed_url);
+	if (full_url != NULL) xsFree(full_url);
+	return rval;
     }
 
 
@@ -1474,10 +1466,10 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		const int h = max(obj->Height * PRT_HTMLFM_YPIXEL, 1);
 
 		/** Allocate image buffer. **/
-		imgBuf.buffer = nmMalloc(MAX_IMAGE_SIZE);
+		imgBuf.buffer = nmSysMalloc(MAX_IMAGE_SIZE);
 		if (UNLIKELY(imgBuf.buffer == NULL))
 		    {
-		    mssError(1, "PRT", "nmMalloc(%zu) failed.", MAX_IMAGE_SIZE);
+		    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", MAX_IMAGE_SIZE);
 		    goto error_image;
 		    }
 
@@ -1497,12 +1489,21 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Encode the image to base64. **/
-		base64Image = base64_encode((unsigned char *)imgBuf.buffer, imgBuf.size);
-		if (UNLIKELY(base64Image == NULL)) goto error_image;
-		base64Size = strlen(base64Image) + 1;
+		base64Size = 4 * ((imgBuf.size + 2) / 3) + 1;
+		base64Image = nmSysMalloc(base64Size);
+		if (UNLIKELY(base64Image == NULL))
+		    {
+		    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", base64Size);
+		    goto error_image;
+		    }
+		if (UNLIKELY(qpfPrintf(NULL, base64Image, base64Size, "%*STR&B64", (int)imgBuf.size, imgBuf.buffer) < 0))
+		    {
+		    mssError(1, "PRT", "Failed to base64-encode %zu-byte image.", imgBuf.size);
+		    goto error_image;
+		    }
 
 		/** Clean up unused buffer. **/
-		nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
+		nmSysFree(imgBuf.buffer);
 		imgBuf.buffer = NULL;
 
 		/** Write opening URL tag. **/
@@ -1605,7 +1606,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Clean up. **/
-		if (base64Image != NULL) nmFree(base64Image, base64Size);
+		if (base64Image != NULL) nmSysFree(base64Image);
 		base64Image = NULL;
 
 		/** Success. **/
@@ -1615,8 +1616,8 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		mssError(0, "PRT", "Failed to write %s.", (is_png) ? "image" : "svg");
 
 		/** Clean up. **/
-		if (imgBuf.buffer != NULL) nmFree(imgBuf.buffer, MAX_IMAGE_SIZE);
-		if (base64Image != NULL) nmFree(base64Image, base64Size);
+		if (imgBuf.buffer != NULL) nmSysFree(imgBuf.buffer);
+		if (base64Image != NULL) nmSysFree(base64Image);
 
 		return -1;
 		}
@@ -1912,7 +1913,10 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		/** Update the lowest bottom edge for this row. **/
 		if (subobj->Y + subobj->Height > last_height)
 		    last_height = subobj->Y + subobj->Height;
-		
+
+		/** Blank lines need an explicit height. **/
+		const bool blank = (subobj->ObjType->TypeID == PRT_OBJ_T_STRING && ((char*)subobj->Content)[0] == '\0');
+
 		/*** Write container HTML, skipping default values
 		 *** (colspan/rowspan="1", align="left") to reduce HTML size.
 		 ***/
@@ -1921,6 +1925,8 @@ prt_htmlfm_Generate(void* context_v, pPrtObjStream page_obj)
 		    || (rs > 1 && prt_htmlfm_OutputPrintf(context, " rowspan=\"%d\"", rs) < 0)
 		    || (subobj->Justification != PRT_JUST_T_LEFT
 			&& prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[subobj->Justification]) < 0)
+		    || (blank && prt_htmlfm_OutputPrintf(context,
+			" style=\"height:%dpx;\"", (int)(subobj->Height * PRT_HTMLFM_YPIXEL + 0.5)) < 0)
 		    || prt_htmlfm_OutputStrLiteral(context, ">") < 0
 		))  {
 		    mssError(0, "PRT", "Failed to write container opening tag.");
