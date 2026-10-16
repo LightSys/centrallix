@@ -170,8 +170,8 @@ install: all
 	@echo "***************************************************************"
 	@echo ""
 
-%.bin:	%.c tests/t_driver.c tests/t_utils.h libCentrallix.a
-	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@ ${LIBS}
+%.bin:	%.c tests/t_driver.c tests/t_utils.c tests/t_utils.h libCentrallix.a
+	$(CC) $(TCFLAGS) tests/t_driver.c tests/t_utils.c $< libCentrallix.a -o $@ ${LIBS}
 
 ## Runs the selected tests $(TESTJOBS) at a time.  Output is captured per test
 ## rather than written straight to the terminal, then printed in listing order

@@ -153,12 +153,12 @@ static bool doTest(void)
 	success &= ASSERT_TRUE(!result);
 	success &= ASSERT_TRUE(msg[0] != '\0');
 
-	/** STR_COPY_REPLACE_NULLS() writes n bytes and a terminator. **/
+	/** copyReplaceNulls() writes n bytes and a terminator. **/
 	memset(copy, 'x', sizeof(copy));
-	STR_COPY_REPLACE_NULLS(copy, ab_c, 4);
+	copyReplaceNulls(copy, ab_c, 4);
 	success &= ASSERT_STR_EQL_N(copy, "ab_c\0xxx", COPY_SIZE);
 	memset(copy, 'x', sizeof(copy));
-	STR_COPY_REPLACE_NULLS(copy, ab_c, 0);
+	copyReplaceNulls(copy, ab_c, 0);
 	success &= ASSERT_STR_EQL_N(copy, "\0xxxxxxx", COPY_SIZE);
 
     return success;
