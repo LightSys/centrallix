@@ -287,7 +287,7 @@ outerForm "report/form"
 			<property name="mode" type="string">The mode of the table (see overview).  'normal' is the default.</property>
 			<property name="multimode" type="string">How the table handles multiple queries (see overview).  'nested' is the default.</property>
 			<property name="nodatamsg" type="yes/no">Whether to display the '(no data returned)' message below the table if no records were returned from the query source.  Default is 'yes' to display the no-data message.</property>
-			<property name="outerborder" type="double">Width of the outside border around the table.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</property>
+			<property name="outerborder" type="double">Width of the outside border around the table.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).  Setting one of those to null or 0 removes that side.</property>
 			<property name="reclimit" type="integer">Sets a limit on the number of records the table is to print.</property>
 			<property name="shadow" type="double">Width of the drop-shadow to the right and bottom of the table.</property>
 			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
@@ -299,7 +299,7 @@ outerForm "report/form"
 				<childproperty name="fixedsize" type="yes/no">If set to 'yes', then the 'height' setting (see Common Properties) is followed strictly, otherwise the table row is allowed to grow vertically to fit its contents.</childproperty>
 				<childproperty name="header" type="yes/no">Whether the row is a header row (repeated on subsequent pages).</childproperty>
 				<childproperty name="innerborder" type="double">Width of the inside borders between cells in the row.</childproperty>
-				<childproperty name="outerborder" type="double">Width of the outside border around the row.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).</childproperty>
+				<childproperty name="outerborder" type="double">Width of the outside border around the row.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).  Setting one of those to null or 0 removes that side.</childproperty>
 				<childproperty name="summary" type="yes/no">Whether the row is a summary row, emitted at the end of the table (no summarize_for) or at the end of each group of rows (if summarize_for is set).</childproperty>
 				<childproperty name="summarize_for" type="expression">An expression whose value uniquely defines the desired group of rows.  The summary row is printed at the end of each group of consecutive rows having the same value for this expression.</childproperty>
 			</child>
