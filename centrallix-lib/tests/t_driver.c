@@ -91,7 +91,7 @@ start(void* v)
 	    int precision = 3;
 	    unsigned long long factor = 1;
 	    double scaled = ops_per_second;
-	    while (scaled >= 10.0)
+	    while (scaled >= 10.0) /* Scale large numbers down. */
 		{
 		scaled /= 10.0;
 		if (precision > 0)
@@ -99,7 +99,7 @@ start(void* v)
 		else
 		    factor *= 10;
 		}
-	    while (scaled > 0.0 && scaled < 1.0)
+	    while (scaled > 0.0 && scaled < 1.0) /* Scale small numbers up. */
 		{
 		scaled *= 10.0;
 		precision++;
