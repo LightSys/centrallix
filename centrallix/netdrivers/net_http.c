@@ -1438,7 +1438,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    return payload; //Error
 	    }
 	snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
-	snprintf(payload->path, sizeof (payload->path), NHT.UploadTmpDir);
+	strtcpy(payload->path, NHT.UploadTmpDir, sizeof(payload->path));
 	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s/%s", payload->path, payload->newname);
 
 	/** Validate that the new file name matches the mime type **/

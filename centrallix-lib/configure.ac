@@ -18,6 +18,7 @@ dnl Checks for libraries.
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
 AC_CHECK_LIB(crypt, main)
+AC_CHECK_LIB(m, main)
 
 dnl Checks for header files.
 AC_HEADER_STDC
