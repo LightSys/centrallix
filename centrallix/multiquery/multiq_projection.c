@@ -269,7 +269,11 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 		    (void**)(qe->OrderBy[0]?qe->OrderBy:NULL),
 		    (mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
 		    );
-	if (!newqy) return NULL;
+	if (!newqy)
+	    {
+	    mssClearError(); /* No subobjects to recurse into. */
+	    return NULL;
+	    }
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
 	newobj = objQueryFetch(newqy, ((pMqpInf)(qe->PrivateData))->ObjMode);
 	if (!newobj)
@@ -515,7 +519,11 @@ mqpAnalyze(pQueryStatement stmt)
 			    break;
 			    }
 			new_exp = exp_internal_CopyTree(item->Expr);
-			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
+			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
+			    {
+			    mssClearError(); /* Failure handled. */
+			    break;
+			    }
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
 			expRemapID(new_exp, src_idx, 0);
 			}
@@ -902,13 +910,19 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    /** Open path so far and query for matching objects **/
 	    obj = objOpen(stmt->Query->SessionID, pathbuf, mi->ObjMode, 0600, "system/directory");
 	    if (!obj)
+		{
+		mssClearError(); /* Failure handled. */
 		goto finished;
+		}
 	    info = objInfo(obj);
 	    if (info && (info->Flags & (OBJ_INFO_F_CANT_HAVE_SUBOBJ | OBJ_INFO_F_NO_SUBOBJ)))
 		goto finished;
 	    qy = objOpenQuery(obj, NULL, ":name", NULL, NULL, OBJ_QY_F_NOREOPEN);
 	    if (!qy)
+		{
+		mssClearError(); /* Failure handled. */
 		goto finished;
+		}
 	    while ((subobj = objQueryFetch(qy, O_RDONLY)) != NULL)
 		{
 		objGetAttrValue(subobj, "name", DATA_T_STRING, POD(&ptr));
@@ -1238,6 +1252,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 		if ((qe->Flags & MQ_EF_WILDCARD) || (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION))
 		    {
 		    /** with wildcarding and/or expressions, it is ok for a source to not exist, we just ignore it. **/
+		    mssClearError(); /* Failure handled. */
 		    continue;
 		    }
 		else

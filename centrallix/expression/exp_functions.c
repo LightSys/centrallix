@@ -4523,6 +4523,7 @@ int exp_fn_linksign(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	    }
 	else
 	    {
+	    mssClearError(); /* Unsignable link; result is NULL. */
 	    tree->Flags |= EXPR_F_NULL;
 	    }
 

@@ -316,6 +316,10 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 			new_obj = reopen_obj;
 			ASSERTMAGIC(new_obj, MGK_OBJECT);
 			}
+		else
+			{
+			mssClearError(); /* Reopen is optional; keep the original object. */
+			}
 		    }
 
 		/** Replace the previous __inserted object with our newly created one **/

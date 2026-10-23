@@ -3490,7 +3490,10 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	if (expLookupParam(this->ObjList, "__inserted", 0) < 0 && expAddParamToList(this->ObjList, "__inserted", NULL, 0) >= 0)
 	    this->nProvidedObjects++;
 	else
+	    {
+	    mssClearError(); /* Failure handled. */
 	    this->Flags |= MQ_F_NOINSERTED;
+	    }
 
 	this->ProvidedObjMask = (1<<(this->nProvidedObjects)) - 1;
 
