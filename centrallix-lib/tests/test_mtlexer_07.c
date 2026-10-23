@@ -15,7 +15,6 @@ test(char** tname)
     int j;
     int k;
     int t;
-    int n;
     int iter;
     int flags;
     pLxSession lxs;
@@ -63,4 +62,3 @@ test(char** tname)
 
     return iter * n_tokens * n_iter;
     }
-

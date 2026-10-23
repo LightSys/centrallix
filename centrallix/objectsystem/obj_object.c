@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1469,6 +1469,39 @@ objGetPathname(pObject this)
     return (obj_internal_PathPart(this->Pathname, 0, 0) + 1); 
     }
 
+
+/*** objFileName - return the file name of an open object, or "/" for
+ *** the root.
+ ***/
+char*
+objFileName(pObject this)
+    {
+    ASSERTMAGIC(this, MGK_OBJECT);
+    return (this->SubPtr > 0) ? obj_internal_PathPart(this->Pathname, this->SubPtr - 1, 1) : "/";
+    }
+
+
+/*** objFilePath - return the file path to an open object.
+ ***/
+char*
+objFilePath(pObject this)
+    {
+    ASSERTMAGIC(this, MGK_OBJECT);
+    return obj_internal_PathPart(this->Pathname, 0, this->SubPtr);
+    }
+
+
+/*** objResetPathname - untruncate the whole pathname of an open object after
+ *** a partial path lookup, and return it.
+ ***/
+char*
+objResetPathname(pObject this)
+    {
+    ASSERTMAGIC(this, MGK_OBJECT);
+    return obj_internal_PathPart(this->Pathname, 0, 0);
+    }
+
+
 /*((pDirectoryCache)((pObjSession)(OSYS.OpenSessions.Items[0]))->DirectoryCache.Queue.Next->Next->Next->Next->Next->Next->Next->DataPtr)->Pathname*/
 void
 obj_internal_DumpDC(pObjSession session)
@@ -1526,7 +1559,7 @@ obj_internal_DumpSession(pObjSession session)
 int
 objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char* new_osml_name, int new_osml_name_len)
     {
-    pFile source_fd;
+    pFile source_fd = NULL;
     pObject dest_obj;
     /*char buf[256];
     int rcnt;

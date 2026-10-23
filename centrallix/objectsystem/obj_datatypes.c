@@ -13,6 +13,7 @@
 #endif
 #include "obj.h"
 #include "expression.h"
+#include "cxlib/expect.h"
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
@@ -22,7 +23,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -125,6 +126,69 @@ char* obj_default_money_fmt = "$0.00";
  ***   value and is generally settable by the 'nfmt' session variable.
  ***/
 char* obj_default_null_fmt = "NULL";
+
+
+/** Should maybe replace current type parsing in the presentation hints. **/
+/*** Parse the given string into a datatype, ignoring case.
+ *** Names returned by objTypeToStr() are also accepted.
+ *** 
+ *** @attention - This function is optimized to prevent performance hits in
+ *** 	situations where it may need to be called many thousands of times.
+ *** 
+ *** @param str The string to be parsed to a datatype.
+ *** @returns The datatype, or -1 if the string is not a valid type.
+ ***
+ *** LINK ../../centrallix-lib/include/datatypes.h:72
+ ***/
+int
+objTypeFromStr(const char* str)
+    {
+	/** All valid types are non-null strings, at least 2 characters long. **/
+	if (str == NULL || str[0] == '\0' || str[1] == '\0') return -1;
+	
+	/** Check type. **/
+	if (strcasecmp(str, obj_type_names[DATA_T_INTEGER]) == 0) return DATA_T_INTEGER;
+	if (strcasecmp(str, obj_type_names[DATA_T_STRING]) == 0) return DATA_T_STRING;
+	if (strcasecmp(str, obj_type_names[DATA_T_DOUBLE]) == 0) return DATA_T_DOUBLE;
+	if (strcasecmp(str, obj_type_names[DATA_T_DATETIME]) == 0) return DATA_T_DATETIME;
+	if (strcasecmp(str, obj_type_names[DATA_T_INTVEC]) == 0) return DATA_T_INTVEC;
+	if (strcasecmp(str, obj_type_names[DATA_T_STRINGVEC]) == 0) return DATA_T_STRINGVEC;
+	if (strcasecmp(str, obj_type_names[DATA_T_MONEY]) == 0) return DATA_T_MONEY;
+	if (strcasecmp(str, obj_type_names[DATA_T_ARRAY]) == 0) return DATA_T_ARRAY;
+	if (strcasecmp(str, obj_type_names[DATA_T_CODE]) == 0) return DATA_T_CODE;
+	if (strcasecmp(str, obj_type_names[DATA_T_BINARY]) == 0) return DATA_T_BINARY;
+	
+	/** Unavailable types. **/
+	if (strcasecmp(str, obj_type_names[DATA_T_UNAVAILABLE]) == 0) return DATA_T_UNAVAILABLE;
+	if (strcasecmp(str, "Any") == 0) return DATA_T_ANY;
+	if (strcasecmp(str, "Unknown") == 0) return DATA_T_UNAVAILABLE;
+	
+	/** Invalid type. **/
+	return -1;
+    }
+
+
+/*** Convert a type to its string name.
+ *** 
+ *** @param type The type to be converted.
+ *** @returns A char* to the type name, or
+ ***          "(unknown)" if the type is unknown, or
+ ***          "invalid" if the type number cannot even be a valid type.
+ ***/
+char*
+objTypeToStr(const int type)
+    {
+	/** Guard out of bounds reads. **/
+	if (type < 0 || OBJ_TYPE_NAMES_CNT <= type)
+	    {
+	    /** Invalid type. **/
+	    mssError(1, "OBJ", "Invalid type %d.", type);
+	    
+	    return "invalid"; /* Shall not parse to a valid type in objTypeFromStr(). */
+	    }
+    
+    return obj_type_names[type];
+    }
 
 
 /*** obj_internal_ParseDateLang - looks up a list of language internationalization
@@ -879,6 +943,52 @@ objDataToDouble(int data_type, void* data_ptr)
     }
 
 
+/*** objDataToBoolean - convert data to a boolean.  Any nonzero integer is
+ *** true, and the strings "yes", "true", "y", "on", "1", "no", "false", "n",
+ *** "off", and "0" are recognized in any case.
+ *** Returns 1 or 0, default_value if data_ptr is NULL, or -1 if the value is
+ *** not a recognized boolean.
+ ***/
+int
+objDataToBoolean(int data_type, void* data_ptr, int default_value)
+    {
+    char* str;
+    int rval = -1;
+
+	/** NULL? use the default. **/
+	if (data_ptr == NULL) return default_value;
+
+	switch (data_type)
+	    {
+	    case DATA_T_INTEGER:
+		rval = (*(int*)data_ptr != 0);
+		break;
+
+	    case DATA_T_STRING:
+		str = (char*)data_ptr;
+		if (strcasecmp(str, "true") == 0
+		    || strcasecmp(str, "1") == 0
+		    || strcasecmp(str, "yes") == 0
+		    || strcasecmp(str, "y") == 0
+		    || strcasecmp(str, "on") == 0
+		)   {
+		    rval = 1;
+		    }
+		else if (strcasecmp(str, "false") == 0
+		    || strcasecmp(str, "0") == 0
+		    || strcasecmp(str, "no") == 0
+		    || strcasecmp(str, "n") == 0
+		    || strcasecmp(str, "off") == 0
+		)   {
+		    rval = 0;
+		    }
+		break;
+	    }
+
+    return rval;
+    }
+
+
 /*** objDataToStringTmp - writes the string representation of the given
  *** data type to a temporary string, or in some cases, returns the string
  *** buffer from the data type itself.  In no case should the calling routine
@@ -1237,7 +1347,7 @@ objDataToDateTime(int data_type, void* data_ptr, pDateTime dt, char* format)
 		        {
 			/** For year in '1/1/1999' or day in '1/1' or '1/1 12pm 1999' **/
 			if (got_day == -1) got_day = last_num-1;
-			if (got_yr == -1) got_yr = last_num;
+			else if (got_yr == -1) got_yr = last_num;
 			}
 		    else if (!strncasecmp(endptr,"AM",2) || !strncasecmp(endptr," AM",3) ||
 		             !strncasecmp(endptr,"PM",2) || !strncasecmp(endptr," PM",3))
@@ -1948,24 +2058,35 @@ objDataToWords(int data_type, void* data_ptr)
 	else if (data_type == DATA_T_MONEY)
 	    {
 	    m = (pMoneyType)data_ptr;
+	    if (UNLIKELY(m->FractionPart > 9999))
+	        {
+		mssError(1, "OBJ",
+		    "Attempted to convert malformed money value %d.%04u to "
+		    "words but fractional part exceeds 9999.",
+		    m->WholePart, m->FractionPart
+		);
+		return "";
+		}
+
+	    /** Clamp the cents to the low four digits. **/
+	    fraction_part = m->FractionPart % 10000;
+
 	    if (m->WholePart < 0)
 	        {
-		if (m->FractionPart == 0)
+		if (fraction_part == 0)
 		    {
 		    integer_part = -m->WholePart;
-		    fraction_part = 0;
 		    }
 		else
 		    {
 		    integer_part = (-m->WholePart) - 1;
-		    fraction_part = 10000 - m->FractionPart;
+		    fraction_part = 10000 - fraction_part;
 		    }
 		xsConcatenate(&tmpbuf, "Negative ", -1);
 		}
 	    else
 	        {
 		integer_part = m->WholePart;
-		fraction_part = m->FractionPart;
 		}
 	    }
 	else
@@ -2046,7 +2167,7 @@ objDataToWords(int data_type, void* data_ptr)
 		}
 	    else
 	        {
-	        sprintf(nbuf, "And %2.2ld/100 ", fraction_part/100);
+	        sprintf(nbuf, "And %2.2d/100 ", (int)(fraction_part/100));
 		xsConcatenate(&tmpbuf, nbuf, -1);
 		}
 	    }

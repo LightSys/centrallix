@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -94,7 +94,6 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	if (!usr)
 	    {
 	    usr = (pNhtUser)nmMalloc(sizeof(NhtUser));
-	    usr->SessionCnt = 0;
 	    xaInit(&usr->Sessions, 16);
 	    objCurrentDate(&(usr->FirstActivity));
 	    objCurrentDate(&(usr->LastActivity));
@@ -102,17 +101,27 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	    xhAdd(&(NHT.UsersByName), usr->Username, (void*)(usr));
 	    xaAddItem(&NHT.UsersList, (void*)usr);
 	    }
-	usr->SessionCnt++;
-
-	/** Too many sessions already for this user? **/
-	if (usr->SessionCnt >= NHT.UserSessionLimit)
+	/** Too many sessions already for this user?  The new session is not
+	 ** yet in the list, so account for it here.
+	 **/
+	if (xaCount(&(usr->Sessions)) + 1 >= NHT.UserSessionLimit)
 	    {
 	    nht_i_DiscardASession(usr);
 	    }
 
-	/** Create the session. **/
+	/** Create the session.  The master OSML session is opened before the
+	 ** session is published, so that a failure here needs no unwinding.
+	 **/
 	nsess = (pNhtSessionData)nmMalloc(sizeof(NhtSessionData));
+	if (!nsess) return NULL;
 	memset(nsess, 0, sizeof(NhtSessionData));
+	nsess->ObjSess = objOpenSession("/");
+	if (!nsess->ObjSess)
+	    {
+	    mssError(0,"NHT","Could not open OSML session for user [%s]", usrname);
+	    nmFree(nsess, sizeof(NhtSessionData));
+	    return NULL;
+	    }
 	strtcpy(nsess->Username, mssUserName(), sizeof(nsess->Username));
 	strtcpy(nsess->Password, mssPassword(), sizeof(nsess->Password));
 	thGetSecContext(NULL, &(nsess->SecurityContext));
@@ -121,7 +130,6 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	nsess->Session = thGetParam(NULL,"mss");
 	mssLinkSession(nsess->Session);
 	nsess->IsNewCookie = 1;
-	nsess->ObjSess = objOpenSession("/");
 	nsess->Errors = syCreateSem(0,0);
 	nsess->ControlMsgs = syCreateSem(0,0);
 
@@ -138,6 +146,7 @@ nht_i_AllocSession(char* usrname, int using_tls)
 	xhnInitContext(&(nsess->Hctx));
 	nsess->CachedApps = (pXHashTable)nmMalloc(sizeof(XHashTable));
 	xhInit(nsess->CachedApps, 127, 4);
+	nsess->LastAccess = NHT.AccCnt++;
 	nsess->S_ID = NHT.S_ID_Count++;
 	snprintf(nsess->S_ID_Text, sizeof(nsess->S_ID_Text), "%lld", nsess->S_ID);
 	objCurrentDate(&(nsess->FirstActivity));
@@ -166,7 +175,64 @@ nht_i_AllocSession(char* usrname, int using_tls)
     }
 
 
-/*** nht_i_UnlinkSess() - free a session when its link count reaches 0.
+/*** nht_i_DelistSess() - remove a session from the session lists and stop
+ *** its timers, so that no new request can find it, no timer can fire on it,
+ *** and it cannot be selected for discard again.  Does not touch the link
+ *** count.  Calling DelistSess multiple times on the same session is safe.
+ ***/
+int
+nht_i_DelistSess(pNhtSessionData sess)
+    {
+
+	/** Prevent multiple delistings of the same session. **/
+	if (sess->Closed)
+	    return 0;
+	sess->Closed = 1;
+
+	/** Remove the session from the user's session list. **/
+	xaRemoveItem(&(sess->User->Sessions), xaFindItem(&(sess->User->Sessions), (void*)sess));
+
+	/** Remove the session from the global session lists. **/
+	xhRemove(&(NHT.CookieSessions), sess->Cookie);
+	xhRemove(&(NHT.SessionsByID), sess->S_ID_Text);
+	xaRemoveItem(&(NHT.Sessions), xaFindItem(&(NHT.Sessions), (void*)sess));
+
+	/** Kill the inactivity timers now so we don't get re-entered **/
+	nht_i_RemoveWatchdog(sess->WatchdogTimer);
+	nht_i_RemoveWatchdog(sess->InactivityTimer);
+	sess->WatchdogTimer = XHN_INVALID_HANDLE;
+	sess->InactivityTimer = XHN_INVALID_HANDLE;
+
+    return 0;
+    }
+
+
+/*** nht_i_RetireSess() - take a session out of service.  The session is
+ *** delisted and session persistence's reference is released.  A connection
+ *** still using the session keeps it alive until that connection exits.
+ ***
+ *** This is the only way a session is taken out of service.  Code that decides
+ *** a session should go away (discard, timeout, logout) must call this, never
+ *** nht_i_UnlinkSess(), which releases only the caller's own reference.
+ *** Retiring a retired session is safe.
+ ***/
+int
+nht_i_RetireSess(pNhtSessionData sess)
+    {
+
+	if (sess->Closed)
+	    return 0;
+	nht_i_DelistSess(sess);
+
+	/** Release session persistence's reference **/
+    return nht_i_UnlinkSess(sess);
+    }
+
+
+/*** nht_i_UnlinkSess() - release one reference to a session, and free the
+ *** session once the last reference is gone.  Callers release only their own
+ *** reference here; to take a session out of service, call
+ *** nht_i_RetireSess().
  ***/
 int
 nht_i_UnlinkSess(pNhtSessionData sess)
@@ -177,6 +243,15 @@ nht_i_UnlinkSess(pNhtSessionData sess)
     int i;
     pNhtQuery nht_query;
 
+	/*** More unlinks than links?  Somebody released a reference they did
+	 *** not own, so a session was probably freed while still in use!
+	 ***/
+	if (sess->LinkCnt <= 0)
+	    {
+	    mssError(1,"NHT","Bark!  Unlink of session %s with link count %d", sess->Cookie, sess->LinkCnt);
+	    return -1;
+	    }
+
 	/** Bump the link cnt down **/
 	sess->LinkCnt--;
 
@@ -185,18 +260,10 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    {
 	    printf("NHT: releasing session for username [%s], cookie [%s]\n", sess->Username, sess->Cookie);
 
-	    /** Decrement user session count **/
-	    sess->User->SessionCnt--;
-	    xaRemoveItem(&(sess->User->Sessions), xaFindItem(&(sess->User->Sessions), (void*)sess));
-
-	    /** Remove the session from the global session list. **/
-	    xhRemove(&(NHT.CookieSessions), sess->Cookie);
-	    xhRemove(&(NHT.SessionsByID), sess->S_ID_Text);
-	    xaRemoveItem(&(NHT.Sessions), xaFindItem(&(NHT.Sessions), (void*)sess));
-
-	    /** Kill the inactivity timers now so we don't get re-entered **/
-	    nht_i_RemoveWatchdog(sess->WatchdogTimer);
-	    nht_i_RemoveWatchdog(sess->InactivityTimer);
+	    /*** Delist the session, in case a nonretired session somehow got
+	     *** to zero references.  Normally a no-op.
+	     ***/
+	    nht_i_DelistSess(sess);
 
 	    /** Destroy any active app groups. **/
 	    while(sess->AppGroups.nItems)
@@ -208,7 +275,8 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 	    xhnClearHandles(&(sess->Hctx), nht_i_UnlinkSess_r);
 
 	    /** Close the master session. **/
-	    objCloseSession(sess->ObjSess);
+	    if (sess->ObjSess)
+		objCloseSession(sess->ObjSess);
 
 	    /** Destroy the errors semaphore **/
 	    syDestroySem(sess->Errors, SEM_U_HARDCLOSE);
@@ -237,7 +305,7 @@ nht_i_UnlinkSess(pNhtSessionData sess)
 		}*/
 
 	    /** Clear control msg list **/
-	    while(sess->ErrorList.nItems)
+	    while(sess->ControlMsgsList.nItems)
 		{
 		cm = (pNhtControlMsg)(sess->ControlMsgsList.Items[0]);
 		xaRemoveItem(&sess->ControlMsgsList, 0);
@@ -487,9 +555,8 @@ nht_i_WTimeout(void* sess_v)
     {
     pNhtSessionData sess = (pNhtSessionData)sess_v;
 
-	/** Disable the other timer and unlink from the session. **/
-	nht_i_RemoveWatchdog(sess->InactivityTimer);
-	nht_i_UnlinkSess(sess);
+	/** Take the session out of service.  This removes both timers. **/
+	nht_i_RetireSess(sess);
 
     return 0;
     }
@@ -504,9 +571,8 @@ nht_i_ITimeout(void* sess_v)
     {
     pNhtSessionData sess = (pNhtSessionData)sess_v;
 
-	/** Disable the other timer and unlink from the session. **/
-	nht_i_RemoveWatchdog(sess->WatchdogTimer);
-	nht_i_UnlinkSess(sess);
+	/** Take the session out of service.  This removes both timers. **/
+	nht_i_RetireSess(sess);
 
     return 0;
     }
@@ -577,19 +643,26 @@ nht_i_ITimeoutAppGroup(void* group_v)
 int
 nht_i_LogoutUser(char* username)
     {
-    int i;
     pNhtSessionData search_s;
     pNhtUser usr;
+    int cnt;
 
 	usr = (pNhtUser)xhLookup(&(NHT.UsersByName), username);
 	if (!usr)
 	    return -1;
 
-	for(i=0;i<xaCount(&usr->Sessions);i++)
+	/*** Retiring a session delists it from usr->Sessions, so simply
+	 *** retire the first session repeatedly until the list is empty.
+	 ***/
+	while ((cnt = xaCount(&usr->Sessions)) > 0)
 	    {
-	    search_s = xaGetItem(&usr->Sessions, i);
-	    search_s->Closed = 1;
-	    nht_i_UnlinkSess(search_s);
+	    search_s = xaGetItem(&usr->Sessions, 0);
+	    nht_i_RetireSess(search_s);
+	    if (xaCount(&usr->Sessions) >= cnt)
+		{
+		mssError(1,"NHT","Bark!  Session %s would not delist during logout of user [%s]", search_s->Cookie, username);
+		return -1;
+		}
 	    }
 
     return 0;
@@ -612,7 +685,7 @@ nht_i_DiscardASession(pNhtUser usr)
 		old_s = search_s;
 	    }
 	if (old_s)
-	    nht_i_UnlinkSess(old_s);
+	    nht_i_RetireSess(old_s);
 
     return 0;
     }

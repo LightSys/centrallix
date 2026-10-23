@@ -195,7 +195,7 @@ mlx_internal_CheckBuffer(pLxSession s, int offset)
 	    {
 	    if (!(s->Flags & MLX_F_NOFILE))
 		{
-		if (s->InpCnt)
+		if (s->InpCnt > 0)
 		    {
 		    /** shift existing bytes **/
 		    memmove(s->InpBuf, s->InpPtr, s->InpCnt);
@@ -456,7 +456,7 @@ mlx_internal_Copy(pLxSession this, char* buf, int bufsize, int* found_end)
 	else if (this->TokType == MLX_TOK_FILENAME)
 	    {
 	    *found_end = 1;
-	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n' && ch != ':')
+	    while(ch >= 0 && ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n' && ch != ':' && ch != ';')
 		{
 		if (len >= bufsize-1)
 		    {

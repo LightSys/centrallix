@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "one/two");
-	    qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "one/two");
-	    qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "one/two");
-	    rval = qpfPrintf(NULL, buf+4, 31, "/path/%STR&PATH/name", "one/two");
-	    assert(strcmp(buf+4,"/path/one/two/name") == 0);
+	    qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH/name", "one/two");
+	    qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH/name", "one/two");
+	    qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH/name", "one/two");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "/path/%STR&PATH/name", "one/two");
+	    assert(strcmp((char*)buf+4,"/path/one/two/name") == 0);
 	    assert(rval == 18);
 	    assert(buf[25] == '\n');
 	    assert(buf[24] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-

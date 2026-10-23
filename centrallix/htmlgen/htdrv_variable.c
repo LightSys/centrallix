@@ -42,14 +42,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTVBL;
-
-
 /*** htvblRender - generate the HTML code for the page.
  ***/
 int
@@ -60,14 +52,11 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
     char fieldname[HT_FIELDNAME_SIZE];
     char form[64];
     int t;
-    int id, i;
+    int i;
     int n = 0;
     char* vptr = NULL;
     int is_null = 1;
     pExpression code;
-
-    	/** Get an id for this. **/
-	id = (HTVBL.idcnt++);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
@@ -154,8 +143,6 @@ htvblInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTVBL.idcnt = 0;
 
     return 0;
     }

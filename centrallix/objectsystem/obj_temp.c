@@ -1246,7 +1246,7 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		}
 	    if (strlen(val->String) >= ST_NAME_STRLEN)
 		{
-		mssError(1,"OSML","Name too long (%d chars) for temp object, max %d", strlen(val->String), ST_NAME_STRLEN);
+		mssError(1,"OSML","Name too long (%lu chars) for temp object, max %d", (unsigned long)strlen(val->String), ST_NAME_STRLEN);
 		return -1;
 		}
 	    strtcpy(inf->Data->Name, val->String, ST_NAME_STRLEN);
@@ -1263,7 +1263,7 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 		}
 	    if (strlen(val->String) >= ST_USRTYPE_STRLEN)
 		{
-		mssError(1,"OSML","Content type too long (%d chars) for temp object, max %d", strlen(val->String), ST_USRTYPE_STRLEN);
+		mssError(1,"OSML","Content type too long (%lu chars) for temp object, max %d", (unsigned long)strlen(val->String), ST_USRTYPE_STRLEN);
 		return -1;
 		}
 	    strtcpy(inf->Data->UsrType, val->String, ST_USRTYPE_STRLEN);
