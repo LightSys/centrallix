@@ -1665,7 +1665,7 @@ cluster_i_parseSearchData(pStructInf inf, pNodeData node_data)
 	    {
 	    /** Print error. **/
 	    mssError(1, "Cluster",
-		"Could not find cluster \"%s\" for search \"%s\".",
+		"Failed to find cluster \"%s\" for search \"%s\".",
 		source_cluster_name, search_data->Name
 	    );
 	    

@@ -668,9 +668,9 @@ stGetAttrValueOSML(pStructInf this, int type, pObjData pod, int nval, pObjSessio
     end:
 	if (UNLIKELY(rval < 0))
 	    {
-	    mssError(1, "ST",
+	    mssError(0, "ST",
 		"Failed to parse attribute \"%s\" from group \"%s\".",
-		this->Name, this->Parent->Name
+		this->Name, (this->Parent != NULL) ? this->Parent->Name : "(none)"
 	    );
 	    }
 

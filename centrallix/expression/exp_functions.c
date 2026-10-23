@@ -383,7 +383,7 @@ exp_fn_i_verifySchema(const ArgExpect* arg_expects, pExpression tree)
 	    else if (UNLIKELY(opt_args > 0))
 		{
 		/** Required argument follows optional argument (not allowed). **/
-		mssError(1, "EXP", "%s(?): Invalid Schema! Required argument #%u after optional argument.", tree->Name, i);
+		mssError(1, "EXP", "%s(?): Invalid Schema! Required argument #%u after optional argument.", tree->Name, i + 1);
 		return -1;
 		}
 	    else
@@ -3857,7 +3857,7 @@ exp_fn_i_doMath(pExpression tree, double (*math)(), int arg_num)
 	    {
 	    if (exp_fn_i_getNumber(tree->Children.Items[i], &(n[i])) != 0)
 		{
-		mssError(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i);
+		mssError(0, "EXP", "%s(...): Failed to get arg%d.", tree->Name, i + 1);
 		return -1;
 		}
 	    }
