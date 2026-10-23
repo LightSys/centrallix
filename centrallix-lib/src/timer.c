@@ -21,7 +21,6 @@
 
 #include "expect.h"
 #include "newmalloc.h"
-#include "warn.h"
 
 #include "timer.h"
 
@@ -36,7 +35,7 @@ timer_i_getTime(void)
     
 	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
 	    {
-	    fprintf(stderr, "Failed to get clock time.\n");
+	    fprintf(stderr, "Warning: Failed to get clock time.\n");
 	    return NAN;
 	    }
     
@@ -96,7 +95,7 @@ timerStop(pTimer timer)
 	if (UNLIKELY(timer == NULL)) return NULL;
 	if (isnan(timer->start)) return timer;
 
-	/** Keep the timer running rather than poisoning the total with NAN. **/
+	/** Keep the timer running if the clock can't be read. **/
 	const double stop_time = timer_i_getTime();
 	if (isnan(stop_time)) return timer;
 
@@ -133,7 +132,7 @@ timerReset(pTimer timer)
     return timerInit(timer);
     }
 
-/*** De-initialize a timer allocated by timerInit().
+/*** De-initialize a timer initialized by timerInit().
  *** 
  *** @param timer The timer to de-initialize.
  ***/

@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Longest string the sweep builds. **/
 #define MAX_LEN	6000
@@ -70,7 +70,7 @@ doTest(void)
 		}
 	    mlxCloseSession(lxs);
 
-	    /** Put the line breaks back, ready for the next pass. **/
+	    /** Remove the line breaks to clean up for the next pass. **/
 	    str[i+1] = 'a';
 	    str[i+2] = 'a';
 	    tokstr[0][i] = 'a';
@@ -100,7 +100,8 @@ test(char** tname)
 	memset(tokstr[0], 'a', MAX_LEN+1);
 	tokstr[0][MAX_LEN+1] = '\0';
 
-	rval = loopTest(doTest);
+	/** Each pass lexes about (MAX_LEN-20) / N_PASS of the strings. **/
+	rval = loopTest(doTest) * (MAX_LEN-20) / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

@@ -6,7 +6,7 @@
 #include "qprintf.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 static bool
 doTest(void)
@@ -49,5 +49,5 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-62 %STR&DB64 integrity test";
-    return loopTest(doTest) * 6;
+    return loopTest(doTest) * 5;
     }

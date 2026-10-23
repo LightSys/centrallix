@@ -24,12 +24,15 @@
 
 #include "expect.h"
 
+/** Set to zero to silence all warnings. **/
+extern int WarnPrintEnabled;
+
 /** Internal warning printer (forward declaration). **/
 void printWarningInternal(const int error_code, const char* c_str, const char* file_name, const int line_number);
 #define printWarning(error_code, c_str) printWarningInternal(error_code, (c_str), __FILE__, __LINE__)
 
 /*** Prints a warning if the result of the passed function call is an error
- *** code, aka. any not zero int.
+ *** code, aka. any nonzero int.
  *** 
  *** @param result The expression to check.  The text of this expression is
  *** 	included in the warning message if a warning occurs.

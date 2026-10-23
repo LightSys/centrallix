@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Longest line the sweep builds. **/
 #define MAX_LEN	6000
@@ -93,7 +93,8 @@ test(char** tname)
 	tokstr[1] = "nextline";
 	tokstr[2] = "thirdline";
 
-	rval = loopTest(doTest);
+	/** Each pass lexes MAX_LEN / N_PASS of the line lengths. **/
+	rval = loopTest(doTest) * MAX_LEN / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

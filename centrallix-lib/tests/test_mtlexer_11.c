@@ -7,7 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 #define N_FLAGTYPE	4
 #define N_TOK		9

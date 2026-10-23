@@ -24,16 +24,26 @@
 
 #define ERR_BUF_SIZE 1024
 
-/*** Function for printing an error when code fails.
+/*** Set to zero to silence warnings, such as to keep test output from being
+ *** buried in warning noise.  A compile-time check cannot do this job: the
+ *** library is built once, without CX_TESTING, and the test binaries just
+ *** link the result.
+ ***/
+int WarnPrintEnabled = 1;
+
+/*** Function for printing a warning when code fails.
  *** 
  *** @param error_code The error code number returned by a failing C function (or -1 if not applicable).
  *** @param c_str The C statement/value that failed, usually a function call.
- *** @param file_name The name of the file in which error occurred.
+ *** @param file_name The name of the file in which the error occurred.
  *** @param line_number The line number in the file at which the error occurred.
  ***/
 void
 printWarningInternal(const int error_code, const char* c_str, const char* file_name, const int line_number)
     {
+	if (!WarnPrintEnabled)
+	    return;
+
 	/** Store errno before any library call of ours can overwrite it. **/
 	const int saved_errno = errno;
 
