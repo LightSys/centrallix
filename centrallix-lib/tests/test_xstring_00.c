@@ -2,7 +2,7 @@
 /* Centrallix Application Server System					*/
 /* Centrallix Base Library						*/
 /*									*/
-/* Copyright (C) 2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2025-2026 LightSys Technology Services, Inc.		*/
 /*									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -12,14 +12,13 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	November 25th, 2025					*/
 /* Description:	Test all the functions in the xstring library, except:	*/
-/* 		xsInit(), xsDeInit(), xsWrite(), xsGenPrintf_va(),	*/
-/* 		xsQPrintf(), xsQPrintf_va(), xsConcatQPrintf()		*/
+/* 		xsInit(), xsDeInit(), xsWrite(), xsGenPrintf(),		*/
+/* 		xsGenPrintf_va(), xsQPrintf(), xsQPrintf_va(),		*/
+/* 		xsConcatQPrintf()					*/
 /************************************************************************/
 
-#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /** Test dependencies. **/
@@ -29,7 +28,7 @@
 #include "xstring.h"
 
 #define ASSERT_XSTR_EQL(xs, expect) \
-	ASSERT_EQL((size_t)xsLength(xs), strlen(expect), "%ld") & \
+	ASSERT_EQL((size_t)xsLength(xs), strlen(expect), "%zu") & \
 	ASSERT_STR_EQL(xsString(xs), expect)
 
 static bool doTest(void)

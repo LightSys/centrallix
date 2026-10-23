@@ -1006,6 +1006,7 @@ xsQPrintf(pXString this, char* fmt, ...)
     return rval;
     }
 
+
 /*** xsConcatQPrintf - append a quoting printf to the xstring
  ***/
 int
