@@ -1350,6 +1350,10 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 		htrQPrintf(s, "\n</script>\n");
 		return 0;
 		}
+	    else
+		{
+		mssClearError(); /* Failure handled; fall back to include statement. */
+		}
 	    }
 
 	/** Otherwise, just generate an include statement **/
@@ -1362,6 +1366,10 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 		snprintf(buf, sizeof(buf), "%lld", pod.DateTime->Value);
 		}
 	    objClose(include_file);
+	    }
+	else
+	    {
+	    mssClearError(); /* Failure handled; include statement is generated anyway. */
 	    }
 	strtcpy(path, filename, sizeof(path));
 	slash = strrchr(path, '/');
@@ -1829,6 +1837,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 		htrQPrintf(s, "<html><head><title>Error</title></head><body bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
 		xsFree(err_xs);
 		}
+	    mssClearError(); /* Error shown in page; rendering continues. */
 	    }
 	
 	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
