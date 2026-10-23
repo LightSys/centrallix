@@ -71,6 +71,7 @@ describe('cxjs_condition', () =>
 	[ false,               'T', undefined,    undefined ],
 	[ true,                0,         1,      0         ],  // falsy values pass through too
 	[ false,               1,         '',     ''        ],
+	[ false,               1,         -0,     -0        ],  // -0 comes back unchanged
 
 	// Both branches omitted: a defined-but-truthy c yields undefined vtrue,
 	// a falsy c yields undefined vfalse (null c is handled separately above).
@@ -83,16 +84,4 @@ describe('cxjs_condition', () =>
 	    assert.equal(env.cxjs_condition(c, vtrue, vfalse), result);
 	    });
 	}
-
-    // Signed-zero (JSON.stringify(-0) is "0", so name explicitly). -0 is a
-    // number == null is false, so it reaches the ternary and is falsy -> vfalse;
-    // and a -0 passed as a branch value comes back unchanged (verbatim).
-    test('cxjs_condition(-0, "T", "F") = "F" (-0 is falsy)', () =>
-	{
-	assert.equal(env.cxjs_condition(-0, 'T', 'F'), 'F');
-	});
-    test('cxjs_condition(false, 1, -0) = -0 (branch value verbatim)', () =>
-	{
-	assert.equal(env.cxjs_condition(false, 1, -0), -0);
-	});
     });
