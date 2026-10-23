@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 static bool
 doTest(void)

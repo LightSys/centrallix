@@ -22,7 +22,7 @@
 
 #include "cxlibconfig-internal.h"
 #include "mtask.h"
-#include "test_utils.h"
+#include "t_utils.h"
 #include "util.h"
 
 
@@ -58,7 +58,7 @@ start(void* v)
     clock_t start,end;
     long long rval;
 
-	/** Setup handlers for signals that may occur during a test. **/
+	/** Set up handlers for signals that may occur during a test. **/
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
 	signal(SIGALRM, alarm_handler);
@@ -74,13 +74,15 @@ start(void* v)
 	/** Print test results. **/
 	if (rval < 0)
 	    printf("%-62.62s  FAIL\n", tname);
+	else if (rval == 0)
+	    printf("%-62.62s  SKIP\n", tname);
 	else
 	    {
 	    long long duration = end - start;
 	    if (duration == 0)
 		{
 		printf("%-62.62s  PASS ???\n", tname);
-		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTest() from test_utils.h.\n");
+		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTest() from t_utils.h.\n");
 		return;
 		}
 	    double ops_per_second = rval * (100.0 / duration);
@@ -89,7 +91,7 @@ start(void* v)
 	    int precision = 3;
 	    unsigned long long factor = 1;
 	    double scaled = ops_per_second;
-	    while (scaled >= 10.0)
+	    while (scaled >= 10.0) /* Scale large numbers down. */
 		{
 		scaled /= 10.0;
 		if (precision > 0)
@@ -97,7 +99,7 @@ start(void* v)
 		else
 		    factor *= 10;
 		}
-	    while (scaled > 0.0 && scaled < 1.0)
+	    while (scaled > 0.0 && scaled < 1.0) /* Scale small numbers up. */
 		{
 		scaled *= 10.0;
 		precision++;

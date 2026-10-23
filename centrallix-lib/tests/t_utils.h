@@ -11,7 +11,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_utils.h						*/
+/* Module:	t_utils.h						*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 24th, 2025					*/
 /* Description:	Useful utils to improve the developer experience when   */
@@ -46,20 +46,29 @@
  ***/
 #define MIN_TEST_SECONDS 0.2
 
+/** Assertion functions, defined in t_utils.c. **/
+bool t_i_assertTrue(bool success, const char* expr, const char* file, int line);
+bool t_i_assertFmt(bool success, const char* fmt, ...) __attribute__ ((format(printf, 2, 3)));
+bool t_i_assertStrEql(const char* str1, const char* str2, const char* expr1, const char* expr2, const char* file, int line);
+bool t_i_assertStrEqlN(const char* str1, const char* str2, size_t len, const char* expr1, const char* expr2, const char* file, int line);
+bool t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int line);
+
 /*** Assert a value to be true.
  *** 
  *** @param v The value.
  *** @returns true if successful, false otherwise.
  ***/
 #define ASSERT_TRUE(v) \
-    ({ \
-    const bool success = !!(v); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s to be true at %s:%d\n", \
-	#v, __FILE__, __LINE__ \
-    ); \
-    success; \
-    })
+    t_i_assertTrue(!!(v), #v, __FILE__, __LINE__)
+
+/*** Assert that a value is NULL. While ASSERT_EQL(ptr, NULL) also does this,
+ *** ASSERT_NOT_NULL() is clearer to read and gives a distinct error message.
+ *** 
+ *** @param ptr The pointer.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define ASSERT_NOT_NULL(ptr) \
+    t_i_assertNotNull((ptr), #ptr, __FILE__, __LINE__)
 
 /*** Assert two values to be equal.
  *** 
@@ -74,12 +83,10 @@
     ({ \
     __typeof__ (v1) _v1 = (v1); \
     __typeof__ (v2) _v2 = (v2); \
-    const bool success = (_v1 == _v2); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
+    t_i_assertFmt((_v1 == _v2), \
 	"  > Expected %s ("sp") to equal %s ("sp") at %s:%d\n", \
 	#v1, _v1, #v2, _v2, __FILE__, __LINE__ \
     ); \
-    success; \
     })
 
 /*** Assert two strings to be equal.
@@ -89,18 +96,7 @@
  *** @returns true if successful, false otherwise.
  ***/
 #define ASSERT_STR_EQL(str1, str2) \
-    ({ \
-    char* _str1 = (str1); \
-    char* _str2 = (str2); \
-    const bool both_null = (_str1 == NULL && _str2 == NULL); \
-    const bool both_eql = (_str1 != NULL && _str2 != NULL && strcmp(_str1, _str2) == 0); \
-    const bool success = (both_null || both_eql); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n", \
-	#str1, _str1, #str2, _str2, __FILE__, __LINE__ \
-    ); \
-    success; \
-    })
+    t_i_assertStrEql((str1), (str2), #str1, #str2, __FILE__, __LINE__)
 
 /*** Assert two strings to be equal, including null characters.
  *** Warning: Can read off the end of strings.
@@ -111,31 +107,7 @@
  *** @returns true if successful, false otherwise.
  ***/
 #define ASSERT_STR_EQL_N(str1, str2, len) \
-    ({ \
-    const char* _str1 = (str1); \
-    const char* _str2 = (str2); \
-    const size_t _len = (size_t)(len); \
-    const bool both_null = (_str1 == NULL && _str2 == NULL); \
-    const bool both_eql = (_str1 != NULL && _str2 != NULL && memcmp(_str1, _str2, _len) == 0); \
-    const bool success = (both_null || both_eql); \
-    if (UNLIKELY(!success))\
-	{ \
-	const size_t buf_len = max(7, _len + 1); \
-	char _tmp1[buf_len]; \
-	if (_str1 == NULL) strcpy(_tmp1, "(null)"); \
-	else STR_COPY_REPLACE_NULLS(_tmp1, _str1, _len); \
-	\
-	char _tmp2[buf_len]; \
-	if (_str2 == NULL) strcpy(_tmp2, "(null)"); \
-	else STR_COPY_REPLACE_NULLS(_tmp2, _str2, _len); \
-	\
-	fprintf(stderr, \
-	    "  > Expected %s (\"%s\") to equal %s (\"%s\") where '_' is a null-terminator, at %s:%d\n", \
-	    #str1, _tmp1, #str2, _tmp2, __FILE__, __LINE__ \
-	); \
-	} \
-    success; \
-    })
+    t_i_assertStrEqlN((str1), (str2), (size_t)(len), #str1, #str2, __FILE__, __LINE__)
 
 /*** Assert two cosine vectors from `clusters.c` to be equal.
  *** 
@@ -173,29 +145,10 @@
     __typeof__ (v) _v = (v); \
     __typeof__ (min_v) _min = (min_v); \
     __typeof__ (max_v) _max = (max_v); \
-    const bool success = (_min <= _v && _v <= _max); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
+    t_i_assertFmt((_min <= _v && _v <= _max), \
 	"  > Expected %s ("sp") to be in the range %s ("sp") - %s ("sp") at %s:%d\n", \
 	#v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
     ); \
-    success; \
-    })
-
-/*** Syntactic sugar to assert a pointer to be non null in a clearer, more
- *** concise way.
- *** 
- *** @param ptr The pointer.
- *** @returns true if successful, false otherwise.
- ***/
-#define ASSERT_NOT_NULL(ptr) \
-    ({ \
-    __typeof__ (ptr) _ptr = (ptr); \
-    const bool success = (_ptr != NULL); \
-    if (UNLIKELY(!success)) fprintf(stderr, \
-	"  > Expected %s (%p) to be non null at %s:%d\n", \
-	#ptr, _ptr, __FILE__, __LINE__ \
-    ); \
-    success; \
     })
 
 /*** Copy n characters from src to dest, including null-terminators, which are
@@ -206,32 +159,9 @@
  *** 	include null-terminator characters ('\0').
  *** @param n The number of characters to copy.
  ***/
-#define STR_COPY_REPLACE_NULLS(dest, src, n) \
-    { \
-    char* _dest = (dest); \
-    const char* _src = (src); \
-    const size_t _n = (size_t)(n); \
-    for (size_t i = 0lu; i < _n; i++) \
-	_dest[i] = (_src[i] == '\0') ? '_' : _src[i]; \
-    _dest[_n] = '\0'; \
-    }
+void copyReplaceNulls(char* dest, const char* src, size_t n);
 
 /** Repeat the test as many times as possible within a set time window. **/
-#define loopTest(test_fn) \
-    ({ \
-    long long result = 0ll; \
-    Timer iter_timer_buf, *iter_timer = timerStart(timerInit(&iter_timer_buf)); \
-    while (timerGet(iter_timer) < MIN_TEST_SECONDS) \
-	{ \
-	result++; \
-	if (!test_fn()) \
-	    { \
-	    result = -1; \
-	    break; \
-	    } \
-	} \
-    timerDeInit(iter_timer); \
-    result; \
-    })
+long long loopTest(bool (*test_fn)(void));
 
 #endif

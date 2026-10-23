@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 static char* teststr = "'string' 'test string' \"string\" \"test string\" 'string\\'s' \"\\\"string\\\"\" 'string\\\\string' 'string\"string' \"string'string\"";
 static char* strs[] = {"string", "test string", "string", "test string", "string's", "\"string\"", "string\\string", "string\"string", "string'string", NULL};
