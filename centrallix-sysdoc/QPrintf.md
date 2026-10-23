@@ -27,7 +27,7 @@ The following functions for handling error sessions are also provided:
 - `qpfLogErrors()` - Log a helpful message to the console about errors that have occurred in an error session.
 
 ## Formatting
-Format specifiers begin with the percent character (`%`), similarly to the `printf()` functions. However, the `qprintf()` module uses a new set of format specifiers.  The module includes several source format specifiers (e.g. `%STR`, `%INT`, etc.) which indicate what type of data the function should expect so that it can format that data into the output string.  Filter format specifiers (e.g. `%QUOT`, `%PATH`, etc.) can be appended to source format specifiers with the ampersand (`&`) to modify or process the string data, granting control over properties such as its length, position, padding, quoting, and more.  Multiple format specifiers may be added and their effects will be applied in order from left to right.  The module also provides control format specifiers which control the formatted data in other ways.
+Format specifiers begin with the percent character (`%`), similarly to the `printf()` functions. However, the qprintf module uses a new set of format specifiers.  The module includes several source format specifiers (e.g. `%STR`, `%INT`, etc.) which indicate what type of data the function should expect so that it can format that data into the output string.  Filter format specifiers (e.g. `%QUOT`, `%PATH`, etc.) can be appended to source format specifiers with the ampersand (`&`) to modify or process the string data, granting control over properties such as its length, position, padding, quoting, and more.  Multiple format specifiers may be added and their effects will be applied in order from left to right.  The module also provides control format specifiers which control the formatted data in other ways.
 
 Some specifiers begin with an `n`, which should be replaced with a number or a wildcard (`*`), in which case the function will expect an int to be provided.  This number usually controls the behavior of the format specifier in some way.  For example, when using `%nSTR`, the developer may use `%4STR` to indicate a string exactly 4 characters long.
 
@@ -60,7 +60,7 @@ Some specifiers begin with an `n`, which should be replaced with a number or a w
 | `%POD`    | A Pointer-to-object-data.  The type of the POD is specified as an argument immediately preceding the string pointer.
 | `%PTOD`   | A typed pointer-to-object-data.
 
-### Filter Format Specifiers:
+### Filter Format Specifiers
 
 | Specifier         | Description
 | ----------------- | ------------
@@ -92,7 +92,7 @@ Some specifiers begin with an `n`, which should be replaced with a number or a w
 | `&nLEN`           | Truncates the string to at most `n` characters.
 | `&SQLARG`         | Ensures the string is safe as an SQL data value.
 | `&SQLSYM`         | Ensures the string is safe as an SQL symbol (for example, table or column name).
-| `&HTDATA`         | Ensures the string is safe as an HTML document as data, for example between tags or as an attribute of a tag.
+| `&HTDATA`         | Ensures the string is safe as data in an HTML document, for example between tags or as an attribute of a tag.
 
 ## Implemented
 Below is a list of all implemented specifier chains:
