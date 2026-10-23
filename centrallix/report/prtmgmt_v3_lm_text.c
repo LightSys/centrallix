@@ -1137,6 +1137,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 			    }
 			else
 			    {
+			    mssClearError(); /* Resize denied but rescale worked. */
 			    /** Reposition wrapped item **/
 			    continue;
 			    }
@@ -1154,10 +1155,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 			    }
 			else
 			    {
+			    mssClearError(); /* Break denied but rescale worked. */
 			    /** Reposition wrapped item **/
 			    continue;
 			    }
 			}
+		    mssClearError(); /* Resize denied but break worked. */
 		    }
 
 		/** Bumped to a new container? **/

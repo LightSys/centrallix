@@ -652,6 +652,7 @@ prt_tablm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    /** Break also denied???  Oops... **/
 		    return -1;
 		    }
+		mssClearError(); /* Resize denied but break worked. */
 		}
 
 	    /** Bumped to new parent container? **/

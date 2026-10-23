@@ -787,7 +787,11 @@ prtWriteString(int handle_id, char* str)
 		    else
 			x = 8.0;
 		    rval = prtSetHPos(handle_id, x);
-		    if (rval < 0) rval = prtWriteNL(handle_id);
+		    if (rval < 0)
+			{
+			mssClearError(); /* Tab position denied; use a newline instead. */
+			rval = prtWriteNL(handle_id);
+			}
 		    if (rval < 0) break;
 		    }
 		else if (*special_char_ptr == '\14')
