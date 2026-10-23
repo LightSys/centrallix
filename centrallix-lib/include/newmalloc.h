@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -44,7 +44,7 @@ typedef struct _ov
 #define SIZED_BLK_COUNTING	1
 #endif
 
-/*** nmMalloc() block caching reuses memory blocks, causing Valgrind to loose
+/*** nmMalloc() block caching reuses memory blocks, causing Valgrind to lose
  *** track of where the developer actually allocated them.  Thus, we disable
  *** it if Valgrind is in use.  Also, we disable the nmSysXyz() calls, causing
  *** them to be replaced with pass-through wrappers.

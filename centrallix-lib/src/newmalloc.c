@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -43,7 +43,7 @@
 #include "newmalloc.h"
 #include "strtcpy.h"
 
-/** Temporary implementations until the ones from the dups branch is available. **/
+/** Temporary implementations until the ones from the dups branch are available. **/
 /** TODO: Israel - Remove once the dups branch is merged. **/
 #define min(a, b) \
     ({ \
@@ -61,7 +61,7 @@
 /*** BUFFER_OVERFLOW_CHECKING adds 4 bytes of magic data to either end of
  *** the memory buffer returned to the user by nmMalloc().  This allows us
  *** to detect clobbered memory at the cost of increasing memory overhead
- *** by 16 bytes per allocated buffer, and requires a full scan of the
+ *** by EXTRA_MEM bytes per allocated buffer, and requires a full scan of the
  *** allocated memory list twice in each nmMalloc() or nmFree() call.
  ***
  *** This check can also be run manually by calling nmCheckAll().
@@ -122,8 +122,8 @@ unsigned long long int nmsys_outcnt_delta[MAX_SIZE+1];
  *** block size.
  *** 
  *** Memory Stats:
- ***   - Padding: 0 bytes
- ***   - Total size: 80 bytes
+ ***   - Padding: 4 bytes
+ ***   - Total size: 88 bytes
  *** 
  *** @param Size The size of the memory block.
  *** @param Name The name associated with the memory block.
