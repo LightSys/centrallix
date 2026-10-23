@@ -727,15 +727,15 @@ nmDeltas(void)
 	);
 	
 	/** Iterate through each possible block size. **/
-	unsigned long long int total_delta = 0llu;
+	long long int total_delta = 0ll;
 	for (size_t size = MIN_SIZE; size <= MAX_SIZE; size++)
 	    {
 	    /** Skip entries where there is no change. **/
 	    if (outcnt[size] == outcnt_delta[size]) continue;
 	    
 	    /** Print the change and add it to the total_delta. **/
-	    printf("%zu\t%lld\t", size, outcnt[size] - outcnt_delta[size]);
-	    total_delta += (size * (outcnt[size] - outcnt_delta[size]));
+	    printf("%zu\t%lld\t", size, (long long int)(outcnt[size] - outcnt_delta[size]));
+	    total_delta += (long long int)(size * (outcnt[size] - outcnt_delta[size]));
 	    
 	    /** Print each name for this block size from the linked list. **/
 	    nmPrintNames(size);
@@ -758,15 +758,15 @@ nmDeltas(void)
 	    if (nmsys_outcnt[size] == nmsys_outcnt_delta[size]) continue;
 	    
 	    /** Print the results. **/
-	    printf("%zu\t%llu\n", size, nmsys_outcnt[size] - nmsys_outcnt_delta[size]);
-	    total_delta += (size * (nmsys_outcnt[size] - nmsys_outcnt_delta[size]));
+	    printf("%zu\t%lld\n", size, (long long int)(nmsys_outcnt[size] - nmsys_outcnt_delta[size]));
+	    total_delta += (long long int)(size * (nmsys_outcnt[size] - nmsys_outcnt_delta[size]));
 	    nmsys_outcnt_delta[size] = nmsys_outcnt[size];
 	    }
 	printf("\n");
 	
 	/** Print the total delta. **/
 	/** TODO: Israel - Change this to use snprint_bytes() once that function is available. **/
-	printf("delta %llu total bytes\n", total_delta);
+	printf("delta %lld total bytes\n", total_delta);
     
     return;
     }
