@@ -3900,7 +3900,19 @@ exp_fn_log(pExpression tree)
 	    mssError(0, "EXP", "%s(?): Call does not match function schema.", tree->Name);
 	    return -1;
 	    }
-	
+
+	/** Null checks. **/
+	for (int i = 0; i < tree->Children.nItems; i++)
+	    {
+	    pExpression arg = tree->Children.Items[i];
+	    if (arg->Flags & EXPR_F_NULL)
+		{
+		tree->DataType = DATA_T_DOUBLE;
+		tree->Flags |= EXPR_F_NULL;
+		return 0;
+		}
+	    }
+
 	/** Extract args. **/
 	double number, base;
 	if (UNLIKELY(exp_fn_i_getNumber(tree->Children.Items[0], &number) != 0))
