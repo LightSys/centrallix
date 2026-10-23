@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import re
+import sys
 from bisect import bisect_right
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -77,7 +78,7 @@ IGNORED_WIDGETS: set[str] = {
 	"uawindow",
 }
 
-# Uncomment any of the strings below to ignore that type of issue.
+# Uncomment any of the lines below to ignore that type of issue.
 IGNORED_ERRORS: set[int] = {0, # Empty set marker.
 	# IGNORE_MISSING_WIDGET_DOCS,       # Ignore all undocumented widgets. (Not recommended.)
 	# IGNORE_STALE_WIDGET_DOCS,         # Ignore all docs for unimplemented widgets. (Not recommended.)
@@ -85,8 +86,8 @@ IGNORED_ERRORS: set[int] = {0, # Empty set marker.
 	# IGNORE_STALE_EVENT_DOCS,          # Ignore events with no implementation.
 	# IGNORE_MISSING_ACTION_DOCS,       # Ignore actions with no docs.
 	# IGNORE_STALE_ACTION_DOCS,         # Ignore actions with no implementation.
-	# IGNORE_MISSING_ACTION_PARAM_DOCS, # Ignore action parameter with no docs.
-	# IGNORE_STALE_ACTION_PARAM_DOCS,   # Ignore action parameter with no implementations.
+	# IGNORE_MISSING_ACTION_PARAM_DOCS, # Ignore action parameters with no docs.
+	# IGNORE_STALE_ACTION_PARAM_DOCS,   # Ignore action parameters with no implementation.
 	# IGNORE_INTERNAL_ACTION_PARAM_DOCS,# Ignore documented action params that are named like internal params.
 }
 
@@ -99,7 +100,7 @@ HUMAN_JSON: bool = False
 WRITE_REPORT_JSON: bool = True
 
 # Whether to write the markdown report.  (Disabling both WRITE_REPORT_JSON and
-# WRITE_REPORT_MD may be useful when microbenching performance.)
+# WRITE_REPORT_MD may be useful when micro-benchmarking performance.)
 WRITE_REPORT_MD: bool = True
 
 # Widgets XML
@@ -144,8 +145,8 @@ js_add_iface_re = re.compile(
 	r"([A-Za-z_]\w*)\s*=\s*[^;]*ifcProbeAdd\(\s*(ifEvent|ifAction)\s*\)"
 )
 
-# Regex to find JS Add() calls and capture the variable added (1) to and the
-# name of the event/action added (2).
+# Regex to find JS Add() calls and capture the variable added to (1), the name
+# of the event/action added (2), and the optional implementation function (3).
 js_add_call_re = re.compile(
 	r"([A-Za-z_]\w*)\.Add\(\s*[\"']([^\"']+)[\"']\s*(?:,\s*([A-Za-z_]\w*))?"
 )
@@ -277,7 +278,7 @@ class EventImpl(SignalImpl):
 class ActionImpl(SignalImpl):
 	pass
 
-# Map character offsets to 1-based line number.
+# Map character offsets to 1-based line numbers.
 class LineMap:
 	def __init__(self, text: str) -> None:
 		self.newline_offsets = [match.start() for match in re.finditer("\n", text)]
@@ -394,7 +395,7 @@ def ref_to_markdown_link(report_dir: Path, repo_root: Path, ref: Ref) -> str:
 	href = os.path.relpath(str(abs_target), str(report_dir.resolve())).replace("\\", "/")
 	label = target_path.name
 	line = ref.get("line")
-	if line != None:
+	if line is not None:
 		href = f"{href}#L{line}"
 		label = f"{label}:{line}"
 	return f"[{label}]({href}) ({ref.get('desc', 'source')})"
@@ -767,7 +768,7 @@ def merge_widget_lists(
 	return merged
 
 
-# Compute global and per-widget drift, including evidence-rich details.
+# Compute global and per-widget differences, including evidence-rich details.
 def compute_report(
 	docs: dict[str, WidgetDoc],
 	doc_types: set[str],
@@ -805,7 +806,7 @@ def compute_report(
 		missing_widget_doc_refs[widget] = unique_refs(refs)
 	for widget_name in stale_widget_docs:
 		doc = docs.get(widget_name)
-		if doc != None and doc.ref != None:
+		if doc is not None and doc.ref is not None:
 			stale_widget_doc_refs[widget_name] = [doc.ref]
 			continue
 		
@@ -889,7 +890,7 @@ def compute_report(
 			if action_name in doc.ni_actions:
 				continue
 			
-			# Determine missing/extra action_impl parameters.
+			# Determine missing/extra action parameters.
 			impl_param_names = set(action_impl.params)
 			doc_param_names = set(doc.action_params.get(action_name, []))
 			missing_param_names = sorted_list(impl_param_names - doc_param_names)
@@ -1110,7 +1111,7 @@ def write_markdown(path: Path, report: Report, repo_root: Path) -> None:
 				# Write signal param issues.
 				for title, refs in [
 					("Undocumented params", incorrect_action_params["missing_param_refs"]),
-					("Stale param docs",  incorrect_action_params["extra_param_refs"]),
+					("Stale param docs", incorrect_action_params["extra_param_refs"]),
 					("Internally named params", incorrect_action_params["internal_param_refs"]),
 				]:
 					if not refs:
@@ -1165,6 +1166,7 @@ def main() -> int:
 	doc_xml, wgtr_dir, c_driver_dir, js_driver_dir, output_dir = resolve_paths(
 		repo_root, args.out_dir
 	)
+	
 	# Check the inputs before doing any work.  Path.glob() finds nothing in a
 	# missing directory, so a wrong repo root would otherwise write a plausible
 	# report with whole sources silently absent.
@@ -1175,9 +1177,9 @@ def main() -> int:
 		(js_driver_dir, js_driver_dir.is_dir()),
 	) if not found]
 	if missing_paths:
-		print(f"Error: Could not find these inputs under repo root {repo_root}:")
+		print(f"Error: Failed to find these inputs under repo root {repo_root}:", file=sys.stderr)
 		for path in missing_paths:
-			print(f"  {path}")
+			print(f"  {path}", file=sys.stderr)
 		return 1
 	
 	json_path = output_dir / "report.json"
