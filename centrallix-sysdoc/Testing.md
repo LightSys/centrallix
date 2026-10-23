@@ -40,7 +40,7 @@ Centrallix has various sets of tests and test suites for running them.  This fil
 The test-obj test suite uses test-obj to run commands (including SQL queries using the `query` or `csv` commands) and compares the output against the "correct" output specified for the test.  It also supports writing tests for Centrallix code in native C files.  It detects failures, crashes, and lockups, but does not measure performance.
 
 ### Running Test-obj Tests
-After configuring and building `centrallix` and `centrallix-lib`, run the test-obj test suite by using `make test` in the `centrallix` directory. When running tests with `make test`, both standard and native C tests are run together (see below test formats), and results are reported together.
+After configuring and building `centrallix` and `centrallix-lib`, run the test-obj test suite by using `make test` in the `centrallix` directory. When running tests with `make test`, both standard and native C tests are run together (see the test formats below), and results are reported together.
 
 To run only a subset of tests, set the `TONLY` environment variable to the desired test category prefix.  For example, either of the following commands will run only object system driver tests:
 
@@ -61,7 +61,7 @@ The `00baseline` tests are special sanity checks for the test system itself.  Th
 	sudo usermod -aG devel root
 	```
 
-- 📖 **Note**:  Remember to pass `-E` to `sudo` when specifying the `TONLY` environment variable, otherwise the variable isn't coppied into the root environment created by sudo, so the tests will not see it. 
+- 📖 **Note**:  Remember to pass `-E` to `sudo` when specifying the `TONLY` environment variable, otherwise the variable isn't copied into the root environment created by sudo, so the tests will not see it.
 
 
 ### Test Case Format: Standard
@@ -69,7 +69,7 @@ Each test is composed of two or more files in the `centrallix/tests` directory, 
 
 When tests are run, the results are saved in a corresponding `.out` file of the same name as the test.
 
-A common strategy is to create a `.to` file and a blank `.cmp` file, then run the test and copy the `.out` file to the `.cmp`.  When doing so, the developer should *carefully* verify that every part of the resulting `.cmp` file represents a correct output.  In general, writing `.cmp` files "by hand" is safer since it this makes differences between what the developer expects and what the program does (which is what tests are made to detect) far easier to notice.  However, copying the `.out` file can be much faster, and is *usually* safe if done carefully.
+A common strategy is to create a `.to` file and a blank `.cmp` file, then run the test and copy the `.out` file to the `.cmp`.  When doing so, the developer should *carefully* verify that every part of the resulting `.cmp` file represents a correct output.  In general, writing `.cmp` files "by hand" is safer since this makes differences between what the developer expects and what the program does (which is what tests are made to detect) far easier to notice.  However, copying the `.out` file can be much faster, and is *usually* safe if done carefully.
 
 ### Test Case Format: Native C
 The test-obj test suite also supports writing tests in native C by creating a `test_{category}_NN.c` file, also in the `centrallix/tests` directory.  This file should implement the `long long test(char** name);` function, which returns 0 if the test passes and returns a negative value *or* aborts using `assert()` (or something similar) if the test fails.  If the test is skipped (e.g. an integration test using the Sybase object-system driver that automatically skips when Sybase isn't enabled), return 1.  The `name` parameter should be set to the name of the test (e.g. `"test_obj native C test for cluster driver"`).  These tests have no associated `.to`, `.cmp`, or `.out` files.
@@ -79,7 +79,7 @@ For more information, see [centrallix/tests/README](../centrallix/tests/README).
 
 
 ## Centrallix-lib Tests
-The `centrallix-lib` project has its own native C regression and microbench-style test suite in `centrallix-lib/tests`.  Each test is compiled as a standalone binary and linked with a shared test driver (`tests/t_driver.c`), so binaries are generated for test.  This shared test driver runs the tests inside the mtask environment, reports pass/fail/crash/abort/lockup status, and prints a simple operations-per-second number based on the iteration count returned by the test.
+The `centrallix-lib` project has its own native C regression and microbench-style test suite in `centrallix-lib/tests`.  Each test is compiled as a standalone binary and linked with a shared test driver (`tests/t_driver.c`), so a binary is generated for each test.  This shared test driver runs the tests inside the mtask environment, reports pass/fail/crash/abort/lockup status, and prints a simple operations-per-second number based on the iteration count returned by the test.
 
 ### Running Centrallix-lib Tests
 After configuring and building `centrallix-lib`, run this test suite by using `make test` in the `centrallix-lib` directory.
@@ -110,7 +110,7 @@ When a test finishes, the driver prints one of the following statuses:
 - `PASS`: The test completed successfully.
 - `FAIL`: The test returned a negative value.
 - `CRASH`: The test triggered `SIGSEGV`.
-- `ABORT`: The test triggered `SIGABRT`. (Usually because an `assert()` failed).
+- `ABORT`: The test triggered `SIGABRT` (usually because an `assert()` failed).
 - `LOCKUP`: The test exceeded the driver's 10-second alarm timeout.
 
 Because the driver computes performance from the test's returned iteration count, tests should execute enough iterations that runtime is measurable.  Otherwise, the calculated throughput may be misleading or may even fail due to division by zero.
@@ -160,7 +160,7 @@ The cxjs test suite tests JS sent to the client, especially Centrallix functions
 The cxjs tests can be run by using `make test-js` in the `centrallix` directory.  This requires `node 20` or later to be installed, although `node 26` or later is recommended because that version was used when building these tests.  While this test suite does not support the `TONLY` environment variable for limiting tests, the [`--test-only`](https://nodejs.org/api/cli.html#--test-only) option can be used to limit tests, as documented in the `node:test` docs.
 
 ### Test Format
-All tests use the `node:test` API documented online, typically beginning with a copywrite statement and some variation of the following code:
+All tests use the `node:test` API documented online, typically beginning with a copyright notice and some variation of the following code:
 
 ```js
 'use strict';
