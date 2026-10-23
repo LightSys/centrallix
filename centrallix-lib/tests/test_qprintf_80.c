@@ -5,7 +5,7 @@
 
 #include "qprintf.h"
 #include "test_qprintf.h"
-#include "test_utils.h"
+#include "t_utils.h"
 
 static bool doTest(void)
     {

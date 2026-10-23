@@ -20,7 +20,7 @@
 #include <stdbool.h>
 
 #include "qprintf.h"
-#include "test_utils.h"
+#include "t_utils.h"
 
 #define ALL_SPECS "\t%% %& %STR %INT %POS %DBL %CHR %LL\t"
 #define ALL_SPECS_VALUES "test", -4, 4, 4.2, 'E', (__UINT32_MAX__ + 1ll)
