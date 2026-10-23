@@ -1156,6 +1156,7 @@ dbl_internal_FindDefinition(pDblData inf, pDblTableInf tdata)
 	    }
 
 	/** Not there.  Look in all DEF files in the DEF file directory (ack!) **/
+	mssClearError(); /* Failure handled. */
 	obj = objOpen(inf->Obj->Session, inf->Node->DefPath, O_RDONLY, 0600, "system/directory");
 	if (!obj) return -1;
 	qy = objOpenQuery(obj, "lower(right(:name, 4)) == '.def'", NULL, NULL, NULL, 0);
@@ -1174,6 +1175,7 @@ dbl_internal_FindDefinition(pDblData inf, pDblTableInf tdata)
 		return 0;
 		}
 	    objClose(subobj);
+	    mssClearError(); /* Failure handled; try next DEF file. */
 	    }
 	objQueryClose(qy);
 	objClose(obj);

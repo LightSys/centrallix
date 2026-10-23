@@ -1986,6 +1986,7 @@ http_internal_StartConnection(pHttpData inf)
 		}
 	    else if (rval == HTTP_CONN_S_HTTP401 && !inf->SentAuth && inf->HadAuth)
 		{
+		mssClearError(); /* 401 handled; retrying with auth. */
 		inf->SendAuth++;
 		continue;
 		}
@@ -2018,6 +2019,7 @@ http_internal_StartConnection(pHttpData inf)
 		    }
 
 		/** Wait a delay and try again **/
+		mssClearError(); /* Failed attempt handled; retrying. */
 		if (HTTP_OS_DEBUG)
 		    printf("http: retry #%d, waiting %dms\n", inf->RetryCount+1, (int)(inf->RetryDelay * 1000));
 		thSleep((int)(inf->RetryDelay * 1000 + 0.5));

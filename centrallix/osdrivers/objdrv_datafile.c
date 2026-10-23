@@ -1448,6 +1448,7 @@ dat_internal_OpenNode(pDatData context, pObject obj, char* filename, int mode, i
 			nmFree(dn,sizeof(DatNode));
 			return NULL;
 			}
+		    mssClearError(); /* Missing .spec handled by header parse. */
 		    dn->Flags |= DAT_NODE_F_HDRROW | DAT_NODE_F_ROWIDKEY;
 		    dn->Type = DAT_NODE_T_CSV;
 		    dat_csv_OpenNode(dn);

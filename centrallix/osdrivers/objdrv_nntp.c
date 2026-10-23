@@ -127,6 +127,7 @@ struct
 	/** If no node, and user said CREAT ok, try that. **/
 	if (!node && (obj->Mode & O_CREAT) && (obj->SubPtr == obj->Pathname->nElements))
 	    {
+	    mssClearError(); /* Failure handled. */
 	    node = snNewNode(node_path, usrtype);
 	    }
 

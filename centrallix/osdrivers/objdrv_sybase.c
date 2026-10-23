@@ -979,7 +979,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    mssError(0, "SYBD", "Error in constraint expression %s", ptr);
+		    mssClearError(); /* Failure handled. */
+		    }
 		else 
 		    {
 		    if (hints->Constraint) expFreeExpression(hints->Constraint);
@@ -990,7 +993,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    mssError(0, "SYBD", "Error in default expression %s", ptr);
+		    mssClearError(); /* Failure handled. */
+		    }
 		else 
 		    {
 		    if (hints->DefaultExpr) expFreeExpression(hints->DefaultExpr);
@@ -1001,7 +1007,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    mssError(0, "SYBD", "Error in min expression %s", ptr);
+		    mssClearError(); /* Failure handled. */
+		    }
 		else 
 		    {
 		    if (hints->MinValue) expFreeExpression(hints->MinValue);
@@ -1012,7 +1021,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    mssError(0, "SYBD", "Error in max expression %s", ptr);
+		    mssClearError(); /* Failure handled. */
+		    }
 		else 
 		    {
 		    if (hints->MaxValue) expFreeExpression(hints->MaxValue);
@@ -1534,6 +1546,7 @@ sybd_internal_GetTableInf(pSybdNode node, pSybdConn conn, char* table)
 	/** No annotation expression?  Set it to "" if not. **/
 	if (!tdata->RowAnnotExpr)
 	    {
+	    mssClearError(); /* Failed annotation compile handled by the empty expression. */
 	    tdata->ObjList = expCreateParamList();
 	    expAddParamToList(tdata->ObjList, NULL, NULL, 0);
 	    tdata->RowAnnotExpr = (pExpression)expCompileExpression("''", tdata->ObjList, MLX_F_ICASE | MLX_F_FILENAMES, 0);
@@ -2619,6 +2632,7 @@ sybdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 		}
 	    else if (!tdata && (obj->Mode & O_CREAT) && !(inf->TableSubPtr))
 	        {
+		mssClearError(); /* Failure handled. */
 		/** Create a new table, but we don't have the columns yet **/
 		if (!*oxt)
 		    {
@@ -4648,6 +4662,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			if (is_key)
 			    {
 			    mssError(1,"SYBD","Warning: could not retrieve primary key updated record");
+			    mssClearError(); /* Failure handled. */
 			    }
 			else
 			    {

@@ -329,8 +329,11 @@ mysd_internal_GetConn(pMysdNode node)
 		    result = mysd_internal_RunQuery_conn(conn, node, "SET PASSWORD = PASSWORD('?')", password);
 
 		    if (result == MYSD_RUNQUERY_ERROR)
+			{
 			mssError(1, "MYSD", "Warning: could not update password for user [%s]: %s",
 				username, mysql_error(&conn->Handle));
+			mssClearError(); /* Warning only, connection is still usable. */
+			}
 		    }
 		else
 		    {
@@ -353,6 +356,10 @@ mysd_internal_GetConn(pMysdNode node)
 		{
 		/** just set to all NULLs **/
 		strcpy(node->DatabaseCollation, "");
+		if (result == MYSD_RUNQUERY_ERROR)
+		    {
+		    mssClearError(); /* Failure handled. */
+		    }
 		}
 	    else
 		{
@@ -818,6 +825,10 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
         if (result && result != MYSD_RUNQUERY_ERROR)
             mysql_free_result(result);
 	result = mysd_internal_RunQuery(node, "SELECT a,b,c FROM `?` WHERE a = '?'", node->AnnotTable, tablename);
+	if (result == MYSD_RUNQUERY_ERROR && tdata)
+	    {
+	    mssClearError(); /* Annotations are optional. */
+	    }
         if (result && result != MYSD_RUNQUERY_ERROR)
 	    {
 	    if (mysql_num_rows(result) == 1)

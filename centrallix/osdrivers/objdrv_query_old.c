@@ -428,6 +428,7 @@ qy_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref,
 			    }
                         if (!test_obj && subref == path->nElements - 1 && create)
                             {
+			    mssClearError(); /* Failure handled. */
                             test_obj = objOpen(s, inf->Pathname, O_RDWR | O_CREAT | O_TRUNC, 0600, "system/file");
                             if (!test_obj) break;
 			    expModifyParam(objlist, NULL, test_obj);
@@ -535,6 +536,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** If no node, and user said CREAT ok, try that. **/
 	if (!node && (obj->Mode & O_CREAT) && (obj->SubPtr == obj->Pathname->nElements))
 	    {
+	    mssClearError(); /* Failure handled. */
 	    node = snNewNode(node_path, usrtype);
 	    }
 

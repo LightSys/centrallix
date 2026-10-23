@@ -422,7 +422,11 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    else if (!snnode && !(obj->Mode & O_EXCL)) snnode = snReadNode(obj->Prev);
 	    
 	    /** Ok, no existing node.  Try to make a new one. **/
-	    if (!snnode) snnode = snNewNode(obj->Prev, usrtype);
+	    if (!snnode)
+		{
+		mssClearError(); /* Failure handled. */
+		snnode = snNewNode(obj->Prev, usrtype);
+		}
 	    if (!snnode)
 	        {
 		nmFree(inf, sizeof(UxdData));

@@ -5594,6 +5594,7 @@ rpt_internal_Generator(void* v)
 	ps = prtOpenSession(inf->DocumentFormat, fdWrite, inf->SlaveFD, PRT_OBJ_U_ALLOWBREAK);
 	if (!ps) 
 	    {
+	    mssClearError(); /* Failure handled by falling back to HTML. */
 	    ps = prtOpenSession("text/html", fdWrite, inf->SlaveFD, PRT_OBJ_U_ALLOWBREAK);
 	    if (ps) strcpy(inf->DocumentFormat, "text/html");
 	    }

@@ -454,7 +454,10 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			    {
 			    /** sizeof(createpath)-2 to leave room for two chars **/
 			    if (objGetQueryIdentityPath(test_qy, createpath, sizeof(createpath) - 2) < 0)
+				{
+				mssClearError(); /* No identity path just means we cannot create. */
 				createpath[0] = '\0';
+				}
 
 			    /** query open succeeded, try to fetch a result **/
 			    test_obj = objQueryFetch(test_qy, O_RDONLY);
@@ -465,6 +468,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 				/** We left room for these two chars in the
 				 ** above call to objGetQueryIdentityPath().
 				 **/
+				mssClearError(); /* Fetch failed, fall back to creating. */
 				strcat(createpath, "/*");
 				test_obj = objOpen(s, createpath, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
 				}
@@ -566,10 +570,12 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
 			    }
                         if (!test_obj && subref == path->nElements - 1 && (openflags & O_CREAT))
                             {
+			    mssClearError(); /* Open failed, fall back to creating. */
                             test_obj = objOpen(s, inf->Pathname, O_RDWR | O_TRUNC | (openflags & (O_CREAT | OBJ_O_AUTONAME)), 0600, "system/file");
                             if (!test_obj)
 				{
 				/** Create failed, go look again **/
+				mssClearError(); /* Failure handled. */
 				if (expr) expFreeExpression(expr);
 				expr = NULL;
 				find_inf = NULL;
@@ -596,6 +602,7 @@ qyt_internal_ProcessPath(pObjSession s, pPathname path, pSnNode node, int subref
                         else if (!test_obj)
 			    {
 			    /** Could not find it, and did not try to create it; go look again **/
+			    mssClearError(); /* Failure handled. */
 			    if (expr) expFreeExpression(expr);
 			    expr = NULL;
 			    find_inf = NULL;
@@ -757,6 +764,7 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** If no node, and user said CREAT ok, try that. **/
 	if (!node && (obj->Mode & O_CREAT) && (obj->SubPtr == obj->Pathname->nElements))
 	    {
+	    mssClearError(); /* Failure handled. */
 	    node = snNewNode(obj->Prev, usrtype);
 	    }
 
