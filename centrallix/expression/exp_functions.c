@@ -245,7 +245,7 @@ exp_fn_i_verifyArg(const char* fn_name, pExpression arg, const ArgExpect* arg_ex
 	    case DATA_T_DOUBLE:
 		{
 		double value = arg->Types.Double;
-		if (arg_expect->Flags & EXP_ARG_NON_NAN && isnan(value))
+		if (arg_expect->Flags & (EXP_ARG_NON_NAN | EXP_ARG_POSITIVE | EXP_ARG_NEGATIVE) && isnan(value))
 		    {
 		    mssError(1, "EXP",
 			"%s(...): Expects non-nan double but got %g.",
