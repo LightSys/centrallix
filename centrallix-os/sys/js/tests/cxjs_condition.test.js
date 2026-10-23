@@ -34,12 +34,12 @@ describe('cxjs_condition', () =>
     {
     for (const [ c, vtrue, vfalse, result ] of [
 	// null/undefined short-circuit to null before vtrue/vfalse.
-	// Condition           vtrue  vfalse  Result
+	// Condition           vtrue      vfalse  Result
 	[ null,                'T',       'F',    null      ],
 	[ undefined,           'T',       'F',    null      ],
 
 	// Truthy conditions yield vtrue.
-	// Condition           vtrue  vfalse  Result
+	// Condition           vtrue      vfalse  Result
 	[ true,                'T',       'F',    'T'       ],
 	[ 1,                   'T',       'F',    'T'       ],
 	[ -1,                  'T',       'F',    'T'       ],
@@ -55,7 +55,7 @@ describe('cxjs_condition', () =>
 	[ 'NaN',               'T',       'F',    'T'       ],  // nonempty string, not the NaN number
 
 	// Falsy conditions yield vfalse.
-	// Condition           vtrue  vfalse  Result
+	// Condition           vtrue      vfalse  Result
 	[ false,               'T',       'F',    'F'       ],
 	[ 0,                   'T',       'F',    'F'       ],
 	[ -0,                  'T',       'F',    'F'       ],
@@ -63,7 +63,7 @@ describe('cxjs_condition', () =>
 	[ '',                  'T',       'F',    'F'       ],
 
 	// vtrue/vfalse pass through verbatim, regardless of type.
-	// Condition           vtrue  vfalse  Result
+	// Condition           vtrue      vfalse  Result
 	[ true,                42,        99,     42        ],
 	[ false,               42,        99,     99        ],
 	[ true,                null,      'F',    null      ],  // truthy c can still return null
@@ -74,7 +74,7 @@ describe('cxjs_condition', () =>
 
 	// Both branches omitted: a defined-but-truthy c yields undefined vtrue,
 	// a falsy c yields undefined vfalse (null c is handled separately above).
-	// Condition           vtrue  vfalse  Result
+	// Condition           vtrue      vfalse  Result
 	[ true,             undefined, undefined, undefined ],
 	[ false,            undefined, undefined, undefined ],
     ])	{

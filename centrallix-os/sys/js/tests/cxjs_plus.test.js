@@ -31,7 +31,7 @@ describe('cxjs_plus', () =>
 	[ null,           null,          null      ],
 	[ null,           'x',           null      ],
 	[ undefined,      undefined,     null      ],
-	
+
 	// Numeric addition.
 	[ 0,              0,             0         ],
 	[ 1,              2,             3         ],
@@ -43,7 +43,7 @@ describe('cxjs_plus', () =>
 	[ -Infinity,      1,            -Infinity  ],
 	[ Infinity,       Infinity,      Infinity  ],
 	[ Infinity,      -Infinity,      NaN       ], // opposite infinities
-	
+
 	// String concatenation when either operand is a string.
 	[ 'foo',          'bar',         'foobar'    ],
 	[ '',             '',            ''          ],

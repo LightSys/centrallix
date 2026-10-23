@@ -55,7 +55,7 @@ describe('cxjs_min', () =>
 	    assert.equal(env.cxjs_min(input), result);
 	    });
 	}
-	
+
     for (const [ input, result ] of [
 	// Input                             Result
 	[ {},                                undefined ],
@@ -137,7 +137,7 @@ describe('cxjs_min', () =>
     // Lists with NaNs.
     for (const [ input, result ] of [
 	// Input                 Result
-	[ [5, NaN, 3],           3   ], 
+	[ [5, NaN, 3],           3   ],
 	[ [NaN, NaN, 5],         5   ],
 	[ [3, NaN, 1],           1   ],
 	[ [1, NaN, 2, NaN, 3],   1   ],

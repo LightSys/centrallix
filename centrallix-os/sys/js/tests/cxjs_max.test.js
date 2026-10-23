@@ -55,7 +55,7 @@ describe('cxjs_max', () =>
 	    assert.equal(env.cxjs_max(input), result);
 	    });
 	}
-	
+
     for (const [ input, result ] of [
 	// Input                             Result
 	[ {},                                undefined ],

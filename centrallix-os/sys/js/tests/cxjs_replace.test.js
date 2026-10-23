@@ -39,7 +39,7 @@ describe('cxjs_replace', () =>
 	[ 'aaaa',         'aa',    'X',     'XX'              ],
 	[ 'abab',         'ab',    'X',     'XX'              ],
 	[ 'aaaaa',        'aaa',   'X',     'Xaa'             ],
-	
+
 	// Search is matched literally (regex metacharacters have no special meaning).
 	[ '1.2.3',        '.',     ',',     '1,2,3'           ],
 	[ 'a|b|c',        '|',     '-',     'a-b-c'           ],
@@ -60,12 +60,12 @@ describe('cxjs_replace', () =>
 	[ 'a.*b',         '.*',    'X',     'aXb'             ],
 	[ 'ca.bc',        'a.b',   'X',     'cXc'             ],
 	[ 'a\\db',        '\\d',   'X',     'aXb'             ],
-	
+
 	// Empty search matches the zero-character gap between characters.
 	[ 'ab',           '',      '-',     '-a-b-'           ],
 	[ '',             '',      '-',     '-'               ],
 	[ '',             'x',     'y',     ''                ], // empty str, no match
-	
+
 	// Non-string arguments are coerced to strings.
 	[ 12321,          2,       9,       '19391'           ],
 	[ true,           'r',     'R',     'tRue'            ],

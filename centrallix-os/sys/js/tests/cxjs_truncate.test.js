@@ -95,7 +95,7 @@ describe('cxjs_truncate', () =>
 	[ [2.349999, 2],    2.34      ],
 
 	// Precision is lost before truncation when n*factor exceeds 2^53, and a
-	// large n*factor can overflow to Infinity..
+	// large n*factor can overflow to Infinity.
 	// Args                        Result
 	[ [123456789012.3456, 2],      123456789012.34  ],
 	[ [Number.MAX_VALUE, 2],       Infinity         ],  // n*100 overflows
