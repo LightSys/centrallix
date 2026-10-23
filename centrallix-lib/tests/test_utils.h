@@ -147,7 +147,7 @@
     ({ \
 	pVector _v1 = (v1); \
 	pVector _v2 = (v2); \
-	int success = caEql(_v1, _v2); \
+	const bool success = caEql(_v1, _v2); \
 	if (!success) \
 	    { \
 	    printf("  > Expected %s (1.) to equal %s (2.) at %s:%d, but got:\n", #v1, #v2, __FILE__, __LINE__); \
