@@ -107,6 +107,7 @@ xhq_internal_DiscardOne(pXHashQueue this)
 		xhRemove(&(this->Table), xe->KeyPtr);
 		if (this->DiscardFn && this->DiscardFn(this,xe,xe->Locked) < 0)
 		    {
+		    mssClearError(); /* Skip this element and try the next. */
 		    xhAdd(&(this->Table), xe->KeyPtr, (void*)xe);
 		    }
 		else if (this->DiscardFn || !xe->Locked)
