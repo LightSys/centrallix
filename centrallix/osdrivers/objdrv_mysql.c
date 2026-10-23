@@ -7,7 +7,7 @@
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
-#include "cxlib/util.h"
+#include "cxlib/check.h"
 #include "cxlib/expect.h"
 #include "stparse.h"
 #include "st_node.h"
@@ -25,7 +25,7 @@
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
 /*                                                                      */
-/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -453,7 +453,6 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
     char * str;
     char * endstr;
     int err;
-    char * errtxt;
     char ch;
     pMysdData data;
 
@@ -585,7 +584,7 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 		"MySQL Database ERROR %d: %s",
 		mysql_errno(&conn->Handle), mysql_error(&conn->Handle)
 	    );
-	    goto query_error;
+	    goto error;
 	    }
 
 	/** Store the query result. **/
@@ -608,9 +607,6 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
 
 	/** Success. **/
 	rval = query_result;
-	goto error;
-
-    query_error:
 
     error:
 	if (UNLIKELY(rval == MYSD_RUNQUERY_ERROR))
@@ -877,7 +873,7 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
         if (result && result != MYSD_RUNQUERY_ERROR)
             mysql_free_result(result);
 	result = mysd_internal_RunQuery(node, "SELECT a,b,c FROM `?` WHERE a = '?'", node->AnnotTable, tablename);
-        if (LIKELY(result != 0 && result != MYSD_RUNQUERY_ERROR))
+        if (LIKELY(result != NULL && result != MYSD_RUNQUERY_ERROR))
 	    {
 	    if (mysql_num_rows(result) == 1)
 		{
@@ -1066,7 +1062,7 @@ mysd_internal_RefreshRow(pMysdData data)
 	data->Result = NULL;
 	
 	/** Check for error. **/
-	if (rval != 0)
+	if (rval < 0)
 	    {
 	    mssError(0, "MYSD",
 		"Failed to refresh row \"%s\".",
@@ -1293,13 +1289,13 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 	if (UNLIKELY(result == MYSD_RUNQUERY_ERROR))
 	    {
 	    mssError(0, "MYSD",
-		"Failed to update row \"%s\" (%d) to \"%s\"",
-		data->TData->Cols[col], col, newval
+		"Failed to update column \"%s\" (%d) to \"%s\".",
+		data->TData->Cols[col], col, (newval != NULL) ? newval : "NULL"
 	    );
 	    return -1;
 	    }
 
-	if (mysd_internal_RefreshRow(data) != 0) return -1;
+	if (mysd_internal_RefreshRow(data) < 0) return -1;
 
         return 0;
     }
