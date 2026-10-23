@@ -316,28 +316,28 @@ function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
     if (expr === null || expr === undefined) return null;
     const expr_str = String(expr).trim();
     if (expr_str === '') return null;
-    
+
     const first_char = expr_str.charAt(0);
     const last_char = expr_str.charAt(expr_str.length - 1);
-    
+
     // Eval boolean and null literals.
     const expr_lower = expr_str.toLowerCase();
     if (expr_lower === 'true') return true;
     if (expr_lower === 'false') return false;
     if (expr_lower === 'null') return null;
-    
+
     // Eval integer.
     if (/^-?\d+$/.test(expr_str))
 	return parseInt(expr_str, 10);
-    
+
     // Eval floating point.
     if (/^-?\d+\.\d*$/.test(expr_str) || /^-?\d*\.\d+$/.test(expr_str))
 	return parseFloat(expr_str);
-    
+
     // Eval double-quoted string.
     if (expr_str.length >= 2 && first_char === '"' && last_char === '"')
 	return expr_str.substring(1, expr_str.length - 1);
-    
+
     // Eval single-quoted string.
     if (expr_str.length >= 2 && first_char === "'" && last_char === "'")
 	return expr_str.substring(1, expr_str.length - 1);
@@ -389,9 +389,9 @@ function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
 		}
 	    }
 	}
-    
+
     console.warn("Failed to eval expression: \"" + expr_str + "\"");
-    
+
     return null;
     }
 
