@@ -16,7 +16,7 @@ static bool doTest(void)
 	char buf[8];
 	memset(buf, 'X', sizeof(buf));
 	
-	/** Test string buffer overflow. **/
+	/** Test an odd-length hex string. **/
 	const int rval = qpfPrintf(s, buf, 6, "%STR&DHEX", "abc");
 	
 	/** Verify results. **/

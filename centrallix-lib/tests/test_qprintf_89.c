@@ -32,7 +32,7 @@ static bool test_bad_file_path(const char* bad_file_path)
 	char buf[12];
 	memset(buf, 'X', sizeof(buf));
 	
-	/** Test a bad format. **/
+	/** Test a bad file path. **/
 	const int rval = qpfPrintf(s, buf, 10, "%STR&PATH", bad_file_path);
 	
 	/** Verify results. **/
@@ -52,7 +52,7 @@ static bool doTest(void)
     {
     bool success = true;
 	
-	/** Test all specified bad formats. **/
+	/** Test all specified bad file paths. **/
 	for (size_t i = 0u; i < N_BAD_FILE_PATHS; i++)
 	    {
 	    const char* bad_file_path = BAD_FILE_PATHS[i];

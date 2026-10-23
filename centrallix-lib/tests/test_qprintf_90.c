@@ -68,7 +68,7 @@ static bool test_bad_char(const char* bad_base64)
 	char buf[12];
 	memset(buf, 'X', sizeof(buf));
 	
-	/** Test a bad format. **/
+	/** Test a bad base64 string. **/
 	const int rval = qpfPrintf(s, buf, 10, "%STR&DB64", bad_base64);
 	
 	/** Verify results. **/
@@ -88,13 +88,13 @@ static bool doTest(void)
     {
     bool success = true;
 	
-	/** Test all specified bad formats. **/
+	/** Test all specified bad base64 strings. **/
 	for (size_t i = 0u; i < N_BAD_BASE64S; i++)
 	    {
 	    const char* bad_base64 = BAD_BASE64S[i];
 	    if (UNLIKELY(!test_bad_char(bad_base64)))
 		{
-		fprintf(stderr, "Test failed for file path: \"%s\"\n", bad_base64);
+		fprintf(stderr, "Test failed for base64 string: \"%s\"\n", bad_base64);
 		success = false;
 		break;
 		}

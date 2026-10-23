@@ -27,7 +27,7 @@ static bool testBadFileName(const char* bad_file_name)
 	char buf[8];
 	memset(buf, 'X', sizeof(buf));
 	
-	/** Test a bad format. **/
+	/** Test a bad file name. **/
 	const int rval = qpfPrintf(s, buf, 6, "%STR&FILE", bad_file_name);
 	
 	/** Verify results. **/
@@ -47,7 +47,7 @@ static bool doTest(void)
     {
     bool success = true;
 	
-	/** Test all specified bad formats. **/
+	/** Test all specified bad file names. **/
 	for (size_t i = 0u; i < N_BAD_FILE_NAMES; i++)
 	    {
 	    const char* bad_file_name = BAD_FILE_NAMES[i];

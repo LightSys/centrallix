@@ -16,7 +16,7 @@ static bool doTest(void)
 	char buf[8];
 	memset(buf, 'X', sizeof(buf));
 	
-	/** Test string buffer overflow. **/
+	/** Test a NULL %STR argument. **/
 	const int rval = qpfPrintf(s, buf, 6, "%STR", NULL);
 	
 	/** Verify results. **/

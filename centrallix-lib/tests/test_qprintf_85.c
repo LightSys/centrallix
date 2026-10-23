@@ -16,7 +16,7 @@ static bool doTest(void)
 	char buf[8];
 	memset(buf, 'X', sizeof(buf));
 	
-	/** Test string buffer overflow. **/
+	/** Test too many specifiers in one chain. **/
 	const int rval = qpfPrintf(s, buf, 6, "%STR&ESCQ&ESCQ&ESCQ&ESCQ&ESCQ&ESCQ&ESCQ&ESCQ", "Str");
 	
 	/** Verify results. **/
