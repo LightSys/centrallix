@@ -785,6 +785,7 @@ nht_i_ErrorExit(pNhtConn conn, int code, char* text)
 		    );
 	    xsFree(err_message);
 	    }
+	mssClearError(); /* Error reported to client. */
 
 	/** Shutdown the connection and free memory **/
 	nht_i_FreeConn(conn);
@@ -1930,6 +1931,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			    snprintf(path,sizeof(path),"%s/%s",url_inf->StrVal,NHT.DirIndex[i]);
 			    tmp_obj = objOpen(nsess->ObjSess, path, O_RDONLY | OBJ_O_AUTONAME, 0600, "text/html");
 			    if (tmp_obj) break;
+			    mssClearError(); /* Directory index not found; try next one. */
 			    }
 			}
 		    if (tmp_obj)
@@ -2224,6 +2226,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			nht_i_QPrintfConn(conn, 0, "<h1>An error occurred while constructing the application:</h1><pre>%STR&HTE\r\n</pre>", xsString(err_xs));
 			xsFree(err_xs);
 			}
+		    mssClearError(); /* Error reported to client. */
 		    objClose(target_obj);
 		    if (tptr) nmSysFree(tptr);
 		    if (lptr) nmSysFree(lptr);
@@ -2261,6 +2264,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    {
 		    mssError(0, "NHT", "Error sending Interface info for '%s' to client", url_inf->StrVal);
 		    nht_i_QPrintfConn(conn, 0, "<A TARGET=\"ERR\" HREF=\"%STR&HTE\"></A>", url_inf->StrVal);
+		    mssClearError(); /* Error reported to client. */
 		    }
 		else
 		    {
@@ -2316,6 +2320,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 			{
 			mssError(0,"NHT","Incomplete read of object's content");
 			nht_i_GenerateError(nsess);
+			mssClearError(); /* Error reported to client. */
 			}
 		    nmFree(bufptr, 4096);
 		    }
@@ -2428,6 +2433,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	    else
 	        {
 		nht_i_GenerateError(nsess);
+		mssClearError(); /* Error reported to client. */
 		}
 	    }
 
@@ -2511,6 +2517,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	        {
 		mssError(1,"NHT","Invalid call to execmethod - requires name and param");
 		nht_i_GenerateError(nsess);
+		mssClearError(); /* Error reported to client. */
 		}
 	    else
 	        {
@@ -2775,6 +2782,10 @@ nht_i_PUT(pNhtConn conn, pStruct url_inf, int size, char* content_buf)
 	    objClose(target_obj);
 	    already_exist = 1;
 	    }
+	else
+	    {
+	    mssClearError(); /* Object not existing is a normal answer. */
+	    }
 
 	/** Ok, open the object here. **/
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
@@ -2902,6 +2913,7 @@ nht_i_COPY(pNhtConn conn, pStruct url_inf, char* dest)
 	    }
 	else
 	    {
+	    mssClearError(); /* Target not existing is a normal answer. */
 	    already_exists = 0;
 	    target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC | O_CREAT, 0600, "text/html");
 	    if (!target_obj)

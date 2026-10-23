@@ -468,6 +468,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n");
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn);
+	    mssClearError(); /* Error reported. */
 	    netCloseTCP(conn,1000,0);
 	    thExit();
 	    }
@@ -516,6 +517,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 		    {
 		    mssError(0,"NHT","Incomplete read of object's content");
 		    nht_internal_GenerateError(nsess);
+		    mssClearError(); /* Error reported to client. */
 		    }
 		nmFree(bufptr, 4096);
 	        }
@@ -545,6 +547,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
 	    else
 	        {
 		nht_internal_GenerateError(nsess);
+		mssClearError(); /* Error reported to client. */
 		}
 	    }
 
@@ -586,6 +589,10 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 	    objClose(target_obj);
 	    already_exist = 1;
 	    }
+	else
+	    {
+	    mssClearError(); /* Object not existing is a normal answer. */
+	    }
 
 	/** Ok, open the object here. **/
 	target_obj = objOpen(nsess->ObjSess, url_inf->StrVal, O_WRONLY | O_CREAT | O_TRUNC, 0600, "text/html");
@@ -597,6 +604,7 @@ nht_internal_PUT(pNhtSessionData nsess, pFile conn, pStruct url_inf, int size, c
 			 "<H1>404 Not Found</H1><HR><PRE>\r\n");
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn);
+	    mssClearError(); /* Error reported. */
 	    netCloseTCP(conn,1000,0);
 	    thExit();
 	    }
@@ -723,6 +731,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 			 "<H1>404 Source Not Found</H1><HR><PRE>\r\n");
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
 	    mssPrintError(conn);
+	    mssClearError(); /* Error reported. */
 	    netCloseTCP(conn,1000,0);
 	    thExit();
 	    }
@@ -740,6 +749,10 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 	    objClose(target_obj);
 	    already_exist = 1;
 	    }
+	else
+	    {
+	    mssClearError(); /* Object not existing is a normal answer. */
+	    }
 
 	/** Ok, open the target object for keeps now. **/
 	target_obj = objOpen(nsess->ObjSess, dest, O_WRONLY | O_TRUNC | O_CREAT, 0600, "text/html");
@@ -750,6 +763,7 @@ nht_internal_COPY(pNhtSessionData nsess, pFile conn, pStruct url_inf, char* dest
 			 "\r\n"
 			 "<H1>404 Target Not Found</H1>\r\n");
 	    fdWrite(conn,sbuf,strlen(sbuf),0,0);
+	    mssClearError(); /* Request answered with 404. */
 	    netCloseTCP(conn,1000,0);
 	    thExit();
 	    }

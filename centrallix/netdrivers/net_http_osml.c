@@ -1057,6 +1057,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 				    retval=objSetAttrValue(obj,subinf->Name,DATA_T_STRING,POD(&strval));
 				    if (retval < 0 && *strval && strspn(strval, "0123456789-") == strlen(strval) && strchr(strval+1, '-') == NULL)
 					{
+					mssClearError(); /* String set failed; retrying as integer. */
 					n = objDataToInteger(DATA_T_STRING, strval, NULL);
 					retval=objSetAttrValue(obj,subinf->Name,DATA_T_INTEGER,POD(&n));
 					}
@@ -1168,6 +1169,10 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			    obj_handle = XHN_INVALID_HANDLE;
 			    objClose(obj);
 			    obj = NULL;
+			    }
+			else if (!reopen_success)
+			    {
+			    mssClearError(); /* Reopen failure ignored for setattrs. */
 			    }
 			}
 
