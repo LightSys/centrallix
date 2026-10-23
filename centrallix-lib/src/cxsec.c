@@ -146,9 +146,9 @@ cxsecVerifySymbol(const char* sym)
 	    }
 
 	return 0;
-	
+
 	err:
-	fprintf(stderr, "WARNING: '%s' is not a valid symbol!\n", original_symbol);
+	fprintf(stderr, "Warning: '%s' is not a valid symbol!\n", original_symbol);
 	return -1;
     }
 
@@ -182,7 +182,7 @@ cxsecVerifySymbol_n(const char* sym, size_t n)
 
 	err:
 	fprintf(stderr,
-	    "WARNING: '%.*s'%s is not a valid symbol!\n",
+	    "Warning: '%.*s'%s is not a valid symbol!\n",
 	    (int)min(original_n, (size_t)INT_MAX), original_symbol,
 	    (original_n > INT_MAX) ? " (truncated)" : ""
 	);
