@@ -74,4 +74,4 @@ int prt_internal_GetPixelDirect(pPrtImage img, int x, int y);
 int prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, int w, int h);
 int prt_internal_WriteSvgToFile(int (*write_fn)(), void* write_arg, pPrtSvg svg, int w, int h);
 
-#endif /* defined _PRTMGMT_V3_PRIVATE_H */
+#endif /* not defined _PRTMGMT_V3_PRIVATE_H */
