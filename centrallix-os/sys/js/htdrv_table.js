@@ -3018,6 +3018,7 @@ function tbld_mousedown(e)
 		if (orig_ly.subkind == 'cell')
 		    {
 		    event.Column = ly.table.cols[orig_ly.colnum].fieldname;
+		    event.ColumnType = ly.table.cols[orig_ly.colnum].type;
 		    event.ColumnValue = orig_ly.data;
 		    }
 		event.Caller = ly.table;
@@ -3037,13 +3038,13 @@ function tbld_mousedown(e)
 		    }
 		ly.table.dta=event.data;
 		ly.table.last_clicked = orig_ly;
-		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
+		if (e.target && event.ColumnType == 'checkbox' && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
 		    {
 		    event.checkbox = 1;
 		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Check', event)))
 			canceled = true;
 		    }
-		if (!canceled && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
+		if (!canceled && event.ColumnType == 'checkbox' && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
 		    {
 		    event.checkbox = 2;
 		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Uncheck', event)))
