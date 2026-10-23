@@ -599,6 +599,7 @@ mqpAnalyze(pQueryStatement stmt)
 	    if (from_qs->Flags & MQ_SF_WILDCARD) qe->Flags |= MQ_EF_WILDCARD;
 	    if (from_qs->Flags & MQ_SF_FROMOBJECT) qe->Flags |= MQ_EF_FROMOBJECT;
 	    if (from_qs->Flags & MQ_SF_PAGED) qe->Flags |= MQ_EF_PAGED;
+	    if (from_qs->Flags & MQ_SF_EXPRESSION) qe->Flags |= MQ_EF_EXPRESSION;
 	    from_qs->Flags |= MQ_SF_USED;
 	    from_qs->QELinkage = qe;
 
@@ -1405,10 +1406,14 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		}
 	    else
 		{
-		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & MQ_EF_WILDCARD))
+		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & MQ_EF_WILDCARD) && !(qe->Flags & MQ_EF_EXPRESSION))
 		    {
 		    /** empty or single-row result set.  Save the saved_obj in the cache **/
 		    mqp_internal_CacheRow(stmt, qe, qe->Constraint, saved_obj);
+		    }
+		else if (saved_obj)
+		    {
+		    objClose(saved_obj);
 		    }
 		return 0;
 		}
