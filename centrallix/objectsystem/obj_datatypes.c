@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #endif
 #include "obj.h"
+#include "obj_private.h"
 #include "expression.h"
 #include "cxlib/expect.h"
 #include "cxlib/xstring.h"

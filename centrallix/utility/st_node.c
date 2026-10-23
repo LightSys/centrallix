@@ -11,6 +11,7 @@
 #include "cxlib/xhash.h"
 #include <sys/stat.h>
 #include "obj.h"
+#include "obj_private.h"
 #include "st_node.h"
 #include "cxlib/magic.h"
 #include "cxlib/util.h"

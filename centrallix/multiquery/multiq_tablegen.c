@@ -9,6 +9,7 @@
 #include "cxlib/xstring.h"
 #include "cxlib/xarray.h"
 #include "multiquery.h"
+#include "multiquery_private.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
 

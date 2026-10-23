@@ -10,6 +10,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3_private.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
 #include "centrallix.h"
