@@ -1448,7 +1448,7 @@ qpfPrintf_va_internal(
 		const bool has_n = (n != -1);
 		
 		/** Find this spec using qpf_spec_names. **/
-		bool found = 0;
+		bool found = false;
 		for (unsigned int i = startspec; i <= endspec; i++)
 		    {
 		    /** Skip specs if their numerical constraint status does not match what we parsed. **/
