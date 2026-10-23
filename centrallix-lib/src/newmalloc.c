@@ -433,7 +433,7 @@ nmMalloc(size_t size)
 		if (listcnt[size] == 0u)
 		    {
 		    fprintf(stderr,
-			"ERROR: Removed block from cache when stats show that "
+			"Warning: Removed block from cache when stats show that "
 			"it should be empty!! Expect broken statistics.\n"
 		    );
 		    }
@@ -574,7 +574,7 @@ nmFree(void* ptr, size_t size)
 	    if (outcnt[size] == 0u)
 		{
 		fprintf(stderr,
-		    "ERROR: Call to nmFree() memory of a size that has no "
+		    "Warning: Call to nmFree() on memory of a size that has no "
 		    "valid allocated memory!! Expect broken statistics.\n"
 		);
 		}
