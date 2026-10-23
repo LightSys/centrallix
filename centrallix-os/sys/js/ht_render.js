@@ -342,7 +342,7 @@ function cxjs_eval(_context, _this, expr, permflags, cur_obj_name, par_obj_name)
     if (expr_str.length >= 2 && first_char === "'" && last_char === "'")
 	return expr_str.substring(1, expr_str.length - 1);
 
-    // Eval :property, ::property, or :object:property
+    // Eval :property, ::property, or :object:property.
     if (first_char === ':')
 	{
 	const rest = expr_str.substring(1);
