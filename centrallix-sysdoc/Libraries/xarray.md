@@ -120,7 +120,7 @@ int xaAddItem(pXArray this, void* item);
 ```
 This function adds an item to the end of the XArray.  The item is assumed to be a `void*`, but this function will _not_ follow pointers stored in the array.  Thus, other types can be typecast and stored into that location (such as an `int`).
 
-This function returns 0 on success, or -1 if an error occurs.
+This function returns the index of the added item on success, or -1 if an error occurs.
 
 
 ## xaAddItemSorted()
@@ -202,7 +202,7 @@ This function works the same as [`xaClear()`](#xaclear), except that it is sligh
 ```c
 int xaCount(pXArray this);
 ```
-This function returns the number of items in the XArray, or -1 on error.  It is equivalent to accessing `XArray->nItems`.
+This function returns the number of items in the XArray.  It is equivalent to accessing `XArray->nItems`.
 
 
 ## xaInsertBefore()

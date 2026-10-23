@@ -60,7 +60,7 @@ The `MTASK` module provides simple and easy TCP/IP connectivity.  It includes ma
 pFile netConnectTCP(const char* host_name, const char* service_name, int flags);
 ```
 This function creates a client socket and connects it to a server on a given TCP service/port and host name.  It takes the following three parameters:
-- `host_name`: The host name or ascii string for the host's ip address.
+- `host_name`: The host name or ASCII string for the host's IP address.
 - `service_name`: The name of the service (from `/etc/services`) or its numeric representation as a string.
 - `flags`: Normally left 0.
 

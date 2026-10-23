@@ -82,7 +82,7 @@ typedef double* pCentroid; /* Dense centroid. */
  *** @param i The index into the provided data for the first element of the pair.
  *** @param j The index into the provided data for the second element of the pair.
  *** @param similarity A number from 0 to 1, from a similarity function, showing
- *** 	how similar the pairs are.
+ *** 	how similar the pair is.
  ***/
 typedef struct
     {

@@ -276,7 +276,7 @@ int xxxInitialize(void)
 - ⚠️ **Warning**: For compiled drivers, the success/failure of this function is ignored by the caller.  However, for drivers loaded as modules, the return value is checked in order to determine whether to keep the module loaded.  In either case, `mssError()` should be called for any failure (other than memory allocation failures).
 - 📖 **Note**: Unlike other functions defined in the driver, each driver author must manually add this call to the start up code, found in the `cxDriverInit()` function in `centrallix.c`.
 
-The initialization function is called when the Centrallix starts up, and should register the driver with the OSML and initialize necessary global variables.  It is recommended to place global variables in a single global 'struct' that is named with the driver's prefix in all uppercase.  Global variables should **NOT** be accessed from outside the driver.  Instead, the driver should define functions to access them, allowing it to abstract details away from other drivers.
+The initialization function is called when Centrallix starts up, and should register the driver with the OSML and initialize necessary global variables.  It is recommended to place global variables in a single global 'struct' that is named with the driver's prefix in all uppercase.  Global variables should **NOT** be accessed from outside the driver.  Instead, the driver should define functions to access them, allowing it to abstract details away from other drivers.
 
 To register itself with the OSML, the driver should first allocate an ObjDriver structure and initialize its contents:
 
@@ -294,7 +294,7 @@ To initialize this struct, the driver must:
 - Provide function pointers to implemented functions (see [II Interface](#ii-interface) for a list).
 
 #### Name
-The `name` field is a 64 character buffer (allowing names up to 63 characters, with a null terminator). It usually follows the format of the driver abbreviation prefix (in all uppercase), followed by a dash, followed by a descriptive name for the driver.
+The `Name` field is a 64 character buffer (allowing names up to 63 characters, with a null terminator). It usually follows the format of the driver abbreviation prefix (in all uppercase), followed by a dash, followed by a descriptive name for the driver.
 
 For example:
 ```c
@@ -390,7 +390,7 @@ While driver instance structures may vary, some fields are common in most driver
 
 | Field     | Type    | Description                                     |
 |-----------|---------|-------------------------------------------------|
-| inf->Obj  | pObject | A copy of the `obj` pointer passed to `Open()`. |
+| inf->Obj  | pObject | A copy of the `parent` pointer passed to `Open()`. |
 | inf->Mask | int     | The `mask` argument passed to `Open()`.         |
 | inf->Node | pSnNode | A pointer to the node object.                   |
 
@@ -449,7 +449,7 @@ The `Close()` function should return 0 on success or -1 on failure.
 ```c
 int xxxCreate(pObject obj, int mask, pContentType sys_type, char* usr_type, pObjTrxTree* oxt);
 ```
-The `Create()` function is used to create a new object, and uses the same parameters and return value as `Open()` (documented in detail above).  This often means adding a new file to the file system to represent the object.  Many drivers do not implement this and recommend that driver end-users create files using a standard text editor or programmatically using more general means, such as general structure file generation.  If implemented, this function frequently requires very similar path parsing functionality to `Open()`.
+The `Create()` function is used to create a new object, and uses the same parameters as `Open()` (documented in detail above), returning 0 on success or -1 on failure.  This often means adding a new file to the file system to represent the object.  Many drivers do not implement this and recommend that driver end-users create files using a standard text editor or programmatically using more general means, such as general structure file generation.  If implemented, this function frequently requires very similar path parsing functionality to `Open()`.
 
 - 📖 **Note**: For many drivers, the `Create()` function calls the driver's `Open()` function with `O_CREAT`, then calls its `Close()` function, although some drivers may manage this differently.
 
@@ -543,7 +543,7 @@ The `OpenQuery()` function returns a `void*` for the query instance struct, whic
 ```c
 int xxxQueryDelete(void* qy_v, pObjTrxTree* oxt);
 ```
-Deletes results in the query result set, optionally matching a certain criteria. `QueryDelete()` is passed two parameters:
+Deletes results in the query result set, optionally matching certain criteria. `QueryDelete()` is passed two parameters:
 
 | Parameter | Type          | Description
 | --------- | ------------- | ------------
@@ -635,7 +635,7 @@ The `last_modification : DATA_T_DATETIME` attribute is a sixth, optional attribu
 ```c
 int xxxGetAttrType(void* inf_v, char* attr_name, pObjTrxTree* oxt);
 ```
-The `GetAttrType()` function returns DATA_T_xxx value for the datatype of the requested attribute. It takes three parameters:
+The `GetAttrType()` function returns the DATA_T_xxx value for the datatype of the requested attribute. It takes three parameters:
 
 | Parameter | Type          | Description
 | --------- | ------------- | ------------
@@ -898,7 +898,7 @@ Although using the structure file format may be complex, it allows significant f
 
 Structure files are accessed via the st_node (SN) and stparse (SP) modules.  The st_node module loads and saves the structure file hierarchies as a whole.  It also manages caching to reduce disk activity and eliminate repeated parsing of the same file.  The stparse module provides access to the individual attributes and groups of attributes within a node structure file.
 
-For example, if two sessions open two files, `/test1.rpt` and `/test2.rpt` the st_node module will cache the internal representations of these node object files, and for successive uses of these node objects, the physical file will not be reparsed.  The file will be reparsed if its timestamp changes.
+For example, if two sessions open two files, `/test1.rpt` and `/test2.rpt`, the st_node module will cache the internal representations of these node object files, and for successive uses of these node objects, the physical file will not be reparsed.  The file will be reparsed if its timestamp changes.
 
 If the underlying object does not support the attribute "last_modification" (assumed to be the timestamp), then st_node prints a warning.  In essence, this warning indicates that changes to the underlying object will not trigger the st_node module to re-read the structure file defining the node object.  Otherwise, the st_node module keeps track of the timestamp, and if it changes, the node object is re-read and reparsed.
 
@@ -1143,7 +1143,7 @@ pExpression exp = expPodToExpression(POD(&value), DATA_T_INTEGER, NULL);
 
 This function returns a pointer to the expression if successful, or `NULL` if an error occurs.
 
-- 📖 **Note**: There is also a `expPtodToExpression()` function for working with the `Ptod` (pointer to object data) struct.
+- 📖 **Note**: There is also an `expPtodToExpression()` function for working with the `Ptod` (pointer to object data) struct.
 
 ### expExpressionToPod()
 ```c
@@ -1151,9 +1151,9 @@ int expExpressionToPod(pExpression this, int type, pObjData pod);
 ```
 This function reverses the functionality of [`expPodToExpression()`](#exppodtoexpression) to instead read data from an evaluated expression.  Be careful, this does not evaluate the expression if it is not already evaluated.  This function returns 0 if successful, 1 if the expression is NULL, or -1 if an error occurs.
 
-- 📖 **Note**: The source code for this function can be a useful reference when interacting with expression structures, such as when implementing the c code for an exp_function.
+- 📖 **Note**: The source code for this function can be a useful reference when interacting with expression structures, such as when implementing the C code for an exp_function.
 
-- 📖 **Note**: There is also a `expExpressionToPtod()` function for working with the `Ptod` (pointer to object data) struct.
+- 📖 **Note**: There is also an `expExpressionToPtod()` function for working with the `Ptod` (pointer to object data) struct.
 
 ### expDuplicateExpression()
 ```c
@@ -1208,7 +1208,7 @@ int expRemoveParamFromList(pParamObjects this, char* name);
 ```
 This function removes a parameter object from the list, returning 0 if successful and -1 if an error occurs.
 
-- 📖 **Note**: There is also a `expRemoveParamFromListById()` function.
+- 📖 **Note**: There is also an `expRemoveParamFromListById()` function.
 
 ### expSetParamFunctions()
 ```c

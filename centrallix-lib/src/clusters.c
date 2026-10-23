@@ -53,7 +53,7 @@
 /** This file has additional documentation in string_similarity.md. **/
 
 
-/*** Gets the hash for a pair of ASCII characters, represented by unsigned ints.
+/*** Gets the hash for a pair of ASCII characters, represented by unsigned chars.
  *** Thank you Professor John Delano for this hashing algorithm.
  *** 
  *** @param c1 The first character in the pair.
@@ -206,7 +206,7 @@ caBuildVector(const char* str)
 	    char_pairs[i].c1 = chars[i];
 	    char_pairs[i].c2 = chars[i + 1];
 	    
-	    /** Hash the character pair into an index (dimension).  **/
+	    /** Hash the character pair into an index (dimension). **/
 	    /*** Note: The passed value should always be between
 	     *** 96 (boundary) and 132 ('9').
 	     ***/

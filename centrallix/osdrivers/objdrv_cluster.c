@@ -959,7 +959,8 @@ cluster_i_parseSourceData(pStructInf inf, pParamObjects param_list, char* path)
 	
 	/*** Knowing that an error has started and the error stack must be
 	 *** cleared is sometimes not possible in this function, so clear it
-	 *** while we know no errors are happening. **/
+	 *** while we know no errors are happening.
+	 ***/
 	mssClearError();
 	
 	/** Allocate SourceData. **/
@@ -2529,12 +2530,7 @@ cluster_i_freeNodeData(pNodeData node_data)
 	    node_data->SearchDatas = NULL;
 	    }
 	
-	/** Free data source, if one exists. **/
-	/*** Note: SourceData is freed last since other free functions may need to
-	***       access information from this structure when freeing data.
-	***       (For example, nVector which is used to determine the size of the
-	***        label struct in each cluster.)
-	***/
+	/** Release data source, if one exists. **/
 	if (node_data->SourceData != NULL)
 	    {
 	    /*** This data is cached, so we should NOT free it! The cache owns
@@ -3362,7 +3358,7 @@ cluster_i_computeClusterData(pClusterData cluster_data, pNodeData node_data)
  *** @attention - Promises that mssError() will be invoked on failure.
  *** 
  *** @param search_data The pSearchData whose attributes should be computed.
- *** @param node_data The current pNodeData, used to get vectors to cluster.
+ *** @param node_data The current pNodeData, used to compute the source cluster.
  *** @returns 0 if successful, or
  ***         -1 on failure.
  ***/
