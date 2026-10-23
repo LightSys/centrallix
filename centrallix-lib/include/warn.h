@@ -24,7 +24,7 @@
 
 #include "expect.h"
 
-/** Set to zero to silence all warnings.  Cleared by the test drivers. **/
+/** Set to zero to silence all warnings. **/
 extern int WarnPrintEnabled;
 
 /** Internal warning printer (forward declaration). **/

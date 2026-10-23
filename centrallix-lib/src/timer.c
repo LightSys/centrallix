@@ -35,7 +35,7 @@ timer_i_getTime(void)
     
 	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
 	    {
-	    fprintf(stderr, "Failed to get clock time.\n");
+	    fprintf(stderr, "Warning: Failed to get clock time.\n");
 	    return NAN;
 	    }
     
