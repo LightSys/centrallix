@@ -1094,6 +1094,7 @@ start(void* v)
 			alloc = 0;
 			ptr = mlxStringVal(cmdfile, &alloc);
 			testprt_process_cmd(s, ptr);
+			mssClearError(); /* Command failure reported; next command. */
 			if (alloc) nmSysFree(ptr);
 			}
 		    mlxCloseSession(cmdfile);
@@ -1140,6 +1141,7 @@ start(void* v)
 		    }
 
 		testprt_process_cmd(s, inbuf);
+		mssClearError(); /* Command failure reported; back to the prompt. */
 		}
 	    }
 

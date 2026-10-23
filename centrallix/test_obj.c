@@ -1639,6 +1639,7 @@ start(void* v)
 	if (TESTOBJ.Command[0])
 	    {
 	    rval = testobj_do_cmd(s, TESTOBJ.Command, 1, NULL);
+	    mssClearError(); /* Command failure reported. */
 	    }
 
 	/** Command file provided? **/
@@ -1660,6 +1661,7 @@ start(void* v)
 		    if (ptr) 
 			{
 			rval = testobj_do_cmd(s, ptr, 1, input_lx);
+			mssClearError(); /* Command failure reported; next command. */
 			nmSysFree(ptr);
 			if (rval == 1) break;
 			}
@@ -1704,6 +1706,7 @@ start(void* v)
 		}
 
 	    rval = testobj_do_cmd(s, inbuf, 0, NULL);
+	    mssClearError(); /* Command failure reported; back to the prompt. */
 	    if (rval == 1) break;
 	    }
 
