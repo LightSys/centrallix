@@ -756,8 +756,6 @@ void obj_internal_OpenCtlToString(pPathname pathinfo, int pathstart, int pathend
 int obj_internal_PathToText(pPathname pathinfo, int pathend, pXString str);
 
 /** objectsystem datatype functions **/
-int objTypeFromStr(const char* str);
-char* objTypeToStr(const int type);
 int objDataToString(pXString dest, int data_type, void* data_ptr, int flags);
 double objDataToDouble(int data_type, void* data_ptr);
 int objDataToInteger(int data_type, void* data_ptr, char* format);
