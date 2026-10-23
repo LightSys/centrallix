@@ -41,22 +41,9 @@
 
 #include "magic.h"
 #include "newmalloc.h"
+#include "range.h"
 #include "strtcpy.h"
-
-/** Temporary implementations until the ones from the dups branch are available. **/
-/** TODO: Israel - Remove once the dups branch is merged. **/
-#define min(a, b) \
-    ({ \
-    __typeof__ (a) _a = (a); \
-    __typeof__ (b) _b = (b); \
-    (_a < _b) ? _a : _b; \
-    })
-#define max(a, b) \
-    ({ \
-    __typeof__ (a) _a = (a); \
-    __typeof__ (b) _b = (b); \
-    (_a > _b) ? _a : _b; \
-    })
+#include "util.h"
 
 /*** BUFFER_OVERFLOW_CHECKING adds 4 bytes of magic data to either end of
  *** the memory buffer returned to the user by nmMalloc().  This allows us
