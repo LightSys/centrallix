@@ -927,14 +927,14 @@ caKmeans(
 	/** Dynamic allocation is required because these densely allocated arrays might be up to 500KB! **/
 	const size_t centroids_size = num_clusters * sizeof(pCentroid);
 	centroids = nmMalloc(centroids_size);
+	if (centroids != NULL) memset(centroids, 0, centroids_size);
 	new_centroids = nmMalloc(centroids_size);
+	if (new_centroids != NULL) memset(new_centroids, 0, centroids_size);
 	if (centroids == NULL || new_centroids == NULL)
 	    {
 	    mssError(1, "CA", "nmMalloc(%zu) failed.", centroids_size);
 	    goto end;
 	    }
-	memset(centroids, 0, centroids_size);
-	memset(new_centroids, 0, centroids_size);
 	for (unsigned int i = 0u; i < num_clusters; i++)
 	    {
 	    centroids[i] = nmMalloc(CENTROID_SIZE);
