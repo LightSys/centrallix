@@ -321,7 +321,7 @@ nmDebugRealloc(void* ptr, size_t new_size)
 	
 	/** Allocate new data. **/
 	void* new_ptr = (void*)nmDebugMalloc(new_size);
-	if (new_ptr == NULL) return NULL;	
+	if (new_ptr == NULL) return NULL;
 	
 	/** Move the old data. **/
 	size_t old_size = MEMDATATOSTRUCT(ptr)->size;
@@ -455,9 +455,9 @@ nmMalloc(size_t size)
 	
 	/** TODO: Greg - We might need more docs for overlays. **/
 	/*** It seems like this code block is doing too many different things. It
- 	*** uses overlays, which I don't fully understand, so I wasn't able to
- 	*** simplify it.
- 	***/
+	 *** uses overlays, which I don't fully understand, so I wasn't able to
+	 *** simplify it.
+	 ***/
 	if (tmp == NULL)
 	    {
 	    if (err_fn) err_fn("Insufficient system memory for operation.");
@@ -512,8 +512,8 @@ nmFree(void* ptr, size_t size)
 	if (!is_init) nmInitialize();
 	
 	/*** If there should be an overlay, assert that it does NOT indicate that
- 	*** this memory was already freed and returned to the cache.
- 	***/
+	 *** this memory was already freed and returned to the cache.
+	 ***/
 	if (size >= MIN_SIZE)
 	    ASSERTNOTMAGIC(ptr, MGK_FREEMEM);
 	
@@ -607,9 +607,9 @@ nmStats(void)
 	if (!is_init) nmInitialize();
 	
 	/** Warn if statistics are not being tracked. **/
-	#ifndef GLOBAL_BLK_COUNTING
+#ifndef GLOBAL_BLK_COUNTING
 	fprintf(stderr, "Warning: GLOBAL_BLK_COUNTING is disabled.\n");
-	#endif
+#endif
 	
 	/** Print subsystem stats. **/
 	printf(
@@ -648,6 +648,7 @@ nmRegister(size_t size, char* name)
     
     return;
     }
+
 
 /*** Print the registered names for a block of data of a given size to stdout.
  *** 
@@ -944,12 +945,12 @@ size_t
 nmSysGetSize(void* ptr)
     {
 #ifndef NM_USE_SYSMALLOC
-    return 0lu; /* Value not stored. */
+	return 0lu; /* Value not stored. */
 #else
-    if (ptr == NULL) return 0lu;
-    
-    /** Read the size from the start of the nmSys block. **/
-    const void* buffer_ptr = ((char*)ptr) - sizeof(size_t);
-    return *(size_t*)buffer_ptr;
+	if (ptr == NULL) return 0lu;
+	
+	/** Read the size from the start of the nmSys block. **/
+	const void* buffer_ptr = ((char*)ptr) - sizeof(size_t);
+	return *(size_t*)buffer_ptr;
 #endif
     }
