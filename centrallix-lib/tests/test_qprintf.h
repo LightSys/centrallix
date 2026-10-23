@@ -30,7 +30,7 @@
 #define ASSERT_NO_ERRORS(s) \
     ({ \
     pQPSession _s = (s); \
-    const bool success = ASSERT_EQL(qpfErrors(_s), QPF_ERR_T_NO_ERRORS, "%d"); \
+    const bool success = ASSERT_EQL(qpfErrors(_s), QPF_ERR_T_NO_ERRORS, "%u"); \
     if (!success) qpfLogErrors(_s); \
     success; \
     })

@@ -605,7 +605,7 @@ qpfLogErrors(pQPSession s)
 		{
 		const char* error_name = qpf_internal_getErrorName(err);
 		const unsigned int line_number = s->ErrorLines[i];
-		fprintf(stderr, "- %d: %s (%s:%d)\n", err, error_name, __FILE__, line_number);
+		fprintf(stderr, "- %u: %s (%s:%u)\n", err, error_name, __FILE__, line_number);
 		}
 	    }
     }
