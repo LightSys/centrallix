@@ -22,7 +22,7 @@
 
 /** Test dependencies. **/
 #include "newmalloc.h"
-#include "test_utils.h"
+#include "t_utils.h"
 #include "warn.h"
 
 /** Tested module. **/
