@@ -656,6 +656,8 @@ nmRegister(size_t size, char* name)
 void
 nmPrintNames(size_t size)
     {
+	if (size > MAX_SIZE) return;
+	
 	/** Traverse the linked list of registered structs to print each name. **/
 	for (pRegisteredBlockType blk = blknames[size]; blk != NULL; blk = blk->Next)
 	    {
