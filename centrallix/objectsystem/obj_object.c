@@ -493,7 +493,10 @@ obj_internal_TypeFromSfHeader(pObject obj)
 
 	/** Read in the first bit of the object. **/
 	if ((cnt=objRead(obj, read_buf, sizeof(read_buf)-1, 0, OBJ_U_SEEK)) <= 0)
+	    {
+	    mssClearError(); /* Failure handled. */
 	    return NULL;
+	    }
 	read_buf[cnt] = '\0';
 
 	/** Reset file seek pointer **/
@@ -509,7 +512,10 @@ obj_internal_TypeFromSfHeader(pObject obj)
 	rval = stProbeTypeGeneric(obj, objRead, type_buf, sizeof(type_buf));
 	objRead(obj, read_buf, 0, 0, OBJ_U_SEEK);
 	if (rval < 0)
+	    {
+	    mssClearError(); /* Failure handled. */
 	    return NULL;
+	    }
 
 	/** Do we have a valid type? **/
 	type = (pContentType)xhLookup(&OSYS.Types, (void*)type_buf);
@@ -557,6 +563,10 @@ objTypeFromName(char* name)
 			    apparent_type = ck_type;
 			    break;
 			    }
+			}
+		    else
+			{
+			mssClearError(); /* Failure handled; try next type. */
 			}
 		    }
 		}

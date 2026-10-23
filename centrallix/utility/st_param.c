@@ -156,6 +156,7 @@ stp_internal_evaluate_parameter(pStpInf inf, pStructInf attr, pObject obj)
 	    else
 		{
 		/* the expression failed.  use tstr if needed */
+		mssClearError(); /* Failure handled. */
 		if (strcmp(tstr, attr->StrVal[0]))
 		    {
 	            tmpstring=(char*)malloc(sizeof(char*) * strlen(tstr) +1);

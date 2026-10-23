@@ -909,7 +909,10 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    if (qy->UsingIndex)
 			{
 			if (tmp_internal_AddAllToIndex(qy->TempObj, qy->UsingIndex) < 0)
+			    {
+			    mssClearError(); /* Failure handled; fall back to collection scan. */
 			    qy->UsingIndex = NULL;
+			    }
 			}
 		    }
 
