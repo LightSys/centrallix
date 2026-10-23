@@ -306,7 +306,7 @@ nmDebugFree(void* ptr)
 
 /*** Reallocates a memory block from `nmDebugMalloc()` (or `nmDebugRealloc()`)
  *** to a new size, maintaining as much data as possible.  Data loss only
- *** occurs if the new size is smaller, in which case bits are lost starting
+ *** occurs if the new size is smaller, in which case bytes are lost starting
  *** at the end of the buffer.
  *** 
  *** @param ptr A pointer to the current buffer (deallocated by this call).
@@ -717,7 +717,7 @@ nmDebug(void)
     }
 
 
-/** Print debug information about the newmalloc system. **/
+/** Print changes in block counts since the last nmDeltas() call, for debugging. **/
 void
 nmDeltas(void)
     {
@@ -847,7 +847,7 @@ nmSysFree(void* ptr)
 
 /*** Reallocates a memory block from `nmSysMalloc()` (or similar) to a new
  *** size, maintaining as much data as possible.  Data loss only occurs if the
- *** new size is smaller, in which case bits are lost starting at the end of
+ *** new size is smaller, in which case bytes are lost starting at the end of
  *** the buffer.
  *** 
  *** @param ptr A pointer to the current buffer (deallocated by this call).
