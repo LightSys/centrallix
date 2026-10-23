@@ -753,8 +753,16 @@ nmDeltas(void)
 	printf("\n");
 	
 	/** Print the total delta. **/
-	/** TODO: Israel - Change this to use snprint_bytes() once that function is available. **/
-	printf("delta %lld total bytes\n", total_delta);
+	const bool negative = (total_delta < 0ll);
+	const unsigned long magnitude = (negative) ? 0ul - (unsigned long)(total_delta) : (unsigned long)(total_delta);
+	char buf[SNPRINT_BYTES_BUF_SIZE];
+	if (snprintBytes(buf, sizeof(buf), magnitude) < 0)
+	    {
+	    fprintf(stderr, "Warning: Failed to format total delta of %lld bytes.\n", total_delta);
+	    printf("delta %lld total bytes\n", total_delta);
+	    }
+	else
+	    printf("delta %s%s total\n", (negative) ? "-" : "", buf);
     
     return;
     }
