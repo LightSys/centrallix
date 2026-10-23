@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -2684,6 +2684,7 @@ function pg_tooltip(msg, x, y)
     {
     if (!pg_tiplayer)
 	pg_tiplayer = htr_new_layer(pg_width);
+    pg_set_style(pg_tiplayer, "width", pg_width + "px");
     htr_setvisibility(pg_tiplayer, "hidden");
     //pg_set_style(pg_tiplayer, "box-shadow", "2px 2px 4px black");
     pg_tipindex++;
@@ -2709,25 +2710,21 @@ function pg_canceltip(id)
 function pg_dotip()
     {
     pg_tiptmout = null;
-    var txt = '<table border="0" cellspacing="0" cellpadding="1" bgcolor="black"><tr><td><table border="0" cellspacing="0" cellpadding="1" bgcolor="#ffffc0"><tr><td><table border="0" cellspacing="0" cellpadding="0"><tr><td><img src="/sys/images/trans_1.gif"></td><td>' + htutil_encode(pg_tipinfo.msg) + '</td><td><img src="/sys/images/trans_1.gif"></td></tr></table></td></tr></table></td></tr></table>';
-    //pg_serialized_write(pg_tiplayer, txt, pg_dotip_complete);
+    var txt = '<table border="0" cellspacing="0" cellpadding="1" bgcolor="black"><tr><td><table border="0" cellspacing="0" cellpadding="1" bgcolor="#ffffc0"><tr><td><table border="0" cellspacing="0" cellpadding="0"><tr><td><img src="/sys/images/trans_1.gif"></td><td>' + htutil_nlbr(htutil_encode(pg_tipinfo.msg, true)) + '</td><td><img src="/sys/images/trans_1.gif"></td></tr></table></td></tr></table></td></tr></table>';
     htr_write_content(pg_tiplayer,txt);
     pg_dotip_complete();
     }
 
 function pg_dotip_complete()
     {
-    var imgs = pg_images(pg_tiplayer);
-    var x1 = getRelativeX(imgs[0]);
-    if (isNaN(x1)) x1 = imgs[0].offsetLeft + imgs[0].offsetParent.offsetLeft;
-    var x2 = getRelativeX(imgs[1]);
-    if (isNaN(x2)) x2 = imgs[1].offsetLeft + imgs[1].offsetParent.offsetLeft;
-    var tipw = (x2 - x1) + 5;
+    var tipw = $(pg_tiplayer.firstChild).width();
+    if (tipw > pg_width / 2)
+	tipw = pg_width / 2;
+    tipw += 5;
     var pgx = pg_tipinfo.x;
     var pgy = pg_tipinfo.y + 20;
     if (pgx + tipw > pg_width) pgx = pg_width - tipw;
     if (pgx < 0) pgx = 0;
-    //setClipWidth(pg_tiplayer, tipw);
     pg_set_style(pg_tiplayer, "width", tipw + "px");
     moveToAbsolute(pg_tiplayer, pgx, pgy);
     htr_setzindex(pg_tiplayer, 99999);
@@ -2755,7 +2752,12 @@ function pg_mousemove(e)
 	pg_tipinfo.x = e.pageX;
 	pg_tipinfo.y = e.pageY;
 	}
-    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    if (pg_checkmodal(ly))
+	{
+	// A window drag must keep tracking the cursor when it moves off the modal.
+	if (window.wn_current) wn_drag_watch(e);
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
@@ -2883,7 +2885,12 @@ function pg_mouseup(e)
     {
     var ly = e.layer;
     if (ly.mainlayer) ly = ly.mainlayer;
-    if (pg_checkmodal(ly)) return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+    if (pg_checkmodal(ly))
+	{
+	// A window drag must be able to terminate when released off the modal.
+	if (window.wn_current) wn_drag_end();
+	return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
+	}
     /*if (pg_modallayer)
         {
         if (!pg_isinlayer(pg_modallayer, ly)) return EVENT_HALT | EVENT_ALLOW_DEFAULT_ACTION;

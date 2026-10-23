@@ -59,6 +59,8 @@ typedef struct _CXG
     int		Flags;
     int		ClkTck;
     pFile	DebugFile;
+    pFile	TestOutputFile;
+    XArray	TestIDs;
     }
     CxGlobals_t, *pCxGlobals_t;
 
@@ -68,6 +70,7 @@ extern CxGlobals_t CxGlobals;
 #define CX_F_ENABLEREMOTEPW	2	/* enable sending auth to remote services */
 #define CX_F_DEBUG		4	/* for testing only */
 #define CX_F_SERVICE		8	/* become a background service */
+#define CX_F_SHOWTESTOUTPUT	16	/* show output needed for the test suite */
 
 
 /*** Loadable modules use this to define init/finish functions.
@@ -102,6 +105,7 @@ int cxAddShutdownHandler(ShutdownHandlerFunc);
 
 /*** startup functions ***/
 int cxInitialize();
+void cxSetupGlobals(int argc, char* argv[]);
 int cxDriverInit();
 int cxHtInit();
 int cxNetworkInit();
@@ -109,6 +113,11 @@ int cxLinkSigningSetup(pStructInf my_config);
 
 /*** Debugging ***/
 int cxDebugLog(char* fmt, ...);
+void cxTestOutput(uintptr_t id, char* fmt, ...);
+void cxRedirectTestOutput(pFile outfile);
+void cxTestEnable(uintptr_t id);
+
+#define CX_TEST_NONE	(UINTPTR_MAX)
 
 
 /*** Sys Info data structure for object/tree additions ***/

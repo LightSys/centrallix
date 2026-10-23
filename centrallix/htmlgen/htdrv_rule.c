@@ -65,7 +65,6 @@ typedef struct _RD
 /** globals **/
 static struct 
     {
-    int			idcnt;
     pHtRuleDefinition	RuletypeList;
     }
     HTRULE;
@@ -76,7 +75,6 @@ static struct
 int
 htruleRender(pHtSession s, pWgtrNode tree, int z)
     {
-    int id;
     char* nptr;
     char* ptr;
     pXString xs = NULL;
@@ -89,9 +87,6 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
     pExpression code;
     pHtRuleDefinition def;
     int i, found;
-
-    	/** Get an id for this. **/
-	id = (HTRULE.idcnt++);
 
 	xs = (pXString)nmMalloc(sizeof(XString));
 	if (!xs) goto error;
@@ -275,7 +270,6 @@ htruleInitialize()
 
 	htrAddSupport(drv, "dhtml");
 
-	HTRULE.idcnt = 0;
 	HTRULE.RuletypeList = NULL;
 
     return 0;

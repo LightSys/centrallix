@@ -63,7 +63,6 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
     int x=-1,y=-1,w,h,ch,total_h,top_h,total_h_accum,cy;
     int id;
     int i, cnt;
-    int box_offset;
     int always_visible;
     pWgtrNode childlist[32];
     pWgtrNode child;
@@ -93,12 +92,6 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Background color/image? **/
 	htrGetBackground(tree,NULL,!s->Capabilities.Dom0NS,main_bg,sizeof(main_bg));
-
-	/** figure out box offset fudge factor... stupid box model... **/
-	if (s->Capabilities.CSSBox)
-	    box_offset = 1;
-	else
-	    box_offset = 0;
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;

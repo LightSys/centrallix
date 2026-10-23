@@ -63,7 +63,7 @@ void* my_ptr;
 
 /*** Instantiate the globals from centrallix.h 
  ***/
-CxGlobals_t CxGlobals;
+extern CxGlobals_t CxGlobals;
 
 /*** Test prt globals
  ***/
@@ -1155,10 +1155,8 @@ main(int argc, char* argv[])
     int ch;
 
 	/** Default global values **/
-	strcpy(CxGlobals.ConfigFileName, CENTRALLIX_CONFIG);
-	CxGlobals.QuietInit = 0;
-	CxGlobals.ParsedConfig = NULL;
-	CxGlobals.Flags = 0;
+	cxSetupGlobals(argc, argv);
+	memset(&TESTPRT, 0, sizeof(TESTPRT));
 	TESTPRT.OutputFile[0] = 0;
 	TESTPRT.CmdFile[0] = 0;
     

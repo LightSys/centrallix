@@ -8,7 +8,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -157,10 +157,12 @@ nht_i_AddLoginHashCookie(pNhtConn conn)
     long long timestamp;
     unsigned char nonce[8];
     unsigned char hash[SHA256_DIGEST_LENGTH];
+    static unsigned int incr = 0;
 
 	/** Get timestamp and nonce **/
 	timestamp = mtLastTick() * 1000LL / NHT.ClkTck;
 	cxssKeystreamGenerate(NHT.NonceData, nonce, sizeof(nonce));
+	incr = (incr + 1)%90;
 
 	/** Generate our secure hash **/
 	SHA256_Init(&hashctx);
@@ -173,11 +175,13 @@ nht_i_AddLoginHashCookie(pNhtConn conn)
 	SHA256_Final(hash, &hashctx);
 
 	/** Send the header **/
-	nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "CXLH=%8STR&HEX%8STR&HEX%*STR&HEX; Max-Age=60; HttpOnly; SameSite=Strict; Path=/",
+	nht_i_AddResponseHeaderQPrintf(conn, "Set-Cookie", "CXLH%INT=%8STR&HEX%8STR&HEX%*STR&HEX; Max-Age=60; HttpOnly; SameSite=Strict; Path=/%[; Secure%]",
+		(incr + 10),
 		nonce,
 		(unsigned char*)&timestamp,
 		SHA256_DIGEST_LENGTH,
-		hash
+		hash,
+		conn->UsingTLS
 		);
 
     return 0;
@@ -201,31 +205,34 @@ nht_i_CheckLoginHashCookie(pNhtConn conn)
 
 	cur_timestamp = mtLastTick() * 1000LL / NHT.ClkTck;
 	cookieptr = conn->AllCookies;
-	while((cookieptr = strstr(cookieptr, "CXLH=")) != NULL)
+	while((cookieptr = strstr(cookieptr, "CXLH")) != NULL)
 	    {
-	    found = 1;
-	    if (strspn(cookieptr + 5, hex) == (SHA256_DIGEST_LENGTH + sizeof(nonce) + sizeof(timestamp)) * 2)
+	    if (cookieptr[4] >= '0' && cookieptr[4] <= '9' && cookieptr[5] >= '0' && cookieptr[5] <= '9' && cookieptr[6] == '=')
 		{
-		/** Extract the pieces **/
-		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 5);
-		memcpy(nonce, decode, sizeof(nonce));
-		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 5 + (sizeof(nonce) * 2));
-		memcpy((char*)&timestamp, decode, sizeof(timestamp));
-		qpfPrintf(NULL, (char*)decode, sizeof(decode), "%64STR&DHEX", cookieptr + 5 + (sizeof(nonce) * 2) + (sizeof(timestamp) * 2));
+		found = 1;
+		if (strspn(cookieptr + 7, hex) == (SHA256_DIGEST_LENGTH + sizeof(nonce) + sizeof(timestamp)) * 2)
+		    {
+		    /** Extract the pieces **/
+		    qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 7);
+		    memcpy(nonce, decode, sizeof(nonce));
+		    qpfPrintf(NULL, (char*)decode, sizeof(decode), "%16STR&DHEX", cookieptr + 7 + (sizeof(nonce) * 2));
+		    memcpy((char*)&timestamp, decode, sizeof(timestamp));
+		    qpfPrintf(NULL, (char*)decode, sizeof(decode), "%64STR&DHEX", cookieptr + 7 + (sizeof(nonce) * 2) + (sizeof(timestamp) * 2));
 
-		/** Recompute the hash **/
-		SHA256_Init(&hashctx);
-		SHA256_Update(&hashctx, nonce, sizeof(nonce));
-		SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
-		SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
-		SHA256_Update(&hashctx, nonce, sizeof(nonce));
-		SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
-		SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
-		SHA256_Final(hash, &hashctx);
+		    /** Recompute the hash **/
+		    SHA256_Init(&hashctx);
+		    SHA256_Update(&hashctx, nonce, sizeof(nonce));
+		    SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
+		    SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
+		    SHA256_Update(&hashctx, nonce, sizeof(nonce));
+		    SHA256_Update(&hashctx, NHT.LoginKey, sizeof(NHT.LoginKey));
+		    SHA256_Update(&hashctx, (unsigned char*)&timestamp, sizeof(timestamp));
+		    SHA256_Final(hash, &hashctx);
 
-		/** Does it match, and is it within the last minute? **/
-		if (memcmp(hash, decode, sizeof(hash)) == 0 && cur_timestamp >= timestamp && (cur_timestamp - timestamp) <= 60000)
-		    return 0;
+		    /** Does it match, and is it within the last minute? **/
+		    if (memcmp(hash, decode, sizeof(hash)) == 0 && cur_timestamp >= timestamp && (cur_timestamp - timestamp) <= 60000)
+			return 0;
+		    }
 		}
 	    cookieptr++;
 	    }
@@ -712,6 +719,12 @@ nht_i_ConnHandler(void* conn_v)
 
 	    /** Authentication succeeded - start a new session **/
 	    conn->NhtSession = nht_i_AllocSession(usrname, conn->UsingTLS);
+	    if (!conn->NhtSession)
+		{
+		mssError(0,"NHT","Could not create session for user [%s]", usrname);
+		nht_i_WriteErrResponse(conn, 500, "Internal Server Error", "<h1>Internal Server Error</h1>\r\n");
+		goto out;
+		}
 	    printf("NHT: new session for username [%s], cookie [%s]\n", conn->NhtSession->Username, conn->NhtSession->Cookie);
 	    }
 
@@ -1186,4 +1199,3 @@ nht_i_Handler(void* v)
 
     thExit();
     }
-

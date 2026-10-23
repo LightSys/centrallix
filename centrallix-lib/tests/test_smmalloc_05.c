@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "smmalloc.h"
+#include "smmalloc_private.h"
 
 long long
 test(char** tname)
@@ -14,18 +15,25 @@ test(char** tname)
     int iter;
     int j,k,l;
     void* alloc[1024];
+    int min_blocks;
 
 	smInitialize();
 
 	*tname = "smmalloc-05 malloc/free 1MB, free order = random, size=1K";
 	srand(time(NULL));
 	iter = 300;
+	/** Each allocation consumes a block header too, so how many 1K blocks
+	 ** fit in a 1MB region depends on the header size, not just on the
+	 ** region size.  Leave slack for the region's own overhead.
+	 **/
+	min_blocks = ((1024*1024 - sizeof(SmRegion)) / (1024 + sizeof(SmBlock))) * 9 / 10;
+
 	r = smCreate(1024*1024);
 	for(i=0;i<iter;i++)
 	    {
 	    j=0;
 	    while((alloc[j] = smMalloc(r,1024)) != NULL && j < 1023) j++;
-	    if (j < 950)
+	    if (j < min_blocks)
 		{
 		smDestroy(r);
 		return -1;

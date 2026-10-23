@@ -45,14 +45,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTCONN;
-
-
 /*** htconnRender - generate the HTML code for the page.
  ***/
 int
@@ -67,7 +59,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
     char target[128];
     char source[128];
     char action[32] = "";
-    int id, i;
+    int i;
     XString xs;
     pExpression code;
     int first;
@@ -79,9 +71,6 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTCONN","Netscape DOM or W3C DOM1HTML support required");
 	    return -1;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTCONN.idcnt++);
 
 	/** Inside a component-decl-action? **/
 	if (tree->Parent && wgtrGetPropertyValue(tree->Parent, "outer_type", DATA_T_STRING, POD(&ptr)) == 0 && !strcmp(ptr, "widget/component-decl-action"))
@@ -271,8 +260,6 @@ htconnInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTCONN.idcnt = 0;
 
     return 0;
     }

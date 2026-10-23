@@ -25,9 +25,9 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "test data");
+	    rval = qpfPrintf(NULL, (char*)((char*)buf+4), 36, "%STR&B64", "test data");
 	    assert(rval == strlen("dGVzdCBkYXRh"));
-	    rval = qpfPrintf(NULL, (char*)(buf+4), 36, "%STR&B64", "the quick brown fox jumps ov");
+	    rval = qpfPrintf(NULL, (char*)((char*)buf+4), 36, "%STR&B64", "the quick brown fox jumps ov");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -41,4 +41,3 @@ test(char** tname)
 
     return iter*2;
     }
-

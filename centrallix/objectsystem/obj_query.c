@@ -105,7 +105,13 @@ objMultiQuery(pObjSession session, char* query, void* objlist_v, int flags)
 	this->Magic = MGK_OBJQUERY;
 	this->Obj = NULL;
 
-	/** Start the query. **/
+	/** 'flags' param and ->Flags field use different bitmask values. **/
+	if (flags & OBJ_MQ_F_ONEROW)
+	    this->Flags |= OBJ_QY_F_ONEROW;
+
+	/** Start the query.  Note that the MQ module's OpenQuery has a necessarily
+	 ** different function signature than that of a standard obj driver.
+	 **/
 	this->Data = this->Drv->OpenQuery(session, query, objlist, flags);
 	if (!this->Data)
 	    {
@@ -182,6 +188,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 	linked_obj = objLinkTo(obj);
 	this->Obj = linked_obj;
         this->ObjList = (void*)expCreateParamList();
+	this->Flags |= (flags & OBJ_QY_F_ONEROW);
 	expAddParamToList((pParamObjects)(this->ObjList), NULL, NULL, EXPR_O_CURRENT);
 
 	/** Ok, first parse the query. **/

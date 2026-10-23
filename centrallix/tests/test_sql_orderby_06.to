@@ -1,0 +1,9 @@
+##NAME ORDER BY, multiple unqualified attribute references
+
+# Unqualified (:attr) keys used to all compare equal, so every key after the
+# first was dropped as a duplicate.  The last query is the qualified form.
+
+csv SELECT :ColorGroup, :Color FROM /tests/TestLevel1.csv/rows       ORDER BY :ColorGroup,      :Color
+csv SELECT :ColorGroup, :Color FROM /tests/TestLevel1.csv/rows       ORDER BY :ColorGroup,      :Color DESC
+csv SELECT :ColorGroup, :Color FROM /tests/TestLevel1.csv/rows       ORDER BY :ColorGroup DESC, :Color
+csv SELECT :ColorGroup, :Color FROM /tests/TestLevel1.csv/rows level ORDER BY :level:ColorGroup, :level:Color

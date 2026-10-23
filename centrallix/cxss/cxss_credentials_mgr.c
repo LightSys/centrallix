@@ -11,6 +11,7 @@
 #include "cxss/credentials_mgr.h"
 #include "cxss/credentials_db.h"
 #include "cxss/crypto.h"
+#include "cxss/cxss.h"
 #include <assert.h>
 
 /* Database context */
@@ -129,13 +130,13 @@ cxssAddUser(const char *cxss_userid, const char *pb_userkey, size_t pb_userkey_l
 
     free(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
-    cxssShred(pb_userkey, pb_userkey_len);    
+    cxssShred((char*)pb_userkey, pb_userkey_len);    
     return CXSS_MGR_SUCCESS;
 
 error:
     free(encrypted_privatekey);
     cxssDestroyKey(privatekey, privatekey_len);
-    cxssShred(pb_userkey, pb_userkey_len);
+    cxssShred((char*)pb_userkey, pb_userkey_len);
     return CXSS_MGR_INSERT_ERROR;
 }
 
@@ -169,13 +170,13 @@ cxssRetrieveUserPrivateKey(const char *cxss_userid, const char *pb_userkey, size
     *privatekey_len = UserAuth.KeyLength;
     
     cxssFreeUserAuth(&UserAuth);  
-    cxssShred(pb_userkey, pb_userkey_len);
+    cxssShred((char*)pb_userkey, pb_userkey_len);
     return CXSS_MGR_SUCCESS;
 
 error:
     free(*privatekey);
     cxssFreeUserAuth(&UserAuth);
-    cxssShred(pb_userkey, pb_userkey_len);
+    cxssShred((char*)pb_userkey, pb_userkey_len);
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
@@ -285,7 +286,7 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
     }
 
     /* Erase plaintext random key from memory */
-    memset(rand_key, 0, sizeof(rand_key));
+    cxssShred(rand_key, sizeof(rand_key));
 
     /* Build struct */
     UserResc.CXSS_UserID = cxss_userid;
@@ -313,16 +314,16 @@ cxssAddResource(const char *cxss_userid, const char *resource_id, const char *au
     free(publickey);
     free(encrypted_username);
     free(encrypted_password);
-    cxssShred(resource_username, username_len);
-    cxssShred(resource_authdata, authdata_len);
+    cxssShred((char*)resource_username, username_len);
+    cxssShred((char*)resource_authdata, authdata_len);
     return CXSS_MGR_SUCCESS;
 
 error:
     free(publickey);
     free(encrypted_username);
     free(encrypted_password);
-    cxssShred(resource_username, username_len);
-    cxssShred(resource_authdata, authdata_len);
+    cxssShred((char*)resource_username, username_len);
+    cxssShred((char*)resource_authdata, authdata_len);
     return CXSS_MGR_INSERT_ERROR;
 }
 
@@ -391,7 +392,7 @@ cxssGetResource(const char *cxss_userid, const char *resource_id, const char *pb
     cxssFreeUserAuth(&UserAuth);
     cxssFreeUserResc(&UserResc);
     cxssDestroyKey(privatekey, privatekey_len);
-    cxssShred(pb_userkey, pb_userkey_len);
+    cxssShred((char*)pb_userkey, pb_userkey_len);
     return CXSS_MGR_SUCCESS;
 
 error:
@@ -400,7 +401,7 @@ error:
     cxssDestroyKey(privatekey, privatekey_len);
     cxssDestroyKey(*resource_username, username_len);
     cxssDestroyKey(*resource_authdata, authdata_len);  
-    cxssShred(pb_userkey, pb_userkey_len);  
+    cxssShred((char*)pb_userkey, pb_userkey_len);  
     return CXSS_MGR_RETRIEVE_ERROR;
 }
 
@@ -442,4 +443,3 @@ cxssDeleteResource(const char *cxss_userid, const char *resource_id)
     }
     return CXSS_MGR_SUCCESS;
 }
-

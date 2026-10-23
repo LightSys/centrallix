@@ -1,0 +1,6 @@
+##NAME GROUP BY, more keys than the old fixed array held
+
+# Forty group-by keys.  The item list was a thirty-entry array, so key 31
+# overwrote the item count and key 32 landed outside the structure.
+
+csv SELECT color = :Color, grp = :ColorGroup, n = count(:Color) FROM /tests/TestLevel1.csv/rows GROUP BY :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup, :Color, :ColorGroup

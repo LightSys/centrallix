@@ -43,25 +43,13 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTHINT;
-
-
 /*** hthintRender - generate the HTML code for the page.
  ***/
 int
 hthintRender(pHtSession s, pWgtrNode tree, int z)
     {
-    int id;
     pObjPresentationHints hints;
     XString xs;
-
-    	/** Get an id for this. **/
-	id = (HTHINT.idcnt++);
 
 	/** Convert the object data into hints data **/
 	hints = wgtrWgtToHints(tree);
@@ -108,8 +96,6 @@ hthintInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTHINT.idcnt = 0;
 
     return 0;
     }

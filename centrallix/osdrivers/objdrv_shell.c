@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "stparse.h"
@@ -1254,4 +1255,3 @@ MODULE_PREFIX("shl");
 MODULE_DESC("SHL ObjectSystem Driver");
 MODULE_VERSION(0,1,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
-

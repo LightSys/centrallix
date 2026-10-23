@@ -27,11 +27,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
-	    qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
-	    rval = qpfPrintf(NULL, buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
-	    assert(!strcmp(buf+4, "Enc: 3c6220633d227722..."));
+	    qpfPrintf(NULL, (char*)buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
+	    qpfPrintf(NULL, (char*)buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
+	    qpfPrintf(NULL, (char*)buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 27, "Enc: %STR&HEX&16LEN...", "<b c=\"w\">");
+	    assert(!strcmp((char*)buf+4, "Enc: 3c6220633d227722..."));
 	    assert(rval == 24);
 	    assert(buf[31] == '\n');
 	    assert(buf[30] == '\0');
@@ -47,4 +47,3 @@ test(char** tname)
 
     return iter*4;
     }
-

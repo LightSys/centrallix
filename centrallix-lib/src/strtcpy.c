@@ -1,11 +1,15 @@
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
+
 #include "strtcpy.h"
+#include "expect.h"
 
 /************************************************************************/
 /* Centrallix Application Server System                                 */
 /* Centrallix Base Library                                              */
 /*                                                                      */
-/* Copyright (C) 1998-2006 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* You may use these files and this library under the terms of the      */
 /* GNU Lesser General Public License, Version 2.1, contained in the     */
@@ -15,16 +19,10 @@
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	April 14th, 2006                                        */
 /*									*/
-/* Description:	Provides strtcpy(), a Truncating strcpy(), which	*/
-/*		both respects the bounds of the destination and makes	*/
-/*		sure the result is null-terminated.			*/
+/* Description:	Provides truncating string functions, which respect the	*/
+/*		bounds of the destination and ensure null-termination.	*/
 /************************************************************************/
 
-
-/** branch prediction pseudo-macro - define if compiler doesn't support it **/
-#ifndef __builtin_expect
-#define __builtin_expect(e,c) (e)
-#endif
 
 /*** strtcat() - truncating string concatenation
  ***
@@ -35,14 +33,14 @@
 int
 strtcat(char* dst, const char* src, size_t dstlen)
     {
-    if (__builtin_expect((!dstlen), 0)) 
+    if (UNLIKELY((!dstlen))) 
 	return 0;
 
     /** Find end of current string **/
     char* endptr = memchr(dst, '\0', dstlen);
-    if (__builtin_expect((!endptr), 0)) 
+    if (UNLIKELY((!endptr))) 
 	return 0;
-    if (__builtin_expect((endptr == dst+dstlen), 0)) 
+    if (UNLIKELY((endptr == dst+dstlen))) 
 	return 0;
 
     /** Call strtcpy to copy the bytes and null-terminate it. **/
@@ -59,13 +57,13 @@ int
 strtcpy(char* dst, const char* src, size_t dstlen)
     {
     size_t cnt = 0;
-    if (__builtin_expect((!dstlen), 0)) 
+    if (UNLIKELY((!dstlen))) 
 	return 0;
 
-    while (__builtin_expect(cnt < dstlen, 1) && __builtin_expect((dst[cnt] = src[cnt]) != '\0', 1)) 
+    while (LIKELY(cnt < dstlen) && LIKELY((dst[cnt] = src[cnt]) != '\0')) 
 	cnt++;
 
-    if (__builtin_expect(cnt == dstlen, 0)) 
+    if (UNLIKELY(cnt == dstlen)) 
 	{
 	dst[cnt-1] = '\0';
 	return -dstlen;
@@ -76,10 +74,72 @@ strtcpy(char* dst, const char* src, size_t dstlen)
     /** test suite says above is faster than the below **/
     while (--dstlen && ((*(dst++)) = (*(src++))));
     dst[0] = '\0';
-    if (__builtin_expect((!dstlen && (*dst != '\0')),0)) 
+    if (UNLIKELY((!dstlen && (*dst != '\0')))) 
             return -origlen;
     return origlen - dstlen;
 #endif
     }
 
 
+/*** strtcatf_va() - same as strtcatf(), but takes a va_list instead of
+ *** a variable argument list.
+ ***/
+int
+strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
+    {
+    size_t start;
+    int ret;
+
+    if (UNLIKELY((!dst || !pos || !fmt))) 
+	return -1;
+
+    start = *pos;
+
+    /** No room for even one character. **/
+    if (UNLIKELY((dstlen == 0 || start >= dstlen - 1))) 
+	return 0;
+
+    ret = vsnprintf(dst + start, dstlen - start, fmt, ap);
+
+    /** vsnprintf() failed, so discard whatever it left behind. **/
+    if (UNLIKELY((ret < 0))) 
+	{
+	dst[start] = '\0';
+	return -1;
+	}
+
+    /** Output overran dst, so it was truncated and dst is now full. **/
+    if (UNLIKELY((start + (size_t)ret >= dstlen))) 
+	{
+	*pos = dstlen - 1;
+	return -(int)(dstlen - start);
+	}
+
+    *pos = start + (size_t)ret;
+    return ret + 1;
+    }
+
+
+/*** strtcatf() - truncating formatted string concatenation
+ ***
+ *** Appends a printf-style message to dst, being sure to not overflow the
+ *** given dstlen size.  *pos is the offset of dst's terminating null, and
+ *** advances past the appended text, so chained calls need no checks in
+ *** between.  A full dst, or a *pos outside it, appends nothing.
+ *** Returns number of bytes actually appended, including null terminator.
+ *** If truncated, returns -(bytes appended), which is always -2 or less.
+ *** Returns 0 if dst was already full, and -1 if the arguments were bad or
+ *** the conversion itself failed, in which case nothing is appended.
+ ***/
+int
+strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)
+    {
+    va_list ap;
+    int ret;
+
+    va_start(ap, fmt);
+    ret = strtcatf_va(dst, dstlen, pos, fmt, ap);
+    va_end(ap);
+
+    return ret;
+    }

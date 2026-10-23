@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -104,6 +104,7 @@ typedef struct _QE
 #define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_EF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 #define MQ_EF_PAGED		512		/* SELECT ... FROM PAGED ... */
+#define MQ_EF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -146,6 +147,7 @@ typedef struct _QS
 #define MQ_SF_COLLECTION	8192		/* DECLARE COLLECTION ... */
 #define MQ_SF_NONEMPTY		16384		/* SELECT ... FROM NONEMPTY ... */
 #define MQ_SF_PAGED		32768		/* SELECT ... FROM PAGED ... */
+#define MQ_SF_DEFAULTORDER	65536		/* ORDER BY DEFAULT (dropped/overridden by a following ORDER BY) */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -270,6 +272,7 @@ struct _MQ /* MultiQuery */
 #define MQ_F_NOINSERTED		16		/* did not create __inserted object. **/
 #define MQ_F_SHOWPLAN		32		/* print diagnostics for SQL statement **/
 #define MQ_F_FIRSTSTATEMENT	64		/* parsing the first statement in the query */
+#define MQ_F_ONEROW		128		/* only the first row of the results is needed */
 
 
 /*** Pseudo-object structure. ***/
@@ -303,6 +306,9 @@ pQueryStructure mq_internal_AllocQS(int type);
 pQueryStructure mq_internal_FindItem(pQueryStructure tree, int type, pQueryStructure next);
 pQueryElement mq_internal_AllocQE();
 int mq_internal_FreeQE(pQueryElement qe);
+int mq_internal_AddOrderBy(pQueryElement qe, pExpression exp);
+int mq_internal_ClearOrderBy(pQueryElement qe);
+int mq_internal_nOrderBy(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);

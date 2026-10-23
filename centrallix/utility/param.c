@@ -6,6 +6,7 @@
 #include "cxlib/strtcpy.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/datatypes.h"
+#include "cxlib/mtsession.h"
 #include "stparse.h"
 #include "stparse_ne.h"
 #include "param.h"
@@ -414,4 +415,3 @@ paramGetValue(pParam param, int datatype, pObjData value)
 
     return paramGetValueUntyped(param, value);
     }
-

@@ -18,6 +18,7 @@ dnl Checks for libraries.
 dnl Replace `main' with a function in -lz:
 AC_CHECK_LIB(z, main)
 AC_CHECK_LIB(crypt, main)
+AC_CHECK_LIB(m, main)
 
 dnl Checks for header files.
 AC_HEADER_STDC
@@ -40,6 +41,12 @@ FINAL_TARGETS="libCentrallix.a libStParse.a"
 dnl Check for makedepend
 CHECK_MAKEDEPEND
 
+dnl Check for __builtin_expect()
+CHECK_BUILTIN_EXPECT
+
+dnl Check for memset_explicit(), memset_s(), and explicit_bzero().
+CHECK_MEMSET
+
 dnl Check if -pg is allowed with -fPIC
 AH_TEMPLATE([USE_PROFILE], [Define for profiling])
 CHECK_PROFILE
@@ -61,6 +68,9 @@ CHECK_COVERAGE
 
 dnl Check for Valgrind integration
 CHECK_VALGRIND
+
+dnl Check for pthreads use for MTASK
+CHECK_PTHREADS
 
 dnl Check for Linux SIOCOUTQ
 CHECK_SIOCOUTQ

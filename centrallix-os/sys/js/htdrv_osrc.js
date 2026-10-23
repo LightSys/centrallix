@@ -102,6 +102,10 @@ function osrc_action_refresh(aparam)
     if (!tr || tr < 1) tr = 1;
     this.doing_refresh = true;
 
+    // Carry the current sort over to the new query
+    if (!this.pendingorderobject && this.orderobject)
+	this.pendingorderobject = this.orderobject;
+
     // Keep track of current object by name
     if (aparam.find_object)
 	{
@@ -202,10 +206,13 @@ function osrc_query_text_handler(aparam)
     if (!aparam.fromsync)
 	this.SyncID = osrc_syncid++;
 
-    // Evaluate default expression on parameters...
+    // Evaluate default expressions and values for parameters...
     for(var pn in this.params)
 	{
-	this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:null});
+	let paramval = null;
+	if (typeof aparam[pn] != 'undefined' && pn != 'query' && pn != 'objname' && pn != 'min_length' && pn != 'use_having' && pn != 'field_list')
+	    paramval = aparam[pn];
+	this.params[pn].pwgt.ifcProbe(ifAction).Invoke("SetValue", {Value:paramval});
 	}
 
     // build the search string from the criteria and field list
@@ -1021,8 +1028,11 @@ function osrc_action_create_cb()
 	for(var i in this.child)
 	    this.child[i].ObjectCreated(recnum, this);
 	this.GiveAllCurrentRecord('create');
-	this.ifcProbe(ifEvent).Activate("Created", {});
-	this.ifcProbe(ifEvent).Activate("DataSaved", {});
+	if (!this.initiating_client)
+	    {
+	    this.ifcProbe(ifEvent).Activate("Created", {});
+	    this.ifcProbe(ifEvent).Activate("DataSaved", {});
+	    }
 	//if (this.create_focus)
 	//    this.MoveToRecord(this.LastRecord, true);
 	}
@@ -1605,9 +1615,13 @@ function osrc_prune_replica(most_recent_id)
 		}
 	    if (found) break;
 
-	    // clean up replica
-	    this.oldoids.push(this.replica[this.FirstRecord].oid);
-	    delete this.replica[this.FirstRecord];
+	    // clean up replica.  A tail fetch skips records, so the window
+	    // is not always contiguous.
+	    if (this.replica[this.FirstRecord])
+		{
+		this.oldoids.push(this.replica[this.FirstRecord].oid);
+		delete this.replica[this.FirstRecord];
+		}
 	    this.FirstRecord++;
 	    }
 	}

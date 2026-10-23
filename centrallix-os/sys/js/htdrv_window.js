@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -318,6 +318,23 @@ function wn_setvisibility_bh(v)
 		var geom = wgtrGetGeom(this.point_at);
 	    var using_offset = (this.point_offset != undefined && this.point_offset != null);
 
+	    // No point side specified?
+	    if (!this.point_side)
+		{
+		var space_t = geom.y;
+		var space_b = pg_height - geom.height - space_t;
+		var space_l = geom.x;
+		var space_r = pg_width - geom.width - space_l;
+		if (space_t >= space_b && space_t >= space_r && space_t >= space_l)
+		    this.point_side = 'bottom';
+		else if (space_b >= space_r && space_b >= space_l)
+		    this.point_side = 'top';
+		else if (space_r >= space_l)
+		    this.point_side = 'left';
+		else
+		    this.point_side = 'right';
+		}
+
 	    // Compute based on which side of the window the point will be on
 	    switch(this.point_side)
 		{
@@ -338,7 +355,7 @@ function wn_setvisibility_bh(v)
 		    win_x = (min_win_x + max_win_x)/2;
 
 		    // Compute point x from there
-		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    var pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
 		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
 		    break;
 
@@ -359,7 +376,7 @@ function wn_setvisibility_bh(v)
 		    win_x = (min_win_x + max_win_x)/2;
 
 		    // Compute point x from there
-		    pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
+		    var pt_x = geom.x + (using_offset?this.point_offset:(geom.width/2)) - win_x;
 		    pt_x = Math.min(Math.max(pt_x, min_pt_x), max_pt_x);
 		    break;
 
@@ -380,7 +397,7 @@ function wn_setvisibility_bh(v)
 		    win_y = (min_win_y + max_win_y)/2;
 
 		    // Compute point y from there
-		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
+		    var pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
 		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
 		    break;
 
@@ -401,7 +418,7 @@ function wn_setvisibility_bh(v)
 		    win_y = (min_win_y + max_win_y)/2;
 
 		    // Compute point y from there
-		    pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
+		    var pt_y = geom.y + (using_offset?this.point_offset:(geom.height/2)) - win_y;
 		    pt_y = Math.min(Math.max(pt_y, min_pt_y), max_pt_y);
 		    break;
 		}
@@ -732,9 +749,10 @@ function wn_mousedown(e)
         {
         if (e.target.name == 'close')
             pg_set(e.target,'src','/sys/images/02bigclose.gif');
-        else if ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
-                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' ))
+        else if (e.which == 1 && ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' )))
             {
+	    // Start a drag.
             wn_current = e.mainlayer;
             wn_msx = e.pageX;
             wn_msy = e.pageY;
@@ -772,37 +790,55 @@ function wn_mouseup(e)
         {
         pg_set(pg_images(e.layer)[6],'src','/sys/images/01bigclose.gif');
         }
-    if (wn_current != null)
-        {
-        if (wn_moved == 0) wn_bring_top(wn_current);
-        }
+    if (wn_current != null) wn_drag_end();
     if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseUp');
-    wn_current = null;
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+// Track a window drag.  The page widget's modal guard should call this to
+// handle drags that leave the modal window without leaking events to every
+// widget on the page.
+function wn_drag_watch(e)
+    {
+    if (!wn_current) return; // No active window drag.
+
+    // A drag is not a click, and it cancels any pending windowshade.
+    wn_current.clicked = 0;
+    if (wn_current.tid) clearTimeout(wn_current.tid);
+    wn_current.tid = null;
+
+    // Accumulate the cursor movement into the pending window position.
+    if (wn_newx == null)
+	{
+	wn_newx = getPageX(wn_current) + e.pageX-wn_msx;
+	wn_newy = getPageY(wn_current) + e.pageY-wn_msy;
+	}
+    else
+	{
+	wn_newx += (e.pageX - wn_msx);
+	wn_newy += (e.pageY - wn_msy);
+	}
+
+    // Move the window on a delay, so moves are batched.
+    setTimeout(wn_domove,60);
+    wn_moved = 1;
+    wn_msx = e.pageX;
+    wn_msy = e.pageY;
+    }
+
+// End an in-progress window drag.
+function wn_drag_end()
+    {
+    if (wn_moved == 0) wn_bring_top(wn_current);
+    wn_current = null;
     }
 
 function wn_mousemove(e)
     {
     if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseMove');
     if (wn_current != null)
-        {
-        wn_current.clicked = 0;
-	if (wn_current.tid) clearTimeout(wn_current.tid);
-	wn_current.tid = null;
-        if (wn_newx == null)
-            {
-            wn_newx = getPageX(wn_current) + e.pageX-wn_msx;
-            wn_newy = getPageY(wn_current) + e.pageY-wn_msy;
-            }
-        else
-            {
-            wn_newx += (e.pageX - wn_msx);
-            wn_newy += (e.pageY - wn_msy);
-            }
-        setTimeout(wn_domove,60);
-        wn_moved = 1;
-        wn_msx = e.pageX;
-        wn_msy = e.pageY;
+	{
+	wn_drag_watch(e);
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;

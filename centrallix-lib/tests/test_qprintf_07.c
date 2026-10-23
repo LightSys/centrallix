@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 36, "The word %STR is our data.", "STRING");
-	    qpfPrintf(NULL, buf+4, 36, "The word %STR is our data.", "STRING");
-	    qpfPrintf(NULL, buf+4, 36, "The word %STR is our data.", "STRING");
-	    rval = qpfPrintf(NULL, buf+4, 36, "The word %STR is our data.", "STRING");
-	    assert(!strcmp(buf+4, "The word STRING is our data."));
+	    qpfPrintf(NULL, (char*)buf+4, 36, "The word %STR is our data.", "STRING");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "The word %STR is our data.", "STRING");
+	    qpfPrintf(NULL, (char*)buf+4, 36, "The word %STR is our data.", "STRING");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "The word %STR is our data.", "STRING");
+	    assert(!strcmp((char*)buf+4, "The word STRING is our data."));
 	    assert(rval == 28);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-
