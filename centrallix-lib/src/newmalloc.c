@@ -665,7 +665,7 @@ nmDebug(void)
 	printf("size\tout\tcache\tusage\tnames\n");
 	
 	/** Iterate through each possible block size. **/
-	for (size_t size = MIN_SIZE; size < MAX_SIZE; size++)
+	for (size_t size = MIN_SIZE; size <= MAX_SIZE; size++)
 	    {
 	    /** Skip unused block sizes. **/
 	    if (usagecnt[size] == 0llu) continue;
