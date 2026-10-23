@@ -16,7 +16,7 @@ Two functions will initially be available:
 - `qpfPrintf()` - quoted formatted printing into a fixed-length buffer.
 - `qpfPrintf_va()` - quoted formatted printing into a fixed-length buffer, where the vararg pointer is explicitly provided in lieu of passing the arguments directly to the function.
 
-The calling syntax of these functions is similar to that of the `snprintf()` and `vsnprintf()` respectively.  However, the formatting specifiers are different, and an initial "session" parameter can be provided to track any errors that occur (this can be left NULL if cumulative error handling is not needed).
+The calling syntax of these functions is similar to that of `snprintf()` and `vsnprintf()` respectively.  However, the formatting specifiers are different, and an initial "session" parameter can be provided to track any errors that occur (this can be left NULL if cumulative error handling is not needed).
 
 The following functions for handling error sessions are also provided:
 
@@ -24,12 +24,12 @@ The following functions for handling error sessions are also provided:
 - `qpfCloseSession()` - Close an error session, freeing all allocated resources.
 - `qpfClearErrors()` - Clear errors on an error session so that it can be reused.
 - `qpfErrors()` - Get the error mask for the errors that have occurred in an error session.
-- `qpfLogErrors()` - Log a helpful message to the console that errors that have occurred in an error session.
+- `qpfLogErrors()` - Log a helpful message to the console about errors that have occurred in an error session.
 
 ## Formatting
-Format specifiers begin with the percent character (`%`), similarly to the `printf()` functions. However, the `qprintf()` module uses a new set of format specifers.  The module includes several source format specifiers (e.g. `%STR`, `%INT`, etc.) which indicate what type of data the function should expect so that it can format that data into the output string.  Filter format specifiers (e.g. `%QUOT`, `%PATH`, etc.) can be appended to source format specifiers with the ampersand (`&`) to modify or process the string data, granting control over properties such as its length, position, padding, quoting, and more.  Multiple format specifiers may be added and their effects will be applied in order from left to right.  The module also provides control format specifiers which control the formatted data in other ways.
+Format specifiers begin with the percent character (`%`), similarly to the `printf()` functions. However, the `qprintf()` module uses a new set of format specifiers.  The module includes several source format specifiers (e.g. `%STR`, `%INT`, etc.) which indicate what type of data the function should expect so that it can format that data into the output string.  Filter format specifiers (e.g. `%QUOT`, `%PATH`, etc.) can be appended to source format specifiers with the ampersand (`&`) to modify or process the string data, granting control over properties such as its length, position, padding, quoting, and more.  Multiple format specifiers may be added and their effects will be applied in order from left to right.  The module also provides control format specifiers which control the formatted data in other ways.
 
-Some specifiers begin with an `n`, which should be replaced with a number or a wildcard (`*`), in which case the function will expect an int to be provided.  This number usually controlls the behavior of the format specifier in some way.  For example, when using `%nSTR`, the developer may use `%4STR` to indicate a string exactly 4 characters long.
+Some specifiers begin with an `n`, which should be replaced with a number or a wildcard (`*`), in which case the function will expect an int to be provided.  This number usually controls the behavior of the format specifier in some way.  For example, when using `%nSTR`, the developer may use `%4STR` to indicate a string exactly 4 characters long.
 
 **Warning**: Not all format specifiers below have been implemented yet!  Please check the end of this document for information on which specifiers are implemented so far.
 
@@ -49,7 +49,7 @@ Some specifiers begin with an `n`, which should be replaced with a number or a w
 | `%INT`    | An integer value, with range of the normal 'int' value in the C language.  Can be positive, negative, or zero.   
 | `%LL`     | A 64-bit integer value, with range of 'long long' value in the C language.  Can be positive, negative, or zero.
 | `%ULL`    | A 64-bit unsigned integer value, with range of 'unsigned long long' value in the C language.  Can be positive or zero.
-| `%POS`    | A non-negative integer value (zero allowed).  Expects a positive int, and the function errors if the int is negative.
+| `%POS`    | A non-negative integer value (zero allowed).  Expects a non-negative int, and the function errors if the int is negative.
 | `%DBL`    | A double-precision floating point value.
 | `%STR`    | A normal null-terminated string.
 | `%nSTR`   | A string of exactly `n` length (binary safe), where `n` is the integer supplied in the format string, or if `*`, supplied as an argument immediately preceding the string pointer. Warning:  This does *not* honor null-terminators.  Be careful.
@@ -75,13 +75,13 @@ Some specifiers begin with an `n`, which should be replaced with a number or a w
 | `&DSYB`           | Doubles double quotes, sybase quote style `"` -> `""`
 | `&FILE`           | Ensures the string is a valid filename, giving an error if it contains `'/'` or is only `"."` or `".."`.
 | `&PATH`           | Ensures the string is a pathname, giving an error if it has `'..'` at the start, end, or between two `'/'` characters.
-| `&SYM`            | Ensures the string is a symbol (starts with `[_a-zA-Z]`, followed by `[_a-zA-Z0-9]`), giving an error if is does not.
+| `&SYM`            | Ensures the string is a symbol (starts with `[_a-zA-Z]`, followed by `[_a-zA-Z0-9]`), giving an error if it does not.
 | `&HEX`            | **Hex-Encode**s the string (e.g. `"Example"` -> `"4578616d706c65"`).
 | `&DHEX`           | **Hex-Decode**s the string (e.g. `"4578616d706c65"` -> `"Example"`).
 | `&B64`            | **Base64-Encode**s the entire string (e.g. `"Example"` -> `"RXhhbXBsZQ=="`).
 | `&DB64`           | **Base64-Decode**s the entire string (e.g. `"RXhhbXBsZQ=="` -> `"Example"`).
 | `&HTE`            | **HTML-Encode**: Escapes special HTML characters into HTML entities (including &, <, >, ', and ") to prevent script injection.
-| `&DHTE`           | **HTML-Dencode**: Unescapes HTML entities back to normal characters.
+| `&DHTE`           | **HTML-Decode**: Unescapes HTML entities back to normal characters.
 | `&URL`            | **URL-Encode**: Escapes any special characters other than `[A-Za-z0-9]` into `%nn` where `nn` is the character's hex value.
 | `&DURL`           | **URL-Decode**: Converts any `%nn` encodings back to normal characters.
 | `&RF/reg/`        | Ensures the string matches a regular expression, giving an error if it does not.

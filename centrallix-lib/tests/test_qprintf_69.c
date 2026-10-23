@@ -33,7 +33,7 @@ doTest(void)
 	/** Test qpfPrintf(). **/
 	rval = qpfPrintf(NULL, (char*)buf+4, 2, "%STR&QUOT", "ab");
 
-	/** The 2-byte buffer have the first quote and the null-terminator. **/
+	/** The 2-byte buffer holds the first quote and the null-terminator. **/
 	assert(buf[4] == '\'');
 	assert(buf[5] == '\0');
 

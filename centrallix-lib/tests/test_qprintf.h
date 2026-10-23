@@ -11,7 +11,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_utils.h						*/
+/* Module:	test_qprintf.h						*/
 /* Author:	Israel Fuller						*/
 /* Creation:	April 10th, 2026					*/
 /* Description:	Code shared between test files when testing qprintf().	*/

@@ -34,7 +34,7 @@ doTest(void)
 	/** Test qpfPrintf(). **/
 	rval = qpfPrintf(NULL, (char*)buf+4, 1, "%STR&QUOT", "ab");
 
-	/** The 1-byte buffer have only the null-terminator. **/
+	/** The 1-byte buffer holds only the null-terminator. **/
 	assert(buf[4] == '\0');
 
 	/** Bytes outside the provided part of the buffer must not be clobbered. **/
