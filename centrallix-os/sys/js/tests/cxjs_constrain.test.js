@@ -68,7 +68,7 @@ describe('cxjs_constrain', () =>
 	[ undefined,  0,         10,        null      ],
 	[ null,       null,      null,      null      ],
 
-	// A NaN bounds are ignored, so it is effectively ignored;
+	// A NaN bound never compares true, so it is effectively ignored;
 	// the opposite bound (if any) still applies.
 	[ 5,          NaN,       10,        5         ],
 	[ 15,         NaN,       10,        10        ],  // max still clamps

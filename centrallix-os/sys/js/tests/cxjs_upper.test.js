@@ -14,10 +14,10 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify renders undefined as the bare word "undefined" only inside
-// arrays; as a standalone value it yields undefined (not a string), and -0
-// renders as "0", which break/collide template names. fmt renders such values
-// verbatim (and recurses into arrays/objects) so names stay unique.
+// JSON.stringify renders NaN/Infinity as "null", a standalone undefined as
+// undefined (not a string), and -0 as "0", which would give distinct edge-case
+// rows the same (or a broken) test name; fmt renders those verbatim (and
+// recurses into arrays/objects) so names stay unique.
 function fmt(v)
     {
     if (Array.isArray(v))

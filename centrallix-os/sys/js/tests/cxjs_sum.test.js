@@ -97,7 +97,7 @@ describe('cxjs_sum', () =>
 	    });
 	}
 
-    // Scalar (non-array, non-object) inputs hit.
+    // Scalar (non-array, non-object) inputs are returned as is.
     for (const [ input, result ] of [
 	// Input        Result
 	[ 5,            5         ],

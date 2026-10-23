@@ -79,7 +79,7 @@ describe('cxjs_max', () =>
 	    });
 	}
 
-    // Scalar are returned as is.
+    // Scalars are returned as is.
     for (const [ input, result ] of [
 	// Input        Result
 	[ 5,            5         ],
@@ -126,7 +126,7 @@ describe('cxjs_max', () =>
 	// Input                Result
 	[ ['b', 'a', 'c'],      'c'      ],  // last element wins
 	[ ['apple', 'banana'],  'banana' ],
-	[ ['10', '9', '100'],   '9'      ],  // lexical compare: '100' < '10' < '9'
+	[ ['10', '9', '100'],   '9'      ],  // lexical compare: '10' < '100' < '9'
     ])	{
 	test(`cxjs_max(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {

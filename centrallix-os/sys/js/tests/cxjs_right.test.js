@@ -40,7 +40,7 @@ describe('cxjs_right', () =>
 	[ 'hello',         10,        'hello'  ], // l exceeds length: whole string
 	[ 'hello',         0,         ''       ], // zero length: empty
 	[ 'hello',        -2,         ''       ], // negative length: empty
-	[ 'hello',         2.5,       'llo'    ], // fractional length truncated to 2
+	[ 'hello',         2.5,       'llo'    ], // substr start 2.5 truncated to 2
 	[ 'hello',         NaN,       'hello'  ], // NaN != null, so substr(NaN) -> substr(0)
 	[ '',              3,         ''       ], // empty string stays empty
 	[ '',              0,         ''       ],

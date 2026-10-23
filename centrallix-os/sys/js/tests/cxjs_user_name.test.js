@@ -19,7 +19,7 @@ let sandbox_username = env.pg_username;
 describe('cxjs_user_name', () =>
     {
     // pg_username is a shared sandbox global; save and restore
-    // the username to prevent affects on other suites.
+    // the username to prevent effects on other suites.
     after(()  => { env.pg_username = sandbox_username; });
 
     for (const [ label, value ] of [

@@ -112,7 +112,7 @@ describe('cxjs_replace', () =>
 	    });
 	}
 
-    // replace is uses String.replace() logic, allowing $ patterns to be used:
+    // replace uses String.replace() logic, allowing $ patterns to be used:
     // $& is the match, $$ a literal $, $` and $' the text before/after.
     for (const [ str, search, replace, result ] of [
 	// Str       Search   Replace     Result

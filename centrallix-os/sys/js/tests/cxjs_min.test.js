@@ -126,7 +126,7 @@ describe('cxjs_min', () =>
 	// Input                    Result
 	[ ['b', 'a', 'c'],          'c'      ],  // last element wins, not 'a'
 	[ ['apple', 'banana'],      'banana' ],
-	[ ['10', '9', '100'],       '10'     ],  // lexical compare: '10' < '9' < '100'
+	[ ['10', '9', '100'],       '10'     ],  // lexical compare: '10' < '100' < '9'
     ])	{
 	test(`cxjs_min(${fmt(input)}) = ${fmt(result)}`, () =>
 	    {

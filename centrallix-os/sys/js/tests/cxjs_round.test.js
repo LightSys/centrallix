@@ -98,8 +98,8 @@ describe('cxjs_round', () =>
 	// Args            Result
 	[ [1.005, 2],      1    ],  // not 1.01
 	[ [1.255, 2],      1.25 ],  // not 1.26
-	[ [2.675, 2],      2.68 ],  // stored slightly above 2.675 -> up
-	[ [0.615, 2],      0.62 ],  // stored slightly above 0.615 -> up
+	[ [2.675, 2],      2.68 ],  // stored slightly below, but n*100 is exactly 267.5 -> up
+	[ [0.615, 2],      0.62 ],  // stored slightly below, but n*100 is exactly 61.5 -> up
 	[ [8.575, 2],      8.57 ],  // stored slightly below 8.575 -> down
 
 	// -0 is preserved across nonzero dec.

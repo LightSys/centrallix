@@ -14,9 +14,10 @@ const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
 const env                = require('./_setup');
 
-// JSON.stringify renders undefined/NaN as "null" and -0 as "0", which would
-// collapse distinct edge-case rows into duplicate test names; fmt renders them
-// verbatim (and recurses into arrays/objects) so each name stays unique.
+// JSON.stringify renders NaN as "null", omits undefined, and renders -0 as "0",
+// which would collapse distinct edge-case rows into duplicate test names; fmt
+// renders them verbatim (and recurses into arrays/objects) so each name stays
+// unique.
 function fmt(v)
     {
     if (Array.isArray(v))

@@ -116,8 +116,6 @@ describe('cxjs_minus', () =>
 	}
 
     // Signed-zero: subtracting equal values gives +0, even -0 - -0.
-    // JSON.stringify(-0) is "0", so name these explicitly (Object.is
-    // distinguishes -0 from +0 in assert/strict).
     test('cxjs_minus(-0, -0) = +0', () =>
 	{
 	assert.equal(env.cxjs_minus(-0, -0), 0);

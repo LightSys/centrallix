@@ -44,7 +44,7 @@ describe('cxjs_replicate', () =>
 	[ 'a b',   2,     'a ba b'                         ], // whitespace preserved
 	[ 'abc',   3,     'abcabcabc'                      ],
 
-	// n is floored toward zero's neighbor, so fractions truncate down.
+	// n is floored, so fractions round down.
 	[ 'ab',    3.9,   'ababab'                         ],
 	[ 'ab',    0.5,   ''                               ], // floors to 0
 	[ 'ab',    2.0,   'abab'                           ],

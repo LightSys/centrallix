@@ -71,7 +71,7 @@ describe('cxjs_rand', () =>
 	assert.ok(seen.size > 1, 'seed should not make output deterministic');
 	});
 
-    // Any non-null/undefined seed -- even a falsy one -- emits one warning
+    // Any non-null/undefined seed, even a falsy one, emits one warning
     // and still returns a valid result.
     for (const seed of [0, 1, 42, -5, 3.14, '', 'abc', false, true, NaN, Infinity, [], {}])
 	{
