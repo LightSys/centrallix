@@ -1,0 +1,8 @@
+##NAME MimeTest multipart subtypes
+
+query select :name, :inner_type from object /tests/mimetest/M4.3.1.eml
+query select :name, :inner_type, start = substring(:objcontent, 1, 39) from /tests/mimetest/M4.3.1.eml
+query select :name, :inner_type from object /tests/mimetest/M4.3.2.eml
+query select :name, :inner_type, start = substring(:objcontent, 1, 39) from /tests/mimetest/M4.3.2.eml
+query select :name, :inner_type from object /tests/mimetest/M4.3.3.eml
+query select :name, :inner_type, start = substring(:objcontent, 1, 39) from /tests/mimetest/M4.3.3.eml

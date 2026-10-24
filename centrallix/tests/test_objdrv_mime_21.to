@@ -1,0 +1,3 @@
+##NAME Header line with no colon
+
+query select :name, :inner_type, before = :"X-Before", after = :"X-After" from /tests/MimeBadHeaderLine.eml

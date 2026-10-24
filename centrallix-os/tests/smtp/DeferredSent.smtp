@@ -1,0 +1,6 @@
+$Version=2$
+DeferredSent "system/smtp"
+    {
+    spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/DeferredSent";
+    expire_time = -1;
+    }

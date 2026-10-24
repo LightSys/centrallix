@@ -1,0 +1,40 @@
+From: tester@example.com
+Subject: Parts named in different ways
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain; name="type1.txt"
+Content-Disposition: attachment; filename="file1.txt"; name="disp1.txt"
+
+Filename wins.
+--b1
+Content-Type: text/plain; name="type2.txt"
+Content-Disposition: attachment; name="disp2.txt"
+
+Disposition name wins.
+--b1
+Content-Type: text/plain; name="type3.txt"
+Content-Disposition: attachment
+
+Content-Type name wins.
+--b1
+Content-Type: text/html
+
+Default html name.
+--b1
+Content-Type: image/jpeg
+
+Default jpeg name.
+--b1
+Content-Type: audio/basic
+
+Default audio name.
+--b1
+Content-Type: message/rfc822
+
+Subject: Default message name.
+--b1
+Content-Type: application/octet-stream
+
+Default name with no extension.
+--b1--

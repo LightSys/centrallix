@@ -1,0 +1,6 @@
+$Version=2$
+PartialBounce "system/smtp"
+    {
+    spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/PartialBounce";
+    expire_time = -1;
+    }

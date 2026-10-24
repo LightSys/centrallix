@@ -82,6 +82,13 @@ centrallix "system/config"
 	log_progname = "centrallix";
 	}
 
+    // The SMTP ObjectSystem driver.
+    smtp "system/config"
+	{
+	// A sample Postfix mail log for the SMTP tests.
+	mail_log = "/usr/local/src/cx-git/centrallix-os/tests/smtp/maillog";
+	}
+
     // Loadable Modules
     modules "system/config"
 	{

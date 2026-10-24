@@ -1,0 +1,4 @@
+##NAME Attribute names from before headers were exposed
+
+query select :charset, :transfer_encoding, :mime_version, :subject from /tests/MimeHeaderParams.eml
+query select :charset, :transfer_encoding, :mime_version, :subject from object /tests/MimeHeaderParams.eml
