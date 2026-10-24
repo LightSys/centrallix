@@ -1,0 +1,10 @@
+From: tester@example.com
+Subject: Stray bracket before an unclosed address
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+From: a>b <tester@example.com
+Content-Type: text/plain
+
+Body.
+--b1--
