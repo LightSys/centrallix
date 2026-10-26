@@ -178,7 +178,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	    "'sql' parameter of type string or code required for object source: \"%s\", but type code was %d",
 	    name, sql_datatype
 	);
-	return -1;
+	goto end;
     }
 
     baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? nmSysStrdup(ptr) : no_string;
