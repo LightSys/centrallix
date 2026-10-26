@@ -2283,7 +2283,7 @@ HTMLArea "widget/html"
 
 			<p>Deprecated.  This name is rendered by widget/button and is kept only so that existing applications keep working.  New applications should use widget/button, which documents the properties, events, actions, and client properties that an imagebutton accepts.</p>
 
-			<p>An imagebutton is a widget/button whose 'type' defaults to 'image'.  Thus, this button is borderless and text-free, its appearance comes from the image.  The properties for widget/button apply here, so an existing imagebutton can be given 'text', a 'border_style', or an explicit 'type' without being renamed (although it should be).</p>
+			<p>An imagebutton is a widget/button whose 'type' defaults to 'image'.  Thus, this button is borderless and text-free; its appearance comes from the image.  The properties for widget/button apply here, so an existing imagebutton can be given 'text', a 'border_style', or an explicit 'type' without being renamed (although it should be).</p>
 
 		</overview>
 
@@ -2590,7 +2590,7 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<event name="SelectItem">This event occurs when an item in the menu is selected.  It provides the same parameters as the Select event.</event>
 
-			<event name="Activate">This event occurs when the dropdown appears.  It provides two parameters, "X" and "Y", which are the (integer) positions (in pixels) on the page for the menu has appeared.</event>
+			<event name="Activate">This event occurs when the dropdown appears.  It provides two parameters, "X" and "Y", which are the (integer) positions (in pixels) on the page where the menu has appeared.</event>
 
 			<event name="Deactivate">This event occurs when the dropdown disappears, and it provides no parameters.</event>
 
@@ -2858,7 +2858,7 @@ myMenu "widget/menu"
 
 			<action name="Sync">DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The 'ParentOSRC' (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as a pair of 'ParentKey' and 'ChildKey' parameters, each followed by a digit from 1 to 9 (e.g. ParentKey1 and ChildKey1).  'ParentKey' indicates the name of the field in the 'ParentOSRC' to sync with (probably a primary key), and 'ChildKey' indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.</action>
 
-			<action name="SaveClients">Save the clients that connect and lets clients of clients know that osrc is connected to them.</action>
+			<action name="SaveClients">Saves the clients that connect and lets clients of clients know that osrc is connected to them.</action>
 
 			<action name="SeqBackward">Moves the current row backwards.</action>
 
@@ -3587,7 +3587,7 @@ $Version=2$
 
 			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="Wheel">This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="Wheel">This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the wheel moves.</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 

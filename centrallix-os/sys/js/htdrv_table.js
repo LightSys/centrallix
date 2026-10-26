@@ -1504,7 +1504,7 @@ function tbld_change_width(move, compensate)
     for (let i = colnum, total_move = move; i < colcount; i++)
 	{
 	const col = cols[i];
-	if (i === colnum) // First iterations
+	if (i === colnum) // First iteration
 	    {
 	    // Column to the left of adjustment
 	    col.width += move;

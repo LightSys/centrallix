@@ -183,7 +183,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(icon, "/sys/images/centrallix_18x18.gif");
 	    }
 
-	/** Compute titlebar width & height - includes edge below titlebar. **/
+	/** Compute titlebar height - includes edge below titlebar. **/
 	int title_bar_height = (has_titlebar) ? 24 : 0;
 
 	/** Error if the specified size is too small to draw. **/

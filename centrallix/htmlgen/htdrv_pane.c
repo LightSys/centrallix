@@ -145,7 +145,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Write the CSS for borders on the pane dom node. **/
-	if (style == 2) { /* flat, the default style, nothing to do */ }
+	if (style == 2) { /* flat, no border, nothing to do */ }
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
 	    if (htrAddStylesheetItem_va(s,

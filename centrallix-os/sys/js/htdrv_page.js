@@ -287,7 +287,7 @@ function pg_setmodal(l, is_modal)
 
 	/*** Fixed, with all four sides pinned, so the browser keeps the mask over
 	 *** the whole viewport as it resizes.  Sizing it in JS instead leaves a
-	 *** strip of the page uncovered -- and clickable -- for a few frames.
+	 *** strip of the page uncovered (and clickable) for a few frames.
 	 ***/
 	pg_set_style_string(pg_masklayer, 'position', 'fixed');
 	pg_set_style_string(pg_masklayer, 'inset', '0');
@@ -453,7 +453,7 @@ function pg_area(parent, x, y, width, height, cls, name, f)
     }
 
 /*** Function to add a new area to the area list.
- *** Note that x, y, w, & h can all be provided as
+ *** Note that x, y, w, & h can all be provided as a
  *** function for responsive resizing.
  ***/
 function pg_addarea(pl,x,y,w,h,cls,nm,f)

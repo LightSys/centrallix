@@ -5,7 +5,7 @@ autoscale_events "application/filespec"
     filetype = csv;
     header_row = yes;
     header_has_titles = yes;
-    annotation = "Autoscale harness -- calendar events";
+    annotation = "Autoscale harness: calendar events";
     row_annot_exp = ":title";
     key_is_rowid = yes;
 

@@ -19,7 +19,7 @@ const dt_pane_h = 190;
 const dt_pane_h_dateonly = 156;
 
 // A resize observer to move datetime dropdowns when their widget is resized,
-// whether the page itself was resized.
+// whether or not the page itself was resized.
 const dt_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => dt_reposition(target)));
 
 // Resizing the page may move the widget without resizing it, detected here.
