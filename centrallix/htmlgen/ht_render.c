@@ -46,7 +46,6 @@
 #endif
 
 #include "centrallix.h"
-#include "cxlib/warn.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/expect.h"
 #include "cxlib/mtask.h"
@@ -54,14 +53,15 @@
 #include "cxlib/newmalloc.h"
 #include "cxlib/qprintf.h"
 #include "cxlib/strtcpy.h"
+#include "cxlib/warn.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/xstring.h"
 #include "expression.h"
 #include "ht_render.h"
 #include "obj.h"
-#include "stparse.h"
 #include "stparse_ne.h"
+#include "stparse.h"
 #include "wgtr.h"
 
 
