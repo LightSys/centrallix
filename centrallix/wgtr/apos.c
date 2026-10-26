@@ -866,8 +866,9 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 	}
     else
 	{
-	    /** There's not already a line, so we allocate a new one. **/    
-	    if (UNLIKELY((Line = (pAposLine)nmMalloc(sizeof(AposLine))) < 0))
+	    /** There's not already a line, so we allocate a new one. **/
+	    Line = nmMalloc(sizeof(AposLine));
+	    if (UNLIKELY(Line == NULL))
 		{
 		    mssError(1, "APOS", "Failed to allocate memory for new grid line.");
 		    return -1;
@@ -1069,9 +1070,10 @@ aposCreateSection(pXArray Sections, pAposLine StartL, pAposLine EndL, int Diff, 
 pAposSection NewSect;
     
     /** Allocate and initialize a new section. **/
-    if (UNLIKELY((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0))
+    NewSect = nmMalloc(sizeof(AposSection));
+    if (UNLIKELY(NewSect == NULL))
 	{
-	    mssError(1, "APOS", "Failed to allocate memory for new row or column.");
+	    mssError(1, "APOS", "Failed to allocate memory for new row or column section.");
 	    return -1;
 	}
     memset(NewSect, 0, sizeof(AposSection));
