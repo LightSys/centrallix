@@ -111,9 +111,9 @@ typedef struct _WN
     int		pre_x, pre_y, pre_width, pre_height;  /** pre-layout geom. **/
     int		fl_width, fl_height;		/** Flexibilities as specified by the designer **/
     double	fx, fy, fw, fh;			/** internal flexibility calculations **/
-    double	fl_scale_x, fl_scale_y;		/** Scaled x and y flexibilities calculated for this layout. */
-    double	fl_scale_w, fl_scale_h;		/** Scaled w and h flexibilities calculated for this layout. */
-    int		fl_parent_w, fl_parent_h;	/** The expected size of the parent container, used when it flexes. */
+    double	fl_scale_x, fl_scale_y;		/** Scaled x and y flexibilities calculated for this layout. **/
+    double	fl_scale_w, fl_scale_h;		/** Scaled w and h flexibilities calculated for this layout. **/
+    int		fl_parent_w, fl_parent_h;	/** The expected size of the parent container, used when it flexes. **/
     int		min_width, min_height;		/** absolute minimums **/
     int		x, y, width, height;		/** actual geometry (outer box) **/
     /*** The space that a widget needs in its outer box (x/y/width/height) for

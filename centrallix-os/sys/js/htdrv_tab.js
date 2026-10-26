@@ -510,7 +510,7 @@ function tc_init(param)
  *** @param o Unused again...
  *** @param n If this is true, it makes this.tab inherit visibility. Otherwise, hidden.
  *** @returns nothing... idk what this is doing.
- */
+ ***/
 function tc_visible_changed(prop, o, n)
     {
     const { tabctl: t } = this;

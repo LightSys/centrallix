@@ -498,7 +498,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 int htrbInitialize() {
    pHtDriver drv;
    
-   /** Initialize globals. */
+   /** Initialize globals. **/
    HTRB.idcnt = 0;
 
    /** Allocate the driver **/

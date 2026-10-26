@@ -112,11 +112,11 @@ function sp_init({ layer: pane, area_name, thumb_name })
     const area = document.getElementById(area_name);
     const thumb = document.getElementById(thumb_name);
     
-    /** Set values for the area and thumb elements. */
+    /** Set values for the area and thumb elements. **/
     area.nofocus = true;
     thumb.nofocus = true;
     
-    /** Set images, i.e. the up & down button and the scroll bar. */
+    /** Set images, i.e. the up & down button and the scroll bar. **/
     const images = pg_images(pane);
     for (let image of images)
 	{
@@ -170,7 +170,7 @@ function sp_init({ layer: pane, area_name, thumb_name })
     ie.Add("MouseOut");
     ie.Add("MouseMove");
     
-    /** Scan child elements to find the height of the scroll content. */
+    /** Scan child elements to find the height of the scroll content. **/
     const { top } = area.getBoundingClientRect();
     let maxBottom = top;
     for (const child of area.children)
@@ -411,7 +411,7 @@ function sp_get_pane(event)
 	pane = pane.parentElement;
 	}
     
-    /** Explicitly return undefined to avoid JIT deoptimization. */
+    /** Explicitly return undefined to avoid JIT deoptimization. **/
     return undefined;
     }
     
@@ -461,7 +461,7 @@ function sp_wheel(e)
     /** Scroll to the new location. **/
     sp_scroll(pane, dist);
     
-    /** End of event. */
+    /** End of event. **/
     return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 

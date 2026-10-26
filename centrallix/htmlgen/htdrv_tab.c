@@ -255,7 +255,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    /** Use a default value, updated client side. */
+	    /** Use a default value, updated client side. **/
 	    tab_w = 80;
 	    is_auto_tab_w = 1;
 	    }
