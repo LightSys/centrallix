@@ -22,7 +22,18 @@ index "widget/page"
 
     count_em "widget/repeat"
 	{
-	sql = "select cnt = count(1) from object wildcard '/apps/*/app_info.struct'";
+	sql = "select cnt = count(1), defaultapp=first(condition(eval(isnull(convert(string,:app_default), '0'), 'CPOS'), :cx__pathpart2, null)) from object wildcard '/apps/*/app_info.struct'";
+
+	on_load "widget/connector"
+	    {
+	    condition=runserver(:count_em:defaultapp is not null);
+	    source=index;
+	    event=Load;
+	    target=index;
+	    action=LoadPage;
+	    Source = runserver("/apps/" + :count_em:defaultapp + "/");
+	    }
+
 	pnOptions "widget/pane"
 	    {
 	    x=16;y=150;width=588;
@@ -47,7 +58,7 @@ index "widget/page"
 
 		apps_rpt "widget/repeat"
 		    {
-		    sql = "select file = :cx__pathpart2, :app_name, :app_info from object wildcard '/apps/*/app_info.struct'";
+		    sql = "select file = :cx__pathpart2, :app_name, :app_info, is_enabled=eval(isnull(convert(string, :app_enable), '1'), 'CPOS'), is_default=eval(isnull(convert(string, :app_default), '0'), 'CPOS') from object wildcard '/apps/*/app_info.struct'";
 
 		    oneapp_hbox "widget/hbox"
 			{
@@ -62,6 +73,7 @@ index "widget/page"
 			    background="/sys/images/grey_gradient.png";
 			    fgcolor1=black; fgcolor2=white;
 			    text = runserver(:apps_rpt:app_name);
+			    enabled = runserver(:apps_rpt:is_enabled);
 
 			    onClick "widget/connector"
 				{
