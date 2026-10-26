@@ -75,7 +75,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	mssError(1,"HTRB","RadioButtonPanel widget must have a 'width' property");
 	goto end_free;
 	}
-   if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0)
+    if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&h)) != 0)
 	{
 	mssError(1,"HTRB","RadioButtonPanel widget must have a 'height' property");
 	goto end_free;
@@ -124,7 +124,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     
     /** Get fieldname and form attributes. **/
     char fieldname[32] = "", form[64] = "";
-    if (wgtrGetPropertyValue(tree, "fieldname", DATA_T_STRING, POD(&ptr)) == 0) 
+    if (wgtrGetPropertyValue(tree, "fieldname", DATA_T_STRING, POD(&ptr)) == 0)
 	strtcpy(fieldname, ptr, sizeof(fieldname));
     if (wgtrGetPropertyValue(tree, "form", DATA_T_STRING, POD(&ptr)) == 0)
 	strtcpy(form, ptr, sizeof(form));

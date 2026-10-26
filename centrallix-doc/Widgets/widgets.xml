@@ -657,7 +657,7 @@ checkbox_test "widget/page"
 
 			<action name="Open">Opens the window.  Set the "X" and "Y" parameters to the coordinates of the upper-left corner of the window to open it at that location.  If the parameter "Center" is set to any value other than no (the default), the window is centered on the specified coordinates instead.  Set the "PointAt" parameter with a widget name to make the new window point at that widget.  Set the "PointSide" parameter with a value of top, bottom, left, or right to force the window to point from that side.  Set the "PointOffset" parameter to the distance in pixels that the window should be from the widget it points at.  This action also takes the "IsModal","NoClose", and "Cascade" parameters, described in the SetVisibility action.</action>
 
-						<action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</action>
+			<action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</action>
 
 			<action name="Popup">Opens a window like a pop-up at the specified "X" and "Y" with the specified "Width" and "Height" (in pixels).  Or, set the "PopTo" parameter with a widget name to copy those properties from it.  In either case, the "OffsetX" and "OffsetY" parameters move the popup right and down respectively.  Finally, specify the "ExtendTo" parameter with a widget name to ensure that the popup extends to that parameter.</action>
 
@@ -3253,11 +3253,11 @@ my_cmp "widget/component-decl"
 
 			<property name="bgcolor" type="string" subtype="color">A color, RGB or named, for the panel background.  If neither bgcolor nor background transparent.</property>
 
-				<property name="height" type="integer">Height, in pixels, of the panel.</property>
+			<property name="height" type="integer">Height, in pixels, of the panel.</property>
 
-				<property name="spacing" type="integer">The maximum height (in pixels) of space allowed between radio buttons on the panel (default: 10px).</property>
+			<property name="spacing" type="integer">The maximum height (in pixels) of space allowed between radio buttons on the panel (default: 10px).</property>
 
-				<property name="outline_background" type="string" subtype="color">An image to be used for the rectangular border drawn around the radio buttons.</property>
+			<property name="outline_background" type="string" subtype="color">An image to be used for the rectangular border drawn around the radio buttons.</property>
 
 			<property name="textcolor" type="string" subtype="color">The color, RGB or named, of the text within the panel.  Default: "black".</property>
 

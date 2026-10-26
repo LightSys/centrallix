@@ -608,7 +608,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	wgtrRenameProperty(tree, "row_backgroundhighlight", "rowhighlight_background");
 
 	/** Get name. **/
-	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) 
+	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0)
 	    {
 	    nmFree(t, sizeof(httbl_struct));
 	    return -1;

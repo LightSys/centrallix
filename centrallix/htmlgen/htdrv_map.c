@@ -114,16 +114,16 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 		"%STR "
 	    "}\n",
 	    id, x, y, w, h, z, main_bg
-	) != 0) 
+	) != 0)
 	    {
 	    mssError(0, "HTMAP", "Failed to write base CSS.");
 	    goto err;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, map_node, "map%POSbase", id) != 0) goto err;
 
-	/** Include supporting JS files, **/
+	/** Include supporting JS files. **/
 	if (htrAddScriptInclude(s, "/sys/js/htdrv_map.js", 0) != 0) goto err;
 	if (htrAddScriptInclude(s, "/sys/js/ht_utils_layers.js", 0) != 0) goto err;
 	if (htrAddScriptInclude(s, "/sys/js/openlayers/build/ol.js", 0) != 0) goto err;

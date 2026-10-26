@@ -113,7 +113,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "ms%POSmain", id)) goto err;
 
 	/** Include scripts. **/
@@ -129,7 +129,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Script init **/
 	if (htrAddScriptInit_va(s,
-	    "\tms_init(wgtrGetNodeRef(ns, '%STR&SYM'), {});\n", 
+	    "\tms_init(wgtrGetNodeRef(ns, '%STR&SYM'), {});\n",
 	    name
 	) != 0)
 	    {

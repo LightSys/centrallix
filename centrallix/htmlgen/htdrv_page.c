@@ -117,7 +117,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
-    	/** Handle page title. **/
+	/** Handle page title. **/
 	if (wgtrGetPropertyValue(tree, "title", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    if (htrAddHeaderItem_va(s, "\t<title>%STR&HTE</title>\n", ptr) != 0)
@@ -300,7 +300,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "name", DATA_T_STRING, POD(&ptr)) != 0) goto end;
 	strtcpy(name,ptr,sizeof(name));
 
- 	/** Link the window and document to widgets. **/
+	/** Link the window and document to widgets. **/
 	if (htrAddWgtrObjLinkage(s, tree, "window") != 0) goto end;
 	if (htrAddWgtrCtrLinkage(s, tree, "document") != 0) goto end;
 
@@ -551,7 +551,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	#undef HT_IMG_TAGS
 	
     err_trans:
-        /** Handle errors. **/
+	/** Handle errors. **/
 	if (!trans_success)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write page trans div.");

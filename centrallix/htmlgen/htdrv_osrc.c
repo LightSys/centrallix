@@ -173,7 +173,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	/** Fallthrough **/
 	}
-    default: 
+    default:
 	mssError(1, "HTOSRC",
 	    "'sql' parameter of type string or code required for object source: \"%s\", but type code was %d",
 	    name, sql_datatype
@@ -268,7 +268,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	{
 	mssError(0, "HTOSRC", "Failed to write HTML newline.");
 	goto end;
-	}  
+	}
 
     /** Render children. **/
     if (htrRenderSubwidgets(s, tree, z) != 0) goto end;

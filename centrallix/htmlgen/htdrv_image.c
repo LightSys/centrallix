@@ -149,7 +149,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    form[0]='\0';
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "img%POS", id) != 0) goto end;
 	
 	/** Initialize image scripts. **/

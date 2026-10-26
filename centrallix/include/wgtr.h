@@ -47,14 +47,14 @@
 #define WGTR_F_CONTAINER           (1 <<  1) /** set for container widgets **/
 #define WGTR_F_FLOATING            (1 <<  2) /** widgets that 'float' - childwindows and popup menus **/
 #define WGTR_F_CONTROL             (1 <<  3) /** control structure (i.e. repeat) that should be 'looked through' to its subobjects **/
-#define	WGTR_F_VSCROLLABLE         (1 <<  4) /** contents are vertically scrollable.  Do not resize Y/height **/
-#define	WGTR_F_HSCROLLABLE         (1 <<  5) /** contents are horiz scrollable.  Do not resize X/width **/
-#define	WGTR_F_AUTOHEIGHT          (1 <<  6) /** height was unspecified; the widget sizes itself to its content **/
-#define	WGTR_F_FLWIDTHSET          (1 <<  7) /** fl_width came from the structure file; do not recompute it **/
-#define	WGTR_F_FLHEIGHTSET         (1 <<  8) /** fl_height came from the structure file; do not recompute it **/
-#define	WGTR_F_CENTEREDX           (1 <<  9) /** a floating widget the layout centered horizontally **/
-#define	WGTR_F_CENTEREDY           (1 << 10) /** a floating widget the layout centered vertically **/
-#define	WGTR_F_VISUAL_CONTAINER    (1 << 11) /** the widget will emit a visual container **/
+#define WGTR_F_VSCROLLABLE         (1 <<  4) /** contents are vertically scrollable.  Do not resize Y/height **/
+#define WGTR_F_HSCROLLABLE         (1 <<  5) /** contents are horiz scrollable.  Do not resize X/width **/
+#define WGTR_F_AUTOHEIGHT          (1 <<  6) /** height was unspecified; the widget sizes itself to its content **/
+#define WGTR_F_FLWIDTHSET          (1 <<  7) /** fl_width came from the structure file; do not recompute it **/
+#define WGTR_F_FLHEIGHTSET         (1 <<  8) /** fl_height came from the structure file; do not recompute it **/
+#define WGTR_F_CENTEREDX           (1 <<  9) /** a floating widget the layout centered horizontally **/
+#define WGTR_F_CENTEREDY           (1 << 10) /** a floating widget the layout centered vertically **/
+#define WGTR_F_VISUAL_CONTAINER    (1 << 11) /** the widget will emit a visual container **/
 
 #define WGTR_PF_NONE               (0 <<  0) /** value for no flags. **/
 #define WGTR_PF_NOTEMPLATE         (1 <<  0) /** Don't handle templates on this wgtr Parse operation **/
@@ -77,7 +77,7 @@ typedef struct
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
-    int         IsDesign;               /* 1 if the page is rendered with cx__geom=design, 0 otherwise. */
+    int		IsDesign;		/* 1 if the page is rendered with cx__geom=design, 0 otherwise. */
     char	AKey[256];
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];

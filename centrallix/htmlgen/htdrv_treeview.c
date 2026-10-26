@@ -206,7 +206,7 @@ httreeRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "tv%POSroot", id) != 0) goto err;
 
 	/** Write globals for internal use **/

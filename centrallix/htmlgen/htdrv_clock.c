@@ -185,7 +185,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "cl%POSbase", id) != 0)
 	    {
 	    mssError(0, "HTCL", "Failed to add object linkage.");

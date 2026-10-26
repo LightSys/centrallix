@@ -121,7 +121,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 		    "type:'%STR&JSSTR', "
 		    "findc:'%STR&JSSTR', "
 		    "val:%['%STR&HEX'%]%[null%], "
-		"});\n", 
+		"});\n",
 		name, paramname, type, findcontainer,
 		(has_find_inf), (has_find_inf) ? find_inf->StrVal : "null", (!has_find_inf)
 	    ) != 0)

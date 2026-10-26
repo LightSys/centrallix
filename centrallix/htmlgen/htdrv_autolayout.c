@@ -117,7 +117,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    goto err;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "al%POSbase", id) != 0)
 	    {
 	    mssError(0, "HTAL", "Failed to add object linkage.");

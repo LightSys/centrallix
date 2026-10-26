@@ -128,7 +128,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	    goto err;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, oc_node, "oc%POSbase", id)) goto err;
 
 	/** Include scripts. **/

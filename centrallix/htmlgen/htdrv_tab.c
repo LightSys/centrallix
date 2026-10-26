@@ -342,7 +342,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    fprintf(stderr, "HINT: Specify the 'tab_width' attribute or use \"client-side\" rendering.\n");
 	    }
 	
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "tc%POSctrl", id) != 0)
 	    {
 	    mssError(0, "HTTAB", "Failed to add object linkage to tab.");

@@ -75,7 +75,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Get layout data (required). **/
 	int x, y, w, h;
-	if (wgtrGetPropertyValue(tree, "x", DATA_T_INTEGER, POD(&x)) != 0) 
+	if (wgtrGetPropertyValue(tree, "x", DATA_T_INTEGER, POD(&x)) != 0)
 	    {
 	    mssError(1, "HTSPANE", "widget/scrollpane must have an 'x' property.");
 	    goto err;
@@ -112,7 +112,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	const int visible = htrGetBoolean(tree, "visible", 1);
 	if (visible == -1) goto err;
 	
- 	/** Link the widget and container to DOM nodes. **/
+	/** Link the widget and container to DOM nodes. **/
 	if (htrAddWgtrCtrLinkage_va(s, tree, "htr_subel(_obj, 'sp%POSarea')", id) != 0)
 	    {
 	    mssError(0, "HTSPANE", "Failed to add container linkage.");

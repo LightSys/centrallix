@@ -478,9 +478,9 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 		"bw:%POS, "
 		"horiz:%INT, "
 		"pop:%INT, "
-	    "}); }\n", 
-	    name, id, name, 
-	    bgstr, highlight, active, textcolor, 
+	    "}); }\n",
+	    name, id, name,
+	    bgstr, highlight, active, textcolor,
 	    w, h, border_w,
 	    is_horizontal, is_popup
 	) != 0)

@@ -212,7 +212,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    goto end;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "eb%POSbase", id) != 0) goto end;
 
 	/** Write JS globals. **/

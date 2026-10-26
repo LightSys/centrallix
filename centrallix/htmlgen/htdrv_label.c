@@ -74,7 +74,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
     int overflow_ellipsis = 0;
     int auto_height=0;
 
-    	/** Get an id for this. **/
+	/** Get an id for this. **/
 	const int id = (HTLBL.idcnt++);
 
 	/** Verify browser capabilities. **/
@@ -285,7 +285,7 @@ htlblRender(pHtSession s, pWgtrNode tree, int z)
 	    goto end;
 	    }
 
- 	/** Link the widget to the DOM node. **/
+	/** Link the widget to the DOM node. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "lbl%POS", id) != 0) goto end;
 	
 	/** Write the initialization script call. **/

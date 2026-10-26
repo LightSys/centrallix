@@ -213,8 +213,8 @@ int rval = -1;
     /**makes a final pass through the tree and processes html windows**/
     if (UNLIKELY(aposProcessWindows(tree, tree) < 0))
 	{
-	mssError(0, "APOS", "Failed to process windows.");
-	goto end;
+	    mssError(0, "APOS", "Failed to process windows.");
+	    goto end;
 	}
 
     /** Success. **/
@@ -223,7 +223,7 @@ int rval = -1;
 end:
     if (UNLIKELY(rval != 0))
 	{
-	mssError(0, "APOS", "Failed to auto position widget tree '%s'", tree->Name);
+	    mssError(0, "APOS", "Failed to auto position widget tree '%s'", tree->Name);
 	}
 
     /*** Clean up: Release any grids aposBuildGrid() left behind.  This is a
@@ -502,7 +502,7 @@ pAposGrid theGrid = NULL;
 			}
 
 		    /** Add the sections to the grid. **/
-		    if (UNLIKELY(aposAddSectionsToGrid(theGrid, 
+		    if (UNLIKELY(aposAddSectionsToGrid(theGrid,
 			    (Parent->height-Parent->pre_height), 
 			    (Parent->width-Parent->pre_width)) < 0))
 			{
@@ -952,7 +952,7 @@ int found=0, i=0, j=0, pCount=xaCount(PrevList), eCount=xaCount(EWidgets);
 
     /*** Loop through the array from the previous line.
      *** Note: Could be that line's SWidgets OR CWidgets.
-     **/
+     ***/
     for(i=0; i<pCount; ++i)
 	{
 	    AddCandidate = (pWgtrNode)xaGetItem(PrevList, i);
@@ -1012,7 +1012,7 @@ int count=0, i=0;
     /** Add column sections between vertical lines. **/
     count = xaCount(&(theGrid->VLines));
     for(i=1; i<count; ++i)
-	if (UNLIKELY(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),  
+	if (UNLIKELY(aposCreateSection(&(theGrid->Cols), ((pAposLine)xaGetItem(&(theGrid->VLines),(i-1))),
 	    ((pAposLine)xaGetItem(&(theGrid->VLines),(i))), HDiff, APOS_COL) < 0))
 	    {
 		mssError(0, "APOS", "Failed to create a new column.");
@@ -1040,14 +1040,14 @@ aposSetSectionFlex(pAposSection sect, int type)
 int sCount = xaCount(&(sect->StartLine->SWidgets));
 int cCount = xaCount(&(sect->StartLine->CWidgets));
 
-    /** Set flex to 0 if the section is a spacer or contains non-flexible
-    *** children, otherwise set it to the minimum of the children. If none
-    *** of those apply it must be a wide, widgetless gap. In this case,
-    *** return -1 to prompt the caller to determine a default flexibility.
-    ***/
+    /*** Set flex to 0 if the section is a spacer or contains non-flexible
+     *** children, otherwise set it to the minimum of the children. If none
+     *** of those apply it must be a wide, widgetless gap. In this case,
+     *** return -1 to prompt the caller to determine a default flexibility.
+     ***/
     if ((sect->isSpacer) || (aposNonFlexChildren(sect->StartLine, type)))
         sect->Flex = 0;
-    else if (sCount || cCount) 
+    else if (sCount || cCount)
         sect->Flex = aposMinimumChildFlex(sect->StartLine, type);
     else
 	return -1;

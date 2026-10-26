@@ -1344,7 +1344,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 	    }
 
 	/** Pick a starting tag. **/
-	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC)); 
+	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC));
 	const char* start_tag = (use_iframe) ? "iframe style='border:0'" : "div";
 
 	/** Add the starting tag. **/
@@ -1384,7 +1384,7 @@ int
 htrAddBodyItemLayerEnd(pHtSession s, int flags)
     {
 	/** Pick a closing tag. **/
-	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC)); 
+	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC));
 	const char* end_tag = (use_iframe) ? "iframe" : "div";
 	
 	/** Add it. **/
@@ -1708,7 +1708,7 @@ htr_internal_GenInclude(pHtSession s, char* filename)
  ***/
 int
 htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
-    {    
+    {
 	/** Get type. **/
 	const int type = wgtrGetPropertyType(tree, propname);
 	if (UNLIKELY(type < 0))
