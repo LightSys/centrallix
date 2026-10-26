@@ -186,7 +186,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    ht_flex(w - 18, tree->width, 1.0)
 	) != 0)
 	    {
-	    mssError(0, "HTSPANE", "Failed to write shared CSS ui elements.");
+	    mssError(0, "HTSPANE", "Failed to write shared CSS for UI elements.");
 	    goto err;
 	    }
 	

@@ -1634,7 +1634,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int z_level)
 		{
 		mssError(0, "HTR",
 		    "Failed to render \"%s\":\"%s\", "
-		    "child #%d/%d of \"%s\":\"%s\" (z: %d).",
+		    "child #%u/%u of \"%s\":\"%s\" (z: %d).",
 		    sub_widget->Name, sub_widget->Type,
 		    i + 1, n_sub_widgets, widget->Name, widget->Type, z_level
 		);
@@ -3671,7 +3671,7 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	);
 	if (UNLIKELY(tmp != 0))
 	    {
-	    mssError(0, "HTR", "Failed to write CSS while formatting element.\n");
+	    mssError(0, "HTR", "Failed to write CSS while formatting element.");
 	    return -1;
 	    }
 
