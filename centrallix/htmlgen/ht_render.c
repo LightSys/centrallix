@@ -2142,7 +2142,7 @@ htrGetErrorHTMLMsg(char* title, char* err_str)
 		    ".error:hover .copy-button { visibility: inherit; }"
 		    ".copy-button {"
 			"background-color: white;"
-			"border: white 0.4rem;"
+			"border: white solid 0.4rem;"
 			"cursor: pointer;"
 			"float: right;"
 			"font-size: 12px;"
