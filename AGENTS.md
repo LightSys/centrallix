@@ -29,7 +29,7 @@ Instead of searching with `grep`, use `rg` (if available). It's faster, but it i
 
 - **Kardia** - A web-based system built on the Centrallix platform.
 
-- **Object System (ObjectSystem)** - Centrallix's high-level filesystem analog: a tree of typed objects that allows read/write access to files, database rows, APIs, reports, etc. through a consistent path-based API (the OSML). ObjectSystem Drivers (OSDs) provide the interface to handle these diverse data sources in a single, coherent hierarchy.
+- **Object System (ObjectSystem)** - Centrallix's high-level filesystem analog: a tree of typed objects that allows read/write access to files, database rows, APIs, reports, etc. through a consistent path-based API (the OSML). ObjectSystem Drivers (OSDs) provide the interface to handle these diverse data sources in a single, coherent hierarchy. On this machine, the `centrallix-os` folder in this project is the object system root node so the path `/samples` is `centallix-os/samples`.
 
 - **Widget** - A UI component in Centrallix DHTML, either visual (e.g. buttons, tables) or nonvisual (e.g. forms, connectors), defined as objects in the ObjectSystem and rendered to HTML/JavaScript by widget drivers.
 
