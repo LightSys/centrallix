@@ -181,8 +181,9 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    break;
 		    }
 		}
-	    if (sel_idx == -1) {
-	        mssError(1, "HTTAB", "Failed to find tab named '%s'", ptr);
+	    if (sel_idx == -1)
+		{
+		mssError(1, "HTTAB", "Failed to find tab named '%s'", ptr);
 		
 		/** Attempt to give hint. **/
 		if (tab_count > 0)
@@ -193,7 +194,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		    }
 		
 		/** Fail. **/
-	        goto err;
+		goto err;
 		}
 	    }
 	else if (wgtrGetPropertyValue(tree, "selected_index", DATA_T_INTEGER, POD(&sel_idx)) == 0)

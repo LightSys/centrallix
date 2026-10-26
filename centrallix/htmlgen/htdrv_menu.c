@@ -465,7 +465,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	if (htrAddScriptInit_va(s, "\t{ "
 	    "const layer = wgtrGetNodeRef(ns, '%STR&SYM'); "
 	    "mn_init({ "
-	        "layer, "
+		"layer, "
 		"clayer:wgtrGetContainer(layer), "
 		"hlayer:htr_subel(layer, 'mn%POShigh'), "
 		"name:'%STR&SYM', "

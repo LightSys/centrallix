@@ -485,7 +485,6 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		mssError(0, "HTPAGE", "Failed to write CSS for pgstat.");
 		goto end;
-		
 		}
 	    
 	    /** Write the pgstat DOM nodes. **/
