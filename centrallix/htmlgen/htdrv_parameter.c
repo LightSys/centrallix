@@ -173,7 +173,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 	    if (hints != NULL && objFreeHints(hints) != 0)
 		{
 		mssError(0, "HTPARAM", "Failed to free presentation hints.");
-		goto err_deploy;
+		successful = false;
 		}
 
 	    /** Handle errors. **/
