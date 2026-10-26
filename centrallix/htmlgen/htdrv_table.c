@@ -467,7 +467,7 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		z + 1
 	    ) != 0)
 		{
-		mssError(0, "HTTBL", "Failed to write CSS styleseet item for table row detail.");
+		mssError(0, "HTTBL", "Failed to write CSS stylesheet item for table row detail.");
 		goto err_detail;
 		}
 	    

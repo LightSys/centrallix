@@ -211,7 +211,7 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    if (htrAddScriptInit_va(s, "'%STR&JSSTR',", colors[i]) != 0)
 		{
-		mssError(0, "HTTERM", "Failed to write terminal color #%d/%d: \"%s\"", i + 1, MAX_COLORS, colors[i]);
+		mssError(0, "HTTERM", "Failed to write terminal color #%u/%d: \"%s\"", i + 1, MAX_COLORS, colors[i]);
 		goto err;
 		}
 	    }
@@ -229,7 +229,7 @@ httermRender(pHtSession s, pWgtrNode tree, int z)
 
     err:
 	mssError(0, "HTTERM",
-	    "Failed to render \"%s\":\"%s\" (id: %d).",
+	    "Failed to render \"%s\":\"%s\" (id: %u).",
 	    tree->Name, tree->Type, id
 	);
 	return -1;

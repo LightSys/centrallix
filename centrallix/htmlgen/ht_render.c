@@ -1561,7 +1561,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    objname, property, exptxt.String, xs.String, s->Namespace->DName
 	) != 0))
 	    {
-	    mssError(0, "HTR", "Failed to write the expresion item.");
+	    mssError(0, "HTR", "Failed to write the expression item.");
 	    goto end;
 	    }
 
@@ -2948,7 +2948,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 		    "%STR&SYM_background", prefix
 		) < 0))
 		{
-		mssError(1, "HTR", "Failed to write background color attribute name.");
+		mssError(1, "HTR", "Failed to write background image attribute name.");
 		qpfLogErrors(error_session);
 		goto end;
 		}
@@ -2989,7 +2989,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 		{
 		mssError(1, "HTR",
 		    "Value for attribute '%s' contains invalid characters: \"%s\"",
-		    background, ptr
+		    bgcolor, ptr
 		);
 		goto end;
 		}
@@ -3018,7 +3018,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	if (UNLIKELY(rval != 0))
 	    {
 	    mssError(0, "HTR",
-		"Failed write \"%s\"-background for \"%s\":\"%s\" into buffer %p of length %d.",
+		"Failed to write \"%s\"-background for \"%s\":\"%s\" into buffer %p of length %d.",
 		prefix, tree->Name, tree->Type, buf, buflen
 	    );
 	    }
@@ -3087,7 +3087,7 @@ htrGetBoolean(pWgtrNode wgt, char* attrname, int default_value)
 	/** Unrecognized boolean value: Warn and use the default. **/
 	fprintf(stderr,
 	    "Ignored unrecognized value for boolean attribute "
-	    "'%s' of \"%s\":\"%s\" (defaulting to %d)",
+	    "'%s' of \"%s\":\"%s\" (defaulting to %d)\n",
 	    attrname, wgt->Name, wgt->Type, result
 	);
 

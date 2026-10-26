@@ -326,7 +326,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		{
 		mssError(1, "HTTAB", "Unknown value for 'rendering': %s", ptr);
-		mssError(0, "HTTAB", "HINT: Should be either 'server-side' or 'client-size'.");
+		mssError(0, "HTTAB", "HINT: Should be either 'server-side' or 'client-side'.");
 		goto err;
 		}
 	    }

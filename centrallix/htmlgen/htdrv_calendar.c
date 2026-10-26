@@ -149,7 +149,7 @@ htcaRender(pHtSession s, pWgtrNode tree, int z)
 	    id, x, y, w, h, z
 	) != 0)
 	    {
-	    mssError(0, "HTCA", "Failed to write CSS init call.");
+	    mssError(0, "HTCA", "Failed to write CSS.");
 	    goto err;
 	    }
 
