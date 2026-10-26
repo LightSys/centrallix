@@ -409,7 +409,7 @@ function tc_updated(p1)
 	    tabparent = tc_direct_parent(cur_tab);
 	    if(this.tc_layer_cache && this.tc_layer_cache.length >0) newtab = this.tc_layer_cache.pop();
 	    else newtab = htr_new_layer(null,tabparent);
-	    pageparent = tc_direct_parent(cur_tab.tabpage)
+	    pageparent = tc_direct_parent(cur_tab.tabpage);
 	    newpage = htr_new_layer(null,pageparent);
 	    newtab.marker_image = cur_tab.marker_image;
 	    newtab.marker_image.src = '/sys/images/tab_lft3.gif';
