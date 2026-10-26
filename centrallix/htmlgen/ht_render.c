@@ -3433,7 +3433,7 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
 	return 0;
 
     err:;
-	char context[152] = "";
+	char context[153] = "";
 	if (container != NULL)
 	    snprintf(context, sizeof(context),
 	    " to container widget \"%s\":\"%s\"",
