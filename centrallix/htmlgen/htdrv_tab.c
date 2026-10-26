@@ -236,7 +236,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(text_color,"black");
 	
 	/** Get the tab spacing and tab height. **/
-	/** tab_w and tab_h are left as 0 if unset to tell the front end to calculate them dynamically. **/
+	/** tab_w is sent to the front end as 0 if unset to tell it to calculate the width dynamically. **/
 	int tab_spacing = 2; /* Default to a 2px gap between tabs. */
 	if (wgtrGetPropertyValue(tree, "tab_spacing", DATA_T_INTEGER, POD(&tmp)) == 0) tab_spacing = tmp;
 	if (wgtrGetPropertyValue(tree, "tab_width", DATA_T_INTEGER, POD(&tmp)) == 0)

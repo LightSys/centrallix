@@ -13,13 +13,13 @@
 // A list of every dropdown widget on the page.
 const dd_list = [];
 
-// A resize observer to rebuild dropdown panes when their widget is resized,
+// A resize observer to resize dropdown panes when their widget is resized,
 // which is needed because the pane scales with the widget.
 const dd_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
     // Ignore widgets that don't have a visible panelayer in need of updating.
     if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
 
-    // Rebuild the dropdown at its new size.
+    // Resize the dropdown pane to match its widget.
     dd_resize(target);
 }));
 
