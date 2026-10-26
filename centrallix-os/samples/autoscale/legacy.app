@@ -248,11 +248,7 @@ legacy "widget/page"
 	}
 
     // ---------------------------------------------------------------
-    // Calendar.  Nothing in the repository uses this widget, and it carries
-    // a core bug two decades older than this branch: htdrv_calendar.c reads
-    // the "displaymode" STRING into the integer 'minpriority', so
-    // minpriority never works and the read writes a pointer-sized value into
-    // an int.  That is why the calendar sits here.
+    // Calendar.  Nothing in the repository uses this widget, so it sits here.
     //
     // events.csv stores day offsets; the query turns them into dates around
     // today with dateadd(), so something is always visible in the current
