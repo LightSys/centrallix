@@ -226,7 +226,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Threestate button or twostate? **/
 	const bool is_tristate = (htrGetBoolean(tree, "tristate", true));
 
-	/** Auto-repeat the Click event while the button is held down. **/
+	/** Auto-repeat the MouseDown event while the button is held down. **/
 	const bool do_repeat = (htrGetBoolean(tree, "repeat", false));
 
 	/*** Border radius, color, and style.  For style, we only support outset,
