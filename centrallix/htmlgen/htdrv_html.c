@@ -198,7 +198,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    if (htrAddBodyItemLayer_va(s, 0, "ht%POSpane2", id, NULL, "") != 0)
 		{
-		mssError(0, "HTHTML", "Failed to write HTML opening tag.");
+		mssError(0, "HTHTML", "Failed to write HTML second pane.");
 		goto err;
 		}
 	    if (htrAddBodyItemLayer_va(s, HTR_LAYER_F_DYNAMIC, "ht%POSloader", id, NULL, "") != 0)

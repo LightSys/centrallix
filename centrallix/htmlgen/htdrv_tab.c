@@ -577,7 +577,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		continue;
 		
     err_tab:    /** Handle errors. **/
-		mssError(0, "HTTAB", "Failed to write tab #%d.", i + 1);
+		mssError(0, "HTTAB", "Failed to write tab #%u.", i + 1);
 		goto err;
 		}
 	    }
@@ -773,8 +773,8 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    /** Error cases. **/
     tab_page_err:
 	    mssError(0, "HTTAB",
-		"Failed to render tab page \"%s\":\"%s\", #%d.",
-		tree->Name, tree->Type, i + 1
+		"Failed to render tab page \"%s\":\"%s\", #%u.",
+		tab_page_tree->Name, tab_page_tree->Type, i + 1
 	    );
 	    goto err;
 	    }

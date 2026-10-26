@@ -497,10 +497,10 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		mssError(1, "HTTBL", "Failed to get name of table row detail widget.");
 		goto err_detail;
 		}
-	    if (htrCheckAddExpression(s, row_detail, ptr, "display_for") < 0) goto err;
+	    if (htrCheckAddExpression(s, row_detail, ptr, "display_for") < 0) goto err_detail;
 
 	    /** Done. **/
-	    if (htrCheckNSTransitionReturn(s, tree, row_detail) != 0) goto err;
+	    if (htrCheckNSTransitionReturn(s, tree, row_detail) != 0) goto err_detail;
 	    
 	    /** Success. **/
 	    continue;

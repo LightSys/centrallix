@@ -322,7 +322,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    /** This isn't 100% ideal -- it causes a couple seconds of clock drift **/
 	    if (strftime(timestr, sizeof(timestr), "%Y %m %d %T %Z", timeptr) > 0)
 		{
-		if (htrAddScriptInit_va(s, "\tpg_servertime = new Date(%STR&DQUOT);\n", timestr))
+		if (htrAddScriptInit_va(s, "\tpg_servertime = new Date(%STR&DQUOT);\n", timestr) != 0)
 		    {
 		    mssError(0, "HTPAGE", "Failed to write server time in JS.");
 		    goto end;
@@ -508,7 +508,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    "}\n"
 	) != 0)
 	    {
-	    mssError(0, "HTPAGE", "Failed to write CSS for main <HTML> tag.");
+	    mssError(0, "HTPAGE", "Failed to write CSS for main <html> tag.");
 	    goto end;
 	    }
 	if (htrAddStylesheetItem_va(s,

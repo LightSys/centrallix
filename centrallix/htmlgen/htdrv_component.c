@@ -474,7 +474,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    /** End Init component **/
 	    if (htrAddScriptInit_va(s, "\tcmp_endinit(wgtrGetNodeRef(ns, '%STR&SYM'));\n", name) != 0)
 		{
-		mssError(0, "HTCMP", "Failed to write JS init call.");
+		mssError(0, "HTCMP", "Failed to write JS cmp_endinit() call.");
 		goto end_free;
 		}
 
