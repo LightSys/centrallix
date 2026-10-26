@@ -19,8 +19,11 @@ While it may be very useful to read the following generated files, do not edit t
 - centrallix/configure
 - centrallix-lib/configure
 
+## Line endings
+Some files use CRLF line endings (e.g. `centrallix-doc/Widgets/widgets.xml`). Preserve them: a scripted edit that reads in text mode silently converts the whole file.
+
 ## Searching
-Instead of searching with `grep`, use `rg` (if available). It's faster, but it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), so include those when searching (aka. `rg -L`). Many centrallix structure files (e.g. `.app`, `.cmp`, etc.) are treated as binary files by `rg`: add `-a` when searching them. You may need to combine both flags to navigate these challenges, e.g. `rg -La "pattern"`, or fall back to `grep` if you encounter issues.
+Instead of searching with `grep`, use `rg` (if available). It's faster, but it ignores `.gitignored` files, hidden files, binaries, etc. This project includes symlinks (both to files and directories), so include those when searching (aka. `rg -L`). Many centrallix structure files (e.g. `.app`, `.cmp`, etc.) are treated as binary files by `rg`: add `-a` when searching them. You may need to combine flags to navigate such challenges (e.g. `rg -La "pattern"`) or fall back to `grep` to work around issues.
 
 
 # Terms
@@ -47,8 +50,14 @@ For other terminology or to find more detailed info, read `centrallix-sysdoc/Ter
 
 ## Key patterns
 
-Widget names must be unique.
+Widget names must be unique for the whole app, but each component (`.cmp`) has its own namespace.
 
 **Data flow**:
 - User interaction → event → `widget/connector` → action on any widget.
 - Form or OSRC updated by action → HTTP to OSML → OSRC replica updated → form or table re-renders.
+
+## Silent failures
+- Without `$Version=2$` on the first line, a structure file's expressions (e.g. `runclient()`) are never evaluated.
+- Structure files only support `//` comments. Other syntax (e.g. `/* */`) is a parse error that may look like a missing attribute name.
+- Child widgets inside a `widget/template` break the whole app's JavaScript, so templates should only set properties.
+- `runclient()` causes expressions to evaluate on the client, so it can only call functions that have `cxjs_*` implementations in `centrallix-os/sys/js/ht_render.js`.
