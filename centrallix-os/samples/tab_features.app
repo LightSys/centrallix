@@ -412,7 +412,6 @@ tab_features "widget/page"
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
 		selected_index = 2;
-		tab_height = 32;
 
 		t13t31 "widget/tabpage" { title = "First";      t13t31l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Tab One"; } }
 		t13t32 "widget/tabpage" { title = "Looong Tab"; t13t32l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Tab Two"; } }
@@ -440,7 +439,6 @@ tab_features "widget/page"
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
 		selected = t13t42;
-		tab_height = 48;
 
 		t13t41 "widget/tabpage" { title = "First";      t13t41l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Label One"; } }
 		t13t42 "widget/tabpage" { title = "Looong Tab"; t13t42l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Label Two"; } }
@@ -468,7 +466,6 @@ tab_features "widget/page"
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
 		selected_index = 2;
-		tab_height = 16;
 
 		t13t51 "widget/tabpage" { title = "First";      t13t51l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Tab One"; } }
 		t13t52 "widget/tabpage" { title = "Looong Tab"; t13t52l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Tab Two"; } }
@@ -496,7 +493,6 @@ tab_features "widget/page"
 		background = "/sys/images/slate2.gif";
 		inactive_background = "/sys/images/slate2_dark.gif";
 		selected = t13t62;
-		tab_height = 8;
 
 		t13t61 "widget/tabpage" { title = "First";      t13t61l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Label One"; } }
 		t13t62 "widget/tabpage" { title = "Looong Tab"; t13t62l "widget/label" { x=10; y=10; width=100; height=32; font_size=18; fgcolor="#00065f"; text="Label Two"; } }
