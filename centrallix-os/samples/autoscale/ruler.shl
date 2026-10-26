@@ -1,6 +1,6 @@
 $Version=2$
 
-// Backend for the terminal widget on the misc page of the autoscale harness.
+// Backend for the terminal widget on the legacy page of the autoscale harness.
 //
 // Prints a numbered character ruler and exits right away, leaving no process
 // running for the life of the page.  The terminal widget is a fixed grid of
