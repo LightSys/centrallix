@@ -163,7 +163,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	goto end_free;
 	}
     
-    /** Add event listenners. **/
+    /** Add event listeners. **/
     if (htrAddEventHandlerFunction(s, "document", "MOUSEDOWN", "radiobutton", "radiobutton_mousedown") != 0) goto end_free;
     if (htrAddEventHandlerFunction(s, "document", "MOUSEMOVE", "radiobutton", "radiobutton_mousemove") != 0) goto end_free;
     if (htrAddEventHandlerFunction(s, "document", "MOUSEOVER", "radiobutton", "radiobutton_mouseover") != 0) goto end_free;

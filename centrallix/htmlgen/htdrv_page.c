@@ -306,7 +306,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Set the application key **/
 	/*** TODO: Greg - This should be a call to htrAddScriptGlobal(), but I
-	 *** do not know how to do that with a the dynamic, formatted value.
+	 *** do not know how to do that with a dynamic, formatted value.
 	 ***/
 	if (htrAddScriptInit_va(s, "\tif (typeof window.akey == 'undefined') window.akey = '%STR&JSSTR';\n", s->ClientInfo->AKey) != 0)
 	    {
@@ -367,7 +367,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    goto end;
 	    }
 	
-	/** Write obscore_data. **/
+	/** Write obscure_data. **/
 	pStruct c_param = stLookup_ne(s->Params, "cx__obscure");
 	if (htrAddScriptInit_va(s,
 	    "\tobscure_data = %BOOL;\n",

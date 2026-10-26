@@ -1638,7 +1638,7 @@ function tbld_cell_width_adj(table, cell)
     if (table.cell_width_adj !== undefined) return table.cell_width_adj;
     if (!cell) return 0;
 
-    // Get jQuery width to learn what how much padding + border it adds.
+    // Get jQuery width to calculate the padding + border that it adds.
     const probe = 1000, saved = cell.style.width;
     $(cell).width(probe);
     const adj = parseInt(cell.style.width) - probe;
@@ -2298,7 +2298,7 @@ function tbld_init(param)
     t.ObjectModified = tbld_object_modified;
     t.osrc.Register(t);
     
-    // Set the number or records visible in the table at one time.
+    // Set the number of records visible in the table at one time.
     if (param.windowsize > 0)
 	{
 	t.windowsize = param.windowsize;

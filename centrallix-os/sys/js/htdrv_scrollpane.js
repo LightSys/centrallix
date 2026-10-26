@@ -482,7 +482,7 @@ function sp_mousedown(e)
     /** Ignore right clicks for some actions. **/
     if (e.Dom2Event.button !== 2)
 	{
-	/** Check what button is being targetted. **/
+	/** Check what button is being targeted. **/
 	const target_img = e.target;
 	const target_type = target_img.dataset.type;
 	switch (target_type)

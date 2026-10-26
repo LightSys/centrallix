@@ -291,7 +291,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	int select_x_offset = 0, select_y_offset = 0;
 	switch (tloc)
 	    {
-	    /*** Shift to cover boarder line:
+	    /*** Shift to cover border line:
 	     *** Top:    ytoffset +1
 	     *** Bottom: ytoffset -2
 	     *** Left:   xtoffset +1
@@ -408,7 +408,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    /*** Compute offsets for spacing out tabs. This is overwritten
 	     *** by the JS, but content with these values is visible for a
-	     *** brief period while the page loads, so we try to make a good
+	     *** brief period while the page loads, so we try to make good
 	     *** guesses for it.
 	     ***/
 	    int i_offset_x = 0, i_offset_y = 0;
@@ -674,7 +674,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		goto tab_page_err;
 		}
 	    
-	    /** Get feildname. **/
+	    /** Get fieldname. **/
 	    if (page_type[0] == 'd'
 		&& wgtrGetPropertyValue(tab_page_tree, "fieldname", DATA_T_STRING, POD(&field)) == 0)
 		strtcpy(fieldname, field, sizeof(fieldname));
@@ -720,7 +720,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		goto tab_page_err;
 		}
 	    
-	    /** Add DIV section to contane the tabpage. **/
+	    /** Add DIV section to contain the tabpage. **/
 	    if (htrAddBodyItem_va(s,
 		"<div "
 		    "id='tc%POSpane%POS' "

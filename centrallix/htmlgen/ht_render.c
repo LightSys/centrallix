@@ -546,7 +546,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
  *** 
  *** @param s The current session.
  *** @param parent The parent we are moving away from.
- *** @param parent The child of the parent we are moving to.
+ *** @param child The child of the parent we are moving to.
  *** @returns 0 if successful, and -1 if an error occurs.
  ***/
 int
@@ -576,7 +576,7 @@ htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
  *** 
  *** @param s The current session.
  *** @param parent The parent we are returning to.
- *** @param parent The child we are moving away from.
+ *** @param child The child we are moving away from.
  *** @returns 0 if successful, and -1 if an error occurs.
  ***/
 int
@@ -1383,7 +1383,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 int
 htrAddBodyItemLayerEnd(pHtSession s, int flags)
     {
-	/** Pick a starting tag. **/
+	/** Pick a closing tag. **/
 	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC)); 
 	const char* end_tag = (use_iframe) ? "iframe" : "div";
 	
@@ -1520,7 +1520,7 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    goto end;
 	    }
 
-	/** Copy expression data. 8*/
+	/** Copy expression data. **/
 	if (UNLIKELY(xsCopy(&xs, "[", 1) < 0))
 	    {
 	    mssError(1, "HTR", "xsCopy() failed.");
@@ -2881,7 +2881,7 @@ htrInitialize()
     }
 
 
-/*** htrGetBackground - Gets the background color/image the from the bgcolor
+/*** htrGetBackground - Gets the background color/image from the bgcolor
  *** or background attributes on the provided widget node, then writes a CSS
  *** rule or HTML attribute for the background into the provided buffer.
  ***
@@ -2892,7 +2892,7 @@ htrInitialize()
  ***                 writes an HTML attribute, which is usually deprecated in
  ***                 functionality in modern browsers.
  *** @param buf      The buffer where the written output should be stored.
- ***                 A value or `""` is always written to buf as long as at
+ ***                 A value of `""` is always written to buf as long as at
  ***                 least one character of space was allocated.
  *** @param buflen   The allocated length of `buf`.
  *** @returns 0 if successful, 1 if no background attribute was provided, or

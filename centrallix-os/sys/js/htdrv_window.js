@@ -861,7 +861,7 @@ function wn_compute_point(wn, viewport)
     if (!geom) return null;
     const using_offset = (offset != undefined && offset != null);
 
-    /*** Which side of the window does the point go on?  The designer requested
+    /*** Which side of the window does the point go on?  The designer-requested
      *** side is always honored.  Otherwise, we choose based on available room,
      *** so this must be recomputed on resize.
      ***/
@@ -1131,7 +1131,7 @@ function wn_drag_watch(e)
 	wn_new_y += (e.pageY - wn_msy);
 	}
 
-    // Update the window possition.
+    // Update the window position.
     wn_do_move();
     wn_moved = 1;
     wn_msx = e.pageX;

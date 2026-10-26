@@ -315,7 +315,7 @@ htbtnRender(pHtSession s, pWgtrNode tree, int z)
 	    if (image_height == 0) image_height = h - frame_adjust;
 	    }
 
-	/** Supress invalid positive values. **/
+	/** Suppress invalid negative values. **/
 	if (image_width < 0) image_width = 0;
 	if (image_height < 0) image_height = 0;
 	if (spacing < 0) spacing = 0;

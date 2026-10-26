@@ -115,8 +115,8 @@ function tc_makenotcurrent(page)
  *** tc_makecurrent().
  *** 
  *** @param param The object containing parameters for the function.
- *** @param param.l_tab The tab to be added.
- *** @param param.l_page The page to which the tab shall be added.
+ *** @param param.tab The tab to be added.
+ *** @param param.page The page to which the tab shall be added.
  *** @param param.name The name of the tab.
  *** @param param.type The type of the tab.
  *** @param param.fieldname The fieldname of the tab.

@@ -394,25 +394,25 @@ function pg_hidebox(tl, bl, rl, ll)
     }
 
 /*** Internal constructor function to create a new clickable/hoverable "area".
- *** This function has additional documentation in `HTFormInterface.md`.
+ *** This function has additional documentation in `HTFormsInterface.md`.
  *** 
  *** Note: Many functions specify (x,y) as (0,0), or as (-1,-1) if the focus
  ***       area should appear 1px outside the parent layer.
  *** 
  *** Note: The x, y, w, and h params can all be specified as either a single
- ***       value or a function. The latter is useful because areas are redawn
+ ***       value or a function. The latter is useful because areas are redrawn
  ***       when the page resizes, so a function can provide an updated value
  ***       for the new layout.
  *** 
  *** @param parent The associated parent layer for which this area is rendered.
  *** 	This object should implement the `keyhandler()`, `getfocushandler()`,
- *** 	and `losefocushandler()`, as described in `HTFormInterface.md`.
+ *** 	and `losefocushandler()`, as described in `HTFormsInterface.md`.
  *** @param x The x coordinate of the area, relative to the parent layer.
  *** @param y The y coordinate of the area, relative to the parent layer.
  *** @param width The width of the area.
  *** @param height The height of the area.
  *** @param cls A mostly unused value for the "context" of an area, used for
- *** 	the callback functions described in `HTFormatInterface.md`. (As for how
+ *** 	the callback functions described in `HTFormsInterface.md`. (As for how
  ***	"context" can be abbreviated to `cls`, your guess is as good as mine.)
  *** @param name The name of the area, also used for callback functions.
  *** @param f A bitmask representing zero or more of the following flags:
@@ -1363,7 +1363,7 @@ function pg_reclaim_objects()
     }
 
 //SETH: this function seems to implement the 'blur' event.
-// Lightning: I've never heard of this 'blur' event.  This this function is for
+// Lightning: I've never heard of this 'blur' event.  This function is for
 // selection areas, such as the highlight on a dropdown widget. 
 function pg_removemousefocus()
     {

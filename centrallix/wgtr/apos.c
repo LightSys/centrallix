@@ -40,9 +40,9 @@
  *** 
  *** Execution of this file usually begins when wgtrVerify() in wgtr.c calls
  *** aposAutoPositionWidgetTree(). To auto position the tree, the code first
- *** it draws four lines on the four edges of every visible widget (with some
+ *** draws four lines on the four edges of every visible widget (with some
  *** exceptions, @see aposAddLinesToGrid()). These lines divide the page into
- *** into horizontal sections (rows) and vertical sections (columns) which span
+ *** horizontal sections (rows) and vertical sections (columns) which span
  *** the page. @see aposAddSectionsToGrid() for more detail.
  *** 
  *** The program guesses that some of these sections are "spacers", which are
@@ -236,7 +236,7 @@ end:
 
 /*** Recursively sets flexibility values for containers and their children.
  *** 
- *** @param Parent The parent node who's flexibilities are being set.
+ *** @param Parent The parent node whose flexibilities are being set.
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
@@ -292,7 +292,7 @@ int sectCount;
 
 /*** Adjusts space to accommodate children, somehow? I think?
  ***
- *** @param Parent  The widget node parent who's limits are being calculated.
+ *** @param Parent  The widget node parent whose limits are being calculated.
  *** @param delta_w The change in width required for children (not set on error).
  *** @param delta_h The change in height required for children (not set on error).
  *** @returns 0 if successful, or -1 if an error occurs.
@@ -399,7 +399,7 @@ pWgtrNode Child;
 
 /*** Adjusts space to accommodate children, somehow? I think?
  ***
- *** @param Parent  The widget node parent who's limits are being calculated.
+ *** @param Parent  The widget node parent whose limits are being calculated.
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
@@ -428,7 +428,7 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 
     /*** Calculate average row flexibility, weighted by height.
      *** Note: Section height is called width here because rows
-     ***       are one dimensional and the feild is reused.
+     ***       are one dimensional and the field is reused.
      ***/
     if (!(W->Flags & WGTR_F_FLHEIGHTSET))
 	{
@@ -458,10 +458,10 @@ int i=0, sectCount=0, TotalWidth=0, ProductSum=0;
 	}
 }
 
-/*** Builds the layout grid for recursively for this container and all of its
+/*** Builds the layout grid recursively for this container and all of its
  *** children, including the lines and sections required for positioning.
  *** 
- *** @param Parent The parent node who's grid is being built.
+ *** @param Parent The parent node whose grid is being built.
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
@@ -532,7 +532,7 @@ pAposGrid theGrid = NULL;
 
 /*** Recursively auto-positions containers and their children based on their grids.
  *** 
- *** @param Parent The parent node who's containers are being autopositioned.
+ *** @param Parent The parent node whose containers are being auto-positioned.
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
@@ -662,7 +662,7 @@ end:
  *** are also properly populated with the widgets that start, cross, and end each
  *** line respectively.
  *** 
- *** @param Parent The parent who's grid is being populated with lines.
+ *** @param Parent The parent whose grid is being populated with lines.
  *** @param HLines The array of horizontal lines, populated by this function.
  *** @param VLines The array of vertical lines, populated by this function.
  *** @returns 0 if successful, or -1 if an error occurs.
@@ -744,7 +744,7 @@ error:
  *** are ignored. Scrollpanes receive only 2 vertical lines (skipping their
  *** horizontal edges).
  *** 
- *** @param Parent The parent who's children are being given lines.
+ *** @param Parent The parent whose children are being given lines.
  *** @param HLines The array to which horizontal lines should be added.
  *** @param VLines The array to which vertical lines should be added.
  *** @returns 0 if successful, or -1 if an error occurs.
@@ -792,7 +792,7 @@ pWgtrNode C;
 			     *** always the minY, and the end of the line is
 			     *** always the maxY. Thus, the top line is the
 			     *** start line and the bottom line is the end line
-			     *** because Y increases as we decend the page.
+			     *** because Y increases as we descend the page.
 			     ***/
 			    int minY = (C->y), maxY = (C->y + C->height);
 			    if (UNLIKELY(aposCreateLine(C, HLines, minY, APOS_SWIDGETS, APOS_NOT_BORDER, 0, APOS_HORIZONTAL) < 0))
@@ -828,9 +828,9 @@ pWgtrNode C;
  *** in the same location. Remember that lines record the widgets that start
  *** on them (SWidgets), end on them (EWidgets), and cross them (CWidgets).
  *** 
- *** Note: This function all lines in the given array are oriented in the same
+ *** Note: This function assumes all lines in the given array are oriented in the same
  ***       direction as the new line. At the time of this writing (June 2025),
- ***       all known calling functions upheld by maintaining an HLines and a
+ ***       all known calling functions upheld this by maintaining an HLines and a
  ***       VLines array to store horizontal and vertical lines separately.
  *** 
  *** @param Widget   The widget which determined the location of this line,
@@ -911,7 +911,7 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 
 /*** Gets a line from the array at the location, or returns NULL if none exists.
  ***
- *** Note: This function all lines in the given array are oriented in the same
+ *** Note: This function assumes all lines in the given array are oriented in the same
  *** 	 direction. This is not tested, although at the time of this writing
  *** 	 (June, 2025), all calling functions upheld this contract.
  *** 
@@ -998,7 +998,7 @@ aposAddSectionsToGrid(pAposGrid theGrid, int VDiff, int HDiff)
 {
 int count=0, i=0;
     
-    /** Add rows sections between horizontal lines. **/
+    /** Add row sections between horizontal lines. **/
     count = xaCount(&(theGrid->HLines));
     for(i=1; i<count; ++i)
 	if (UNLIKELY(aposCreateSection(&(theGrid->Rows), ((pAposLine)xaGetItem(&(theGrid->HLines),(i-1))),
@@ -1060,7 +1060,7 @@ int cCount = xaCount(&(sect->StartLine->CWidgets));
  *** @param StartL   The line which starts this section (typically the top/left line).
  *** @param EndL     The line which ends this section (typically the bottom/right line).
  *** @param Diff     I had a hard time figuring out what this means.
- *** @param type     Whether the section is a row (APOS_ROW) or a column (APAS_COL).
+ *** @param type     Whether the section is a row (APOS_ROW) or a column (APOS_COL).
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
@@ -1486,7 +1486,7 @@ pWgtrNode Widget;
 
 	    if (!is_design)
 		{
-		/** Adjusts width or height of widgets ending on this line. **/
+		/** Adjusts flexibility of widgets crossing this line. **/
 		count = xaCount(&(CurrLine->CWidgets));
 		for(j=0; j<count; ++j)
 		    {

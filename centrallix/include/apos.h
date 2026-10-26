@@ -135,8 +135,8 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 #define APOS_HORIZONTAL 0
 
 /*** Indicates if a section or line is a row (horizontal) or a column (vertical).
- *** A row spans horizontally between two vertical lines, and a column spans
- *** vertically between two horizontal lines.
+ *** A row spans horizontally between two horizontal lines, and a column spans
+ *** vertically between two vertical lines.
  ***/
 #define APOS_ROW 	1
 #define APOS_COL 	2
@@ -160,8 +160,8 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 
 /** Default flexibilities for widgetless gaps in expanding or contracting applications. **/
 /*** Israel: I don't know the difference between these two values. I'm guessing
- ***         E stands enlarge and C stands for contract, thus (30, 50) makes it
- ***         easier for gaps to grown than for them to shrink.
+ ***         E stands for enlarge and C stands for contract, thus (30, 50) makes it
+ ***         easier for gaps to grow than for them to shrink.
  ***/
 #define APOS_EGAPFLEX 30
 #define APOS_CGAPFLEX 50

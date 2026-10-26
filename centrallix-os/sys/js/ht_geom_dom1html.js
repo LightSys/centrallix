@@ -163,7 +163,7 @@ function setPageY(l, value)
     }
 
 /*** Moves a DOM node to the specified page coordinates.  The move is a delta
- *** from where the node actually sits, so it and its ancestors positions do
+ *** from where the node actually sits, so the positions of it and its ancestors do
  *** not matter.
  ***
  *** One call to this function is faster than calling setPageX() & setPageY().
@@ -274,8 +274,8 @@ function getRelative(l, d)
 	}
 
     /*** A node with no layout box (display:none, or not in the document yet)
-     *** as a length of 'auto', not a number.  In this case, report the cached
-     *** and skip caching a 'auto'.
+     *** has a length of 'auto', not a number.  In this case, report the cached value
+     *** and skip caching an 'auto'.
      ***/
     const val = parseInt(pg_get_style(l, d), 10);
     if (isNaN(val)) return l['__pg_' + d] ?? 0;
@@ -406,7 +406,7 @@ function moveToAbsolute(l, x, y)
     setPageXY(l, x, y);
     }
 
-/*** Moves a DOM node to a location inside it's parent container.
+/*** Moves a DOM node to a location inside its parent container.
  *** 
  *** @param l The DOM node being moved.
  *** @param x The new x coordinate. Can be a CSS string (if responsive is false).

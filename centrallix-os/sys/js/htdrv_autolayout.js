@@ -49,7 +49,7 @@ function al_reflow_buildlist(node, children)
 /*** Note:
  *** This function gets all its values from server properties, so its generated
  *** positions are in server layout. Thus, we convert them right before they
- *** assigned to allow for responsive values.
+ *** are assigned to allow for responsive values.
  ***/
 function al_reflow()
     {
