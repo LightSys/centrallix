@@ -628,6 +628,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&(t->h))) != 0)
 	    {
 	    mssError(1,"HTTBL","'height' property is required");
+	    nmFree(t, sizeof(httbl_struct));
 	    return -1;
 	    }
 	if (wgtrGetPropertyValue(tree, "rowheight", DATA_T_INTEGER, POD(&n)) != 0)
@@ -686,6 +687,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		{
 		mssError(1, "HTTBL", "Invalid value for attribute 'data_mode': %s", ptr);
+		nmFree(t, sizeof(httbl_struct));
 		return -1;
 		}
 	    }
@@ -706,6 +708,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    else
 		{
 		mssError(1, "HTTBL", "Invalid value for attribute 'colsep_mode': %s", ptr);
+		nmFree(t, sizeof(httbl_struct));
 		return -1;
 		}
 	    }
