@@ -302,7 +302,7 @@ misc "widget/page"
 	menu_note "widget/label"
 	    {
 	    x=212; y=36; width=270; height=60; allow_break=yes; font_size=11; align=left; valign=top;
-	    text="The menu driver registers no Select event server-side, so clicks here are not wired to anything.";
+	    text="No connectors are attached to these menu items, so clicks here are not wired to anything.";
 	    }
 	}
 
