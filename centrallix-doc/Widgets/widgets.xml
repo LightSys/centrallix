@@ -1574,7 +1574,7 @@ mySoundPlayer "widget/execmethod"
 
 		<usage>
 
-			<p>The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") to improve clarity.  It has no effect on its container.  This widget does cannot contain any visual widgets.</p>
+			<p>The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") to improve clarity.  It has no effect on its container.  This widget cannot contain any visual widgets.</p>
 
 		</usage>
 
@@ -1594,7 +1594,7 @@ mySoundPlayer "widget/execmethod"
 
 			<event name="DataChange">This event occurs when the uploaded file(s) is changed, either because the user selected new file(s) or because the file upload widget was cleared.  It provides two parameters: "NewValue" is the new file name, or an empty string ("") if the widget was cleared, and "OldValue" is the value before the data was changed.</event>
 
-			<event name="UploadComplete">This event occurs when an upload is successfully completed by the user.  It provides several parameters called "OrigNameX" and "NewNameX" where X is a number greater than 0 that appear to relate to the files names that the user has uploaded.</event>
+			<event name="UploadComplete">This event occurs when an upload is successfully completed by the user.  It provides several parameters called "OrigNameX" and "NewNameX" where X is a number greater than 0 that appear to relate to the file names that the user has uploaded.</event>
 
 			<event name="UploadError">This event occurs when there is an error during a file upload.  It provides no parameters.</event>
 
@@ -1663,7 +1663,7 @@ mySoundPlayer "widget/execmethod"
 
 			<property name="confirm_delete" type="yes/no"><ni />Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted.</property>
 
-			<property name="comfirm_discard" type="yes/no">Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.</property>
+			<property name="confirm_discard" type="yes/no">Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.</property>
 
 			<property name="enter_mode" type="string"><ni />Can be "save" (default), "nextfield", or "lastsave".  Controls what to do when the user presses ENTER while in a form element in this form.  "save" means to save the record immediately.  "nextfield" means to move to the next form field, as if TAB were pressed instead.  "lastsave" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer "save" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer "lastsave" since it allows them to perform high-speed data entry using a numeric keypad.</property>
 
@@ -1751,7 +1751,7 @@ mySoundPlayer "widget/execmethod"
 
 		<actions>
 
-			<action name="Clear"><ni />Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</action>
+			<action name="Clear"><ni />Clears the form to a 'no data' state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</action>
 
 			<action name="Delete"><ni />Deletes the current object displayed.</action>
 
@@ -2218,7 +2218,7 @@ HTMLArea "widget/html"
 
 		<properties>
 
-			<property name="aspect" type="sting">Specifies whether the image can be stretched or must stay its original aspect ratio.</property>
+			<property name="aspect" type="string">Specifies whether the image can be stretched or must stay its original aspect ratio.</property>
 
 			<property name="fieldname" type="string">If using a form for the image path, the name of the column in the datasource you want to reference.</property>
 
@@ -2576,15 +2576,15 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 			<event name="LoseFocus"><ni />This event occurs when the menu which previously was clicked is unselected.</event>
 
-			<event name="MouseDown"><ni />This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown"><ni />This event occurs when the user presses the mouse button on the menu.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the menu for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove"><ni />This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove"><ni />This event occurs when the user moves the mouse pointer while it is over the menu.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut"><ni />This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut"><ni />This event occurs when the user moves the mouse pointer off of the menu.</event>
 
-			<event name="MouseOver"><ni />This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver"><ni />This event occurs when the user first moves the mouse pointer over the menu.  It will not occur again until the user moves the mouse off of the menu and then back over it again.</event>
 
-			<event name="MouseUp"><ni />This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp"><ni />This event occurs when the user releases the mouse button on the menu.</event>
 
 			<event name="Select">This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).  This event also provides the "Value" and "Label" parameters to represent what was selected.</event>
 
@@ -2746,7 +2746,7 @@ myMenu "widget/menu"
 
 			<child type="rule with ruletype=osrc_relationship (replaces the deprecated: sync and double sync)">
 
-				<childproperty name="autoquery" type="true/false">When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.</childproperty>
+				<childproperty name="autoquery" type="true/false">When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.</childproperty>
 
 				<childproperty name="is_slave" type="yes/no">Defaults to 'yes'.  If it is set to 'no', then this osrc is set up to be a master of the target, otherwise the default is for it to be a slave of the target.</childproperty>
 
@@ -2858,7 +2858,7 @@ myMenu "widget/menu"
 
 			<action name="Sync">DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The 'ParentOSRC' (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as a pair of 'ParentKey' and 'ChildKey' parameters, each followed by a digit from 1 to 9 (e.g. ParentKey1 and ChildKey1).  'ParentKey' indicates the name of the field in the 'ParentOSRC' to sync with (probably a primary key), and 'ChildKey' indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.</action>
 
-			<action name="SaveClients">Save the clients that connect and lets clients of clients know that orsc is connected to them.</action>
+			<action name="SaveClients">Save the clients that connect and lets clients of clients know that osrc is connected to them.</action>
 
 			<action name="SeqBackward">Moves the current row backwards.</action>
 
@@ -2991,8 +2991,6 @@ osrc1 "widget/osrc"
 			<action name="Log">Logs data to the console (using console.log()), for testing and debugging. Set the 'Message' to specify a text string that should appear in the log. Might be useful for logging Easter Egg #8.</action>
 
 			<action name="LoadPage">Loads the page at the specified "Source", or reloads the current page if no source is given.  Any other parameters are appended to the URL as query parameters.  Specify 1 or yes for "LinkApp" to link the loaded page into the same group as the current page for permissions.</action>
-
-			<action name="ReloadPage">Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.</action>
 
 			<action name="ReloadPage">Reloads the page in the user's browser.  Note: This event forces a reload, even if the original content could be loaded without one.</action>
 
@@ -3301,17 +3299,17 @@ my_cmp "widget/component-decl"
 
 			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
-			<event name="DataChange">This event occurs when a new option is selected in the dropdown widget.  It provides the "Value" parameter, which indicates the new selected option.</event>
+			<event name="DataChange">This event occurs when a new option is selected in the radio button panel.  It provides the "Value" parameter, which indicates the new selected option.</event>
 
 			<event name="GetFocus">This event occurs when the parent pane gains the user's focus.</event>
 
-			<event name="LoseFocus">This event occurs when the parent pane looses the user's focus.</event>
+			<event name="LoseFocus">This event occurs when the parent pane loses the user's focus.</event>
 
 		</events>
 
 		<actions>
 
-			<action name="SetValue">Sets the selected option for the radio button panel to the new option specified with the "Value" parameter, or unsets the dropdown if no value is specified.</action>
+			<action name="SetValue">Sets the selected option for the radio button panel to the new option specified with the "Value" parameter, or unsets the radio button panel if no value is specified.</action>
 
 		</actions>
 
@@ -3819,7 +3817,7 @@ myTabControl "widget/tab"
 
 		<usage>
 
-			<p>Table widgets are normally placed inside a scrollpane so that any rows which don't fit int the container can still be viewed.  Table columns are created via "widget/table-column" child widgets within the table widget.</p>
+			<p>Table widgets are normally placed inside a scrollpane so that any rows which don't fit in the container can still be viewed.  Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 
 		</usage>
 
@@ -3838,8 +3836,6 @@ myTabControl "widget/tab"
 			<property name="cellvspacing" type="integer">The vertical spacing between cells in the table, in pixels.  Default is 1.</property>
 
 			<property name="colsep" type="integer">The width of the column separation lines in pixels.  Default is 1.</property>
-
-			<property name="colsep_mode" type="string">Either 'full' or 'header'. Default is 'full'.</property>
 
 			<property name="colsep_mode" type="string">Either 'full' or 'header'.  Default is 'full'.</property>
 
@@ -3955,7 +3951,7 @@ myTabControl "widget/tab"
 
 				<childproperty name="caption_textcolor" type="string">The color of the captions in this column.</childproperty>
 
-				<childproperty name="caption_font_size" type="string">The font size of thecaption text.</childproperty>
+				<childproperty name="caption_font_size" type="string">The font size of the caption text.</childproperty>
 
 				<childproperty name="caption_style" type="string">Not documented.</childproperty>
 
@@ -3997,7 +3993,7 @@ myTabControl "widget/tab"
 
 				<childproperty name="display_for" type="integer">Specify 0 to hide the row-detail (useful for creating multiple widgets and picking between them dynamically). Support run_client().</childproperty>
 
-				<childproperty name="show_on_new" type="integer">Specify 1 to make new rows show their table-row-detail when added (deault: 0).</childproperty>
+				<childproperty name="show_on_new" type="integer">Specify 1 to make new rows show their table-row-detail when added (default: 0).</childproperty>
 
 			</child>
 
@@ -4288,11 +4284,11 @@ term1 "widget/terminal"
 
 			<event name="EscapePressed">This event occurs when the user presses the escape key.</event>
 
-			<event name="GetFocus">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</event>
+			<event name="GetFocus">This event occurs when the textarea receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</event>
 
 			<event name="KeyPress">This event occurs when the user presses any key.</event>
 
-			<event name="LoseFocus">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</event>
+			<event name="LoseFocus">This event occurs when the textarea loses keyboard focus (if the user tabs off of it, for instance).</event>
 
 			<event name="Click"><ni />This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 

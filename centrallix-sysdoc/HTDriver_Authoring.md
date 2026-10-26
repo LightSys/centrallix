@@ -176,7 +176,7 @@ The 'parentobj' parameter is the name of the "layer" object that will contain th
 The following list of functions are used by widget drivers to actually generate the DHTML and scripting needed to support widget instances.
 
 #### htrAddStylesheetItem(pHtSession s, char* html_text) returns int
-This functions adds a stylesheet definition to the header between the tags `<STYLE TYPE="text/css"></STYLE>`.  It is recommended to maintain a consistant indention style (using double tab '\t\t' characters) at the beginning of these lines.
+This function adds a stylesheet definition to the header between the tags `<STYLE TYPE="text/css"></STYLE>`.  It is recommended to maintain a consistent indention style (using double tab '\t\t' characters) at the beginning of these lines.
 
 Example:
 

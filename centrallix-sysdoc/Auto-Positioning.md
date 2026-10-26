@@ -261,7 +261,7 @@ A pointer to a grid and a pointer to its container.
 All the lines needed to outline the children in a container are added.
 
 #### Method:
-The children of the given container are looped through, and for every one that is visual and not a window, four lines are created using aposCreatLine to outline its edges, using the child's own x, y, width, and height. If a child is a nonvisual container, a recursive call is made to add all of its children to the same grid.
+The children of the given container are looped through, and for every one that is visual and not a window, four lines are created using aposCreateLine to outline its edges, using the child's own x, y, width, and height. If a child is a nonvisual container, a recursive call is made to add all of its children to the same grid.
     
 ### int aposCreateLine(pWgtrNode, pXArray, int, int, int)
 #### Description:
@@ -375,7 +375,7 @@ A pointer to the array of lines being snapped to, and a flag indicating if they 
 The widgets' edges coincide once again with the their corresponding lines in the expanded or contracted grid.
 
 #### Method:
-Loops through all the lines in the given array, and addresses the widgets stored in each line's SWidgets and EWidgets arrays; assigning the left/top edge of SWidgets and the right/bottom edge of EWidgets to the current line's location. Non-flexible widgets are not allowed to change width or height, although the logic in aposNonFlexChild should never allow this safety to be utilized.
+Loops through all the lines in the given array, and addresses the widgets stored in each line's SWidgets and EWidgets arrays; assigning the left/top edge of SWidgets and the right/bottom edge of EWidgets to the current line's location. Non-flexible widgets are not allowed to change width or height, although the logic in aposNonFlexChildren should never allow this safety to be utilized.
 
 ### int aposProcessWindows(pWgtrNode, pWgtrNode)
 
@@ -389,7 +389,7 @@ A pointer to the the last visual container encountered when going recursively in
 All windows in the given container are within that container's bounds, as well as any windows within those windows and any windows within nonvisual containers of the given container.
 
 #### Method:  
-The container's client width and height are computed by subtracting its `inset_left + inset_right` and `inset_top + inset_bottom` from its outer dimensions (see [Insets and the Client Area](#insets-and-the-client-area)): a floating window must fit within this. The children are looped through and the windows examined. If a window is outside it's container's top or left border, it is moved in to a coordinate of (0,0); if it is bigger than its container, its size is decreased till it matches; and if it is hanging outside its container's bottom or right corner, it is moved up and to the left. Finally, if the window changed size, aposAutoPositionWidgetTree is called on the window to auto-position its contents accordingly. If any nonvisual containers are encountered, aposProcessWindows is called on them, but the original visual container is passed in to be used as a visual reference for windows found within the nonvisual container.
+The container's client width and height are computed by subtracting its `inset_left + inset_right` and `inset_top + inset_bottom` from its outer dimensions (see [Insets and the Client Area](#insets-and-the-client-area)): a floating window must fit within this. The children are looped through and the windows examined. If a window is outside its container's top or left border, it is moved in to a coordinate of (0,0); if it is bigger than its container, its size is decreased till it matches; and if it is hanging outside its container's bottom or right corner, it is moved up and to the left. Finally, if the window changed size, aposAutoPositionWidgetTree is called on the window to auto-position its contents accordingly. If any nonvisual containers are encountered, aposProcessWindows is called on them, but the original visual container is passed in to be used as a visual reference for windows found within the nonvisual container.
 
 ### int aposFree(pAposGrid)
 #### Description:  
