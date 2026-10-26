@@ -21,7 +21,7 @@ function htutil_tag_images(d,t,l,ml)
     }
 
 /*** Writes DOM nodes for a pointing UI element.
- *** 
+ ***
  *** @param wthis The widget targeted by the point.
  *** @param x The x value for where to point.
  *** @param y The y value for where to point.

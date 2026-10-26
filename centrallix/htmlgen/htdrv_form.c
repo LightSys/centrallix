@@ -206,7 +206,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	strtcpy(name,ptr,sizeof(name));
 
 	/** create our instance variable **/
-	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0) 
+	if (htrAddWgtrCtrLinkage(s, tree, "_parentctr") != 0)
 	    {
 	    mssError(0, "HTFORM", "Failed to add container linkage.");
 	    goto err;
@@ -256,7 +256,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	    (!no_link_prev), link_prev, (no_link_prev),
 	    (!no_link_prev_within), link_prev_within, (no_link_prev_within),
 	    interlock_with
-	) != 0) 
+	) != 0)
 	    {
 	    mssError(0, "HTFORM", "Failed to write JS init call.");
 	    goto err;

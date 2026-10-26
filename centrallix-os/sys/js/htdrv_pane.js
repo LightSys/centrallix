@@ -80,11 +80,11 @@ function pn_setbackground(aparam)
 function pn_action_resize(aparam)
     {
     const { Width, Height } = aparam;
-    
+
     // Log warning.
     console.warn('Resize action used: This breaks page responsiveness.');
     console.log(`Action Info: Width=${Width} Height=${Height} Target=`, this);
-    
+
     // Resize the pane.
     const w = Width  ?? pg_get_style(this, 'width');
     const h = Height ?? pg_get_style(this, 'height');

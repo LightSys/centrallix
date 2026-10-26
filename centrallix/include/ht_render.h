@@ -313,7 +313,7 @@ int htrBuildClientWgtr(pHtSession s, pWgtrNode tree);
 int htruleRegister(char* ruletype, ...);
 
 /*** Write strings known at compile time slightly more efficiently.
- *** 
+ ***
  *** @param str A string literal known at compile time.  This must be a
  *** 	literal value and it may be applied multiple times.
  ***/

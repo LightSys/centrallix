@@ -22,7 +22,7 @@ FourTabs "widget/page" {
 				font_size=18; fgcolor="#fff1df";
 				text="
 					You wake up surrounded by the ruins of a village. Houses are burned, walls are collapsed, and roofs are caved in.
-					The house you're 'in' doesn't even have a roof, and barely half a wall is still standing. 
+					The house you're 'in' doesn't even have a roof, and barely half a wall is still standing.
 				";
 			}
 			Scene1Ask "widget/label" { x=10; y=130; width=250; height=32; font_size=18; fgcolor="#ffc67cff"; text="What do you do?"; }

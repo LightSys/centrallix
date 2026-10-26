@@ -225,7 +225,7 @@ function sp_get_scrollbar_height(pane)
 /** @returns The distance down that the scrollpane has been scrolled. **/
 function sp_get_scroll_dist(area)
     {
-    return -getRelativeY(area);	
+    return -getRelativeY(area);
     }
 
 
@@ -336,7 +336,7 @@ function sp_scroll_to(pane, scroll_height)
     
     /** Clamp the scroll height within the bounds of the scroll bar. **/
     const scroll_height_new = Math.clamp(0, scroll_height, nonvisible_height);
-     
+    
     /** Update the content. **/
     setRelativeY(pane.area, -scroll_height_new);
     pane.UpdateThumb();

@@ -169,7 +169,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    if (htrAddStylesheetItem_va(s,
 		"\t\t#pn%POSmain {"
-		    "border-style: solid;"
+		    "border-style: solid; "
 		    "border-width: 1px; "
 		    "border-color:%STR&CSSVAL; "
 		"}\n",

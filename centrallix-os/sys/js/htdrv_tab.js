@@ -113,7 +113,7 @@ function tc_makenotcurrent(page)
  *** not that tab is selected as LITTLE AS POSSIBLE since that piece of state
  *** should be handled elsewhere with functions like tc_makenotcurrent() or
  *** tc_makecurrent().
- *** 
+ ***
  *** @param param The object containing parameters for the function.
  *** @param param.tab The tab to be added.
  *** @param param.page The page to which the tab shall be added.
@@ -165,7 +165,7 @@ function tc_add_tab(param)
 		}
 	    }
 	else if (tloc === 'Left')
-	    x = getRelativeX(tabctl) - htr_getviswidth(l_tab); 
+	    x = getRelativeX(tabctl) - htr_getviswidth(l_tab);
 	else // Right
 	    x = getRelativeX(tabctl); // Included in xtoffset (see below)
 
@@ -394,8 +394,8 @@ function tc_updated(p1)
 		content =
 		    '\n\t<table ' +
 			'style="' +
-			    'border-style: solid; ' + 
-			    'border-color: white gray gray white; ' + 
+			    'border-style: solid; ' +
+			    'border-color: white gray gray white; ' +
 			    'border-width: 1px 1px 0px; ' +
 			'"' +
 			'border="0" ' +

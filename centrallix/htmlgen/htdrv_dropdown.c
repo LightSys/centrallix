@@ -216,7 +216,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	mssError(0, "HTDD", "Failed to write con CSS.");
 	goto end;
 	}
-    
+
     /** Link the widget to the DOM node. **/
     if (htrAddWgtrObjLinkage_va(s, tree, "dd%POSbtn", id) != 0)
 	{
@@ -430,9 +430,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	subtree = xaGetItem(&(tree->Children), i);
 	if (!strcmp(subtree->Type, "widget/dropdownitem")) 
 	    subtree->RenderFlags |= HT_WGTF_NOOBJECT;
-	
+
 	/** Write JS to render dropdown items in static mode. **/
-	if (!strcmp(subtree->Type,"widget/dropdownitem") && mode == HTDD_STATIC) 
+	if (!strcmp(subtree->Type,"widget/dropdownitem") && mode == HTDD_STATIC)
 	    {
 	    if (wgtrGetPropertyValue(subtree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
 		{

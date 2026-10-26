@@ -92,7 +92,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	mssError(0, "HTCB", "Failed to add object linkage.");
 	goto err;
 	}
-   
+
     /** Write style header. **/
     if (htrAddStylesheetItem_va(s,
 	"\t\t#cb%POSmain { "
@@ -115,7 +115,7 @@ int htcbRender(pHtSession s, pWgtrNode tree, int z)
 	mssError(0, "HTCB", "Failed to write CSS.");
 	goto err;
 	}
-   
+
     /** Include scripts. **/
     if (htrAddScriptInclude(s,"/sys/js/ht_utils_hints.js", 0) != 0) goto err;
     if (htrAddScriptInclude(s,"/sys/js/htdrv_checkbox.js", 0) != 0) goto err;

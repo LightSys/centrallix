@@ -405,7 +405,7 @@ function dd_collapse(l)
 	//pg_resize_area(l.area,getClipWidth(l)+1,getClipHeight(l)+1, -1, -1);
 	htr_setvisibility(l.PaneLayer, 'hidden');
 	dd_current = null;
-	
+
 	/** Remove the pane to avoid leaking DOM nodes. **/
 	dd_remove_pane(l);
 	}
@@ -840,12 +840,12 @@ function dd_create_pane(l)
 function dd_remove_pane(l)
     {
     if (!l || !l.PaneLayer) return;
-    
+
     const p = l.PaneLayer;
-    
+
     // Function for removing elements.
     const remove_node = (n) => { if (n && n.parentNode) n.parentNode.removeChild(n); }
-    
+
     // Remove item DOM nodes if present.
     if (l.Items && l.Items.length)
 	{
@@ -856,15 +856,15 @@ function dd_remove_pane(l)
 	    }
 	l.Items.length = 0;
 	}
-    
+
     // Remove scrollbar/thumb layers if present.
     remove_node(p.ScrLayer);
     remove_node(p.BarLayer);
     remove_node(p.TmbLayer);
-    
+
     // Remove the pane root.
     remove_node(p);
-    
+
     // Clear references.
     p.ScrLayer = p.BarLayer = p.TmbLayer = p.mainlayer = null;
     l.imgup = l.imgdn = l.imgtm = null;
@@ -1393,10 +1393,10 @@ function dd_init(param)
 	    enumerable: true,
 	},
     });
-    
+
     // Setup the hover area.
     l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
-    
+
     // Set up responsive resizing.
     dd_resize_observer.observe(l);
     dd_list.push(l);

@@ -1364,7 +1364,7 @@ function pg_reclaim_objects()
 
 //SETH: this function seems to implement the 'blur' event.
 // Lightning: I've never heard of this 'blur' event.  This function is for
-// selection areas, such as the highlight on a dropdown widget. 
+// selection areas, such as the highlight on a dropdown widget.
 function pg_removemousefocus()
     {
     // The box can outline an area the pointer has already left, so tear down

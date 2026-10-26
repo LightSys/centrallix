@@ -158,7 +158,7 @@ htimgRender(pHtSession s, pWgtrNode tree, int z)
 	    "\tim_init(wgtrGetNodeRef(ns, '%STR&SYM'), { "
 		"field:'%STR&JSSTR', "
 		"form:'%STR&JSSTR', "
-	    "});\n", 
+	    "});\n",
 	    name,
 	    fieldname, form
 	) != 0)

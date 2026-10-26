@@ -189,7 +189,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Render children. **/
 	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto err;
-	
+
 	/** Success. **/
 	return 0;
 

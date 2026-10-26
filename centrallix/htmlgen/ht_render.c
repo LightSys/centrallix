@@ -473,7 +473,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	 **/
 	if (UNLIKELY(session->Class == NULL))
 	    {
-	    mssError(1, "HTR", "Class not defined\n");
+	    mssError(1, "HTR", "Class not defined.");
 	    goto end;
 	    }
 	widget_drivers = &session->Class->WidgetDrivers;
@@ -543,7 +543,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 /*** Check to see if we are transitioning when we move from the parent's
  *** namespace to the child's namespace. If so, write code to switch the
  *** namespace context.
- *** 
+ ***
  *** @param s The current session.
  *** @param parent The parent we are moving away from.
  *** @param child The child of the parent we are moving to.
@@ -573,7 +573,7 @@ htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
 /*** Check to see if we are transitioning when we move from the child's
  *** namespace back up to the parent's namespace. If so, write code to
  *** switch the namespace context.
- *** 
+ ***
  *** @param s The current session.
  *** @param parent The parent we are returning to.
  *** @param child The child we are moving away from.
@@ -1872,8 +1872,8 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	/** Deploy the widget **/
 	const char* objinit = (inf != NULL) ? (inf->ObjectLinkage) : NULL;
 	const char* ctrinit = (inf != NULL) ? (inf->ContainerLinkage) : NULL;
-	const int result = htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%BOOL, ctl:%BOOL%[, namespace:'%STR&SYM'%]", 
+	const int result = htrAddScriptWgtr_va(s,
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%BOOL, ctl:%BOOL%[, namespace:'%STR&SYM'%]",
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
@@ -3436,7 +3436,7 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
 	char context[152] = "";
 	if (container != NULL)
 	    snprintf(context, sizeof(context),
-	    "to container widget \"%s\":\"%s\"",
+	    " to container widget \"%s\":\"%s\"",
 	    container->Name, container->Type
 	);
 	mssError(0, "HTR",

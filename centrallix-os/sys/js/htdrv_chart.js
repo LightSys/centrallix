@@ -123,8 +123,8 @@ function cht_get_x_col_name(series_idx) {
             console.warn(name + " is not a valid column");
 
         // Point-plotting charts prefer a numeric X column with a string
-	// fallback.  Note: We can't use LinearXAxis() here because this
-	// depends on the column we're picking.
+        // fallback.  Note: We can't use LinearXAxis() here because this
+        // depends on the column we're picking.
         if (this.WantsLinearXAxis())
             return this.FindColWithType("number") || this.FindColWithType("string");
         return this.FindColWithType("string");

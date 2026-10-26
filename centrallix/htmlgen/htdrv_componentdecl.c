@@ -46,7 +46,7 @@
 
 
 /** globals **/
-static struct 
+static struct
     {
     unsigned int id_count;
     }
@@ -153,7 +153,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
 	    /** Add linkage. **/
-	    if (htrAddWgtrCtrLinkage_va(s, tree, 
+	    if (htrAddWgtrCtrLinkage_va(s, tree,
 		"wgtrGetContainer(wgtrGetNode('%STR&SYM', '%STR&SYM'))",
 		gbuf, gname
 	    ) != 0)
@@ -223,7 +223,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 		"%[, expa:'%STR&SYM'%]"
 		"%[, expp:'%STR&SYM'%]"
 		"%[, applyhint:'%STR&SYM'%]"
-	    "});\n", 
+	    "});\n",
 	    name,
 	    is_visual,
 	    (has_gbuf), gbuf, (!has_gbuf),

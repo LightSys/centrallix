@@ -74,7 +74,7 @@ htexRender(pHtSession s, pWgtrNode tree, int z)
 		"objname:'%STR&SYM', "
 		"methname:'%STR&SYM', "
 		"methparam:'%STR&JSSTR', "
-	    "});\n", 
+	    "});\n",
 	    name, objname, methodname, methodparam
 	) != 0)
 	    {

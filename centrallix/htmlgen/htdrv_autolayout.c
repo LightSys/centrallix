@@ -104,7 +104,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 		"width:"ht_flex_format"; "
 		"height:"ht_flex_format"; "
 		"z-index:%POS; "
-	    "}\n ",
+	    "}\n",
 	    id,
 	    ht_flex_x(x, tree),
 	    ht_flex_y(y, tree),
@@ -147,11 +147,11 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    pWgtrNode subtree = xaGetItem(&(tree->Children), i);
 	    if (subtree == NULL) continue; /* Not our problem. */
-	    if (!strcmp(subtree->Type, "widget/autolayoutspacer")) 
+	    if (!strcmp(subtree->Type, "widget/autolayoutspacer"))
 		subtree->RenderFlags |= HT_WGTF_NOOBJECT;
 	    else if (htrRenderWidget(s, subtree, z + 1) != 0) goto err;
 	    }
-	
+
 	/** End of container **/
 	if (htrAddBodyItemLayerEnd(s, 0) != 0)
 	    {
@@ -160,7 +160,7 @@ htalRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	return 0;
-	
+
     err:
 	mssError(0, "HTAL",
 	    "Failed to render \"%s\":\"%s\" (id: %d).",

@@ -38,7 +38,7 @@ MyPage "widget/page"
     
     paneA "widget/pane" { x=40; y=680;  width=890; height=220; bgcolor = "#620"; }
     
-    // Outline the visible area. 
+    // Outline the visible area.
     top_left0     "widget/pane" { x=0;   y=0;   width=10; height=10; bgcolor = "#f00"; }
     top_right0    "widget/pane" { x=990; y=0;   width=10; height=10; bgcolor = "#ff0"; }
     bottom_left0  "widget/pane" { x=0;   y=990; width=10; height=10; bgcolor = "#0f0"; }

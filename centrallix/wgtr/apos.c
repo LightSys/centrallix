@@ -503,7 +503,7 @@ pAposGrid theGrid = NULL;
 
 		    /** Add the sections to the grid. **/
 		    if (UNLIKELY(aposAddSectionsToGrid(theGrid,
-			    (Parent->height-Parent->pre_height), 
+			    (Parent->height-Parent->pre_height),
 			    (Parent->width-Parent->pre_width)) < 0))
 			{
 			    mssError(0, "APOS", "Failed to add rows and columns to %s's grid", Parent->Name);
@@ -1184,10 +1184,10 @@ int cCount = xaCount(&(L->CWidgets));
      ***/
     if (type == APOS_ROW)
         {
-	    for(i=0; i<sCount; ++i) 
+	    for(i=0; i<sCount; ++i)
 	        if (((pWgtrNode)(xaGetItem(&(L->SWidgets), i)))->fl_height == 0)
 		    return true;
-	    for(i=0; i<cCount; ++i)	
+	    for(i=0; i<cCount; ++i)
 	        if (((pWgtrNode)(xaGetItem(&(L->CWidgets), i)))->fl_height == 0)
 		    return true;
         }
@@ -1364,7 +1364,7 @@ float TotalSum=0;
 		    /** Calculate adjustment using the adjustment weight. **/
 		    Adj = (float)(Diff) * fl - APOS_FUDGEFACTOR;
 
-		    /** if the section width will be unacceptably 
+		    /** if the section width will be unacceptably
 		    *** narrow or negative after the adjustment **/
 		    if ((Adj + PrevSect->Width) <= APOS_MINSPACE)
 			{

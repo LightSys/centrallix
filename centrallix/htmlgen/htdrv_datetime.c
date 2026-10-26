@@ -176,7 +176,7 @@ htdtRender(pHtSession s, pWgtrNode tree, int z)
 	    snprintf(
 		initialdate, sizeof(initialdate),
 		"%s %d %d, %d:%d:%d",
-		obj_short_months[dt.Part.Month], 
+		obj_short_months[dt.Part.Month],
 		dt.Part.Day + 1,
 		dt.Part.Year + 1900,
 		dt.Part.Hour,

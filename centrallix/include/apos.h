@@ -53,7 +53,7 @@ struct _APOS_L
     XArray	CWidgets;	//widgets that cross the line
     pAposSection SSection;	// section starting with this line
     pAposSection ESection;	// section ending with this line
-    
+
     /*** Used to find the distance the line should move when the parent
      *** container is resized. loc_fl (local flex) is the weight that this
      *** line moves relative to the container. my_fl (my flex) is the amount

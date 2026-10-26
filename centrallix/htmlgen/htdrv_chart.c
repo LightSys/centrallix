@@ -320,7 +320,7 @@ htchtInitCall(pHtSession session, pWgtrNode tree)
 	/** Write code to add values to the initialization object. **/
         htchtAddAxesProperties(session, tree);
         htchtAddSeriesProperties(session, tree);
-	
+
 	/** Write the initialization call, using the object, and close the scope. **/
 	htrAddScriptInit(session, "\t\tcht_init(chart_obj);\n\t\t}\n");
 
@@ -343,13 +343,13 @@ htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
 	/** Get id. **/
 	char id[32];
 	htchtGetCanvasId(tree, id, sizeof(id));
-	
+
 	/** Get layout data. **/
 	const int x = htchtGetX(tree);
 	const int y = htchtGetY(tree);
 	const int w = htchtGetWidth(tree);
 	const int h = htchtGetHeight(tree);
-	
+
 	/** Write style rules for the container div. **/
 	htrAddStylesheetItem_va(session,
 	    "\t\t#%STR&SYMdiv { "
@@ -368,7 +368,7 @@ htchtGenHTML(pHtSession session, pWgtrNode tree, int z)
 	    ht_flex_h(h, tree),
 	    z
 	);
-	
+
 	/** Write the canvas HTML. **/
 	htrAddBodyItem_va(session,
 	    "<div id='%STR&SYMdiv'>"
