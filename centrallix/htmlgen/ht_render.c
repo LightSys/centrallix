@@ -2432,7 +2432,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 #ifdef WGTR_DBG_WINDOW
 	htrAddScriptWgtr_va(s, "    wgtrWalk(%STR&SYM);\n", tree->Name);
 	htrAddScriptWgtr(s, "    ifcLoadDef(\"net/centrallix/button.ifc\");\n");
-	htrAddStylesheetItem(s, "\t\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
+	htrAddStylesheetItem(s, "\t\t#dbgwnd {position: absolute; top: 400px; left: 50px;}\n");
 	htrAddBodyItem(s,   "<div id=\"dbgwnd\"><form name=\"dbgform\">"
 			    "<textarea name=\"dbgtxt\" cols=\"80\" rows=\"10\"></textarea>"
 			    "</form></div>\n");
