@@ -1630,8 +1630,8 @@ function tbld_reflow_width(new_width)
 
 // tbld_cell_width_adj - Returns the padding and border that jQuery's .width()
 // setter would add to a cell of this table.  This operation is expensive so
-// the value is cached in table.cell_width_adj.  If the width of the cell is
-// changed, this must be invalidated by setting it to undefined.
+// the value is cached in table.cell_width_adj.  If the padding or border of
+// the cells changes, this must be invalidated by setting it to undefined.
 //
 function tbld_cell_width_adj(table, cell)
     {
@@ -2454,7 +2454,7 @@ function tbld_init(param)
     // Initially display the first cache-worth of records.
     t.target_range = { start: 1, end: t.rowcache_size };
 
-    // Initialize the scrollbar.
+    // Create the scrolling content div.
     t.scrolldiv = htr_new_layer(t.param_width, t.scrollctr);
     htr_init_layer(t.scrolldiv, t, "tabledynamic");
     t.scrolldiv.subkind = "scrolldiv";

@@ -202,7 +202,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    );
 	    }
 
-	/** Write the declNAME variable. **/
+	/** Write the declID variable. **/
 	if (htrAddScriptInit_va(s, "\n\t// Start of %STR component.\n"
 	    "\tconst decl%POS = wgtrGetNodeRef(ns, '%STR&SYM');\n",
 	    name, id, name

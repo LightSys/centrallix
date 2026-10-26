@@ -376,7 +376,7 @@ function setResponsive(l, value, d) {
     /** Inflexible elements don't need to be responsive. **/
     if (fl_scale <= 0) return setRelative(l, value, d);
     
-    /** The parent width expected by the server in the adaptive layout. **/
+    /** The parent width or height expected by the server in the adaptive layout. **/
     let fl_d2 = fl_d;
     if (fl_d2 === 'x') fl_d2 = 'w';
     if (fl_d2 === 'y') fl_d2 = 'h';

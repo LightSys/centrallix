@@ -653,9 +653,9 @@ end:
  *** lines for each visual child. Searches nonvisual containers recursively for
  *** qualifying grandchildren. Floating windows are ignored.
  *** 
- *** Scrollpanes receive only 2 vertical lines (skipping their horizontal edges),
- *** and if the parent node is a scrollpane, the horizontal border lines are also
- *** skipped.
+ *** If the parent node is a scrollpane, its children receive only 2 vertical
+ *** lines (skipping their horizontal edges), and the horizontal border lines
+ *** are also skipped.
  *** 
  *** The HLines and VLines arrays will be populated with the generated horizontal
  *** and vertical lines respectively. The SWidgets, CWidgets, and EWidgets arrays
@@ -741,8 +741,8 @@ error:
 
 /*** Adds 4 lines for the edges of each visual child. Searches nonvisual
  *** containers recursively for qualifying grandchildren. Floating windows
- *** are ignored. Scrollpanes receive only 2 vertical lines (skipping their
- *** horizontal edges).
+ *** are ignored. Children of a scrollpane receive only 2 vertical lines
+ *** (skipping their horizontal edges).
  *** 
  *** @param Parent The parent whose children are being given lines.
  *** @param HLines The array to which horizontal lines should be added.
@@ -1111,7 +1111,7 @@ pAposSection NewSect;
 /*** Determines if a section between two lines is a spacer.
  ***
  *** If a section is a spacer, the assumption is that the designer probably put
- *** that space there to provide visual breathing room in their design.   Thus, we
+ *** that space there to provide visual breathing room in their design.  Thus, we
  *** should avoid resizing it as this may interfere with their design.
  *** 
  *** @param StartL   The line starting the section.  (I think this is always the left/top.)
@@ -1179,8 +1179,8 @@ int i=0;
 int sCount = xaCount(&(L->SWidgets));
 int cCount = xaCount(&(L->CWidgets));
 
-    /*** Return true if the widgets starting on or crossing the given line have
-     *** children that are completely non-flexible.
+    /*** Return true if any widget starting on or crossing the given line is
+     *** completely non-flexible.
      ***/
     if (type == APOS_ROW)
         {

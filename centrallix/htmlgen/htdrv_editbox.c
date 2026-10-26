@@ -89,7 +89,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	    goto end;
 	    }
 
-	/** Maximum characters to accept from the user.  Negative means no limit. **/
+	/** Maximum characters to accept from the user.  Zero or negative means no limit. **/
 	if (wgtrGetPropertyValue(tree,"max_chars",DATA_T_INTEGER,POD(&max_chars)) != 0) max_chars = -1;
 
 	/** Readonly flag **/

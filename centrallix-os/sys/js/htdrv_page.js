@@ -1482,7 +1482,7 @@ function pg_setdatafocus(a)
     var h = a.height;
     var l = a.layer; 
     
-    // Setup resize handling.
+    // Set up resize handling.
     pg_area_resize_handlers.data_focus = () => {
 	// Recall function to update values.
 	pg_setdatafocus(a);

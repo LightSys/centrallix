@@ -419,9 +419,9 @@ function wn_windowshade(l)
     var duration = 200;
     var speed = 30;
 
-    /** A shaded window shows nothing but its titlebar.  It is border-box, so
-     ** the height has to cover its own border too.
-     **/
+    /*** A shaded window shows nothing but its titlebar.  It is border-box, so
+     *** the height has to cover its own border too.
+     ***/
     var shade_height = ((l.titlebar !== l) ? $(l.titlebar).outerHeight() : 24)
 		       + (l.offsetHeight - l.clientHeight);
 
@@ -658,7 +658,7 @@ function wn_clamp_position(wn, attract, x, y, viewport)
     else if (Math.isBetween(available_width - attract, x + wn_width, available_width + attract))
 	new_x = available_width - wn_width;
 
-    /** X: Prevent windows getting lost off the left side of the page. **/
+    /** X: Prevent windows getting lost off the left or right side of the page. **/
     else if (x + wn_width < WN_MIN_VISIBLE_LEFT) new_x = WN_MIN_VISIBLE_LEFT - wn_width;
     else if (x > available_width - WN_MIN_VISIBLE_RIGHT) new_x = available_width - WN_MIN_VISIBLE_RIGHT;
 

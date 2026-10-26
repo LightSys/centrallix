@@ -161,7 +161,7 @@ int aposProcessWindows(pWgtrNode, pWgtrNode);	/**Makes a pass through the tree t
 /** Default flexibilities for widgetless gaps in expanding or contracting applications. **/
 /*** Israel: I don't know the difference between these two values. I'm guessing
  ***         E stands for enlarge and C stands for contract, thus (30, 50) makes it
- ***         easier for gaps to grow than for them to shrink.
+ ***         easier for gaps to shrink than for them to grow.
  ***/
 #define APOS_EGAPFLEX 30
 #define APOS_CGAPFLEX 50

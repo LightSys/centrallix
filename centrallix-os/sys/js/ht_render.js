@@ -988,7 +988,7 @@ function htr_update_point(point_target)
  *** or creates one if it does not exist, and handles resize updates for it.
  *** Often invoked when the point action is used.
  *** 
- *** @param point_target The point_target DOM node to be pointed at.
+ *** @param point_target The DOM node on whose edge the point is drawn.
  *** @param param Pointing parameters.
  *** @param param.X The x value for where to point.
  *** @param param.Y The y value for where to point.

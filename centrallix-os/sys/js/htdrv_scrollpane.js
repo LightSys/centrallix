@@ -116,7 +116,7 @@ function sp_init({ layer: pane, area_name, thumb_name })
     area.nofocus = true;
     thumb.nofocus = true;
     
-    /** Set images, i.e. the up & down button and the scroll bar. **/
+    /** Set images, i.e. the up & down buttons and the scroll bar. **/
     const images = pg_images(pane);
     for (let image of images)
 	{
@@ -573,7 +573,7 @@ function sp_mousemove(e)
 	{
 	const { pane } = target_img;
 	
-	/** Get drag_dist: the distance that the scroll bar should move. **/
+	/** Get drag_dist: the distance that the scroll thumb should move. **/
 	const page_y = getPageY(target_img.thumb);
 	const drag_dist = e.pageY - page_y - sp_drag_offset;
 	
