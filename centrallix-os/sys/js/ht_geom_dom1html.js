@@ -269,7 +269,7 @@ function getRelative(l, d)
     {
     if (!l)
 	{
-	console.error(`Call to getRelative${d.toUpperCase()}(`, l, ')');
+	console.error('Call to getRelative(', l, `, '${d}')`);
 	return 0;
 	}
 
