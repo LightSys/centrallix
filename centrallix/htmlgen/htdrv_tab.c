@@ -583,7 +583,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	
 	/** Write tab control CSS and HTML. **/
 	if (htrAddStylesheetItem_va(s,
-	    "\t\t#tc%POSctrl {"
+	    "\t\t#tc%POSctrl { "
 		"position:absolute; "
 		"overflow:hidden; "
 		"left:"ht_flex_format"; "

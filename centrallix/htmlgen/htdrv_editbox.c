@@ -224,7 +224,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	if (htrAddScriptInclude(s, "/sys/js/ht_utils_hints.js",  0) != 0) goto end;
 	if (htrAddScriptInclude(s, "/sys/js/ht_utils_string.js", 0) != 0) goto end;
 	if (htrAddScriptInclude(s, "/sys/js/htdrv_editbox.js",   0) != 0) goto end;
-	
+
 	/** Register JS event handlers. **/
 	if (htrAddEventHandlerFunction(s, "document","MOUSEDOWN", "eb", "eb_mousedown") != 0) goto end;
 	if (htrAddEventHandlerFunction(s, "document","MOUSEMOVE", "eb", "eb_mousemove") != 0) goto end;
@@ -317,10 +317,10 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 		tree->Name, tree->Type, id
 	    );
 	    }
-	
+
 	/** Clean up. **/
 	if (tooltip != NULL) nmSysFree(tooltip);
-	
+
 	return rval;
     }
 

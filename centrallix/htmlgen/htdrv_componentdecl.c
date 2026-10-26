@@ -174,7 +174,7 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Success. **/
 	    graft_successful = true;
-	
+
     graft_done:
 	    if (!graft_successful)
 		{

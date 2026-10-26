@@ -149,7 +149,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	else if (style == 0 || style == 1) /* lowered or raised */
 	    {
 	    if (htrAddStylesheetItem_va(s,
-		"\t\t#pn%POSmain {"
+		"\t\t#pn%POSmain { "
 		    "border-style: solid; "
 		    "border-width: 1px; "
 		    "border-color: %STR %STR %STR %STR; "
@@ -168,7 +168,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	else if (style == 3) /* bordered */
 	    {
 	    if (htrAddStylesheetItem_va(s,
-		"\t\t#pn%POSmain {"
+		"\t\t#pn%POSmain { "
 		    "border-style: solid; "
 		    "border-width: 1px; "
 		    "border-color:%STR&CSSVAL; "
@@ -189,7 +189,7 @@ htpnRender(pHtSession s, pWgtrNode tree, int z)
 	 *** as an inset.
 	 ***/
 	if (htrAddStylesheetItem_va(s,
-	    "\t\t#pn%POSmain {"
+	    "\t\t#pn%POSmain { "
 		"position:absolute; "
 		"visibility:inherit; "
 		"overflow:hidden; "

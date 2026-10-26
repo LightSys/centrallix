@@ -204,7 +204,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 
 	    /** Success. **/
 	    continue;
-	    
+
     err_param:
 	    mssError(0, "HTCONN",
 		"Failed to write JSON for connector parameter %s of type %d.",
@@ -227,7 +227,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTCONN", "Failed to write JS target.");
 	    goto end;
 	    }
-	
+
 	/** Call the functions on the target, and close the scope. **/
 	const int no_target = (target == NULL || target[0] == '\0');
 	if (htrAddScriptInit_va(s, "target"
@@ -262,10 +262,10 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 		tree->Name, tree->Type
 	    );
 	    }
-	
+
 	/** Clean up. **/
 	if (xs.AllocLen != 0) warnFail(xsDeInit(&xs));
-	
+
 	return rval;
     }
 

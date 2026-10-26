@@ -195,7 +195,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Get an id for this. **/
 	const int id = (HTCMP.idcnt++);
-	
+
 	/** Verify browser capabilities. **/
 	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
 	    {
@@ -319,7 +319,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTCMP", "Failed to write base CSS.");
 	    goto end_free;
 	    }
-	
+
 	/** Write enclosing div event CSS. **/
 	if (htrAddStylesheetItem_va(s,
 	    "\t\t#cmp%POSbase > * { "
@@ -331,7 +331,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(0, "HTCMP", "Failed to write direct descendant CSS.");
 	    goto end_free;
 	    }
-	
+
 	/** Write linked container div to isolate children. **/
 	if (htrAddWgtrObjLinkage_va(s, tree, "cmp%POSbase", id) != 0)
 	    {
@@ -365,7 +365,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->IsDynamic = 0;
 
 	    /** Init component **/
-	    if (htrAddScriptInit_va(s, 
+	    if (htrAddScriptInit_va(s,
 		"\tcmp_init({ "
 		    "node:wgtrGetNodeRef(ns, '%STR&SYM'), "
 		    "is_static:true, "
@@ -440,7 +440,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0,"HTCMP","Invalid component for widget '%s'",name);
 		goto end_free;
 		}
-	    
+
 	    /** Check param references **/
 	    htcmp_internal_CheckReferences(cmp_tree, params, s->Namespace->DName);
 
@@ -491,7 +491,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->IsDynamic = old_is_dynamic;
 	    old_is_dynamic = 0;
 	    }
-	
+
 	/** Dynamic mode, component is loaded later by the client. **/
 	else
 	    {
@@ -505,7 +505,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		mssError(0, "HTCMP", "Failed to write JS.");
 		goto end_free;
 		}
-	    
+
 	    /** Write initialization call. **/
 	    if (htrAddScriptInit_va(s,
 		"\t\tcmp_init({ "
@@ -535,7 +535,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		{
 		path = wgtrGetTemplatePath(tree, i);
 		if (path == NULL) continue;
-		
+
 		if (htrAddScriptInit_va(s, "\t\tnode.templates.push('%STR&JSSTR');\n", path) != 0)
 		    {
 		    mssError(0, "HTCMP", "Failed to write JS template #%d: \"%s\".", i + 1, path);
@@ -565,7 +565,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 			}
 		    }
 		}
-	    
+
 	    /** Write data to close the scope above. **/
 	    if (htrAddScriptInit(s, "\t\t}\n") != 0)
 		{
@@ -598,7 +598,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	if (htrRenderSubwidgets(s, tree, z + 1) != 0) goto end_free;
-	
+
 	/** End the enclosing div. **/
 	if (htrAddBodyItem(s, "</div>\n") != 0)
 	    {
@@ -617,7 +617,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 		tree->Name, tree->Type, id
 	    );
 	    }
-	
+
 	/** Clean up **/
 	if (new_sec_context) warnFail(cxssPopContext());
 	if (params) warnFail(stFreeInf_ne(params));

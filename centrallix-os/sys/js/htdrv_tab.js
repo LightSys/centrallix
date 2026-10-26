@@ -397,7 +397,7 @@ function tc_updated(p1)
 			    'border-style: solid; ' +
 			    'border-color: white gray gray white; ' +
 			    'border-width: 1px 1px 0px; ' +
-			'"' +
+			'" ' +
 			'border="0" ' +
 			'cellpadding="0" ' +
 			'cellspacing="0" ' +

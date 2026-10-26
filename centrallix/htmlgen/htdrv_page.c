@@ -526,7 +526,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    goto end;
 	    }
 	if (htrAddStylesheetItem(s,
-	    "\t\tpre {"
+	    "\t\tpre { "
 		"font-size:90%; "
 	    "}\n"
 	) != 0)

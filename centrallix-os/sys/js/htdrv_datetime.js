@@ -511,7 +511,7 @@ function dt_inittime(l) {
 	    + "<td valign=middle><img src=/sys/images/trans_1.gif height=1 width=30></td><td style='cursor:pointer'><img src=/sys/images/spnr_both.gif width=10 height=20></td>"
 	    + "<td valign=middle><img src=/sys/images/trans_1.gif height=1 width=30></td><td style='cursor:pointer'><img src=/sys/images/spnr_both.gif width=10 height=20></td>"
 	    + "<td valign=middle align=center>&nbsp;&nbsp;(24h)</td>"
-	+ "</tr></table>\n";
+	    + "</tr></table>\n";
 	htr_write_content(l.TimeHidLayer, v);
 	htr_setvisibility(l.TimeHidLayer, 'inherit');
 	htr_setvisibility(l.TimeVisLayer, 'hidden');

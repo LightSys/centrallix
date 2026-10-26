@@ -190,7 +190,7 @@ htruleRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Script Init **/
 	htrAddScriptInit_va(s, "\trl_init(wgtrGetNodeRef(ns, '%STR&SYM'), '%STR&JSSTR', %STR);\n", nptr, ruletype, xs->String);
-	htrAddScriptInit_va(s, "\twgtrGetParent(wgtrGetNodeRef(ns, '%STR&SYM')).addRule(wgtrGetNodeRef(ns,'%STR&SYM'));\n", nptr, nptr);
+	htrAddScriptInit_va(s, "\twgtrGetParent(wgtrGetNodeRef(ns, '%STR&SYM')).addRule(wgtrGetNodeRef(ns, '%STR&SYM'));\n", nptr, nptr);
 
 	/** mark this node as not being associated with a DHTML object **/
 	tree->RenderFlags |= HT_WGTF_NOOBJECT;
