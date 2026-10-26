@@ -812,9 +812,9 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    }
 	if (UNLIKELY(tmp > s->TmpbufSize - 1))
 	    {
-	    /** Increase buffer size. **/
+	    /** Increase buffer size, including space for the NUL-terminator. **/
 	    size_t new_buf_size = s->TmpbufSize * 2lu;
-	    while (new_buf_size < tmp) new_buf_size *= 2lu;
+	    while (new_buf_size < tmp + 1) new_buf_size *= 2lu;
 	    
 	    /** Allocate the new buffer. **/
 	    void* new_buf = nmSysMalloc(new_buf_size);
