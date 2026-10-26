@@ -750,7 +750,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 		goto tab_page_err;
 		}
 	    
-	    /** Close the tab page container. */
+	    /** Close the tab page container. **/
 	    if (htrAddBodyItem(s, "</div>\n") != 0)
 		{
 		mssError(0, "HTTAB", "Failed to write closing div tag of tab page.");

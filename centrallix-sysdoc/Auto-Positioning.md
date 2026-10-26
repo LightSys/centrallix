@@ -340,7 +340,7 @@ If the space between the lines is sufficiently narrow, nested for-loops are used
 
 ### int aposMinimumChildFlex(pAposLine, int)
 #### Description: 
-Finds the least flexibility among the widgets beginning on or crossing the given line, because they are the ones that fall within the section proceeding the line.
+Finds the least flexibility among the widgets beginning on or crossing the given line, because they are the ones that fall within the section following the line.
 
 #### Inputs: 
 A pointer to the line preceding the section whose flexibility is being calculated, a flag indicating whether the line is horizontal or vertical.

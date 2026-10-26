@@ -116,10 +116,10 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     if (htrGetBackground(tree, NULL, true, main_background, sizeof(main_background)) < 0) goto end_free;
     if (htrGetBackground(tree, "outline", true, outline_background, sizeof(outline_background)) < 0) goto end_free;
     
-    /** User requesting expression for selected tab? **/
+    /** User requesting expression for selected radio button? **/
     if (htrCheckAddExpression(s, tree, name, "value") < 0) goto end_free;
     
-    /** User requesting expression for selected tab using integer index value? **/
+    /** User requesting expression for selected radio button using integer index value? **/
     if (htrCheckAddExpression(s, tree, name, "value_index") < 0) goto end_free;
     
     /** Get fieldname and form attributes. **/

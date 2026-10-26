@@ -1179,7 +1179,7 @@ int i=0;
 int sCount = xaCount(&(L->SWidgets));
 int cCount = xaCount(&(L->CWidgets));
 
-    /*** Return 1 if the widgets starting on or crossing the given line have
+    /*** Return true if the widgets starting on or crossing the given line have
      *** children that are completely non-flexible.
      ***/
     if (type == APOS_ROW)

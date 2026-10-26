@@ -160,7 +160,7 @@ function tc_add_tab(param)
 		}
 	    else
 		{
-		// Math for inflexible tabs do not suffer from the inconsistencies handled above.
+		// Math for inflexible tabs does not suffer from the inconsistencies handled above.
 		x = getRelativeX(tabctl);
 		}
 	    }
@@ -181,7 +181,7 @@ function tc_add_tab(param)
 		/** Copy tabctl.style.top to avoid small but noticeable inconsistencies. **/
 		setRelativeY(l_tab, tabctl.style.top);
 	    else
-		/** Math for inflexible tabs do not suffer from inconsistencies. * */
+		/** Math for inflexible tabs does not suffer from inconsistencies. **/
 		y = getRelativeY(tabctl);
 	    }
 	else if (tloc === 'Bottom')

@@ -2452,7 +2452,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    goto end_free;
 	    }
 	
-	/** Write the DOCTYPE header, enabling HTML 4.0 Strict mode. **/
+	/** Write the DOCTYPE header, enabling standards mode. **/
 	htrWriteConst(s, "<!DOCTYPE HTML>\n\n");
 
 	/** Write HTML header comment & license. **/
