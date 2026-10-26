@@ -335,7 +335,7 @@ httabRender(pHtSession s, pWgtrNode tree, int z)
 	    /*** The widget specifies server-side rendering for Top/Bottom tabs
 	     *** with dynamic width. This will probably look broken.
 	     ***/
-	    fprintf(stderr, "WARNING: "
+	    fprintf(stderr, "Warning: "
 		"'rendering' value of \"server-side\" will break on tabs with "
 		"dynamic widths because they cannot be calculated server-side!\n"
 	    );

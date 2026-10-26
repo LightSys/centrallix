@@ -516,7 +516,7 @@ function tc_visible_changed(prop, o, n)
     const { tabctl: t } = this;
     const { tabs, tloc } = t;
 
-    if (tloc === 'None') console.warn("tc_visible_changed() called on tab contol with tab_location = none.");
+    if (tloc === 'None') console.warn("tc_visible_changed() called on tab control with tab_location = none.");
 
     if(n) htr_setvisibility(this.tab, 'inherit');
     else htr_setvisibility(this.tab, 'hidden');

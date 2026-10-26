@@ -2213,7 +2213,7 @@ htrGetErrorHTMLMsg(char* title, char* err_str)
 	goto clean_up;
 
     fail:
-	fprintf(stderr, "Failed to print error page. (Continuing...)");
+	fprintf(stderr, "Failed to print error page. (Continuing...)\n");
 	if (LIKELY(page_buf != NULL)) nmSysFree(page_buf);
 	page_buf = NULL;
 
