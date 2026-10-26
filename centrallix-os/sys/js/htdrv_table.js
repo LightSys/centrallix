@@ -1520,11 +1520,11 @@ function tbld_change_width(move, compensate)
 	else col.xoffset += total_move;
 
 	// Adjust the resize border lines.
-	const resize_boarder = rows?.[0]?.cols?.[i]?.resizebdr;
-	if (resize_boarder)
+	const resize_border = rows?.[0]?.cols?.[i]?.resizebdr;
+	if (resize_border)
 	    {
-	    resize_boarder.xoffset += total_move;
-	    setRelativeX(resize_boarder, resize_boarder.xoffset);
+	    resize_border.xoffset += total_move;
+	    setRelativeX(resize_border, resize_border.xoffset);
 	    }
 	}
 
@@ -1616,11 +1616,11 @@ function tbld_reflow_width(new_width)
 	shift += move;
 
 	// Adjust the resize border lines.
-	const resize_boarder = rows?.[0]?.cols?.[i]?.resizebdr;
-	if (resize_boarder)
+	const resize_border = rows?.[0]?.cols?.[i]?.resizebdr;
+	if (resize_border)
 	    {
-	    resize_boarder.xoffset += shift;
-	    setRelativeX(resize_boarder, resize_boarder.xoffset);
+	    resize_border.xoffset += shift;
+	    setRelativeX(resize_border, resize_border.xoffset);
 	    }
 	}
 
