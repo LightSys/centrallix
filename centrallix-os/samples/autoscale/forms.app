@@ -101,7 +101,7 @@ forms "widget/page"
 		    {
 		    x=290; y=88; width=290; height=22;
 		    mode=objectsource; fieldname="band";
-		    hilight="#b5b5b5"; bgcolor="#c0c0c0";
+		    highlight="#b5b5b5"; bgcolor="#c0c0c0";
 		    }
 
 		f_new "widget/textbutton"
@@ -159,7 +159,7 @@ forms "widget/page"
 	u_dd "widget/dropdown"
 	    {
 	    x=8; y=32; width=356; height=22;
-	    hilight="#b5b5b5"; bgcolor="#c0c0c0"; numdisplay=4;
+	    highlight="#b5b5b5"; bgcolor="#c0c0c0"; numdisplay=4;
 
 	    u_dd1 "widget/dropdownitem" { label="ALPHA -- short"; value="1"; }
 	    u_dd2 "widget/dropdownitem" { label="BRAVO -- a much longer entry 0....5...10...15...20"; value="2"; }
@@ -308,8 +308,7 @@ LINE 08 LAST LINE -- END OF TEXTAREA";
 	    x=8; y=60; width=90; height=20; text="Clear"; tristate=no;
 	    background="/sys/images/grey_gradient.png"; fgcolor1=black; fgcolor2=white;
 
-	    // The client dispatches "Clear"; the server-registered "Reset"
-	    // name does nothing.
+	    // The client dispatches "Clear"; "Reset" does nothing.
 	    up_reset_c "widget/connector" { event=Click; target=up_input; action=Clear; }
 	    }
 	up_submit "widget/textbutton"
