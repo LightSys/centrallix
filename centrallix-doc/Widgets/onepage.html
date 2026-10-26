@@ -2129,7 +2129,7 @@ cn1 "widget/connector"
 </tr>
 <tr>
 <td class="name">highlight</td>
-<td class="type">integer</td>
+<td class="type">string</td>
 <td class="description">The color of the highlighted option when the mouse goes over the item.</td>
 </tr>
 <tr>
@@ -2462,7 +2462,7 @@ myDropDown2 "widget/dropdown"
 </tr>
 <tr>
 <td class="name">SetValue</td>
-<td class="description">The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription event.</td>
+<td class="description">The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription action.</td>
 </tr>
 <tr>
 <td class="name">SetValueDescription</td>
@@ -2662,7 +2662,7 @@ mySoundPlayer "widget/execmethod"
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-			<p>The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") to improve clarity.  It has no effect on its container.  This widget does cannot contain any visual widgets.</p>
+			<p>The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type "widget/page") to improve clarity.  It has no effect on its container.  This widget cannot contain any visual widgets.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -2723,7 +2723,7 @@ mySoundPlayer "widget/execmethod"
 </tr>
 <tr>
 <td class="name">UploadComplete</td>
-<td class="description">This event occurs when an upload is successfully completed by the user.  It provides several parameters called "OrigNameX" and "NewNameX" where X is a number greater than 0 that appear to relate to the files names that the user has uploaded.</td>
+<td class="description">This event occurs when an upload is successfully completed by the user.  It provides several parameters called "OrigNameX" and "NewNameX" where X is a number greater than 0 that appear to relate to the file names that the user has uploaded.</td>
 </tr>
 <tr>
 <td class="name">UploadError</td>
@@ -2817,9 +2817,9 @@ mySoundPlayer "widget/execmethod"
 <td class="description">Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted.</td>
 </tr>
 <tr>
-<td class="name">comfirm_discard</td>
+<td class="name">confirm_discard</td>
 <td class="type">yes/no</td>
-<td class="description">Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.</td>
+<td class="description">Whether to show the 3 button confirm window (3bconfirmwindow) before discarding unsaved changes.  If 'no', unsaved changes are discarded without asking.  Default is 'yes'.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">enter_mode</td>
@@ -2894,9 +2894,9 @@ mySoundPlayer "widget/execmethod"
 <th class="name">Action</th>
 <th class="description">Description</th>
 </tr>
-<tr class="notimplimented">
+<tr>
 <td class="name">Clear</td>
-<td class="description">Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</td>
+<td class="description">Clears the form to a 'no data' state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">Delete</td>
@@ -3663,7 +3663,7 @@ HTMLArea "widget/html"
 </tr>
 <tr>
 <td class="name">aspect</td>
-<td class="type">sting</td>
+<td class="type">string</td>
 <td class="description">Specifies whether the image can be stretched or must stay its original aspect ratio.</td>
 </tr>
 <tr>
@@ -3792,7 +3792,7 @@ HTMLArea "widget/html"
 
 			<p>Deprecated.  This name is rendered by widget/button and is kept only so that existing applications keep working.  New applications should use widget/button, which documents the properties, events, actions, and client properties that an imagebutton accepts.</p>
 
-			<p>An imagebutton is a widget/button whose 'type' defaults to 'image'.  Thus, this button is borderless and text-free, its appearance comes from the image.  The properties for widget/button apply here, so an existing imagebutton can be given 'text', a 'border_style', or an explicit 'type' without being renamed (although it should be).</p>
+			<p>An imagebutton is a widget/button whose 'type' defaults to 'image'.  Thus, this button is borderless and text-free; its appearance comes from the image.  The properties for widget/button apply here, so an existing imagebutton can be given 'text', a 'border_style', or an explicit 'type' without being renamed (although it should be).</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
@@ -4309,23 +4309,23 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 </tr>
 <tr class="notimplimented">
 <td class="name">MouseDown</td>
-<td class="description">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
+<td class="description">This event occurs when the user presses the mouse button on the menu.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the menu for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">MouseMove</td>
-<td class="description">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</td>
+<td class="description">This event occurs when the user moves the mouse pointer while it is over the menu.  The event will repeatedly fire each time the pointer moves.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">MouseOut</td>
-<td class="description">This event occurs when the user moves the mouse pointer off of the checkbox.</td>
+<td class="description">This event occurs when the user moves the mouse pointer off of the menu.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">MouseOver</td>
-<td class="description">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</td>
+<td class="description">This event occurs when the user first moves the mouse pointer over the menu.  It will not occur again until the user moves the mouse off of the menu and then back over it again.</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">MouseUp</td>
-<td class="description">This event occurs when the user releases the mouse button on the checkbox.</td>
+<td class="description">This event occurs when the user releases the mouse button on the menu.</td>
 </tr>
 <tr>
 <td class="name">Select</td>
@@ -4337,7 +4337,7 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 </tr>
 <tr>
 <td class="name">Activate</td>
-<td class="description">This event occurs when the dropdown appears.  It provides two parameters, "X" and "Y", which are the (integer) positions (in pixels) on the page for the menu has appeared.</td>
+<td class="description">This event occurs when the dropdown appears.  It provides two parameters, "X" and "Y", which are the (integer) positions (in pixels) on the page where the menu has appeared.</td>
 </tr>
 <tr>
 <td class="name">Deactivate</td>
@@ -4579,7 +4579,7 @@ myMenu "widget/menu"
 <tr>
 <td class="name">autoquery</td>
 <td class="type">true/false</td>
-<td class="description">When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.</td>
+<td class="description">When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.</td>
 </tr>
 <tr>
 <td class="name">is_slave</td>
@@ -4752,7 +4752,7 @@ myMenu "widget/menu"
 </tr>
 <tr>
 <td class="name">SaveClients</td>
-<td class="description">Save the clients that connect and lets clients of clients know that orsc is connected to them.</td>
+<td class="description">Saves the clients that connect and lets clients of clients know that osrc is connected to them.</td>
 </tr>
 <tr>
 <td class="name">SeqBackward</td>
@@ -5017,10 +5017,6 @@ osrc1 "widget/osrc"
 <tr>
 <td class="name">LoadPage</td>
 <td class="description">Loads the page at the specified "Source", or reloads the current page if no source is given.  Any other parameters are appended to the URL as query parameters.  Specify 1 or yes for "LinkApp" to link the loaded page into the same group as the current page for permissions.</td>
-</tr>
-<tr>
-<td class="name">ReloadPage</td>
-<td class="description">Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.</td>
 </tr>
 <tr>
 <td class="name">ReloadPage</td>
@@ -5481,7 +5477,7 @@ my_cmp "widget/component-decl"
 </tr>
 <tr>
 <td class="name">SetValue</td>
-<td class="description">Sets the selected option for the radio button panel to the new option specified with the "Value" parameter, or unsets the dropdown if no value is specified.</td>
+<td class="description">Sets the selected option for the radio button panel to the new option specified with the "Value" parameter, or unsets the radio button panel if no value is specified.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -5516,7 +5512,7 @@ my_cmp "widget/component-decl"
 </tr>
 <tr>
 <td class="name">DataChange</td>
-<td class="description">This event occurs when a new option is selected in the dropdown widget.  It provides the "Value" parameter, which indicates the new selected option.</td>
+<td class="description">This event occurs when a new option is selected in the radio button panel.  It provides the "Value" parameter, which indicates the new selected option.</td>
 </tr>
 <tr>
 <td class="name">GetFocus</td>
@@ -5524,7 +5520,7 @@ my_cmp "widget/component-decl"
 </tr>
 <tr>
 <td class="name">LoseFocus</td>
-<td class="description">This event occurs when the parent pane looses the user's focus.</td>
+<td class="description">This event occurs when the parent pane loses the user's focus.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
@@ -5906,7 +5902,7 @@ $Version=2$
 </tr>
 <tr>
 <td class="name">Wheel</td>
-<td class="description">This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.</td>
+<td class="description">This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the wheel moves.</td>
 </tr>
 <tr>
 <td class="name">MouseDown</td>
@@ -6257,7 +6253,7 @@ myTabControl "widget/tab"
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-			<p>Table widgets are normally placed inside a scrollpane so that any rows which don't fit int the container can still be viewed.  Table columns are created via "widget/table-column" child widgets within the table widget.</p>
+			<p>Table widgets are normally placed inside a scrollpane so that any rows which don't fit in the container can still be viewed.  Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -6300,11 +6296,6 @@ myTabControl "widget/tab"
 <td class="name">colsep</td>
 <td class="type">integer</td>
 <td class="description">The width of the column separation lines in pixels.  Default is 1.</td>
-</tr>
-<tr>
-<td class="name">colsep_mode</td>
-<td class="type">string</td>
-<td class="description">Either 'full' or 'header'. Default is 'full'.</td>
 </tr>
 <tr>
 <td class="name">colsep_mode</td>
@@ -6588,7 +6579,7 @@ myTabControl "widget/tab"
 <tr>
 <td class="name">caption_font_size</td>
 <td class="type">string</td>
-<td class="description">The font size of thecaption text.</td>
+<td class="description">The font size of the caption text.</td>
 </tr>
 <tr>
 <td class="name">caption_style</td>
@@ -6691,7 +6682,7 @@ myTabControl "widget/tab"
 <tr>
 <td class="name">show_on_new</td>
 <td class="type">integer</td>
-<td class="description">Specify 1 to make new rows show their table-row-detail when added (deault: 0).</td>
+<td class="description">Specify 1 to make new rows show their table-row-detail when added (default: 0).</td>
 </tr>
 </table>
 <h3 class="actions">Actions:</h3>
@@ -7143,7 +7134,7 @@ term1 "widget/terminal"
 </tr>
 <tr>
 <td class="name">GetFocus</td>
-<td class="description">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+<td class="description">This event occurs when the textarea receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
 </tr>
 <tr>
 <td class="name">KeyPress</td>
@@ -7151,7 +7142,7 @@ term1 "widget/terminal"
 </tr>
 <tr>
 <td class="name">LoseFocus</td>
-<td class="description">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</td>
+<td class="description">This event occurs when the textarea loses keyboard focus (if the user tabs off of it, for instance).</td>
 </tr>
 <tr class="notimplimented">
 <td class="name">Click</td>
@@ -7587,7 +7578,7 @@ my_pane "widget/pane"
 <tr>
 <td class="name">form</td>
 <td class="type">string</td>
-<td class="description">The form (e.g. it's osrc) with which to associate the variable and fieldname.  Defaults to the form in which variable is nested.</td>
+<td class="description">The form (e.g. its osrc) with which to associate the variable and fieldname.  Defaults to the form in which the variable is nested.</td>
 </tr>
 <tr>
 <td class="name">value</td>

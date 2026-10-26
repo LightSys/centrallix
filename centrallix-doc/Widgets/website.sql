@@ -2442,7 +2442,7 @@ insert into topic values(null, @newid, "widget/dropdown", null,
 			
 				[tr]
 					[td]highlight[/td]
-					[td]integer[/td]
+					[td]string[/td]
 					[td]The color of the highlighted option when the mouse goes over the item.[/td]
 				[/tr]
 			
@@ -2834,7 +2834,7 @@ insert into topic values(null, @newid, "widget/editbox", null,
 			
 				[tr]
 					[td]SetValue[/td]
-					[td]The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription event.[/td]
+					[td]The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription action.[/td]
 				[/tr]
 			
 				[tr]
@@ -3085,7 +3085,7 @@ insert into topic values(null, @newid, "widget/fileupload", null,
 	[b]Usage:[/b]
 	
 
-			The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type \"widget/page\") to improve clarity.  It has no effect on its container.  This widget does cannot contain any visual widgets.
+			The fileupload widget, since it is nonvisual, can be placed almost anywhere but is typically placed at the top-level (within an object of type \"widget/page\") to improve clarity.  It has no effect on its container.  This widget cannot contain any visual widgets.
 
 
 		
@@ -3154,7 +3154,7 @@ insert into topic values(null, @newid, "widget/fileupload", null,
 			
 				[tr]
 					[td]UploadComplete[/td]
-					[td]This event occurs when an upload is successfully completed by the user.  It provides several parameters called \"OrigNameX\" and \"NewNameX\" where X is a number greater than 0 that appear to relate to the files names that the user has uploaded.[/td]
+					[td]This event occurs when an upload is successfully completed by the user.  It provides several parameters called \"OrigNameX\" and \"NewNameX\" where X is a number greater than 0 that appear to relate to the file names that the user has uploaded.[/td]
 				[/tr]
 			
 				[tr]
@@ -3278,9 +3278,9 @@ insert into topic values(null, @newid, "widget/form", null,
 				[/tr]
 			
 				[tr]
-					[td]comfirm_discard[/td]
+					[td]confirm_discard[/td]
 					[td]yes/no[/td]
-					[td]Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.[/td]
+					[td]Whether to show the 3 button confirm window (3bconfirmwindow) before discarding unsaved changes.  If 'no', unsaved changes are discarded without asking.  Default is 'yes'.[/td]
 				[/tr]
 			
 				[tr]
@@ -3371,7 +3371,7 @@ insert into topic values(null, @newid, "widget/form", null,
 		
 				[tr]
 					[td]Clear[/td]
-					[td]Clears the form to a 'no data' -state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.[/td]
+					[td]Clears the form to a 'no data' state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.[/td]
 				[/tr]
 			
 				[tr]
@@ -4314,7 +4314,7 @@ insert into topic values(null, @newid, "widget/image", null,
 		
 				[tr]
 					[td]aspect[/td]
-					[td]sting[/td]
+					[td]string[/td]
 					[td]Specifies whether the image can be stretched or must stay its original aspect ratio.[/td]
 				[/tr]
 			
@@ -4473,7 +4473,7 @@ insert into topic values(null, @newid, "widget/imagebutton", null,
 			Deprecated.  This name is rendered by widget/button and is kept only so that existing applications keep working.  New applications should use widget/button, which documents the properties, events, actions, and client properties that an imagebutton accepts.
 
 
-			An imagebutton is a widget/button whose 'type' defaults to 'image'.  Thus, this button is borderless and text-free, its appearance comes from the image.  The properties for widget/button apply here, so an existing imagebutton can be given 'text', a 'border_style', or an explicit 'type' without being renamed (although it should be).
+			An imagebutton is a widget/button whose 'type' defaults to 'image'.  Thus, this button is borderless and text-free; its appearance comes from the image.  The properties for widget/button apply here, so an existing imagebutton can be given 'text', a 'border_style', or an explicit 'type' without being renamed (although it should be).
 
 
 		
@@ -5106,27 +5106,27 @@ insert into topic values(null, @newid, "widget/menu", null,
 			
 				[tr]
 					[td]MouseDown[/td]
-					[td]This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
+					[td]This event occurs when the user presses the mouse button on the menu.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the menu for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.[/td]
 				[/tr]
 			
 				[tr]
 					[td]MouseMove[/td]
-					[td]This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.[/td]
+					[td]This event occurs when the user moves the mouse pointer while it is over the menu.  The event will repeatedly fire each time the pointer moves.[/td]
 				[/tr]
 			
 				[tr]
 					[td]MouseOut[/td]
-					[td]This event occurs when the user moves the mouse pointer off of the checkbox.[/td]
+					[td]This event occurs when the user moves the mouse pointer off of the menu.[/td]
 				[/tr]
 			
 				[tr]
 					[td]MouseOver[/td]
-					[td]This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.[/td]
+					[td]This event occurs when the user first moves the mouse pointer over the menu.  It will not occur again until the user moves the mouse off of the menu and then back over it again.[/td]
 				[/tr]
 			
 				[tr]
 					[td]MouseUp[/td]
-					[td]This event occurs when the user releases the mouse button on the checkbox.[/td]
+					[td]This event occurs when the user releases the mouse button on the menu.[/td]
 				[/tr]
 			
 				[tr]
@@ -5141,7 +5141,7 @@ insert into topic values(null, @newid, "widget/menu", null,
 			
 				[tr]
 					[td]Activate[/td]
-					[td]This event occurs when the dropdown appears.  It provides two parameters, \"X\" and \"Y\", which are the (integer) positions (in pixels) on the page for the menu has appeared.[/td]
+					[td]This event occurs when the dropdown appears.  It provides two parameters, \"X\" and \"Y\", which are the (integer) positions (in pixels) on the page where the menu has appeared.[/td]
 				[/tr]
 			
 				[tr]
@@ -5440,7 +5440,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 						[tr]
 							[td]autoquery[/td]
 							[td]true/false[/td]
-							[td]When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.[/td]
+							[td]When autoquery is set to true, when the master changes, the slave automatically re-queries its data.  Otherwise, it will not re-query unless an action is explicitly called to do so.  When autoquery is false, it causes relationships to be enforced, but doesn't cause a re-query when the master's osrc refreshes or re-queries.[/td]
 						[/tr]
 					
 						[tr]
@@ -5649,7 +5649,7 @@ insert into topic values(null, @newid, "widget/osrc", null,
 			
 				[tr]
 					[td]SaveClients[/td]
-					[td]Save the clients that connect and lets clients of clients know that orsc is connected to them.[/td]
+					[td]Saves the clients that connect and lets clients of clients know that osrc is connected to them.[/td]
 				[/tr]
 			
 				[tr]
@@ -5970,11 +5970,6 @@ insert into topic values(null, @newid, "widget/page", null,
 				[tr]
 					[td]LoadPage[/td]
 					[td]Loads the page at the specified \"Source\", or reloads the current page if no source is given.  Any other parameters are appended to the URL as query parameters.  Specify 1 or yes for \"LinkApp\" to link the loaded page into the same group as the current page for permissions.[/td]
-				[/tr]
-			
-				[tr]
-					[td]ReloadPage[/td]
-					[td]Reloads the page in the user's browser. Note: This event forces a reload, even if the original content could be loaded without one.[/td]
 				[/tr]
 			
 				[tr]
@@ -6526,7 +6521,7 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 		
 				[tr]
 					[td]SetValue[/td]
-					[td]Sets the selected option for the radio button panel to the new option specified with the \"Value\" parameter, or unsets the dropdown if no value is specified.[/td]
+					[td]Sets the selected option for the radio button panel to the new option specified with the \"Value\" parameter, or unsets the radio button panel if no value is specified.[/td]
 				[/tr]
 			
 		[/table]
@@ -6568,7 +6563,7 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 			
 				[tr]
 					[td]DataChange[/td]
-					[td]This event occurs when a new option is selected in the dropdown widget.  It provides the \"Value\" parameter, which indicates the new selected option.[/td]
+					[td]This event occurs when a new option is selected in the radio button panel.  It provides the \"Value\" parameter, which indicates the new selected option.[/td]
 				[/tr]
 			
 				[tr]
@@ -6578,7 +6573,7 @@ insert into topic values(null, @newid, "widget/radiobuttonpanel", null,
 			
 				[tr]
 					[td]LoseFocus[/td]
-					[td]This event occurs when the parent pane looses the user's focus.[/td]
+					[td]This event occurs when the parent pane loses the user's focus.[/td]
 				[/tr]
 			
 		[/table]
@@ -7072,7 +7067,7 @@ insert into topic values(null, @newid, "widget/scrollpane", null,
 			
 				[tr]
 					[td]Wheel[/td]
-					[td]This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the pointer moves.[/td]
+					[td]This event occurs when the user moves the scroll wheel while it is over the widget (or content inside the widget).  The event will repeatedly fire each time the wheel moves.[/td]
 				[/tr]
 			
 				[tr]
@@ -7499,7 +7494,7 @@ insert into topic values(null, @newid, "widget/table", null,
 	[b]Usage:[/b]
 	
 
-			Table widgets are normally placed inside a scrollpane so that any rows which don't fit int the container can still be viewed.  Table columns are created via \"widget/table-column\" child widgets within the table widget.
+			Table widgets are normally placed inside a scrollpane so that any rows which don't fit in the container can still be viewed.  Table columns are created via \"widget/table-column\" child widgets within the table widget.
 
 
 		
@@ -7548,12 +7543,6 @@ insert into topic values(null, @newid, "widget/table", null,
 					[td]colsep[/td]
 					[td]integer[/td]
 					[td]The width of the column separation lines in pixels.  Default is 1.[/td]
-				[/tr]
-			
-				[tr]
-					[td]colsep_mode[/td]
-					[td]string[/td]
-					[td]Either 'full' or 'header'. Default is 'full'.[/td]
 				[/tr]
 			
 				[tr]
@@ -7892,7 +7881,7 @@ insert into topic values(null, @newid, "widget/table", null,
 						[tr]
 							[td]caption_font_size[/td]
 							[td]string[/td]
-							[td]The font size of thecaption text.[/td]
+							[td]The font size of the caption text.[/td]
 						[/tr]
 					
 						[tr]
@@ -8013,7 +8002,7 @@ insert into topic values(null, @newid, "widget/table", null,
 						[tr]
 							[td]show_on_new[/td]
 							[td]integer[/td]
-							[td]Specify 1 to make new rows show their table-row-detail when added (deault: 0).[/td]
+							[td]Specify 1 to make new rows show their table-row-detail when added (default: 0).[/td]
 						[/tr]
 					
 				[/table]
@@ -8563,7 +8552,7 @@ insert into topic values(null, @newid, "widget/textarea", null,
 			
 				[tr]
 					[td]GetFocus[/td]
-					[td]This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).[/td]
+					[td]This event occurs when the textarea receives keyboard focus (if the user tabs on to it or clicks on it, for instance).[/td]
 				[/tr]
 			
 				[tr]
@@ -8573,7 +8562,7 @@ insert into topic values(null, @newid, "widget/textarea", null,
 			
 				[tr]
 					[td]LoseFocus[/td]
-					[td]This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).[/td]
+					[td]This event occurs when the textarea loses keyboard focus (if the user tabs off of it, for instance).[/td]
 				[/tr]
 			
 				[tr]
@@ -9107,7 +9096,7 @@ insert into topic values(null, @newid, "widget/variable", null,
 				[tr]
 					[td]form[/td]
 					[td]string[/td]
-					[td]The form (e.g. it's osrc) with which to associate the variable and fieldname.  Defaults to the form in which variable is nested.[/td]
+					[td]The form (e.g. its osrc) with which to associate the variable and fieldname.  Defaults to the form in which the variable is nested.[/td]
 				[/tr]
 			
 				[tr]
