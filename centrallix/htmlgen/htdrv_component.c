@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "cxlib/check.h"
+#include "cxlib/warn.h"
 #include "cxlib/cxsec.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
@@ -619,8 +619,8 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Clean up **/
-	if (new_sec_context) check(cxssPopContext()); /* Failure ignored. */
-	if (params) check(stFreeInf_ne(params)); /* Failure ignored. */
+	if (new_sec_context) warnFail(cxssPopContext());
+	if (params) warnFail(stFreeInf_ne(params));
 	if (s->IsDynamic == 0 && old_is_dynamic)
 	    s->IsDynamic = 1;
 	if (s->GraftPoint && old_graft)
@@ -634,7 +634,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	    s->Params = old_params;
 	    old_params = NULL;
 	    }
-	if (cmp_obj != NULL) check(objClose(cmp_obj)); /* Failure ignored. */
+	if (cmp_obj != NULL) warnFail(objClose(cmp_obj));
 	if (cmp_tree != NULL) wgtrFree(cmp_tree);
 
 	return rval;

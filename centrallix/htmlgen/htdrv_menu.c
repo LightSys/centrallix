@@ -31,8 +31,8 @@
 
 #include <string.h>
 
-#include "cxlib/check.h"
 #include "cxlib/datatypes.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
@@ -503,8 +503,12 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 	    }
 
 	/** Add menu items and dropdowns. **/
-	xs = checkPtr(xsNew());
-	if (xs == NULL) goto end;
+	xs = xsNew();
+	if (UNLIKELY(xs == NULL))
+	    {
+	    mssError(1, "HTMENU", "xsNew() failed.");
+	    goto end;
+	    }
 	mcnt=0;
 	if (htrAddBodyItem(s,"<table cellspacing=\"1\" cellpadding=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"left\" valign=\"middle\">\n") != 0) goto end;
 	if (htrAddBodyItem_va(s,"<table cellspacing=\"2\" cellpadding=\"0\" border=\"0\">%[<tr>%]\n", is_horizontal) != 0) goto end;

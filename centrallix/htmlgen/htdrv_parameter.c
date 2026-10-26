@@ -32,7 +32,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "cxlib/check.h"
+#include "cxlib/warn.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
@@ -139,7 +139,11 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
 	    /** Write presentation hints. **/
-	    if (check(xsInit(&xs)) != 0) goto err_deploy;
+	    if (UNLIKELY(xsInit(&xs) != 0))
+		{
+		mssError(1, "HTPARAM", "xsInit() failed.");
+		goto err_deploy;
+		}
 	    if (hntEncodeHints(hints, &xs) < 0)
 		{
 		mssError(0, "HTPARAM", "Failed to encode presentation hints.");
@@ -165,7 +169,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 
     err_deploy:
 	    /** Clean up. **/
-	    if (check(xsDeInit(&xs)) != 0) goto err_deploy;
+	    if (xs.AllocLen != 0) warnFail(xsDeInit(&xs));
 	    if (hints != NULL && objFreeHints(hints) != 0)
 		{
 		mssError(0, "HTPARAM", "Failed to free presentation hints.");

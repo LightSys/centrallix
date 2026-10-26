@@ -46,7 +46,7 @@
 #endif
 
 #include "centrallix.h"
-#include "cxlib/check.h"
+#include "cxlib/warn.h"
 #include "cxlib/datatypes.h"
 #include "cxlib/expect.h"
 #include "cxlib/mtask.h"
@@ -382,12 +382,17 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
     	/** Need new block? **/
 	if (arr->nItems == 0)
 	    {
-	    ptr = (char*)checkPtr(nmMalloc(block_size));
-	    if (ptr == NULL) goto err;
+	    ptr = (char*)nmMalloc(block_size);
+	    if (UNLIKELY(ptr == NULL))
+		{
+		mssError(1, "HTR", "nmMalloc(%zu) failed.", block_size);
+		goto err;
+		}
 	    *(int*)ptr = 0;
 	    l = 0;
-	    if (checkPos(xaAddItem(arr, ptr)) < 0)
+	    if (UNLIKELY(xaAddItem(arr, ptr) < 0))
 		{
+		mssError(1, "HTR", "Failed to add text block to XArray.");
 		nmFree(ptr, block_size);
 		goto err;
 		}
@@ -411,12 +416,17 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	    *(int*)ptr = l;
 	    if (n)
 	        {
-		ptr = (char*)checkPtr(nmMalloc(block_size));
-		if (ptr == NULL) goto err;
+		ptr = (char*)nmMalloc(block_size);
+		if (UNLIKELY(ptr == NULL))
+		    {
+		    mssError(1, "HTR", "nmMalloc(%zu) failed.", block_size);
+		    goto err;
+		    }
 		*(int*)ptr = 0;
 		l = 0;
-		if (checkPos(xaAddItem(arr, ptr)) < 0)
+		if (UNLIKELY(xaAddItem(arr, ptr) < 0))
 		    {
+		    mssError(1, "HTR", "Failed to add text block to XArray.");
 		    nmFree(ptr, block_size);
 		    goto err;
 		    }
@@ -426,7 +436,7 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	return 0;
 
     err:
-	mssError(1, "HTR",
+	mssError(0, "HTR",
 	    "Failed to add text to array with %d items: \"%s\"",
 	    xaCount(arr), txt
 	);
@@ -486,8 +496,16 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	/** Has this driver been used this session yet? **/
 	if (xhLookup(&session->UsedDrivers, drv->WidgetName) == NULL)
 	    {
-	    if (checkPos(xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv)) != 0) goto end;
-	    if (drv->Setup != NULL && checkPos(drv->Setup(session)) < 0) goto end;
+	    if (UNLIKELY(xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv) != 0))
+		{
+		mssError(1, "HTR", "Failed to add \"%s\" to used drivers.", drv->WidgetName);
+		goto end;
+		}
+	    if (drv->Setup != NULL && UNLIKELY(drv->Setup(session) < 0))
+		{
+		mssError(0, "HTR", "\"%s\" setup failed.", drv->Name);
+		goto end;
+		}
 	    }
 
 	/** Crossing a namespace boundary? **/
@@ -682,8 +700,12 @@ htr_internal_GrowFn(char** str, size_t* size, size_t offs, void* arg, size_t req
 	assert(*size == s->TmpbufSize);
 	new_buf_size = s->TmpbufSize * 2;
 	while(new_buf_size < req_size) new_buf_size *= 2;
-	new_buf = checkPtr(nmSysRealloc(s->Tmpbuf, new_buf_size));
-	if (new_buf == NULL) return false; /* Grow failed. */
+	new_buf = nmSysRealloc(s->Tmpbuf, new_buf_size);
+	if (UNLIKELY(new_buf == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysRealloc(%p, %zu) failed.", s->Tmpbuf, new_buf_size);
+	    return false;
+	    }
 	*str = s->Tmpbuf = new_buf;
 	*size = s->TmpbufSize = new_buf_size;
 
@@ -713,8 +735,12 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 #endif
 
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = checkPtr(qpfOpenSession());
-	if (error_session == NULL) goto end;
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
+	    {
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
+	    }
 
 	/** Print text using qpfPrintf(). **/
 	tmp = qpfPrintf_va_internal(error_session, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va);
@@ -746,7 +772,7 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	
     end:
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) check(qpfCloseSession(error_session)); /* Failure ignored. */
+	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
 
 	return rval;
     }
@@ -778,8 +804,12 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 
     retry:
 	/** Attempt to print the thing to the tmpbuf. **/
-	tmp = checkPos(vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va));
-	if (tmp < 0) goto err;
+	tmp = vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va);
+	if (UNLIKELY(tmp < 0))
+	    {
+	    mssError(1, "HTR", "vsnprintf() failed to format: \"%s\"", fmt);
+	    goto err;
+	    }
 	if (UNLIKELY(tmp > s->TmpbufSize - 1))
 	    {
 	    /** Increase buffer size. **/
@@ -787,11 +817,10 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    while (new_buf_size < tmp) new_buf_size *= 2lu;
 	    
 	    /** Allocate the new buffer. **/
-	    void* new_buf = checkPtr(nmSysMalloc(new_buf_size));
-	    if (new_buf == NULL)
+	    void* new_buf = nmSysMalloc(new_buf_size);
+	    if (UNLIKELY(new_buf == NULL))
 		{
-		/** Start a new error chain. **/
-		mssClearError();
+		mssError(1, "HTR", "nmSysMalloc(%zu) failed.", new_buf_size);
 		goto err;
 		}
 	    nmSysFree(s->Tmpbuf); /* Clean up. */
@@ -993,22 +1022,34 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
 	if (xhLookup(&(s->Page.NameIncludes), filename) != NULL) return 0;
 
     	/** Alloc the string val. **/
-	sv = (pStrValue)checkPtr(nmMalloc(sizeof(StrValue)));
-	if (sv == NULL) goto err;
+	sv = (pStrValue)nmMalloc(sizeof(StrValue));
+	if (UNLIKELY(sv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
+	    goto err;
+	    }
 	sv->Name = filename;
 	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(filename)+1;
 	sv->Value = "";
 	sv->Alloc = (flags & HTR_F_NAMEALLOC);
 
 	/** Add to the hash table and array **/
-	if (check(xhAdd(&(s->Page.NameIncludes), filename, (char*)sv)) != 0) goto err;
-	if (checkPos(xaAddItem(&(s->Page.Includes), (char*)sv)) < 0) goto err;
+	if (UNLIKELY(xhAdd(&(s->Page.NameIncludes), filename, (char*)sv) != 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to includes hash table.", filename);
+	    goto err;
+	    }
+	if (UNLIKELY(xaAddItem(&(s->Page.Includes), (char*)sv) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to includes XArray.", filename);
+	    goto err;
+	    }
 
 	/** Success. **/
 	return 0;
 	
     err:
-	mssError(1, "HTR", "Failed to include JS file: \"%s\"", filename);
+	mssError(0, "HTR", "Failed to include JS file: \"%s\"", filename);
 	return -1;
     }
 
@@ -1024,8 +1065,12 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 
     	/** Alloc the string val. **/
 	if (xhLookup(&(s->Page.NameFunctions), fn_name)) return 0;
-	sv = (pStrValue)checkPtr(nmMalloc(sizeof(StrValue)));
-	if (sv == NULL) goto err;
+	sv = (pStrValue)nmMalloc(sizeof(StrValue));
+	if (UNLIKELY(sv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
+	    goto err;
+	    }
 	sv->Name = fn_name;
 	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(fn_name)+1;
 	sv->Value = fn_text;
@@ -1033,14 +1078,22 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 	sv->Alloc = flags;
 
 	/** Add to the hash table and array **/
-	if (check(xhAdd(&(s->Page.NameFunctions), fn_name, (char*)sv)) != 0) goto err;
-	if (checkPos(xaAddItem(&(s->Page.Functions), (char*)sv)) < 0) goto err;
+	if (UNLIKELY(xhAdd(&(s->Page.NameFunctions), fn_name, (char*)sv) != 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to functions hash table.", fn_name);
+	    goto err;
+	    }
+	if (UNLIKELY(xaAddItem(&(s->Page.Functions), (char*)sv) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to functions XArray.", fn_name);
+	    goto err;
+	    }
 
 	/** Success. **/
 	return 0;
 
     err:
-	mssError(1, "HTR", "Failed to add JS function: %s()", fn_name);
+	mssError(0, "HTR", "Failed to add JS function: %s()", fn_name);
 	return -1;
     }
 
@@ -1057,8 +1110,12 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 	if (xhLookup(&(s->Page.NameGlobals), var_name) != NULL) return 0;
 	
 	/** Alloc a new string val. **/
-	sv = (pStrValue)checkPtr(nmMalloc(sizeof(StrValue)));
-	if (sv == NULL) goto err;
+	sv = (pStrValue)nmMalloc(sizeof(StrValue));
+	if (UNLIKELY(sv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
+	    goto err;
+	    }
 	sv->Name = var_name;
 	sv->NameSize = strlen(var_name)+1;
 	sv->Value = initialization;
@@ -1066,8 +1123,16 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 	sv->Alloc = flags;
 
 	/** Add to the hash table and array **/
-	if (check(xhAdd(&(s->Page.NameGlobals), var_name, (char*)sv)) != 0) goto err;
-	if (checkPos(xaAddItem(&(s->Page.Globals), (char*)sv)) < 0) goto err;
+	if (UNLIKELY(xhAdd(&(s->Page.NameGlobals), var_name, (char*)sv) != 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to globals hash table.", var_name);
+	    goto err;
+	    }
+	if (UNLIKELY(xaAddItem(&(s->Page.Globals), (char*)sv) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to globals XArray.", var_name);
+	    goto err;
+	    }
 
 	/** Success. **/
 	return 0;
@@ -1075,7 +1140,7 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
     err:;
 	char flags_buf[20] = {'\0'};
 	if (flags != 0) snprintf(flags_buf, sizeof(flags_buf), " (flags %d)", flags);
-	mssError(1, "HTR",
+	mssError(0, "HTR",
 	    "Failed to add global variable %s = %s%s.",
 	    var_name, initialization, flags_buf
 	);
@@ -1149,8 +1214,12 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	const int n_event_handlers = xaCount(&s->Page.EventHandlers);
 	for (unsigned int i = 0u; i < n_event_handlers; i++)
 	    {
-	    pHtDomEvent event_handler = checkPtr(xaGetItem(&s->Page.EventHandlers, i));
-	    if (event_handler == NULL) goto err;
+	    pHtDomEvent event_handler = xaGetItem(&s->Page.EventHandlers, i);
+	    if (UNLIKELY(event_handler == NULL))
+		{
+		mssError(1, "HTR", "Event handler #%u/%d is NULL.", i + 1u, n_event_handlers);
+		goto err;
+		}
 	    if (strcmp(event, event_handler->DomEvent) == 0)
 		{
 		e = event_handler;
@@ -1161,29 +1230,49 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	/** Make a new event handler, if needed. **/
 	if (e == NULL)
 	    {
-	    e = (pHtDomEvent)checkPtr(nmMalloc(sizeof(HtDomEvent)));
-	    if (e == NULL) goto err;
+	    e = (pHtDomEvent)nmMalloc(sizeof(HtDomEvent));
+	    if (UNLIKELY(e == NULL))
+		{
+		mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDomEvent));
+		goto err;
+		}
 	    strtcpy(e->DomEvent, event, sizeof(e->DomEvent));
-	    if (check(xaInit(&e->Handlers,64)) != 0) goto err;
-	    if (checkPos(xaAddItem(&s->Page.EventHandlers, e)) < 0) goto err;
+	    if (UNLIKELY(xaInit(&e->Handlers,64) != 0))
+		{
+		mssError(1, "HTR", "xaInit(&e->Handlers, 64) failed.");
+		goto err;
+		}
+	    if (UNLIKELY(xaAddItem(&s->Page.EventHandlers, e) < 0))
+		{
+		mssError(1, "HTR", "Failed to add \"%s\" event to XArray.", event);
+		goto err;
+		}
 	    }
 
 	/** Add our handler **/
 	const int n_handlers = xaCount(&e->Handlers);
 	for (unsigned int i = 0u; i < n_handlers; i++)
 	    {
-	    char* handler = checkPtr(xaGetItem(&e->Handlers, i));
-	    if (handler == NULL) goto err;
+	    char* handler = xaGetItem(&e->Handlers, i);
+	    if (UNLIKELY(handler == NULL))
+		{
+		mssError(1, "HTR", "Handler #%u/%d is NULL.", i + 1u, n_handlers);
+		goto err;
+		}
 	    if (strcmp(function, handler) == 0)
 		return 0;
 	    }
-	if (checkPos(xaAddItem(&e->Handlers, function)) < 0) goto err;
+	if (UNLIKELY(xaAddItem(&e->Handlers, function) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add handler \"%s\" to XArray.", function);
+	    goto err;
+	    }
 
 	/** Success. **/
 	return 0;
 	
 	err:
-	mssError(1, "HTR",
+	mssError(0, "HTR",
 	    "Failed to add %s event handler function \'%s()\' to %s for driver %s.",
 	    event, function, event_src, drv_name
 	);
@@ -1247,8 +1336,12 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
     pQPSession error_session = NULL;
 	
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = checkPtr(qpfOpenSession());
-	if (error_session == NULL) goto end;
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
+	    {
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
+	    }
 
 	/** Pick a starting tag. **/
 	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC)); 
@@ -1277,7 +1370,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add starting body item with id: %s.", id);
 	
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) check(qpfCloseSession(error_session)); /* Failure ignored. */
+	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
 	
 	/** Done. **/
 	return rval;
@@ -1316,14 +1409,30 @@ htrGetExpParams(pExpression exp, pXString xs)
     XArray objs = { nAlloc: 0 }, props = { nAlloc: 0 };
 
 	/** setup **/
-	if (check(xaInit(&objs, 16)) != 0) goto end;
-	if (check(xaInit(&props, 16)) != 0) goto end;
+	if (UNLIKELY(xaInit(&objs, 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&objs, 16) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xaInit(&props, 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&props, 16) failed.");
+	    goto end;
+	    }
 
 	/** Find the properties accessed by the expression **/
-	if (checkPos(expGetPropList(exp, &objs, &props) < 0)) goto end;
+	if (UNLIKELY(expGetPropList(exp, &objs, &props) < 0))
+	    {
+	    mssError(1, "HTR", "expGetPropList() failed.");
+	    goto end;
+	    }
 
 	/** Build the list **/
-	if (check(xsCopy(xs, "[", 1)) != 0) goto end;
+	if (UNLIKELY(xsCopy(xs, "[", 1) != 0))
+	    {
+	    mssError(1, "HTR", "xsCopy() failed.");
+	    goto end;
+	    }
 	bool first = true;
 	for (unsigned int i = 0u; i < objs.nItems; i++)
 	    {
@@ -1333,29 +1442,37 @@ htrGetExpParams(pExpression exp, pXString xs)
 		obj  != NULL && obj[0]  != '\0' &&
 		prop != NULL && prop[0] != '\0'
 	    ))	{
-		if (checkPos(xsConcatQPrintf(xs,
+		if (UNLIKELY(xsConcatQPrintf(xs,
 		    "%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}",
 		    (!first), obj, prop
-		)) < 0) goto end;
+		) < 0))
+		    {
+		    mssError(1, "HTR", "Failed to write property %s.%s.", obj, prop);
+		    goto end;
+		    }
 		first = false;
 		}
 	    }
-	if (checkPos(xsConcatenate(xs, "]", 1)) < 0) goto end;
+	if (UNLIKELY(xsConcatenate(xs, "]", 1) < 0))
+	    {
+	    mssError(1, "HTR", "xsConcatenate() failed.");
+	    goto end;
+	    }
 	
 	/** Success. **/
 	rval = 0;
 
 	end:
 	if (UNLIKELY(rval != 0))
-	    mssError(1, "HTR", "Failed to get params for expresion: \"%s\".", exp->Name);
+	    mssError(0, "HTR", "Failed to get params for expression: \"%s\".", exp->Name);
 	
 	/** Clean up. **/
 	for (unsigned int i = 0u; i < objs.nItems; i++)
 	    if (LIKELY(objs.Items[i] != NULL)) nmSysFree(objs.Items[i]);
-	if (LIKELY(objs.nAlloc != 0)) check(xaDeInit(&objs)); /* Failure ignored. */
+	if (LIKELY(objs.nAlloc != 0)) warnFail(xaDeInit(&objs));
 	for (unsigned int i = 0u; i < props.nItems; i++)
 	    if (LIKELY(props.Items[i] != NULL)) nmSysFree(props.Items[i]);
-	if (LIKELY(props.nAlloc != 0)) check(xaDeInit(&props)); /* Failure ignored. */
+	if (LIKELY(props.nAlloc != 0)) warnFail(xaDeInit(&props));
 	
 	/** Done. **/
 	return rval;
@@ -1372,19 +1489,43 @@ htrGetExpParams(pExpression exp, pXString xs)
 int
 htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
     {
-    int rval = -1, cls = 1;
+    int rval = -1;
     XArray objs = { nAlloc: 0 }, props = { nAlloc: 0 };
     XString xs = { AllocLen: 0 }, exptxt = { AllocLen: 0 };
 
 	/** Allocate data structures. **/
-	if (check(xaInit(&objs, 16)) != 0) goto end;
-	if (check(xaInit(&props, 16)) != 0) goto end;
-	if (check(xsInit(&xs)) != 0) goto end;
-	if (check(xsInit(&exptxt)) != 0) goto end;
-	if (checkPos(expGetPropList(exp, &objs, &props) < 0)) goto end;
+	if (UNLIKELY(xaInit(&objs, 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&objs, 16) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xaInit(&props, 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&props, 16) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xsInit(&xs) != 0))
+	    {
+	    mssError(1, "HTR", "xsInit(&xs) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xsInit(&exptxt) != 0))
+	    {
+	    mssError(1, "HTR", "xsInit(&exptxt) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(expGetPropList(exp, &objs, &props) < 0))
+	    {
+	    mssError(1, "HTR", "expGetPropList() failed.");
+	    goto end;
+	    }
 
 	/** Copy expression data. 8*/
-	if (checkPos(xsCopy(&xs, "[", 1)) < 0) goto end;
+	if (UNLIKELY(xsCopy(&xs, "[", 1) < 0))
+	    {
+	    mssError(1, "HTR", "xsCopy() failed.");
+	    goto end;
+	    }
 	bool first = true;
 	for (unsigned int i = 0u; i < objs.nItems; i++)
 	    {
@@ -1394,18 +1535,25 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 		obj  != NULL && obj[0]  != '\0' &&
 		prop != NULL && prop[0] != '\0'
 	    ))	{
-		if (checkPos(xsConcatQPrintf(&xs,
+		if (UNLIKELY(xsConcatQPrintf(&xs,
 		    "%[,%]['%STR&JSSTR','%STR&JSSTR']",
 		    (!first), obj, prop
-		)) < 0) goto end;
+		) < 0))
+		    {
+		    mssError(1, "HTR", "Failed to write property %s.%s.", obj, prop);
+		    goto end;
+		    }
 		first = false;
 		}
 	    }
-	if (checkPos(xsConcatenate(&xs, "]", 1)) < 0) goto end;
+	if (UNLIKELY(xsConcatenate(&xs, "]", 1) < 0))
+	    {
+	    mssError(1, "HTR", "xsConcatenate() failed.");
+	    goto end;
+	    }
 	if (UNLIKELY(expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
 	    {
 	    mssError(0, "HTR", "Failed to generate expression text.");
-	    cls = 0;
 	    goto end;
 	    }
 	if (UNLIKELY(htrAddExpressionItem_va(s,
@@ -1414,7 +1562,6 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	) != 0))
 	    {
 	    mssError(0, "HTR", "Failed to write the expresion item.");
-	    cls = 0;
 	    goto end;
 	    }
 
@@ -1422,17 +1569,17 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	rval = 0;
 
 	end:
-	if (UNLIKELY(rval != 0)) mssError(cls, "HTR", "Failed to add expression \"%s\".", objname);
+	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add expression \"%s\".", objname);
 	
 	/** Clean up. **/
 	for (unsigned int i = 0u; i < objs.nItems; i++)
 	    if (LIKELY(objs.Items[i] != NULL)) nmSysFree(objs.Items[i]);
-	if (LIKELY(objs.nAlloc != 0)) check(xaDeInit(&objs)); /* Failure ignored. */
+	if (LIKELY(objs.nAlloc != 0)) warnFail(xaDeInit(&objs));
 	for (unsigned int i = 0u; i < props.nItems; i++)
 	    if (LIKELY(props.Items[i] != NULL)) nmSysFree(props.Items[i]);
-	if (LIKELY(props.nAlloc != 0)) check(xaDeInit(&props)); /* Failure ignored. */
-	if (LIKELY(xs.AllocLen != 0)) check(xsDeInit(&xs)); /* Failure ignored. */
-	if (LIKELY(exptxt.AllocLen != 0)) check(xsDeInit(&exptxt)); /* Failure ignored. */
+	if (LIKELY(props.nAlloc != 0)) warnFail(xaDeInit(&props));
+	if (LIKELY(xs.AllocLen != 0)) warnFail(xsDeInit(&xs));
+	if (LIKELY(exptxt.AllocLen != 0)) warnFail(xsDeInit(&exptxt));
 	
 	/** Done. **/
 	return rval;
@@ -1644,8 +1791,16 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		    mssError(1, "HTR", "Failed to get value for property '%s'", propname);
 		    goto end;
 		    }
-		if (check(xsInit(&exptxt)) != 0) goto end;
-		if (check(xsInit(&proptxt)) != 0) goto end;
+		if (UNLIKELY(xsInit(&exptxt) != 0))
+		    {
+		    mssError(1, "HTR", "xsInit(&exptxt) failed.");
+		    goto end;
+		    }
+		if (UNLIKELY(xsInit(&proptxt) != 0))
+		    {
+		    mssError(1, "HTR", "xsInit(&proptxt) failed.");
+		    goto end;
+		    }
 		if (UNLIKELY(htrGetExpParams(code, &proptxt) != 0)) goto end;
 		if (UNLIKELY(expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
 		    {
@@ -1663,8 +1818,8 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		successful = true;
 
     end:	/** Clean up. **/
-		if (proptxt.AllocLen != 0) checkPos(xsDeInit(&proptxt)); /* Failure ignored. */
-		if (exptxt.AllocLen != 0) checkPos(xsDeInit(&exptxt)); /* Failure ignored. */
+		if (proptxt.AllocLen != 0) warnNeg(xsDeInit(&proptxt));
+		if (exptxt.AllocLen != 0) warnNeg(xsDeInit(&exptxt));
 		if (!successful) goto err;
 		break;
 		}
@@ -2040,13 +2195,12 @@ htrGetErrorHTMLMsg(char* title, char* err_str)
 	    + strlen(title)
 	    + strlen(err_str)
 	    + 1lu; /* Null terminator. */
-	page_buf = checkPtr(nmSysMalloc(page_buf_size));
+	page_buf = warnNull(nmSysMalloc(page_buf_size));
 	if (page_buf == NULL) goto clean_up;
 
 	/** Write an error HTML for the user. **/
-	error_session = checkPtr(qpfOpenSession()); /* Failure ignored. */
-	// nmSysFree(checkPtr(nmSysMalloc(8)));
-	if (checkPos(qpfPrintf_g(
+	error_session = warnNull(qpfOpenSession());
+	if (warnNeg(qpfPrintf_g(
 	    error_session, &page_buf, &page_buf_size, &qpfSysMallocGrow, NULL, page_format,
 	    n_lines, title, err_str
 	)) < 0)
@@ -2054,7 +2208,6 @@ htrGetErrorHTMLMsg(char* title, char* err_str)
 	    if (LIKELY(error_session != NULL)) qpfLogErrors(error_session);
 	    goto fail;
 	    }
-	// nmSysFree(checkPtr(nmSysMalloc(8)));
 
 	/** Success. **/
 	goto clean_up;
@@ -2066,12 +2219,12 @@ htrGetErrorHTMLMsg(char* title, char* err_str)
 
     clean_up:
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) check(qpfCloseSession(error_session)); /* Failure ignored. */
+	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
 	
 	/** Final fallback chain if we STILL couldn't create an error page. **/
-	if (UNLIKELY(page_buf == NULL)) page_buf = checkPtr(nmSysStrdup("See server logs"));
-	if (UNLIKELY(page_buf == NULL)) page_buf = checkPtr(nmSysStrdup("err"));
-	if (UNLIKELY(page_buf == NULL)) page_buf = checkPtr(nmSysStrdup("!"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("See server logs"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("err"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("!"));
 	
 	return page_buf;
     }
@@ -2093,9 +2246,9 @@ htrGetErrorHTML(char* title)
     pXString err_xs;
 
 	/** Get the error string. **/
-	err_xs = checkPtr(xsNew());
-	if (err_xs != NULL && check(mssStringError(err_xs)) == 0 && check(xsTrim(err_xs)) == 0)
-	    err_str = checkPtr(xsString(err_xs));
+	err_xs = warnNull(xsNew());
+	if (err_xs != NULL && warnFail(mssStringError(err_xs)) == 0 && warnFail(xsTrim(err_xs)) == 0)
+	    err_str = warnNull(xsString(err_xs));
 
 	page_buf = htrGetErrorHTMLMsg(title, err_str);
 
@@ -2137,8 +2290,12 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
     	/** Initialize the session **/
-	s = (pHtSession)checkPtr(nmMalloc(sizeof(HtSession)));
-	if (s == NULL) return -1;
+	s = (pHtSession)nmMalloc(sizeof(HtSession));
+	if (UNLIKELY(s == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtSession));
+	    return -1;
+	    }
 	memset(s,0,sizeof(HtSession));
 	s->Params = params;
 	s->ObjSession = obj_s;
@@ -2287,11 +2444,11 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    {
 	    /** Render an error page to gracefully recover from the error. **/
 	    char* error_title = "An error occurred while rendering the page.";
-	    char* error_html = checkPtr(htrGetErrorHTML(error_title));
+	    char* error_html = warnNull(htrGetErrorHTML(error_title));
 	    if (UNLIKELY(error_html == NULL)) error_html = error_title;
-	    checkPos(htrQPrintf(s, "%STR", error_html)); /* Failure ignored. */
+	    warnNeg(htrQPrintf(s, "%STR", error_html));
 	    if (LIKELY(error_html != error_title)) nmSysFree(error_html);
-	    check(mssClearError()); /* Failure ignored. */
+	    mssClearError();
 	    goto end_free;
 	    }
 	
@@ -2615,19 +2772,31 @@ htrAllocDriver()
     pHtDriver drv;
 
 	/** Allocate the driver structure **/
-	drv = (pHtDriver)checkPtr(nmMalloc(sizeof(HtDriver)));
-	if (drv == NULL) goto err;
+	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
+	if (UNLIKELY(drv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDriver));
+	    goto err;
+	    }
 	memset(drv, 0, sizeof(HtDriver));
 
 	/** Init some of the basic array structures **/
-	if (check(xaInit(&(drv->Properties), 16)) != 0) goto err;
-	if (check(xaInit(&(drv->PseudoTypes), 4)) != 0) goto err;
+	if (UNLIKELY(xaInit(&(drv->Properties), 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&(drv->Properties), 16) failed.");
+	    goto err;
+	    }
+	if (UNLIKELY(xaInit(&(drv->PseudoTypes), 4) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&(drv->PseudoTypes), 4) failed.");
+	    goto err;
+	    }
 
 	/** Success. **/
 	return drv;
 
 	err:
-	mssError(1, "HTR", "Failed to allocate driver.");
+	mssError(0, "HTR", "Failed to allocate driver.");
 	return NULL;
     }
 
@@ -2745,8 +2914,12 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	buf[0] = '\0';
 	
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = checkPtr(qpfOpenSession());
-	if (error_session == NULL) goto end;
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
+	    {
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
+	    }
 	
 	/** Allocate space for attribute names. **/
 	char bgcolor_buf[64];
@@ -2952,8 +3125,12 @@ htr_internal_CheckDMPrivateData(pWgtrNode widget)
     
 	if (!inf)
 	    {
-	    inf = (pHtDMPrivateData)checkPtr(nmMalloc(sizeof(HtDMPrivateData)));
-	    if (inf == NULL) return NULL;
+	    inf = (pHtDMPrivateData)nmMalloc(sizeof(HtDMPrivateData));
+	    if (UNLIKELY(inf == NULL))
+		{
+		mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDMPrivateData));
+		return NULL;
+		}
 	    memset(inf, 0, sizeof(HtDMPrivateData));
 	    wgtrSetDMPrivateData(widget, inf);
 	    }
@@ -2996,16 +3173,24 @@ int
 htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
 	/** Get private data. **/
-	pHtDMPrivateData inf = checkPtr(htr_internal_CheckDMPrivateData(widget));
-	if (inf == NULL) goto err;
+	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+	if (UNLIKELY(inf == NULL)) goto err;
 	
 	/** Get temporary string data. **/
-	char* str_tmp = checkPtr(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
-	if (str_tmp == NULL) goto err;
+	char* str_tmp = objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED);
+	if (UNLIKELY(str_tmp == NULL))
+	    {
+	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", linkage);
+	    goto err;
+	    }
 	
 	/** Dup string data. **/
-	char* str = checkPtr(nmSysStrdup(str_tmp));
-	if (str == NULL) goto err;
+	char* str = nmSysStrdup(str_tmp);
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
+	    goto err;
+	    }
 	
 	/** Set string data. **/
 	inf->ObjectLinkage = str;
@@ -3013,7 +3198,7 @@ htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
 	return 0;
 	
     err:
-	mssError(1, "HTR",
+	mssError(0, "HTR",
 	    "Failed to add object linkage \"%s\" to widget \"%s\":\"%s\".",
 	    linkage, widget->Name, widget->Type
 	);
@@ -3032,8 +3217,12 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     pQPSession error_session = NULL;
 
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = checkPtr(qpfOpenSession());
-	if (error_session == NULL) goto end;
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
+	    {
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
+	    }
 
 	/** Process the provided format. **/
 	va_start(va, fmt);
@@ -3078,16 +3267,24 @@ int
 htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
 	/** Get private data. **/
-	pHtDMPrivateData inf = checkPtr(htr_internal_CheckDMPrivateData(widget));
-	if (inf == NULL) goto err;
+	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+	if (UNLIKELY(inf == NULL)) goto err;
 	
 	/** Get temporary string data. **/
-	char* str_tmp = checkPtr(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
-	if (str_tmp == NULL) goto err;
+	char* str_tmp = objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED);
+	if (UNLIKELY(str_tmp == NULL))
+	    {
+	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", linkage);
+	    goto err;
+	    }
 	
 	/** Dup string data. **/
-	char* str = checkPtr(nmSysStrdup(str_tmp));
-	if (str == NULL) goto err;
+	char* str = nmSysStrdup(str_tmp);
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
+	    goto err;
+	    }
 	
 	/** Set string data. **/
 	inf->ContainerLinkage = str;
@@ -3095,7 +3292,7 @@ htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
 	return 0;
 
     err:
-	mssError(1, "HTR",
+	mssError(0, "HTR",
 	    "Failed to add container linkage \"%s\" to widget \"%s\":\"%s\".",
 	    linkage, widget->Name, widget->Type
 	);
@@ -3114,7 +3311,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     pQPSession error_session = NULL;
     
 	/** Create a pQPSession to track errors from qpfPrintf. **/
-	error_session = checkPtr(qpfOpenSession()); /* Failure ignored. */
+	error_session = warnNull(qpfOpenSession());
 	
 	/** Process the provided format. **/
 	va_start(va, fmt);
@@ -3158,7 +3355,7 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
     va_list va;
     char buf[256];
     
-	pHtDMPrivateData inf = checkPtr(htr_internal_CheckDMPrivateData(widget));
+	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
 	if (UNLIKELY(inf == NULL)) goto err;
 
 	/** Process format. **/
@@ -3168,16 +3365,24 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
 	va_end(va);
 	
 	/** Process string data. **/
-	char* str_tmp = checkPtr(objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED));
-	if (str_tmp == NULL) goto err;
-	char* str = checkPtr(nmSysStrdup(str_tmp));
-	if (str == NULL) goto err;
+	char* str_tmp = objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED);
+	if (UNLIKELY(str_tmp == NULL))
+	    {
+	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", buf);
+	    goto err;
+	    }
+	char* str = nmSysStrdup(str_tmp);
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
+	    goto err;
+	    }
 	inf->Param = str;
 	
 	return 0;
 	
     err:
-	mssError(1, "HTR",
+	mssError(0, "HTR",
 	    "Failed to set widget initialization function to %s(%s) for widget \"%s\":\"%s\".",
 	    func, paramfmt, widget->Name, widget->Type
 	);
@@ -3195,8 +3400,12 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
     char* ptr;
 
 	/** Allocate a new namespace **/
-	new_ns = (pHtNamespace)checkPtr(nmMalloc(sizeof(HtNamespace)));
-	if (UNLIKELY(new_ns == NULL)) goto err;
+	new_ns = (pHtNamespace)nmMalloc(sizeof(HtNamespace));
+	if (UNLIKELY(new_ns == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtNamespace));
+	    goto err;
+	    }
 	new_ns->Parent = s->Namespace;
 	strtcpy(new_ns->DName, nspace, sizeof(new_ns->DName));
 
@@ -3230,7 +3439,7 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
 	    "to container widget \"%s\":\"%s\"",
 	    container->Name, container->Type
 	);
-	mssError(1, "HTR",
+	mssError(0, "HTR",
 	    "Failed to add namespace \"%s\"%s.",
 	    nspace, context
 	);

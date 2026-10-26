@@ -33,8 +33,8 @@
 #include <string.h>
 #include <strings.h>
 
-#include "cxlib/check.h"
 #include "cxlib/datatypes.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
@@ -163,7 +163,12 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	{
 	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
-	    sql = checkPtr(nmSysStrdup(ptr));
+	    sql = nmSysStrdup(ptr);
+	    if (UNLIKELY(sql == NULL))
+		{
+		mssError(1, "HTOSRC", "nmSysStrdup(\"%s\") failed for 'sql'.", ptr);
+		goto end;
+		}
 	    break;
 	    }
 	/** Fallthrough **/
@@ -176,9 +181,18 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	return -1;
     }
 
-    baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? checkPtr(nmSysStrdup(ptr)) : no_string;
-    filter  = (wgtrGetPropertyValue(tree, "filter",  DATA_T_STRING, POD(&ptr)) == 0) ? checkPtr(nmSysStrdup(ptr)) : no_string;
-    if (sql == NULL || baseobj == NULL || filter == NULL) goto end;
+    baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? nmSysStrdup(ptr) : no_string;
+    if (UNLIKELY(baseobj == NULL))
+	{
+	mssError(1, "HTOSRC", "nmSysStrdup(\"%s\") failed for 'baseobj'.", ptr);
+	goto end;
+	}
+    filter = (wgtrGetPropertyValue(tree, "filter", DATA_T_STRING, POD(&ptr)) == 0) ? nmSysStrdup(ptr) : no_string;
+    if (UNLIKELY(filter == NULL))
+	{
+	mssError(1, "HTOSRC", "nmSysStrdup(\"%s\") failed for 'filter'.", ptr);
+	goto end;
+	}
 
     /** Link the widget and container to their DOM nodes. **/
     if (htrAddWgtrObjLinkage_va(s, tree, "osrc%POSloader", id) != 0) goto end;
