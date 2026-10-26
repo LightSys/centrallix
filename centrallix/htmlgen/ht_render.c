@@ -22,7 +22,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	ht_render.h,ht_render.c					*/
+/* Module: 	ht_render.h, ht_render.c				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	November 19, 1998					*/
 /* Description:	HTML Page rendering engine that interacts with the 	*/
