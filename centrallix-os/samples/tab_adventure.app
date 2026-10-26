@@ -21,7 +21,7 @@ FourTabs "widget/page" {
 				x=10; y=50; width=250; height=80;
 				font_size=18; fgcolor="#fff1df";
 				text="
-					You wake up surounded by the ruins of a village. Houses are burned, walls are colapsed, and roves are caved in.
+					You wake up surrounded by the ruins of a village. Houses are burned, walls are collapsed, and roofs are caved in.
 					The house you're 'in' doesn't even have a roof, and barely half a wall is still standing. 
 				";
 			}
@@ -157,8 +157,8 @@ FourTabs "widget/page" {
 				font_size=18; fgcolor="#fff1df";
 				text="
 					You leave the village. As you get further away from the depressing place, you begin to run.
-					You sprint across planes and through vallies, never looking back or missing the acursed ruins you left behind.
-					After a while, though, you suddenly fall off some kind of edge and plumit until everything goes black...
+					You sprint across plains and through valleys, never looking back or missing the accursed ruins you left behind.
+					After a while, though, you suddenly fall off some kind of edge and plummet until everything goes black...
 				";
 			}
 
@@ -177,7 +177,7 @@ FourTabs "widget/page" {
 				x=10; y=50; width=250; height=80;
 				font_size=18; fgcolor="#fff1df";
 				text="
-					There's several firepalces around, so you have a few options.
+					There's several fireplaces around, so you have a few options.
 				";
 			}
 

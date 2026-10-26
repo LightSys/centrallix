@@ -293,7 +293,7 @@ tab_features "widget/page"
 		}
 	    
 	    t12l5 "widget/label" { x=30; y=355; width=60; height=20; fl_width = 1; font_size=16; style="bold"; text="Tab Spacing -8px"; }
-	    t12l5a "widget/label" { x=90; y=357; width=runserver(:this:w-80); height=15; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recomended)"; }
+	    t12l5a "widget/label" { x=90; y=357; width=runserver(:this:w-80); height=15; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recommended)"; }
 	    t12t5 "widget/tab"
 		{
 		x = 20; y = 380;
@@ -322,7 +322,7 @@ tab_features "widget/page"
 		}
 	    
 	    t12l6 "widget/label" { x=270; y=355; width=70; height=20; fl_width = 1; font_size=16; style="bold"; text="Tab Spacing -16px"; }
-	    t12l6a "widget/label" { x=345; y=357; width=runserver(:this:w-70); height=15; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recomended)"; }
+	    t12l6a "widget/label" { x=345; y=357; width=runserver(:this:w-70); height=15; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recommended)"; }
 	    t12t6 "widget/tab"
 		{
 		x = 260; y = 380;
@@ -484,7 +484,7 @@ tab_features "widget/page"
 		    }
 		}
 	    
-	    t13l6 "widget/label" { x=270; y=355; width=60; height=20; font_size=16; style="bold"; text="Tab Spacing 8px"; }
+	    t13l6 "widget/label" { x=270; y=355; width=60; height=20; font_size=16; style="bold"; text="Tab Height 8px"; }
 	    t13t6 "widget/tab"
 		{
 		x = 260; y = 380;
@@ -635,7 +635,7 @@ tab_features "widget/page"
 		}
 	    
 	    t14l5 "widget/label" { x=30; y=355; width=30; height=40; font_size=16; style="bold"; text="Along -8"; }
-	    t14l5a "widget/label" { x=67; y=357; width=100; height=40; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recomended)"; }
+	    t14l5a "widget/label" { x=67; y=357; width=100; height=40; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recommended)"; }
 	    t14t5 "widget/tab"
 		{
 		x = 20; y = 380;
@@ -665,7 +665,7 @@ tab_features "widget/page"
 		}
 	    
 	    t14l6 "widget/label" { x=270; y=355; width=30; height=40; font_size=16; style="bold"; text="Out -8"; }
-	    t14l6a "widget/label" { x=307; y=357; width=100; height=40; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recomended)"; }
+	    t14l6a "widget/label" { x=307; y=357; width=100; height=40; font_size=12; style="bold"; fgcolor="red"; text="(Negative values not recommended)"; }
 	    t14t6 "widget/tab"
 		{
 		x = 260; y = 380;
