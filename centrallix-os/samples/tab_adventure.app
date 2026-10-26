@@ -177,7 +177,7 @@ FourTabs "widget/page" {
 				x=10; y=50; width=250; height=80;
 				font_size=18; fgcolor="#fff1df";
 				text="
-					There's several fireplaces around, so you have a few options.
+					There are several fireplaces around, so you have a few options.
 				";
 			}
 

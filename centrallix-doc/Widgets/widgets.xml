@@ -4614,7 +4614,7 @@ my_pane "widget/pane"
 
 			<property name="fieldname" type="string">The field with which to link / connect to the variable.</property>
 
-			<property name="form" type="string">The form (e.g. its osrc) with which to associate the variable and fieldname.  Defaults to the form in which variable is nested.</property>
+			<property name="form" type="string">The form (e.g. its osrc) with which to associate the variable and fieldname.  Defaults to the form in which the variable is nested.</property>
 
 			<property name="value" type="string">Can be accessed as :var_name:value.</property>
 

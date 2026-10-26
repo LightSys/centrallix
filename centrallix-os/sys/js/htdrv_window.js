@@ -104,9 +104,9 @@ function wn_init(param)
 	    }
 	}
     
-    /*** Save how the server placed this window (see wn_place() for modes).  Set
-     *** before the window joins the wn_list, which is used for resize
-     *** re-placements.  centeredx/centeredy say the server-side layout centered
+    /*** Save how the server placed this window (see wn_compute_placement() for
+     *** modes).  Set before the window joins the wn_list, which is used for
+     *** resize re-placements.  centeredx/centeredy say the server-side layout centered
      *** the window rather than placing it at a fixed spot (see apos.c for the
      *** detection), so it gets centered again on resize.  Any other window was
      *** given a fixed spot that CSS already holds, recorded as "wherever it is".

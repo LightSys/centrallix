@@ -844,7 +844,7 @@ function dd_remove_pane(l)
     const p = l.PaneLayer;
 
     // Function for removing elements.
-    const remove_node = (n) => { if (n && n.parentNode) n.parentNode.removeChild(n); }
+    const remove_node = (n) => { if (n && n.parentNode) n.parentNode.removeChild(n); };
 
     // Remove item DOM nodes if present.
     if (l.Items && l.Items.length)

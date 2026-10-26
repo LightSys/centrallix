@@ -883,7 +883,7 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 	    Line->isBorder = isBorder;
 	    Line->Adj = adj;
 
-	    /** Add the new line, to the list of lines, sorted by location. **/
+	    /** Add the new line to the list of lines, sorted by location. **/
 	    xaAddItemSortedInt32(Lines, Line, 0);
 	}
 
