@@ -225,7 +225,6 @@ void* wgtrGetDMPrivateData(pWgtrNode tree);
 pWgtrNode wgtrGetHtmlContainer(pWgtrNode tree);
 int wgtrGetContainerWidth(pWgtrNode tree);
 int wgtrGetContainerHeight(pWgtrNode tree);
-int wgtrMoveChildren(pWgtrNode tree, int x_offset, int y_offset);
 
 /** misc. functions **/
 pObjPresentationHints wgtrWgtToHints(pWgtrNode widget);	/** mimick objObjToHints **/
