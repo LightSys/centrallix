@@ -11,7 +11,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module:	Expect Branch Optimization Module (mtask.c, mtask.h)	*/
+/* Module:	Expect Branch Optimization Module (expect.h)		*/
 /* Author:	Israel Fuller						*/
 /* Date:	February 27th, 2026					*/
 /*									*/
