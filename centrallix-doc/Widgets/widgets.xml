@@ -1223,7 +1223,7 @@ cn1 "widget/connector"
 
 			<property name="height" type="integer">Height, in pixels, of the dropdown.</property>
 
-			<property name="highlight" type="integer">The color of the highlighted option when the mouse goes over the item.</property>
+			<property name="highlight" type="string">The color of the highlighted option when the mouse goes over the item.</property>
 
 			<property name="invalid_select_default" type="integer">The default widget that has focus when the dropdown is first activated.</property>
 
@@ -1464,7 +1464,7 @@ myDropDown2 "widget/dropdown"
 
 			<action name="SetFocus">The SetFocus action selects and gives control to an edit box at the specified "X" and "Y" coordinates (even if it is not the target?).</action>
 
-			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription event.</action>
+			<action name="SetValue">The SetValue action modifies the contents of an editbox, and takes two parameters.  The 'Value' (string) parameter represents the new value of the edit box.  The 'Description' parameter is identical to that of the SetValueDescription action.</action>
 
 			<action name="SetValueDescription">This action modifies the "value description" of the editbox, and takes a single parameter, 'Description' (string).</action>
 
@@ -1663,7 +1663,7 @@ mySoundPlayer "widget/execmethod"
 
 			<property name="confirm_delete" type="yes/no"><ni />Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted.</property>
 
-			<property name="confirm_discard" type="yes/no">Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.</property>
+			<property name="confirm_discard" type="yes/no">Whether to show the 3 button confirm window (3bconfirmwindow) before discarding unsaved changes.  If 'no', unsaved changes are discarded without asking.  Default is 'yes'.</property>
 
 			<property name="enter_mode" type="string"><ni />Can be "save" (default), "nextfield", or "lastsave".  Controls what to do when the user presses ENTER while in a form element in this form.  "save" means to save the record immediately.  "nextfield" means to move to the next form field, as if TAB were pressed instead.  "lastsave" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer "save" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer "lastsave" since it allows them to perform high-speed data entry using a numeric keypad.</property>
 
@@ -1751,7 +1751,7 @@ mySoundPlayer "widget/execmethod"
 
 		<actions>
 
-			<action name="Clear"><ni />Clears the form to a 'no data' state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</action>
+			<action name="Clear">Clears the form to a 'no data' state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</action>
 
 			<action name="Delete"><ni />Deletes the current object displayed.</action>
 
