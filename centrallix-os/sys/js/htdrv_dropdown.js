@@ -270,9 +270,9 @@ function dd_keyhandler(l,e,k)
 			last = j;
 			}
 		    if (next <= last)
-			dd_hilight_item(this,next);
+			dd_highlight_item(this,next);
 		    else
-			dd_hilight_item(this,first);
+			dd_highlight_item(this,first);
 		    i=this.Values.length;
 		    }
 		}
