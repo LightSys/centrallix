@@ -87,8 +87,13 @@ strtcpy(char* dst, const char* src, size_t dstlen)
 int
 strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
     {
-    size_t start = *pos;
+    size_t start;
     int ret;
+
+    if (UNLIKELY((!dst || !pos || !fmt))) 
+	return -1;
+
+    start = *pos;
 
     /** No room for even one character. **/
     if (UNLIKELY((dstlen == 0 || start >= dstlen - 1))) 
@@ -100,7 +105,7 @@ strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
     if (UNLIKELY((ret < 0))) 
 	{
 	dst[start] = '\0';
-	return 0;
+	return -1;
 	}
 
     /** Output overran dst, so it was truncated and dst is now full. **/
@@ -122,7 +127,9 @@ strtcatf_va(char* dst, size_t dstlen, size_t* pos, const char* fmt, va_list ap)
  *** advances past the appended text, so chained calls need no checks in
  *** between.  A full dst, or a *pos outside it, appends nothing.
  *** Returns number of bytes actually appended, including null terminator.
- *** If truncated, returns -(bytes appended).
+ *** If truncated, returns -(bytes appended), which is always -2 or less.
+ *** Returns 0 if dst was already full, and -1 if the arguments were bad or
+ *** the conversion itself failed, in which case nothing is appended.
  ***/
 int
 strtcatf(char* dst, size_t dstlen, size_t* pos, const char* fmt, ...)

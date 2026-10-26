@@ -21,6 +21,12 @@
 /** Rounds a double value to the given number of decimal places. **/
 double roundTo(double value, int decimals);
 
+/*** The macros below are built on statement expressions and __typeof__, which
+ *** are GNU C extensions that C++ does not accept, and min/max/clamp collide
+ *** with std::min/std::max besides.  Leave them out of C++ translation units.
+ ***/
+#ifndef __cplusplus
+
 #ifndef min
 /*** Returns the smaller of two values.
  *** 
@@ -54,7 +60,7 @@ double roundTo(double value, int decimals);
 #ifndef clamp
 /*** Clamps the value between a minimum and maximum bound.
  *** 
- *** If minimum > maximum, always returns maximum.
+ *** If minimum > maximum, always returns minimum.
  *** 
  *** @param minimum The smallest allowed value.
  *** @param value   The value to clamp.
@@ -64,5 +70,7 @@ double roundTo(double value, int decimals);
 #define clamp(minimum, value, maximum) \
     max(minimum, min(value, maximum))
 #endif
+
+#endif	/* not __cplusplus */
 
 #endif	/* RANGE_H */

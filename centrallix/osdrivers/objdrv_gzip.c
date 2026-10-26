@@ -486,7 +486,7 @@ gzipRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     rval=maxcnt-inf->stream.avail_out; 
     inf->offset+=rval;
     if(inflateEnd(&(inf->stream))==Z_STREAM_ERROR)
-	mssError(0,"GZIP",inf->stream.msg);
+	mssError(0,"GZIP","Inflate stream error: %s",inf->stream.msg);
     inf->mode=GZIP_MODE_NONE;
     if(GZIP_DEBUG & GZIP_DEBUG_DECOMPRESSION)
 	{
@@ -768,4 +768,3 @@ MODULE_PREFIX("gzip");
 MODULE_DESC("GZIP ObjectSystem Driver");
 MODULE_VERSION(0,1,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
-

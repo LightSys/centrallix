@@ -176,7 +176,7 @@ int qpf_spec_len[QPF_SPEC_T_MAXSPEC+1];
  *** 	do not need to be translated.   Thus, in our example, `Matrix['"']`
  *** 	should equal the string `"\""`, but `Matrix['a']` should be NULL.
  *** @param MatrixLen The length of each string pointed to in `Matrix`.  Thus,
- *** 	in our example, `MatrixLen['"']` equal be 2.
+ *** 	in our example, `MatrixLen['"']` should equal 2.
  *** @param MaxExpand The maximum number of characters that can result from
  *** 	translating a single character.  In our example, this would be 2.
  ***/
@@ -605,7 +605,7 @@ qpfLogErrors(pQPSession s)
 		{
 		const char* error_name = qpf_internal_getErrorName(err);
 		const unsigned int line_number = s->ErrorLines[i];
-		fprintf(stderr, "- %d: %s (%s:%d)\n", err, error_name, __FILE__, line_number);
+		fprintf(stderr, "- %u: %s (%s:%u)\n", err, error_name, __FILE__, line_number);
 		}
 	    }
     }
@@ -706,7 +706,18 @@ qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char**
     const unsigned char* srcptr = (const unsigned char*)src;
     const unsigned char* origsrc = (const unsigned char*)src;
     char* dstptr;
-    int req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1; /** +1 leaves room for the null-terminator. **/
+
+	/*** Refuse if the function would write more bytes than INT_MAX, taking
+	 *** into account that Base 64 turns each 3 source bytes into 4.
+	 ***/
+	if (UNLIKELY(*dst_offset >= (size_t)INT_MAX || src_size > (((size_t)INT_MAX - *dst_offset - 1) / 4) * 3))
+	    {
+	    QPERR(QPF_ERR_T_RESOURCE);
+	    return -1;
+	    }
+
+	/** +1 leaves room for the null-terminator. **/
+	const size_t req_size = ((src_size+2) / 3) * 4 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -788,7 +799,6 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     char* ptr;
     char* cursor;
     int ix;
-    int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
 
 	/** Verify source data is correct length for base 64 **/
 	if (UNLIKELY(src_size % 4 != 0))
@@ -796,6 +806,18 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 	    QPERR(QPF_ERR_T_BADCHAR);
 	    return -1;
 	    }
+
+	/*** Refuse if the function would write more bytes than INT_MAX, taking
+	 *** into account that Base 64 turns each 4 source bytes back into 3.
+	 ***/
+	if (UNLIKELY(*dst_offset >= (size_t)INT_MAX || (src_size / 4) * 3 > (size_t)INT_MAX - *dst_offset - 1))
+	    {
+	    QPERR(QPF_ERR_T_RESOURCE);
+	    return -1;
+	    }
+
+	/** +1 leaves room for the null-terminator. **/
+	const size_t req_size = (src_size / 4) * 3 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -887,7 +909,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
  *** 	before writing the result.
  *** @param grow_fn An optional grow function, used to grow the dst string if
  *** 	more space is needed.
- *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
+ *** @param grow_arg An argument, passed to `grow_fn()` when it is called.
  *** @returns The number of bytes written.
  ***/
 static inline int
@@ -898,16 +920,25 @@ qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** ds
     char* ptr;
     char* cursor;
     int ix;
-    int req_size;
     const char* orig_src = src;
 
-	/** Required size, counting the offset and the null-terminator **/
 	if (UNLIKELY(src_size%2 == 1))
 	    {
 	    QPERR(QPF_ERR_T_BADLENGTH);
 	    return -1;
 	    }
-	req_size = src_size/2 + *dst_offset + 1;
+
+	/*** Refuse if the function would write more bytes than INT_MAX, taking
+	 *** into account that hex turns each 2 source bytes back into 1.
+	 ***/
+	if (UNLIKELY(*dst_offset >= (size_t)INT_MAX || src_size / 2 > (size_t)INT_MAX - *dst_offset - 1))
+	    {
+	    QPERR(QPF_ERR_T_RESOURCE);
+	    return -1;
+	    }
+
+	/** Required size, counting the offset and the null-terminator **/
+	const size_t req_size = src_size/2 + *dst_offset + 1;
 
 	/** Grow dstbuf if necessary and possible, otherwise return error **/
 	if (req_size > *dst_size)
@@ -1039,7 +1070,7 @@ qpfPrintf_va(pQPSession s, char* str, size_t str_size, const char* format, va_li
     }
 
 
-/*** Print formatted text using the qprintf formatting, using provided the
+/*** Print formatted text using the qprintf formatting, using the provided
  *** grow function to reallocate the provided string as needed.  The output
  *** is only truncated if the grow function failed to supply enough space.
  *** 
@@ -1070,7 +1101,7 @@ qpfPrintf_g(pQPSession s, char** str, size_t* str_size, qpf_grow_fn_t grow_fn, v
     }
 
 
-/*** Print formatted text using the qprintf formatting, using provided the
+/*** Print formatted text using the qprintf formatting, using the provided
  *** grow function to reallocate the provided string as needed.  The output
  *** is only truncated if the grow function failed to supply enough space.
  *** 
@@ -1102,7 +1133,7 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* str_size, qpf_grow_fn_t grow_fn,
  *** The limit is "soft" because the function calls `grow_fn` (if provided)
  *** to attempt to increase the limit, if needed.  The soft limit does NOT
  *** reduce the return value.
- *** Hard limit: `limit`, used by spec chain elements like `nLen` or `*LEN`.
+ *** Hard limit: `limit`, used by spec chain elements like `nLEN` or `*LEN`.
  *** The function will not write more characters than this and causes an
  *** `QPF_ERR_T_INSOVERFLOW` error, even if space is available or `grow_fn`
  *** could be called.  The hard limit DOES reduce the return value.
@@ -1119,7 +1150,7 @@ qpfPrintf_gva(pQPSession s, char** str, size_t* str_size, qpf_grow_fn_t grow_fn,
  *** @param table The translation table to apply when copying each character.
  *** @param grow_fn An optional grow function, used to grow the dst string if
  *** 	more space is needed.
- *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
+ *** @param grow_arg An argument, passed to `grow_fn()` when it is called.
  *** @param min_room A required amount of space that must be available at the
  *** 	end of the destination buffer when the function completes.  Often this
  *** 	is `1`, to leave room for a null-terminator, or `2` to leave room for
@@ -1229,7 +1260,7 @@ qpf_internal_Translate(
  *** @param dest_size A pointer to the current size of the string buffer.
  *** @param grow_fn An optional grow function, used to grow `dest` if more
  *** 	space is needed.
- *** @param grow_arg An argument, passed to`grow_fn`() when it is called.
+ *** @param grow_arg An argument, passed to `grow_fn()` when it is called.
  *** @param format The format of data which should be written.
  *** @param ap The arguments list to fulfill the provided format.
  *** @returns The number of chars the output requires (matching `snprintf()`).
@@ -1272,7 +1303,7 @@ qpfPrintf_va_internal(
 	/** Use qpfNoGrow() if no grow function is provided. **/
 	if (grow_fn == NULL) grow_fn = qpfNoGrow;
 	
-	/** Ensure that there is at least enough room for the a null-terminator. **/
+	/** Ensure that there is at least enough room for a null-terminator. **/
 	if (UNLIKELY((!*dest || *dest_size < 1) && !grow_fn(dest, dest_size, dest_offset, grow_arg, 1))) 
 	    {
 	    rval = -EINVAL;
@@ -1425,14 +1456,14 @@ qpfPrintf_va_internal(
 		const bool has_n = (n != -1);
 		
 		/** Find this spec using qpf_spec_names. **/
-		bool found = 0;
+		bool found = false;
 		for (unsigned int i = startspec; i <= endspec; i++)
 		    {
 		    /** Skip specs if their numerical constraint status does not match what we parsed. **/
 		    const int spec_uses_n = (qpf_spec_names[i][0] == 'n');
 		    if (has_n != spec_uses_n) continue;
 		    
-		    /** Check that the spec name (without any inital "n" constraint marker) matches. **/
+		    /** Check that the spec name (without any initial "n" constraint marker) matches. **/
 		    const char* spec_name = qpf_spec_names[i] + ((spec_uses_n) ? 1 : 0);
 		    const int spec_len = qpf_spec_len[i] - ((spec_uses_n) ? 1 : 0);
 		    if (strncmp(format, spec_name, spec_len) == 0)
@@ -1630,7 +1661,7 @@ qpfPrintf_va_internal(
 		    
 		    case QPF_SPEC_T_SYM:
 			{
-			/** TODO: Fix code the duplication below. **/
+			/** TODO: Fix the code duplication below. **/
 			if (n_specs-i == 2 && specchain[i + 1] == QPF_SPEC_T_NLEN && copy_len > specchain_n[i + 1])
 			    copy_len = specchain_n[i + 1];
 			if (UNLIKELY(cxsecVerifySymbol_n(strval, copy_len) < 0))
@@ -1810,8 +1841,8 @@ qpfPrintf_va_internal(
 			}
 		    
 		    /*** Detect failed grow call.  Translate() returns the
-		     *** number of characters it needed to write.  If that's
-		     *** less than what it wrote, we know a grow call failed.
+		     *** number of characters it needed to write.  If it
+		     *** wrote fewer than that, we know a grow call failed.
 		     ***/
 		    if (UNLIKELY(n_chars != dest_offset - old_dest_offset)) no_grow = true;
 		    
@@ -1892,11 +1923,11 @@ qpfPrintf_va_internal(
  *** TODO: This comment should document the expected signature for ext_fn()
  *** 	more clearly once it is used somewhere.
  *** 
- *** @param ext_spec The name of the extension (e.g. "STR" for `%str`).
+ *** @param ext_spec The name of the extension (e.g. "STR" for `%STR`).
  *** @param ext_fn The function to call on data that meets the extension.
  *** @param is_source If nonzero, the extension is treated as a source
  *** 	specifier (also known as a format specifier, e.g. `%STR`), otherwise
- *** 	it is a treated as a filtering specifier (e.g. `&QUOT`).
+ *** 	it is treated as a filtering specifier (e.g. `&QUOT`).
  ***/
 void
 qpfRegisterExt(char* ext_spec, int (*ext_fn)(), int is_source)

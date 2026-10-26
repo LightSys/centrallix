@@ -1046,6 +1046,11 @@ function tbld_clear_rows(fromobj, why)
 	this.initselect = this.initselect_orig;
     }
 
+function tbld_refresh(aparam)
+    {
+    this.RedrawAll(null, true);
+    }
+
 function tbld_select()
     {
     var txt;
@@ -1110,6 +1115,18 @@ function tbld_update_detail(dw)
 	    const vis = $(dw).css("visibility");
 	    if (vis === 'inherit' || vis === 'visible')
 		{
+		if (dw.parentElement && dw.parentElement.detail)
+		    {
+		    for (var j=0; j<dw.parentElement.detail.length; j++)
+			{
+			if (dw.parentElement.detail[j] == dw)
+			    {
+			    dw.parentElement.detail.splice(j, 1);
+			    break;
+			    }
+			}
+		    }
+
 		// Hide it so we can use it.
 		pg_reveal_event(dw, dw, 'Obscure');
 		dw.is_visible = 0;
@@ -1118,6 +1135,7 @@ function tbld_update_detail(dw)
 
 	    // Add the row detail.
 	    this.detail.push(dw);
+	    this.detail.sort((a, b) => a.display_order - b.display_order);
 	    this.appendChild(dw);
 	    $(dw).css
 		({
@@ -1125,7 +1143,7 @@ function tbld_update_detail(dw)
 		"left": "0px",
 		"top": "0px",
 		});
-	
+
 	    // Show the row detail.
 	    pg_reveal_event(dw, dw, 'Reveal');
 	    dw.is_visible = 1;
@@ -2489,6 +2507,7 @@ function tbld_init(param)
     var ia = t.ifcProbeAdd(ifAction);
     ia.Add("Clear", tbld_clear_rows);
     ia.Add("ShowSelection", tbld_show_selection);
+    ia.Add("Refresh", tbld_refresh);
 
     // Request reveal/obscure notifications
     t.Reveal = tbld_cb_reveal;
@@ -2507,6 +2526,7 @@ function tbld_init(param)
 	dw.table = t;
 	dw.display_for = 1;
 	dw.is_visible = 0;
+	dw.display_order = i;
 	dw.showcontainer = tbld_detail_showcontainer;
 	dw.Reveal = tbld_cb_dw_reveal;
 	pg_reveal_register_triggerer(dw);
@@ -3109,6 +3129,7 @@ function tbld_mousedown(e)
 		if (orig_ly.subkind == 'cell')
 		    {
 		    event.Column = ly.table.cols[orig_ly.colnum].fieldname;
+		    event.ColumnType = ly.table.cols[orig_ly.colnum].type;
 		    event.ColumnValue = orig_ly.data;
 		    }
 		event.Caller = ly.table;
@@ -3128,13 +3149,13 @@ function tbld_mousedown(e)
 		    }
 		ly.table.dta=event.data;
 		ly.table.last_clicked = orig_ly;
-		if (e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
+		if (e.target && event.ColumnType == 'checkbox' && e.target.src && e.target.src.indexOf('/sys/images/checkbox_unchecked.png') >= 0)
 		    {
 		    event.checkbox = 1;
 		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Check', event)))
 			canceled = true;
 		    }
-		if (!canceled && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
+		if (!canceled && event.ColumnType == 'checkbox' && e.target && e.target.src && e.target.src.indexOf('/sys/images/checkbox_checked.png') >= 0)
 		    {
 		    event.checkbox = 2;
 		    if (isCancel(ly.table.ifcProbe(ifEvent).Activate('Uncheck', event)))
