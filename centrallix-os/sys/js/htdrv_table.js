@@ -662,7 +662,7 @@ function tbld_get_selected_column_geom()
     if (t.last_clicked && t.last_clicked.cell && t.last_clicked.cell != t.last_clicked && this.colnum && t.cols[this.colnum].type == 'itemlist')
 	{
 	// Itemlist item geometry
-	return { x:$(t.last_clicked).offset().left, y:$(t.last_clicked).offset().top, width:$(t.last_clicked).width(), height:$(t.last_clicked).height() };
+	return { x:getPageRect(t.last_clicked).left, y:getPageRect(t.last_clicked).top, width:$(t.last_clicked).width(), height:$(t.last_clicked).height() };
 	}
     else
 	{
@@ -671,7 +671,7 @@ function tbld_get_selected_column_geom()
 	    var obj = this.table.rows[this.table.cr];
 	else
 	    var obj = this.table;
-	return { x:$(obj).offset().left + this.col.xoffset, y:$(obj).offset().top, width:this.col.width, height:$(obj).height() };
+	return { x:getPageRect(obj).left + this.col.xoffset, y:getPageRect(obj).top, width:this.col.width, height:$(obj).height() };
 	}
     }
 
@@ -682,7 +682,7 @@ function tbld_get_selected_geom()
 	var obj = this.rows[this.cr];
     else
 	var obj = this;
-    return { x:$(obj).offset().left, y:$(obj).offset().top, width:$(obj).width(), height:$(obj).height() };
+    return { x:getPageRect(obj).left, y:getPageRect(obj).top, width:$(obj).width(), height:$(obj).height() };
     }
 
 
@@ -1426,14 +1426,14 @@ function tbld_bar_click(e)
     {
     var sb = e.layer;
     var t = sb.table;
-    if (e.pageY > $(sb.b).offset().top + $(sb.b).height() && t.rows.lastvis && t.rows[t.rows.lastvis])
+    if (e.pageY > getPageRect(sb.b).top + $(sb.b).height() && t.rows.lastvis && t.rows[t.rows.lastvis])
 	{
 	// Down a page
 	var target_row = t.rows[t.rows.lastvis];
 	var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
 	t.Scroll(target_y, true);
 	}
-    else if (e.pageY < $(sb.b).offset().top && t.rows.firstvis && t.rows[t.rows.firstvis])
+    else if (e.pageY < getPageRect(sb.b).top && t.rows.firstvis && t.rows[t.rows.firstvis])
 	{
 	// Up a page
 	var target_row = t.rows[t.rows.firstvis];
@@ -2059,7 +2059,7 @@ function tbld_update_geom()
     $(this.scrollbar).css(
 	{
 	//"top": (((this.has_header)?($(this.hdrrow).height() + this.cellvspacing):0) + $(this).position().top) + "px",
-	"top": (((this.has_header)?(this.hdrrow.offsetHeight + this.cellvspacing):0) + $(this).position().top) + "px",
+	"top": (((this.has_header)?(this.hdrrow.offsetHeight + this.cellvspacing):0) + getPosition(this).top) + "px",
 	});
     $($(this.scrollbar).find('td')[1]).css(
 	{
@@ -2460,7 +2460,7 @@ function tbld_touchstart(e)
     var touches = e.Dom2Event.changedTouches;
     tbld_mcurrent = t;
     for(var i=0; i<touches.length; i++)
-	tbld_touches.push({pageX:touches[i].pageX, pageY:touches[i].pageY, table:t, identifier:touches[i].identifier, ts:pg_timestamp()});
+	tbld_touches.push({pageX:toLayoutPx(touches[i].pageX), pageY:toLayoutPx(touches[i].pageY), table:t, identifier:touches[i].identifier, ts:pg_timestamp()});
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
     }
 
@@ -2476,11 +2476,11 @@ function tbld_touchmove(e)
 		var t = tbld_touches[j].table;
 		if (tbld_touches[j].pageY)
 		    {
-		    var ydiff = touches[i].pageY - tbld_touches[j].pageY;
+		    var ydiff = toLayoutPx(touches[i].pageY) - tbld_touches[j].pageY;
 		    var new_ts = pg_timestamp();
 		    tbld_touches[j].speed = ydiff / (new_ts - tbld_touches[j].ts + 1);
 		    tbld_touches[j].ts = new_ts;
-		    tbld_touches[j].pageY = touches[i].pageY;
+		    tbld_touches[j].pageY = toLayoutPx(touches[i].pageY);
 		    t.Scroll(t.scroll_y + ydiff, false);
 		    }
 		}
@@ -2617,10 +2617,10 @@ function tbld_wheel(e)
 	ly = tbld_mcurrent;
     if (ly && wgtrIsNode(ly) && wgtrGetType(ly) == 'widget/table')
 	{
-	if (e.pageX >= $(ly).offset().left &&
-	    e.pageX < $(ly).offset().left + ly.param_width &&
-	    e.pageY >= $(ly).offset().top &&
-	    e.pageY < $(ly).offset().top + ly.param_height)
+	if (e.pageX >= getPageRect(ly).left &&
+	    e.pageX < getPageRect(ly).left + ly.param_width &&
+	    e.pageY >= getPageRect(ly).top &&
+	    e.pageY < getPageRect(ly).top + ly.param_height)
 	    {
 	    if (e.Dom2Event.deltaMode == 0)
 		var multiplier = 1;
@@ -2709,7 +2709,7 @@ function tbld_find_clicked_item(cell, e)
     for (var i = 0; i < item_divs.length && i < items.length; i++)
 	{
 	var item_div = item_divs[i];
-	var offset = $(item_div).offset();
+	var offset = getPageRect(item_div);
 	var width = $(item_div).outerWidth();
 	var height = $(item_div).outerHeight();
 	
@@ -2733,7 +2733,7 @@ function tbld_find_clicked_item(cell, e)
 function tbld_create_drag_outline(item_element, table)
     {
     var outline = document.createElement('div');
-    var rect = $(item_element).get(0).getBoundingClientRect();
+    var rect = getPageRect($(item_element).get(0));
     
     $(outline).css({
 	'position': 'fixed',
@@ -2950,7 +2950,7 @@ function tbld_mousedown(e)
 	    {
 	    tbldx_current = ly;
 	    tbldx_start = e.pageY;
-	    tbldx_tstart = $(ly).position().top;
+	    tbldx_tstart = getPosition(ly).top;
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
 
@@ -3144,7 +3144,7 @@ function tbld_mousemove(e)
     {
     if (tbld_mcurrent)
 	{
-	var t_offs = $(tbld_mcurrent).offset();
+	var t_offs = getPageRect(tbld_mcurrent);
 	if (e.pageX < t_offs.left || e.pageX > t_offs.left + tbld_mcurrent.param_width || e.pageY < t_offs.top || e.pageY > t_offs.top + tbld_mcurrent.param_height)
 	    {
 	    var t = tbld_mcurrent;
@@ -3209,8 +3209,8 @@ function tbld_mousemove(e)
 	    // Track active drag
 	    t.itemlist_drag_active = t.itemlist_drag_pending;
 	    t.itemlist_drag_active.outline = outline;
-	    t.itemlist_drag_active.offset_x = e.pageX - $(outline).offset().left;
-	    t.itemlist_drag_active.offset_y = e.pageY - $(outline).offset().top;
+	    t.itemlist_drag_active.offset_x = e.pageX - getPageRect(outline).left;
+	    t.itemlist_drag_active.offset_y = e.pageY - getPageRect(outline).top;
 	    t.itemlist_drag_pending = null;
 	    }
 	}
