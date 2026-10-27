@@ -17,21 +17,21 @@ index "widget/page"
 	x=16; y=80; height=66; width=588;
 	align=center;
 	fontsize=4;
-	text = "Welcome to Centrallix 0.9.1, released in September 2010.  If you're seeing this page for the first time after an installation, congratulations - you've just successfully finished the install!  Below are a few links to get you started.";
+	text = "Welcome to Centrallix! If you're seeing this page for the first time after an installation, congratulations - you've just successfully finished the install!  Below are the applications currently installed on this server.";
 	}
 
     count_em "widget/repeat"
 	{
-	sql = "select cnt = count(1), defaultapp=first(condition(eval(isnull(convert(string,:app_default), '0'), 'CPOS'), :cx__pathpart2, null)) from object wildcard '/apps/*/app_info.struct'";
+	sql = "select cnt = count(1), defaultcnt=count(condition(:app_default and :app_enable, :app_path, null)), defaultapp=first(condition(:app_default and :app_enable, :app_path, null)) from '/applist.qy'";
 
 	on_load "widget/connector"
 	    {
-	    condition=runserver(:count_em:defaultapp is not null);
+	    condition=runserver(:count_em:defaultapp is not null and :count_em:defaultcnt == 1);
 	    source=index;
 	    event=Load;
 	    target=index;
 	    action=LoadPage;
-	    Source = runserver("/apps/" + :count_em:defaultapp + "/");
+	    Source = runserver(:count_em:defaultapp);
 	    }
 
 	pnOptions "widget/pane"
@@ -58,7 +58,7 @@ index "widget/page"
 
 		apps_rpt "widget/repeat"
 		    {
-		    sql = "select file = :cx__pathpart2, :app_name, :app_info, is_enabled=eval(isnull(convert(string, :app_enable), '1'), 'CPOS'), is_default=eval(isnull(convert(string, :app_default), '0'), 'CPOS') from object wildcard '/apps/*/app_info.struct'";
+		    sql = "select * from /applist.qy";
 
 		    oneapp_hbox "widget/hbox"
 			{
@@ -73,14 +73,14 @@ index "widget/page"
 			    background="/sys/images/grey_gradient.png";
 			    fgcolor1=black; fgcolor2=white;
 			    text = runserver(:apps_rpt:app_name);
-			    enabled = runserver(:apps_rpt:is_enabled);
+			    enabled = runserver(:apps_rpt:app_enable);
 
 			    onClick "widget/connector"
 				{
 				event = "Click";
 				target = index;
 				action = "LoadPage";
-				Source = runserver("/apps/" + :apps_rpt:file + "/");
+				Source = runserver(:apps_rpt:app_path);
 				}
 			    }
 
@@ -99,7 +99,7 @@ index "widget/page"
     lblLicense "widget/label"
 	{
 	x=16; y=440; width=588; height=50;
-	text="Centrallix 0.9.1 is Free Software, released under the GNU GPL version 2, or at your option any later version published by the Free Software Foundation.  Centrallix 0.9.1 is provided with ABSOLUTELY NO WARRANTY.  See the file COPYING, in the accompanying documentation, for details.";
+	text="Open Source Licensing and Legal Notes:  Centrallix is Free Software, released under the GNU GPL version 2, or at your option any later version published by the Free Software Foundation.  Centrallix is provided with ABSOLUTELY NO WARRANTY.  See the file COPYING, in the accompanying documentation, for details.";
 	fontsize=2;
 	}
     }
