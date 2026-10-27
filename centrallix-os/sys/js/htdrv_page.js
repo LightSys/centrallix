@@ -1505,11 +1505,14 @@ function pg_launch(aparam)
 	var v = aparam[p];
 	var r = wgtrCheckReference(v);
 	if (r) v = r;
-	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
-	    url += '&';
-	else
-	    url += '?';
-	url += (htutil_escape(p) + '=' + htutil_escape(v));
+	if (v !== null)
+	    {
+	    if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+		url += '&';
+	    else
+		url += '?';
+	    url += (htutil_escape(p) + '=' + htutil_escape(v));
+	    }
 	}
 
     if (obscure_data)
