@@ -504,7 +504,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strcpy(col->group, "yes");
 		col->allow_sorting = htrGetBoolean(sub_tree, "allow_sorting", t->allow_sorting);
 
-		// ItemList column type properties
+		/** ItemList column type properties **/
 		if (!strcmp(col->type, "itemlist"))
 		    {
 		    if (wgtrGetPropertyValue(sub_tree, "item_separator", DATA_T_STRING,POD(&ptr)) == 0)
