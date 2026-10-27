@@ -338,7 +338,7 @@ function pg_init_box_side(layer, parent_layer, x, y, w, h, color, z)
     setClipWidth(layer, w);
     setClipHeight(layer, h);
     moveAbove(layer, parent_layer);
-    $(layer).offset({ left:x, top:y });
+    setPageXY(layer, x, y);
     htr_setbgcolor(layer, color);
     htr_setzindex(layer, z);
     htr_setvisibility(layer, 'inherit');
@@ -1417,7 +1417,7 @@ function pg_setmousefocus(l, xo, yo)
 		// Create a function to handle all box updates with this focus.
 		const update_box = (area) =>
 		    {
-		    const { left: left_offset, top: top_offset } = $(area.layer).offset();
+		    const { left: left_offset, top: top_offset } = getPageRect(area.layer);
 		    pg_init_box({
 			parent_layer: l,
 			x: area.x + left_offset,
@@ -1556,7 +1556,7 @@ function pg_setkbdfocus(l, a, xo, yo)
 	// Create a function to handle all box updates with this focus.
 	const update_box = (area) =>
 	    {
-	    const { left: left_offset, top: top_offset } = $(area.layer).offset();
+	    const { left: left_offset, top: top_offset } = getPageRect(area.layer);
 	    pg_init_box({
 		parent_layer: l,
 		x: area.x + left_offset,
@@ -2254,7 +2254,7 @@ function pg_mousemove(e)
 	}
     if (pg_curlayer != null)
         {
-	var offs = $(pg_curlayer).offset();
+	var offs = getPageRect(pg_curlayer);
         pg_setmousefocus(pg_curlayer, e.pageX - offs.left, e.pageY - offs.top);
         }
     if (e.target != null && pg_curarea != null && ((e.mainlayer && e.mainlayer != pg_curarea.layer)))

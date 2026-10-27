@@ -295,12 +295,10 @@ function gb_mouseup(e)
 	}
     if (ly.kind == 'gb' && ly.enabled)
         {
-	const rect = ly.getBoundingClientRect();
-	const left = rect.left + window.pageXOffset;
-	const top = rect.top + window.pageYOffset;
-        if (e.pageX >= left && e.pageX < left + rect.width &&
-            e.pageY >= top && e.pageY < top + rect.height)
-            {
+	const rect = getPageRect(ly);
+        if (e.pageX >= rect.left && e.pageX < rect.right &&
+            e.pageY >= rect.top && e.pageY < rect.bottom)
+            { // The event occurs over the button.
 	    if (ly.mode == 2)
 		{
 		gb_setmode(ly,1);

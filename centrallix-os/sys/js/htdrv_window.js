@@ -624,7 +624,7 @@ const WN_POINT_SIDES = {
 function wn_get_viewport()
     {
     const de = document.documentElement;
-    return { width: de.clientWidth, height: de.clientHeight };
+    return { width: toLayoutPx(de.clientWidth), height: toLayoutPx(de.clientHeight) };
     }
 
 /*** Computes where a window can be: snapping to the edges of the viewport,
@@ -754,10 +754,10 @@ function wn_center_space(wn, viewport)
     if (!wn.placement.in_container)
 	return { x:0, y:0, width:viewport.width, height:viewport.height };
 
-    const rect = wn.parentNode.getBoundingClientRect();
+    const rect = getPageRect(wn.parentNode);
     return {
-	x: rect.left + window.scrollX,
-	y: rect.top + window.scrollY,
+	x: rect.left,
+	y: rect.top,
 	width: rect.width,
 	height: rect.height,
 	};
@@ -817,7 +817,7 @@ function wn_compute_placement(wn, viewport)
 	     *** too big to center still has to be reachable.
 	     ***/
 	    const p = wn.placement;
-	    const rect = wn.getBoundingClientRect();
+	    const rect = getPageRect(wn);
 	    const space = wn_center_space(wn, viewport);
 	    return wn_clamp_position(wn, 0,
 		(p.centered_x) ? space.x + Math.max(0, (space.width - rect.width) / 2) : getPageX(wn),

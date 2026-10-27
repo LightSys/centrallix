@@ -1026,7 +1026,7 @@ function dt_create_pane(ml,bg,w,h,name) {
 // resized, so that the pane follows it without being rebuilt.
 function dt_position(l) {
 	if (!l.PaneLayer) return;
-	const offset = $(l).offset();
+	const offset = getPageRect(l);
 	pg_positionpopup(l.PaneLayer, offset.left, offset.top, l.h, l.w);
 	if (l.PaneLayer2 && l.form && l.form.mode == 'Query' && l.sbr)
 	    pg_positionpopup(l.PaneLayer2, offset.left + getClipWidth(l.PaneLayer) + 5, offset.top, l.h, l.w);

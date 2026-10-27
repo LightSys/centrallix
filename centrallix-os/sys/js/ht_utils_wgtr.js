@@ -1130,7 +1130,7 @@ function wgtrGetGeom(node)
 	 *** values: a clip object caches its first read, so it reports the size the
 	 *** widget had before the page was last resized.
 	 ***/
-	const rect = node.getBoundingClientRect();
+	const rect = getPageRect(node);
 
 	/*** No layout box (a closed tab, a hidden pane) means no geometry to
 	 *** report, so callers leave whatever they were placing where it is.
@@ -1138,8 +1138,8 @@ function wgtrGetGeom(node)
 	if (!node.getClientRects().length) return null;
 
 	return {
-	    x: rect.left + window.scrollX,
-	    y: rect.top + window.scrollY,
+	    x: rect.left,
+	    y: rect.top,
 	    width: rect.width,
 	    height: rect.height,
 	    };

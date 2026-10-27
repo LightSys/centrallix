@@ -404,7 +404,7 @@ function mn_scan_images(menu)
 	const index = Number(id.slice(nmstr.length));
 	if (id.startsWith(nmstr) && Number.isInteger(index))
 	    {
-	    const { left, top } = $(img).position();
+	    const { left, top } = getPosition(img);
 	    menu.coords[index] = { x: left, y: top };
 	    }
 	else if (id.startsWith(cbstr))

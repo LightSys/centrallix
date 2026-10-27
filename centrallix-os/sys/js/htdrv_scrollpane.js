@@ -171,11 +171,11 @@ function sp_init({ layer: pane, area_name, thumb_name })
     ie.Add("MouseMove");
     
     /** Scan child elements to find the height of the scroll content. **/
-    const { top } = area.getBoundingClientRect();
+    const { top } = getPageRect(area);
     let maxBottom = top;
     for (const child of area.children)
 	{
-	const { bottom } = child.getBoundingClientRect();
+	const { bottom } = getPageRect(child);
 	if (bottom > maxBottom) maxBottom = bottom;
 	}
     area.content_height = Math.max(0, Math.round(maxBottom - top));

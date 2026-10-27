@@ -115,7 +115,7 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
     if (!p2) p2 = htr_new_layer(size*2, document);
 
     // Set the CSS to enable the point divs
-    const { top: wtop, left: wleft } = $(wthis).offset();
+    const { top: wtop, left: wleft } = getPageRect(wthis);
     $(p1).css
 	({
 	"position": "absolute",

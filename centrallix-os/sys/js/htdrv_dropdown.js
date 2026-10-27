@@ -417,7 +417,7 @@ function dd_collapse(l)
 function dd_position(l)
     {
     if (!l || !l.PaneLayer) return;
-    var offset = $(l).offset();
+    var offset = getPageRect(l);
     pg_positionpopup(l.PaneLayer, offset.left, offset.top, l.h, getClipWidth(l));
     }
 

@@ -249,8 +249,8 @@ function tc_add_tab(param)
 	// sized wrong, so we use the window size if it is the parent.
 	const is_top_level = (l_tab.parentElement.tagName === 'BODY');
 	const style    = (is_top_level) ? undefined          : getComputedStyle(l_tab.parentElement);
-	const parent_w = (is_top_level) ? innerWidth  + 'px' : style.width;
-	const parent_h = (is_top_level) ? innerHeight + 'px' : style.height;
+	const parent_w = (is_top_level) ? getInnerWidth()  + 'px' : style.width;
+	const parent_h = (is_top_level) ? getInnerHeight() + 'px' : style.height;
 	if (x !== undefined) setRelativeX(l_tab, `calc(${x}px + (100% - ${parent_w}) * ${tabctl.tab_fl_x})`);
 	if (y !== undefined) setRelativeY(l_tab, `calc(${y}px + (100% - ${parent_h}) * ${tabctl.tab_fl_y})`);
 
