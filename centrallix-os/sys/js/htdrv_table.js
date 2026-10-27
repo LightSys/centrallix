@@ -120,7 +120,7 @@ function tbld_format_cell(cell, color)
 			if (colinfo.item_type == 'image')
 			    {
 			    // Image item
-			    var img_url = items[k];
+			    var img_url = String(items[k].item);
 			    if (img_url && !(img_url.indexOf(':') >= 0 || img_url.indexOf('//') >= 0 || img_url.charAt(0) != '/'))
 				{
 				item_html += '<div style="' + item_style + '"><img src="' + htutil_encode(img_url) + '" style="max-width:100%; max-height:100%;"></div>';
