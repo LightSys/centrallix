@@ -11,6 +11,37 @@
 
 // Cross browser Geometry DOM1HTML
 
+/*** Coordinate spaces:
+ *** - Design px: The numbers from .app/.cmp files only exist on the server.
+ *** - Layout px: The CSS px values on the page, like: styles, offsetWidth,
+ ***   jQuery's .width(), getRelative*().  All geometry from the server uses
+ ***   these, and so does widget code.
+ *** - Viewport px: The values from the browser including page zoom, used by:
+ ***   event clientX/pageX, window sizes, scroll offsets,
+ ***   getBoundingClientRect(), and thus jQuery's .offset() and .position().
+ ***   These need to be converted to layout px before widgets use them.
+ ***   ResizeObserver sizes use layout px in Chrome vs. viewport px in Firefox,
+ ***   so observers ignore them and call getters to get layout values.
+ ***
+ *** Use the functions in this file or cx__event's pageX/pageY to get layout px
+ *** to avoid duplicating the zoom calculations from here.
+ ***/
+
+/*** The page's CSS zoom, in viewport px per layout px.  For example, a value of
+ *** 2 means content appears in the viewport at double the size of its layout.
+ ***/
+var cx__zoom = 1;
+
+/*** Converts a coordinate or length from viewport px to layout px.
+ ***
+ *** @param v The value in viewport px.
+ *** @returns The value in layout px.
+ ***/
+function toLayoutPx(v)
+    {
+    return v / cx__zoom;
+    }
+
 // Add useful Math functions.
 Math.clamp = (min, val, max) => Math.min(Math.max(min, val), max);
 Math.isBetween = (lowerBound, num, upperBound) => (lowerBound < num && num < upperBound);
@@ -134,27 +165,27 @@ function getClipItem(l, side)
     return l.clip[side];
     }
 
-/*** Page coordinates are document coordinates: they include the scroll offset,
- *** so they compare directly against a mouse event's pageX/pageY.
+/*** Page coordinates are document coordinates in layout px: they include the
+ *** scroll offset, so they compare directly against cx__event's pageX/pageY.
  ***/
 
 // Page X
 function getPageX(l)
     {
     if (!l || !l.getBoundingClientRect) return null;
-    return l.getBoundingClientRect().left + window.scrollX;
+    return toLayoutPx(l.getBoundingClientRect().left + window.scrollX);
     }
 
 function setPageX(l, value)
     {
     setPageXY(l, value, null);
     }
-    
+
 // Page Y
 function getPageY(l)
     {
     if (!l || !l.getBoundingClientRect) return null;
-    return l.getBoundingClientRect().top + window.scrollY;
+    return toLayoutPx(l.getBoundingClientRect().top + window.scrollY);
     }
 
 function setPageY(l, value)
@@ -179,26 +210,61 @@ function setPageXY(l, x, y)
 
     if (x != null)
 	{
-	const dx = x - (rect.left + window.scrollX);
+	const dx = x - toLayoutPx(rect.left + window.scrollX);
 	if (dx) setRelativeX(l, Math.round(getRelativeX(l) + dx));
 	}
     if (y != null)
 	{
-	const dy = y - (rect.top + window.scrollY);
+	const dy = y - toLayoutPx(rect.top + window.scrollY);
 	if (dy) setRelativeY(l, Math.round(getRelativeY(l) + dy));
 	}
 
     return;
     }
 
+/*** Gets a DOM node's border box in page coordinates.
+ ***
+ *** @param l The DOM node.
+ *** @returns The {left, top, right, bottom, width, height} of the node.
+ ***/
+function getPageRect(l)
+    {
+    const rect = l.getBoundingClientRect();
+    const left   = toLayoutPx(rect.left + window.scrollX);
+    const top    = toLayoutPx(rect.top + window.scrollY);
+    const width  = toLayoutPx(rect.width);
+    const height = toLayoutPx(rect.height);
+    return { left, top, right: left + width, bottom: top + height, width, height };
+    }
+
+/*** Gets a DOM node's position within its offset parent (similar to jQuery's
+ *** .position()), but in layout px.
+ ***
+ *** @param l The DOM node.
+ *** @returns The {left, top} of the node's margin box, relative to the
+ ***          offset parent's padding box.
+ ***/
+function getPosition(l)
+    {
+    const parent       = $(l).offsetParent()[0];
+    const rect         = getPageRect(l);
+    const parent_rect  = getPageRect(parent);
+    const style        = getComputedStyle(l);
+    const parent_style = getComputedStyle(parent);
+    return {
+	left: rect.left - parent_rect.left - parseFloat(parent_style.borderLeftWidth) - parseFloat(style.marginLeft),
+	top:  rect.top  - parent_rect.top  - parseFloat(parent_style.borderTopWidth)  - parseFloat(style.marginTop),
+	};
+    }
+
 function getInnerHeight()
     {
-    return window.innerHeight;
+    return toLayoutPx(window.innerHeight);
     }
 
 function getInnerWidth()
     {
-    return window.innerWidth;
+    return toLayoutPx(window.innerWidth);
     }
 
 function getdocWidth(o)
@@ -221,12 +287,12 @@ function getdocHeight(o)
 
 function getpageXOffset()
     {
-    return window.pageXOffset ;
+    return toLayoutPx(window.pageXOffset);
     }
 
 function getpageYOffset()
     {
-    return window.pageYOffset;
+    return toLayoutPx(window.pageYOffset);
     }
 
 /*** Get the size of a DOM node's parent container.
@@ -236,7 +302,7 @@ function getpageYOffset()
  ***/
 function getParentSize(l)
     {
-    const parentRect = l.parentNode.getBoundingClientRect();
+    const parentRect = getPageRect(l.parentNode);
     return { width: parentRect.width, height: parentRect.height };
     }
 
@@ -480,7 +546,7 @@ function moveBelow(lt, lb)
 function getWidth(l)
     {
     if (l == window || l == document)
-	return window.innerWidth;
+	return getInnerWidth();
     else
 	return getClipWidth(l);
     }
@@ -488,7 +554,7 @@ function getWidth(l)
 function getHeight(l)
     {
     if (l == window || l == document)
-	return window.innerHeight;
+	return getInnerHeight();
     else
 	return getClipHeight(l);
     }
