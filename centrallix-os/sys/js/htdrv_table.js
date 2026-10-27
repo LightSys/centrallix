@@ -3311,7 +3311,7 @@ function tbld_mouseup(e)
 			SourceColumn: t.cols[t.itemlist_drag_active.column].fieldname,
 			SourceColumnName: t.cols[t.itemlist_drag_active.column].name,
 			TargetRow: ly.row.rownum,
-			TargetColumn: t.cols[ly.colnum].fieldname,
+			TargetColumn: drop_colinfo.fieldname,
 			TargetColumnName: drop_colinfo.name,
 			BeforeItem: drop_item ? drop_item.text : null,
 			AfterItem: null // Could be enhanced to determine before/after
