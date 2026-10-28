@@ -1589,7 +1589,7 @@ function tbld_apply_row_geom(row, firstcol)
 	    new_w -= (this.bdr_width*2 + this.colsep);
 	$(c).width(new_w);
 	setRelativeX(c, this.cols[j].xoffset);
-	if (this.cols[j].wrap != 'no' && colinfo.wrap != 'newline')
+	if (this.cols[j].wrap != 'no' && this.cols[j].wrap != 'newline')
 	    change_wrapped_cell = true;
 	}
     return change_wrapped_cell;
