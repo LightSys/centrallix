@@ -1,10 +1,11 @@
 #include "net_http.h"
+#include <math.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -101,6 +102,35 @@ nhtRenderAppWrite(void* conn_v, char* buf, int len, int offset, int flags)
     }
 
 
+/*** nht_i_GetZoom - pick the CSS zoom for a page from the size of the
+ *** client's viewport and the size the page was designed for.  Pages grow
+ *** by the square root of the extra space, and shrink by all of the missing
+ *** space down to NHT_ZOOM_MIN.
+ ***
+ *** @param tree The page's widget tree, with templates applied.
+ *** @param client_w The width of the client's viewport.
+ *** @param client_h The height of the client's viewport.
+ *** @returns The zoom, in viewport px per layout px, or 0 if the page does
+ ***          not zoom because it has no design size.
+ ***/
+double
+nht_i_GetZoom(pWgtrNode tree, int client_w, int client_h)
+    {
+    int design_w = 0, design_h = 0;
+    double ratio;
+
+	wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&design_w));
+	wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&design_h));
+	if (design_w <= 0 || design_h <= 0 || client_w <= 0 || client_h <= 0)
+	    return 0.0;
+
+	ratio = fmin((double)client_w / design_w, (double)client_h / design_h);
+	if (ratio > 1.0)
+	    return sqrt(ratio);
+	return fmax(ratio, NHT_ZOOM_MIN);
+    }
+
+
 int
 nhtRenderApp(pNhtConn conn, pObjSession s, pObject obj, pStruct url_inf, pWgtrClientInfo client_info, char* method, pNhtSessionData nsess)
     {
@@ -135,6 +165,19 @@ nhtRenderApp(pNhtConn conn, pObjSession s, pObject obj, pStruct url_inf, pWgtrCl
 	tree = ((pCachedApp)xhLookup(nsess->CachedApps, (void*)&i))->Node; //TODO: caching is not fully implemented
 	}
 #endif
+
+    /** Lay out pages at the size they fill after applying zoom **/
+    if (!client_info->IsDesign && !strcmp(tree->Type, "widget/page") && !stLookup_ne(url_inf, "cx__graft"))
+	{
+	client_info->Zoom = nht_i_GetZoom(tree, client_info->MaxWidth, client_info->MaxHeight);
+	if (client_info->Zoom > 0.0)
+	    {
+	    client_info->MaxWidth = client_info->MinWidth = (int)(client_info->MaxWidth / client_info->Zoom + 0.5);
+	    client_info->MaxHeight = client_info->MinHeight = (int)(client_info->MaxHeight / client_info->Zoom + 0.5);
+	    client_info->AppMaxWidth = client_info->AppMinWidth = client_info->MaxWidth;
+	    client_info->AppMaxHeight = client_info->AppMinHeight = client_info->MaxHeight;
+	    }
+	}
 
     if(! (wgtrVerify(tree, client_info) >= 0))
 	{
