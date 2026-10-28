@@ -287,6 +287,7 @@ stAddAttr(pStructInf inf, char* name)
 	memccpy(newinf->Name, name,0,ST_NAME_STRLEN-1);
 	newinf->Name[ST_NAME_STRLEN-1] = '\0';
 	newinf->Flags |= ST_F_ATTRIB;
+	if (inf->Flags & ST_F_VERSION2) newinf->Flags |= ST_F_VERSION2;
 	if (stAddInf(inf, newinf) < 0)
 	    {
 	    stFreeInf(newinf);
