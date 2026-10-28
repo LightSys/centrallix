@@ -94,6 +94,12 @@ function pn_action_resize(aparam)
 function pn_action_point(aparam)
     {
     htr_action_point(this, aparam);
+    htr_watch_place(this, htr_update_point);
+    }
+
+function pn_deinit()
+    {
+    htr_unwatch_place(this);
     }
 
 function pn_init(param)
@@ -105,6 +111,7 @@ function pn_init(param)
     htr_init_layer(ml,ml,"pn");
     if (ml != l) htr_init_layer(l,ml,"pn");
     ifc_init_widget(ml);
+    ml.destroy_widget = pn_deinit;
 
     ml.maxheight = getClipHeight(l)-2;
     ml.maxwidth = getClipWidth(l)-2;

@@ -941,9 +941,95 @@ function htr_stylize_element(element, widget, prefix, defaults)
     }
 
 
-/** An array storing all points so they can be updated on resize. **/
-const htr_point_targets = [];
-window.addEventListener('resize', (e) => htr_point_targets.forEach(htr_update_point));
+/*** Resize handling.  One ResizeObserver watches widgets and a viewport-sized
+ *** sentinel.  Each batch runs the size handlers of the elements that resized,
+ *** then every placement handler, after layout and before paint.
+ ***/
+const htr_placed = new Set();
+let htr_viewport_sentinel = null;
+const htr_resize_observer = new ResizeObserver((entries) =>
+    {
+    let resized = false;
+    for (const { target } of entries)
+	{
+	// Skip notifications that leave the size as last seen, such as the first.
+	const size = target.__htr_size;
+	if (!size) continue;
+	const w = target.offsetWidth;
+	const h = target.offsetHeight;
+	if (w === size.w && h === size.h) continue;
+	size.w = w;
+	size.h = h;
+
+	resized = true;
+	target.__htr_size_fn?.(target);
+	}
+    if (resized) htr_place_all();
+    });
+
+/*** Watches the size of an element.  Any watched resize also runs the placement
+ *** handlers, so an element whose resize only moves things anchored to it can
+ *** omit fn.
+ ***
+ *** @param el The element to watch.
+ *** @param fn Called as fn(el) after el changes size.
+ ***/
+function htr_watch_size(el, fn)
+    {
+    el.__htr_size_fn = fn;
+    el.__htr_size = { w: el.offsetWidth, h: el.offsetHeight };
+    htr_resize_observer.observe(el);
+    }
+
+/** Stops watching the size of an element. **/
+function htr_unwatch_size(el)
+    {
+    htr_resize_observer.unobserve(el);
+    delete el.__htr_size_fn;
+    delete el.__htr_size;
+    }
+
+/*** Registers an element drawn at page level that must follow what it is
+ *** anchored to.  Placement handlers run after any watched element or the
+ *** viewport resizes, and on htr_place_all().
+ ***
+ *** @param el The element, which is the registration's key.
+ *** @param fn Called as fn(el) to reposition it.  It must be safe to call when
+ *** 	nothing moved.
+ ***/
+function htr_watch_place(el, fn)
+    {
+    // Watch the viewport, through a fixed element sized to it.
+    if (!htr_viewport_sentinel)
+	{
+	htr_viewport_sentinel = document.createElement('div');
+	htr_viewport_sentinel.style.cssText = 'position:fixed; inset:0; visibility:hidden; pointer-events:none;';
+	document.body.appendChild(htr_viewport_sentinel);
+	htr_watch_size(htr_viewport_sentinel);
+	}
+
+    el.__htr_place_fn = fn;
+    htr_placed.add(el);
+    }
+
+/** Unregisters an element registered with htr_watch_place(). **/
+function htr_unwatch_place(el)
+    {
+    htr_placed.delete(el);
+    delete el.__htr_place_fn;
+    }
+
+/*** Runs every placement handler.  Call this after moving widgets without
+ *** resizing any, so things anchored to them follow.
+ ***/
+function htr_place_all()
+    {
+    for (const el of htr_placed)
+	{
+	if (el.isConnected) el.__htr_place_fn(el);
+	else htr_unwatch_place(el);
+	}
+    }
 
 /** Hides the point belonging to a target, if it has one. **/
 function htr_hide_point(point_target)
@@ -988,7 +1074,7 @@ function htr_update_point(point_target)
     }
 
 /*** This function updates the pointing UI element that points from the point_target,
- *** or creates one if it does not exist, and handles resize updates for it.
+ *** or creates one if it does not exist, and saves the param for redrawing it.
  *** Often invoked when the point action is used.
  *** 
  *** @param point_target The DOM node on whose edge the point is drawn.
@@ -1008,12 +1094,6 @@ function htr_action_point(point_target, param)
     
     // Update the saved param.
     resize.param = param;
-    
-    // Update the entry in htr_point_targets (or create it, if needed).
-    if (typeof(resize.index) === 'undefined')
-	resize.index = htr_point_targets.push(point_target) - 1;
-    else
-	htr_point_targets[resize.index] = point_target;
 
     // (Re)render the new point.
     htr_update_point(point_target);
