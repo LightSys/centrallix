@@ -102,7 +102,7 @@ nhtRenderAppWrite(void* conn_v, char* buf, int len, int offset, int flags)
     }
 
 
-/*** nht_i_GetZoom - pick the CSS zoom for a page from the size of the
+/*** nht_i_GetZoom() - pick the CSS zoom for a page from the size of the
  *** client's viewport and the size the page was designed for.  Pages grow
  *** by the page's zoom_strength (a percent) power of the extra space, and
  *** shrink by all of the missing space down to NHT_ZOOM_MIN.
