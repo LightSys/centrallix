@@ -39,9 +39,9 @@ function tbld_format_cell(cell, color)
     if (!colinfo.widget || colinfo.widget.visible)
 	{
 	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image' && colinfo.type != 'checkbox')
-	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
+	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no' && colinfo.wrap != 'newline');
 	else
-	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
+	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no' && colinfo.wrap != 'newline');
 	if (colinfo.wrap != 'no')
 	    str = htutil_nlbr(str);
 	if (cell.subkind != 'headercell' && colinfo.type == 'progress')
@@ -176,14 +176,14 @@ function tbld_format_cell(cell, color)
 	if (cell.capdata)
 	    {
 	    // Caption (added to any of the above types)
-	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		captxt = htutil_nlbr(captxt);
 	    capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	    }
 	if (cell.titledata)
 	    {
-	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
+	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		titletxt = htutil_nlbr(titletxt);
 	    titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
@@ -1589,7 +1589,7 @@ function tbld_apply_row_geom(row, firstcol)
 	    new_w -= (this.bdr_width*2 + this.colsep);
 	$(c).width(new_w);
 	setRelativeX(c, this.cols[j].xoffset);
-	if (this.cols[j].wrap != 'no')
+	if (this.cols[j].wrap != 'no' && colinfo.wrap != 'newline')
 	    change_wrapped_cell = true;
 	}
     return change_wrapped_cell;
