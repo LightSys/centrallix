@@ -22,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -656,8 +656,17 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	find_inf = stLookup(inf->Data,attrname);
 	if (!find_inf) 
 	    {
-	    mssError(1,"STX","Requested structure file attribute not found");
-	    return -1;
+	    /** The attribute is unset (null), so add it with the requested type **/
+	    if (!val) return 0;
+	    find_inf = stAddAttr(inf->Data, attrname);
+	    if (!find_inf)
+		{
+		mssError(1,"STX","Failed to add structure file attribute '%s'", attrname);
+		return -1;
+		}
+	    stSetAttrValue(find_inf, datatype, val, 0);
+	    inf->Node->Status = SN_NS_DIRTY;
+	    return 0;
 	    }
 	if (stStructType(find_inf) != ST_T_ATTRIB) return -1;
 
@@ -831,4 +840,3 @@ stxInitialize()
 
     return 0;
     }
-
