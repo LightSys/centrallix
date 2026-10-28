@@ -3,6 +3,7 @@
 #include "cxlib/memstr.h"
 #include "cxlib/strtcpy.h"
 #include "json/json.h"
+#include <math.h>
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1195,6 +1196,35 @@ nht_i_Hex16ToInt(char* hex)
     }
 
 
+/*** nht_i_GetZoom - pick the CSS zoom for a page from the size of the
+ *** client's viewport and the size the page was designed for.  Pages grow
+ *** by the square root of the extra space, and shrink by all of the missing
+ *** space down to NHT_ZOOM_MIN.
+ ***
+ *** @param target_obj The page being rendered.
+ *** @param client_w The width of the client's viewport.
+ *** @param client_h The height of the client's viewport.
+ *** @returns The zoom, in viewport px per layout px, or 0 if the page does
+ ***          not zoom because it has no design size.
+ ***/
+double
+nht_i_GetZoom(pObject target_obj, int client_w, int client_h)
+    {
+    int design_w = 0, design_h = 0;
+    double ratio;
+
+	objGetAttrValue(target_obj, "width", DATA_T_INTEGER, POD(&design_w));
+	objGetAttrValue(target_obj, "height", DATA_T_INTEGER, POD(&design_h));
+	if (design_w <= 0 || design_h <= 0 || client_w <= 0 || client_h <= 0)
+	    return 0.0;
+
+	ratio = fmin((double)client_w / design_w, (double)client_h / design_h);
+	if (ratio > 1.0)
+	    return sqrt(ratio);
+	return fmax(ratio, NHT_ZOOM_MIN);
+    }
+
+
 /*** nht_i_Logout - log the current session out.
  ***/
 int
@@ -2111,6 +2141,17 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    wgtr_params.CharWidth = nht_i_Hex16ToInt(gptr+8);
 		    wgtr_params.CharHeight = nht_i_Hex16ToInt(gptr+12);
 		    wgtr_params.ParagraphHeight = nht_i_Hex16ToInt(gptr+16);
+
+		    /** Lay out pages at the size they fill after applying zoom **/
+		    if (!strcmp(ptr, "widget/page") && !stLookup_ne(url_inf, "cx__graft"))
+			{
+			wgtr_params.Zoom = nht_i_GetZoom(target_obj, client_w, client_h);
+			if (wgtr_params.Zoom > 0.0)
+			    {
+			    client_w = (int)(client_w / wgtr_params.Zoom + 0.5);
+			    client_h = (int)(client_h / wgtr_params.Zoom + 0.5);
+			    }
+			}
 		    }
 		wgtr_params.MaxHeight = client_h;
 		wgtr_params.MinHeight = client_h;

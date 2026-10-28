@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2006 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -69,6 +69,7 @@ typedef struct
     int		CharWidth;
     int		CharHeight;
     int		ParagraphHeight;	/* total height of one line of text */
+    double	Zoom;			/* CSS zoom of the page, in viewport px per layout px, or 0 if it does not zoom */
     char	AKey[256];
     char*	Templates[WGTR_MAX_TEMPLATE];
     char*	Overlays[WGTR_MAX_OVERLAY];

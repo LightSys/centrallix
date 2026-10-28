@@ -1314,6 +1314,14 @@ function pg_appwindowprop()
 	}
     }
 
+// pg_init_zoom() - sets the zoom the server laid the page out for, and
+// rescales the page to fit the viewport whenever it resizes.
+function pg_init_zoom(zoom)
+    {
+    cx__zoom = zoom;
+    window.addEventListener("resize", () => fitZoom(pg_width, pg_height));
+    }
+
 function pg_init(l,a,gs,ct) //SETH: ??
     {
     window.windowlist = {};
