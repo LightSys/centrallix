@@ -2800,7 +2800,7 @@ osrc1 "widget/osrc"
 
 			<property name="width" type="integer">The width of the page in pixels.</property>
 
-			<property name="zoom_strength" type="double">How much a page grows when the browser window is larger than its width and height: 0 (the default) shows more content at the normal size, 1 enlarges the page to fill the window without showing more content, and values between split the extra space between the two.  Pages in a smaller window always shrink to fit, down to 40%, and pages rescale to fit the window when it is resized.</property>
+			<property name="zoom_strength" type="integer">How much a page grows when the browser window is larger than its width and height, as a percent: 0 (the default) shows more content at the normal size, 100 enlarges the page to fill the window without showing more content, and values between split the extra space between the two.  Pages in a smaller window always shrink to fit, down to 40%, and pages rescale to fit the window when it is resized.</property>
 
 
 		</properties>

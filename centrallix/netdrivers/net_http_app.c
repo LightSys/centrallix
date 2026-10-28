@@ -104,8 +104,8 @@ nhtRenderAppWrite(void* conn_v, char* buf, int len, int offset, int flags)
 
 /*** nht_i_GetZoom - pick the CSS zoom for a page from the size of the
  *** client's viewport and the size the page was designed for.  Pages grow
- *** by the page's zoom_strength power of the extra space, and shrink by all
- *** of the missing space down to NHT_ZOOM_MIN.
+ *** by the page's zoom_strength (a percent) power of the extra space, and
+ *** shrink by all of the missing space down to NHT_ZOOM_MIN.
  ***
  *** @param tree The page's widget tree, with templates applied.
  *** @param client_w The width of the client's viewport.
@@ -116,26 +116,22 @@ nhtRenderAppWrite(void* conn_v, char* buf, int len, int offset, int flags)
 double
 nht_i_GetZoom(pWgtrNode tree, int client_w, int client_h)
     {
-    int design_w = 0, design_h = 0, int_strength;
-    double ratio, strength = 0.0;
+    int design_w = 0, design_h = 0, strength = 0;
+    double ratio;
 
 	wgtrGetPropertyValue(tree, "width", DATA_T_INTEGER, POD(&design_w));
 	wgtrGetPropertyValue(tree, "height", DATA_T_INTEGER, POD(&design_h));
 	if (design_w <= 0 || design_h <= 0 || client_w <= 0 || client_h <= 0)
 	    return 0.0;
 
-	/** zoom_strength may be written as an integer (0 or 1) or a double **/
-	if (wgtrGetPropertyValue(tree, "zoom_strength", DATA_T_DOUBLE, POD(&strength)) != 0)
-	    {
-	    strength = 0.0;
-	    if (wgtrGetPropertyValue(tree, "zoom_strength", DATA_T_INTEGER, POD(&int_strength)) == 0)
-		strength = int_strength;
-	    }
-	strength = fmax(fmin(strength, 1.0), 0.0);
+	if (wgtrGetPropertyValue(tree, "zoom_strength", DATA_T_INTEGER, POD(&strength)) != 0 || strength < 0)
+	    strength = 0;
+	else if (strength > 100)
+	    strength = 100;
 
 	ratio = fmin((double)client_w / design_w, (double)client_h / design_h);
 	if (ratio > 1.0)
-	    return pow(ratio, strength);
+	    return pow(ratio, strength / 100.0);
 	return fmax(ratio, NHT_ZOOM_MIN);
     }
 
