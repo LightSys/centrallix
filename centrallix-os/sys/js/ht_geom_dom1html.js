@@ -75,6 +75,20 @@ function updateClippingCSS(l)
     setClipTop(l, getClipTop(l));
     }
 
+/*** Zooms the page so that content of the given size fills the viewport
+ *** without overflowing it.
+ ***
+ *** @param w The width of the content, in layout px.
+ *** @param h The height of the content, in layout px.
+ ***/
+function fitZoom(w, h)
+    {
+    const zoom = Math.min(window.innerWidth / w, window.innerHeight / h);
+    if (!(zoom > 0)) return;
+    cx__zoom = zoom;
+    document.documentElement.style.zoom = zoom;
+    }
+
 // Clip Width
 function getClipWidth(l) 
     { 

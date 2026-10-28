@@ -819,6 +819,14 @@ function pg_appwindowprop()
 	}
     }
 
+// pg_init_zoom() - sets the zoom the server laid the page out for, and
+// rescales the page to fit the viewport whenever it resizes.
+function pg_init_zoom(zoom)
+    {
+    cx__zoom = zoom;
+    window.addEventListener("resize", () => fitZoom(pg_width, pg_height));
+    }
+
 // Lightning: Looks like this is called on the root page widget to initialize the
 // page when it loads for the first time, similar to the init function on any
 // other widget.
@@ -1025,11 +1033,14 @@ function pg_launch(aparam)
 	var v = aparam[p];
 	var r = wgtrCheckReference(v);
 	if (r) v = r;
-	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
-	    url += '&';
-	else
-	    url += '?';
-	url += (htutil_escape(p) + '=' + htutil_escape(v));
+	if (v !== null)
+	    {
+	    if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+		url += '&';
+	    else
+		url += '?';
+	    url += (htutil_escape(p) + '=' + htutil_escape(v));
+	    }
 	}
 
     if (obscure_data)

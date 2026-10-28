@@ -346,6 +346,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Write JS to initialize page variables. **/
 	if (htrAddScriptInit_va(s,
 	    "\tif (typeof(pg_status_init) === 'function') pg_status_init();\n"
+	    "%[\tpg_init_zoom(%DBL);\n%]"
 	    "\tpg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n"
 	    "\tpg_username = '%STR&JSSTR';\n"
 	    "\tpg_width = %INT;\n"
@@ -354,6 +355,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    "\tpg_charw = %INT;\n"
 	    "\tpg_charh = %INT;\n"
 	    "\tpg_parah = %INT;\n",
+	    (s->ClientInfo->Zoom > 0.0), s->ClientInfo->Zoom,
 	    name, attract,
 	    mssUserName(),
 	    w, h,
@@ -502,10 +504,12 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
-	if (htrAddStylesheetItem(s,
+	if (htrAddStylesheetItem_va(s,
 	    "\t\thtml { "
 		"overflow:hidden; "
-	    "}\n"
+		"%[zoom:%DBL; %]"
+	    "}\n",
+	    (s->ClientInfo->Zoom > 0.0), s->ClientInfo->Zoom
 	) != 0)
 	    {
 	    mssError(0, "HTPAGE", "Failed to write CSS for main <html> tag.");
