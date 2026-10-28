@@ -1,0 +1,6 @@
+Attribute [name]:   string   "attachment1.txt" 
+Attribute [reply_to]:   string   "Replies <replies@example.com>" 
+Attribute [sender]:   string   "sender@example.com" 
+Attribute [name]:   string   "attachment2.txt" 
+Attribute [reply_to]:   string   "a>b <replies@example.com" 
+Attribute [sender]:   string  NULL

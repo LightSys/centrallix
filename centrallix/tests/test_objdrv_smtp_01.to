@@ -1,0 +1,6 @@
+##NAME Bounced recipient
+##UNDO /tests/smtp/Bounced/Bounced.struct
+##UNDO /tests/smtp/Bounced/.mail_log_cursor
+##UNDO /tests/smtp/Bounced/.spool_lock
+
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/Bounced.smtp

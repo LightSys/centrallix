@@ -1,0 +1,4 @@
+##NAME MimeTest appledouble parts
+
+query select :name, :inner_type from object /tests/mimetest/EM5.1.eml
+query select :name, :inner_type, cte = :"Content-Transfer-Encoding" from /tests/mimetest/EM5.1.eml

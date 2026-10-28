@@ -76,6 +76,7 @@ int mlxSetReservedWords(pLxSession this, char** res_words);
 int mlxNoteError(pLxSession this);
 int mlxNotePosition(pLxSession this);
 unsigned long mlxGetOffset(pLxSession this);
+unsigned long mlxGetCurOffset(pLxSession this);
 int mlxSetOffset(pLxSession this, unsigned long new_offset);
 
 /** Token types **/

@@ -1,0 +1,3 @@
+##NAME MimeTest encapsulated message
+
+query select :name, :outer_type, :inner_type, subject = :Subject, start = substring(:objcontent, 1, 40) from object /tests/mimetest/M4.2.1.eml
