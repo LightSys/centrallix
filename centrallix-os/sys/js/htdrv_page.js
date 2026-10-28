@@ -49,11 +49,6 @@ function pg_scriptavailable(s)
     }
 
 
-/** Resize handling for all types of area boxes (hover, select, data, etc). **/
-const pg_area_resize_handlers = {};
-window.addEventListener('resize', (e) => Object.values(pg_area_resize_handlers).forEach(f => f(e)));
-
-
 //START SECTION: DOM/CSS helper functions -----------------------------------
 
 /** returns an attribute of the element in pixels **/
@@ -1373,7 +1368,7 @@ function pg_reclaim_objects()
 	document.getElementById("pgkrgt"),
 	document.getElementById("pgklft")
     );
-    delete pg_area_resize_handlers.kbd_focus;
+    htr_unwatch_place(document.getElementById("pgktop"));
     if (ibeam_current) moveAbove(ibeam_current, document.getElementById("pgtvl"));
     }
 
@@ -1396,7 +1391,7 @@ function pg_removemousefocus()
 	    document.getElementById("pglft")
 	);
 	pg_curboxarea = null;
-	delete pg_area_resize_handlers.mouse_focus;
+	htr_unwatch_place(document.getElementById("pgtop"));
 	}
     pg_curarea = null;
     return true;
@@ -1455,7 +1450,7 @@ function pg_setmousefocus(l, xo, yo)
 		update_box(a);
 
 		// Responsive updates.
-		pg_area_resize_handlers.mouse_focus = () => update_box(a);
+		htr_watch_place(document.getElementById("pgtop"), () => update_box(a));
 		}
 	    }
 	}
@@ -1482,7 +1477,7 @@ function pg_removekbdfocus(p)
 	}
 
     // Clear resize handling.
-    delete pg_area_resize_handlers.kbd_focus;
+    htr_unwatch_place(document.getElementById("pgktop"));
 
     return true;
     }
@@ -1496,12 +1491,6 @@ function pg_setdatafocus(a)
     var w = a.width;
     var h = a.height;
     var l = a.layer; 
-    
-    // Set up resize handling.
-    pg_area_resize_handlers.data_focus = () => {
-	// Recall function to update values.
-	pg_setdatafocus(a);
-    };
 
     // hide old data focus box
     if (l.pg_dttop != null)
@@ -1518,6 +1507,9 @@ function pg_setdatafocus(a)
 	l.pg_dtrgt = htr_new_layer(2,l);
 	l.pg_dtlft = htr_new_layer(2,l);
 	}
+
+    // Redraw this control's data focus box on resize.
+    htr_watch_place(l.pg_dttop, () => pg_setdatafocus(a));
 
     // draw new data focus box
     pg_init_box({
@@ -1560,7 +1552,7 @@ function pg_setkbdfocus(l, a, xo, yo)
 	return false;
 
     // The focused area is changing: Drop the old focus handler.
-    delete pg_area_resize_handlers.kbd_focus;
+    htr_unwatch_place(document.getElementById("pgktop"));
 
     pg_curkbdarea = a;
     pg_curkbdlayer = l;
@@ -1596,7 +1588,7 @@ function pg_setkbdfocus(l, a, xo, yo)
 	    update_box(a);
 
 	    // Responsive updates.
-	    pg_area_resize_handlers.kbd_focus = () => update_box(a);
+	    htr_watch_place(document.getElementById("pgktop"), () => update_box(a));
 	    }
 	if (v & 2)
 	    {
