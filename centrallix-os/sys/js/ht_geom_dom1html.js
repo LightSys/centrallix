@@ -75,16 +75,42 @@ function updateClippingCSS(l)
     setClipTop(l, getClipTop(l));
     }
 
-/*** Zooms the page so that content of the given size fills the viewport
- *** without overflowing it.
- ***
- *** @param w The width of the content, in layout px.
- *** @param h The height of the content, in layout px.
+/*** The page's design {width, height} and zoom {strength} (a percent), or null
+ *** if the page does not zoom.
  ***/
-function fitZoom(w, h)
+var cx__zoom_inputs = null;
+
+/** The smallest zoom a page shrinks to, matching NHT_ZOOM_MIN on the server. **/
+const CX_ZOOM_MIN = 0.4;
+
+/*** Picks the zoom for a viewport size the same way nht_i_GetZoom() does on
+ *** the server.  Pages grow by the zoom strength power of the extra space, and
+ *** shrink by all of the missing space down to CX_ZOOM_MIN.
+ ***
+ *** @param vw The width of the viewport, in viewport px.
+ *** @param vh The height of the viewport, in viewport px.
+ *** @returns The zoom, in viewport px per layout px, or 0 if the page does
+ ***          not zoom.
+ ***/
+function getZoom(vw, vh)
     {
-    const zoom = Math.min(window.innerWidth / w, window.innerHeight / h);
-    if (!(zoom > 0)) return;
+    if (!cx__zoom_inputs) return 0;
+    const { width, height, strength } = cx__zoom_inputs;
+    if (!(width > 0 && height > 0 && vw > 0 && vh > 0)) return 0;
+
+    const ratio = Math.min(vw / width, vh / height);
+    if (ratio > 1) return Math.pow(ratio, strength / 100);
+    return Math.max(ratio, CX_ZOOM_MIN);
+    }
+
+/*** Rezooms the page for the current viewport size, so its layout fills the
+ *** viewport divided by the zoom.  Resize handlers that measure the page must
+ *** run after this.
+ ***/
+function updateZoom()
+    {
+    const zoom = getZoom(window.innerWidth, window.innerHeight);
+    if (!(zoom > 0) || zoom === cx__zoom) return;
     cx__zoom = zoom;
     document.documentElement.style.zoom = zoom;
     }

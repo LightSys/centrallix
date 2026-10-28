@@ -21,6 +21,9 @@ var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
 var EVENT_PREVENT_DEFAULT_ACTION = 2;
 
+/** Rezoom the page before any other resize handler measures it. **/
+window.addEventListener('resize', () => window.updateZoom?.());
+
 
 /*
  * object.watch polyfill

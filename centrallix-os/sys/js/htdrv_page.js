@@ -819,12 +819,16 @@ function pg_appwindowprop()
 	}
     }
 
-// pg_init_zoom() - sets the zoom the server laid the page out for, and
-// rescales the page to fit the viewport whenever it resizes.
+// pg_init_zoom() - sets the zoom the server laid the page out for, and the
+// inputs it picked that zoom from, so updateZoom() rezooms the same way.
 function pg_init_zoom(zoom)
     {
     cx__zoom = zoom;
-    window.addEventListener("resize", () => fitZoom(pg_width, pg_height));
+    cx__zoom_inputs = {
+	width: wgtrGetServerProperty(window, 'r_width'),
+	height: wgtrGetServerProperty(window, 'r_height'),
+	strength: Math.clamp(0, wgtrGetServerProperty(window, 'zoom_strength', 0), 100),
+	};
     }
 
 // Lightning: Looks like this is called on the root page widget to initialize the
