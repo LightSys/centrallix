@@ -10,21 +10,10 @@
 // GNU Lesser General Public License for more details.
 
 
-// A list of every datetime widget on the page.
-const dt_list = [];
-
 // Size of the dropdown pane, which never varies with the size of the control.
 const dt_pane_w = 184;
 const dt_pane_h = 190;
 const dt_pane_h_dateonly = 156;
-
-// A resize observer to move datetime dropdowns when their widget is resized,
-// whether or not the page itself was resized.
-const dt_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => dt_reposition(target)));
-
-// Resizing the page may move the widget without resizing it, detected here.
-// Updates are deferred to the next frame to wait for other widgets to settle.
-window.addEventListener('resize', () => requestAnimationFrame(() => dt_list.forEach(dt_reposition)));
 
 
 function dt_getvalue() {
@@ -149,9 +138,8 @@ function dt_changemode(){
 // destroyed widget (in a dynamic component, for instance) is not kept alive and
 // is no longer visited by the resize handlers or the mouse handlers.
 function dt_deinit() {
-	dt_resize_observer.unobserve(this);
-	var i = dt_list.indexOf(this);
-	if (i >= 0) dt_list.splice(i, 1);
+	htr_unwatch_size(this);
+	htr_unwatch_place(this);
 	pg_removearea(this.area);
 	if (this.form) this.form.DeRegister(this);
 	if (dt_current == this) dt_current = null;
@@ -246,9 +234,9 @@ function dt_init(param){
 	// Setup the hover area and set getters to allow responsive resizing.
 	l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dt', 'dt', 3);
 	
-	// Set up responsive resizing.
-	dt_resize_observer.observe(l);
-	dt_list.push(l);
+	// Set up responsive resizing, where a resized widget moves its pane.
+	htr_watch_size(l);
+	htr_watch_place(l, dt_reposition);
 	l.destroy_widget = dt_deinit;
 
 	// Events

@@ -9,25 +9,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-
-// A list of every dropdown widget on the page.
-const dd_list = [];
-
-// A resize observer to resize dropdown panes when their widget is resized,
-// which is needed because the pane scales with the widget.
-const dd_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
-    // Ignore widgets that don't have a visible panelayer in need of updating.
-    if (htr_getvisibility(target.PaneLayer) !== 'inherit') return;
-
-    // Resize the dropdown pane to match its widget.
-    dd_resize(target);
-}));
-
-// Resizing the page may move the widget without resizing it, detected here.
-// Updates are deferred to the next frame to wait for other widgets to settle.
-window.addEventListener('resize', () => requestAnimationFrame(() => dd_list.forEach(dd_reposition)));
-
-
 // Form manipulation
 
 function dd_getvalue() 
@@ -461,6 +442,12 @@ function dd_resize(l)
 	}
 
     dd_position(l);
+    }
+
+// Resize the pane of an open dropdown to match its widget.
+function dd_resize_open(l)
+    {
+    if (htr_getvisibility(l.PaneLayer) === 'inherit') dd_resize(l);
     }
 
 function dd_expand(l)
@@ -1283,9 +1270,8 @@ function dd_deinit()
     {
     dd_collapse(this);
     dd_remove_pane(this);
-    dd_resize_observer.unobserve(this);
-    var i = dd_list.indexOf(this);
-    if (i >= 0) dd_list.splice(i, 1);
+    htr_unwatch_size(this);
+    htr_unwatch_place(this);
     pg_removearea(this.area);
     if (this.form)
 	this.form.DeRegister(this);
@@ -1398,8 +1384,8 @@ function dd_init(param)
     l.area = pg_addarea(l, -1, -1, () => l.w + 3, () => l.h + 3, 'dd', 'dd', 3);
 
     // Set up responsive resizing.
-    dd_resize_observer.observe(l);
-    dd_list.push(l);
+    htr_watch_size(l, dd_resize_open);
+    htr_watch_place(l, dd_reposition);
 
     // Events
     var ie = l.ifcProbeAdd(ifEvent);
