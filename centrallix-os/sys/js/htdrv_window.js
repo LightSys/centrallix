@@ -10,19 +10,6 @@
 // GNU Lesser General Public License for more details.
 
 
-// A resize may move the widget a window is placed against, so every window is
-// placed again from its descriptor.  We defer a frame to let the page settle,
-// and collapse events to one pass per frame for performance.
-let wn_place_pending = false;
-window.addEventListener('resize', () => {
-    if (wn_place_pending) return;
-    wn_place_pending = true;
-    requestAnimationFrame(() => {
-	wn_place_pending = false;
-	wn_place_all();
-    });
-});
-
 var wn_popped = {};
 
 function wn_deinit()
@@ -32,6 +19,7 @@ function wn_deinit()
 	this.orig_parent.appendChild(this);
 
     // Remove references
+    htr_unwatch_place(this);
     for(var i in wn_list)
 	if (wn_list[i] == this)
 	    {
@@ -105,8 +93,8 @@ function wn_init(param)
 	}
     
     /*** Save how the server placed this window (see wn_compute_placement() for
-     *** modes).  Set before the window joins the wn_list, which is used for
-     *** resize re-placements.  centeredx/centeredy say the server-side layout centered
+     *** modes).  Set before the window is registered for re-placement on
+     *** resize.  centeredx/centeredy say the server-side layout centered
      *** the window rather than placing it at a fixed spot (see apos.c for the
      *** detection), so it gets centered again on resize.  Any other window was
      *** given a fixed spot that CSS already holds, recorded as "wherever it is".
@@ -122,6 +110,7 @@ function wn_init(param)
 	l.placement = { mode:'absolute', x:null, y:null, attract:0 };
 
     wn_list.push(l);
+    htr_watch_place(l, wn_place_visible);
     wn_bring_top(l);
 
     // Actions
@@ -977,33 +966,10 @@ function wn_place(wn)
     wn_update_point(wn, geom);
     }
 
-/*** Places every open window, in three passes:  measure, move, then draw points.
- *** Measuring all of them first keeps that pass to one reflow.  The later passes
- *** still cost a reflow apiece, which is not worth avoiding for the handful of
- *** windows ever open at once.
- ***/
-function wn_place_all()
+/** Places a window if it is open, for re-placement on resize. **/
+function wn_place_visible(wn)
     {
-    const viewport = wn_get_viewport();
-    const work = [];
-
-    /** Measure. **/
-    for (const wn of wn_list)
-	{
-	if (!wn.is_visible) continue;
-	work.push({ wn: wn, geom: wn_compute_placement(wn, viewport) });
-	}
-
-    /** Move. **/
-    for (const { wn, geom } of work)
-	if (geom) moveToAbsolute(wn, geom.x, geom.y);
-
-    /** Draw the points. **/
-    for (const { wn, geom } of work)
-	{
-	if (geom) wn_update_point(wn, geom);
-	else if (wn.placement.mode === 'point') htr_hide_point(wn);
-	}
+    if (wn.is_visible) wn_place(wn);
     }
 
 function wn_adjust_z(l,zi)
