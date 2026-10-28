@@ -204,6 +204,9 @@ function al_reflow()
 	    yo += spacing;
 	    }
 	}
+
+    // Move anything anchored to the children.
+    htr_place_all();
     }
 
 function al_init(l, wparam)

@@ -263,8 +263,9 @@ function sp_WatchHeight(property, old_value, new_value)
 	setRelativeY(area, available_height - new_value);
     if (new_value < available_height) setRelativeY(area, 0);
     
-    /** Update the scroll thumb. **/
+    /** Update the scroll thumb and anything anchored to the content. **/
     pane.UpdateThumb();
+    htr_place_all();
     
     return new_value;
     }
@@ -344,9 +345,10 @@ function sp_scroll_to(pane, scroll_height)
     /** Clamp the scroll height within the bounds of the scroll bar. **/
     const scroll_height_new = Math.clamp(0, scroll_height, nonvisible_height);
     
-    /** Update the content. **/
+    /** Update the content and anything anchored to it. **/
     setRelativeY(pane.area, -scroll_height_new);
     pane.UpdateThumb();
+    htr_place_all();
     
     /** Construct the param for the centrallix 'Scroll' event. **/
     const percent_old = (nonvisible_height > 0) ? (scroll_height_old / nonvisible_height) * 100 : 0;
