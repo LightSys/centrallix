@@ -13,18 +13,9 @@
 window.tbld_touches = [];
 window.tbld_itemlist_drag_table = null;
 
-// A resize observer to update all table content when a table is resized.
-const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
-    target: table
-}) =>
+// Updates all table content after a table is resized.
+function tbld_resize(table)
     {
-    // Skip the initial event: the page should only reflow on change.
-    if (!table.resize_observed)
-	{
-	table.resize_observed = true;
-	return;
-	}
-
     // Set the new size.
     const { width, height } = getPageRect(table);
     table.param_width = width;
@@ -52,7 +43,11 @@ const tbld_resize_observer = new ResizeObserver((entries) => entries.forEach(({
 	$(row).css({ width: (row.w = row_width) });
 	}
     }
-));
+
+function tbld_deinit()
+    {
+    htr_unwatch_size(this);
+    }
 
 function tbld_log_status()
     {
@@ -2474,7 +2469,8 @@ function tbld_init(param)
 	window.tbld_mcurrent = null;
 
     // Handle resizing.
-    tbld_resize_observer.observe(t);
+    htr_watch_size(t, tbld_resize);
+    t.destroy_widget = tbld_deinit;
 
     // No data message
     var $ndm = $('<div id="ndm"></div>');

@@ -9,9 +9,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-// The menu caches pixel sizes, so it has to re-measure when one changes.
-const mn_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => mn_measure(target)));
-
 // Set the location and size of one item's highlight box.
 function mn_place_item(menu, item)
     {
@@ -434,6 +431,11 @@ function mn_measure(menu)
 	}
     }
 
+function mn_deinit()
+    {
+    htr_unwatch_size(this);
+    }
+
 // initialization
 function mn_init(param)
     {
@@ -471,7 +473,8 @@ function mn_init(param)
 
     // Measure the menu, and keep measuring it as its flexible geometry resizes.
     mn_measure(menu);
-    mn_resize_observer.observe(menu);
+    htr_watch_size(menu, mn_measure);
+    menu.destroy_widget = mn_deinit;
     if ($(menu).css('visibility') == 'hidden'
 	&& (!menu.__WgtrParent.style || $(menu.__WgtrParent).css('visibility') == 'inherit')
     )

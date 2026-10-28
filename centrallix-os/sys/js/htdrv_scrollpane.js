@@ -100,10 +100,16 @@ function sp_stop_repeat()
     }
 
 
-/** A resize observer to update the scroll thumb when the scrollpane is resized. **/
-const sp_resize_observer = new ResizeObserver(e => e.forEach(({ target }) => {
-    target.UpdateThumb();
-}));
+/** Update the scroll thumb after the scrollpane is resized. **/
+function sp_resize(pane)
+    {
+    pane.UpdateThumb();
+    }
+
+function sp_deinit()
+    {
+    htr_unwatch_size(this);
+    }
 
 
 function sp_init({ layer: pane, area_name, thumb_name })
@@ -152,8 +158,9 @@ function sp_init({ layer: pane, area_name, thumb_name })
     pane.area = area;
     pane.UpdateThumb = sp_update_thumb;
     
-    /** Observe the scrollpane so it can update when resized. **/
-    sp_resize_observer.observe(pane);
+    /** Watch the scrollpane so it can update when resized. **/
+    htr_watch_size(pane, sp_resize);
+    pane.destroy_widget = sp_deinit;
     
     /** Register actions with Centrallix. **/
     const ia = pane.ifcProbeAdd(ifAction);
