@@ -538,7 +538,11 @@ function sp_mousedown(e)
 		/** Event handled. **/
 		return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 		}
-	    
+
+	    /** Scrollpane area was clicked. **/
+	    case undefined:
+		break;
+
 	    /** Unknown target image type. **/
 	    default:
 		{
