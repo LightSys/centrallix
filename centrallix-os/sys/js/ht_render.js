@@ -941,9 +941,9 @@ function htr_stylize_element(element, widget, prefix, defaults)
     }
 
 
-/*** Resize handling.  One ResizeObserver watches widgets and a viewport-sized
- *** sentinel.  Each batch runs the size handlers of the elements that resized,
- *** then every placement handler, after layout and before paint.
+/*** Resize handling:  Watches widgets and a viewport-sized sentinel dom node
+ *** to run widget resize and placement handlers.  These run after layout, but
+ *** before paint.
  ***/
 const htr_placed = new Set();
 let htr_viewport_sentinel = null;
@@ -952,7 +952,9 @@ const htr_resize_observer = new ResizeObserver((entries) =>
     let resized = false;
     for (const { target } of entries)
 	{
-	// Skip notifications that leave the size as last seen, such as the first.
+	/*** Skip events that don't change the size, including the
+	 *** browser's initial resize.
+	 ***/
 	const size = target.__htr_size;
 	if (!size) continue;
 	const w = target.offsetWidth;
@@ -967,9 +969,11 @@ const htr_resize_observer = new ResizeObserver((entries) =>
     if (resized) htr_place_all();
     });
 
-/*** Watches the size of an element.  Any watched resize also runs the placement
- *** handlers, so an element whose resize only moves things anchored to it can
- *** omit fn.
+/*** Watches the size of an element.
+ ***
+ *** Note: An element with a resize that only moves its anchored elements may
+ *** omit fn because a resize on a watched element automatically runs its
+ *** placement handlers. 
  ***
  *** @param el The element to watch.
  *** @param fn Called as fn(el) after el changes size.
@@ -989,17 +993,20 @@ function htr_unwatch_size(el)
     delete el.__htr_size;
     }
 
-/*** Registers an element drawn at page level that must follow what it is
- *** anchored to.  Placement handlers run after any watched element or the
- *** viewport resizes, and on htr_place_all().
+/*** Registers an element drawn at page level that follows another element,
+ *** such as a dropdown menu's dropdown.  Placement handlers run after any
+ *** watched element or the viewport resizes, and on htr_place_all().
  ***
- *** @param el The element, which is the registration's key.
- *** @param fn Called as fn(el) to reposition it.  It must be safe to call when
- *** 	nothing moved.
+ *** Note: fn might be called even when nothing has moved.
+ ***
+ *** @param el The element to watch.
+ *** @param fn Called as fn(el) to reposition the element.
  ***/
 function htr_watch_place(el, fn)
     {
-    // Watch the viewport, through a fixed element sized to it.
+    /*** Set up the viewport sentinel: a fixed, viewport-sized element that
+     *** we can watch to detect changes to the size of the viewport.
+     ***/
     if (!htr_viewport_sentinel)
 	{
 	htr_viewport_sentinel = document.createElement('div');
@@ -1019,8 +1026,8 @@ function htr_unwatch_place(el)
     delete el.__htr_place_fn;
     }
 
-/*** Runs every placement handler.  Call this after moving widgets without
- *** resizing any, so things anchored to them follow.
+/*** Runs every placement handler.  Call this after moving widgets causing a
+ *** resize event to update any anchored elements.
  ***/
 function htr_place_all()
     {
