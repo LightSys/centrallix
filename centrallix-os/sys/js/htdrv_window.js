@@ -163,6 +163,13 @@ function wn_init(param)
     return l;
     }
 
+/** Warns that a window with a titlebar, which can be dragged, points at something. **/
+function wn_warn_movable_point(wn)
+    {
+    if (wn.titlebar !== wn)
+	console.warn('Window "' + wgtrGetName(wn) + '" points at an element, but its titlebar allows users to drag it away.');
+    }
+
 function wn_action_point(aparam)
     {
     // The point placement of a window opened with PointAt would be clobbered
@@ -173,6 +180,7 @@ function wn_action_point(aparam)
 	return;
 	}
 
+    if (aparam.AtWidget || aparam.X || aparam.Y) wn_warn_movable_point(this);
     htr_action_point(this, aparam);
     }
 
@@ -531,6 +539,7 @@ function wn_openwin(aparam)
     let point_at = aparam.PointAt;
     if (point_at && (typeof point_at !== 'object' || !wgtrIsNode(point_at)))
 	point_at = wgtrGetNode(this, point_at);
+    if (point_at) wn_warn_movable_point(this);
     if (point_at)
 	this.placement = {
 	    mode: 'point',
