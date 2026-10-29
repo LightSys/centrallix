@@ -29,7 +29,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2002 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2002-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -95,7 +95,7 @@ cx_internal_LoadModules(char* type)
 	modules_inf = stLookup(CxGlobals.ParsedConfig, "modules");
 	if (!modules_inf) 
 	    {
-	    mssError(1,"CX","Warning - no modules section in config file");
+	    fprintf(stderr, "Warning: no modules section in config file\n");
 	    return 0;
 	    }
 
@@ -111,7 +111,7 @@ cx_internal_LoadModules(char* type)
 	    if (!modpath || !modtype)
 		{
 		if (!CxGlobals.QuietInit) printf("mod: driver %s failed\n", one_module->Name);
-		mssError(1,"CX","Module '%s' must have path and type settings; load failed",one_module->Name);
+		fprintf(stderr, "Warning: Module '%s' must have path and type settings; load failed\n",one_module->Name);
 		continue;
 		}
 
@@ -138,8 +138,8 @@ cx_internal_LoadModules(char* type)
 		{
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' could not be loaded",modpath);
-		mssError(1,"CX","ERROR: %s",dlerror());
+		fprintf(stderr, "Warning: Module '%s' could not be loaded\n",modpath);
+		fprintf(stderr, "Warning: %s\n",dlerror());
 		continue;
 		}
 
@@ -150,7 +150,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' has no Init function declared: %s",modpath, dlerror());
+		fprintf(stderr, "Warning: Module '%s' has no Init function declared: %s\n",modpath, dlerror());
 		continue;
 		}
 	    moduledata->DeinitFn = dlsym(moduledata->dlhandle, "moduleDeInitialize");
@@ -163,7 +163,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' has no Interface Version declared: %s",modpath,dlerror());
+		fprintf(stderr, "Warning: Module '%s' has no Interface Version declared: %s\n",modpath,dlerror());
 		continue;
 		}
 
@@ -181,7 +181,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?)",
+		fprintf(stderr, "Warning: Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?)\n",
 		    modpath, *(moduledata->InterfaceVer));
 		continue;
 		}
@@ -191,7 +191,7 @@ cx_internal_LoadModules(char* type)
 		{
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
-		mssError(0,"CX","Module '%s' load failed",modpath);
+		fprintf(stderr, "Warning: Module '%s' load failed\n",modpath);
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		continue;
 		}
@@ -772,12 +772,12 @@ cxLinkSigningSetup(pStructInf my_config)
 	    {
 	    if (cxssGenerateHexKey((char*)key, 32) < 0)
 		{
-		mssError(1, "CX", "Warning: no link_signing_key provided and temporal key generation failed, disabling link signing");
+		fprintf(stderr, "Warning: no link_signing_key provided and temporal key generation failed, disabling link signing\n");
 		strtcpy(key, "", sizeof(key));
 		}
 	    else
 		{
-		mssError(1, "CX", "Warning: no link_signing_key provided, signing links with temporal key only");
+		fprintf(stderr, "Warning: no link_signing_key provided, signing links with temporal key only\n");
 		}
 	    }
 
@@ -790,7 +790,7 @@ cxLinkSigningSetup(pStructInf my_config)
 	    {
 	    if (cxssLinkInitialize((unsigned char*)key, strlen(key), sites) < 0)
 		{
-		mssError(1, "CX", "Warning: Link signing initialization failed, disabling link signing");
+		fprintf(stderr, "Warning: Link signing initialization failed, disabling link signing\n");
 		}
 	    }
 

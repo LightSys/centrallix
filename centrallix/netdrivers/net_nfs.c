@@ -1281,7 +1281,7 @@ nnfs_internal_create_inode_map()
     inFile = fdOpen(NNFS.inodeFile,O_RDONLY, 0600);
     if(!inFile)
 	{
-	mssError(1,"NNFS","Warning: cannot open %s: %s",NNFS.inodeFile,strerror(errno));
+	fprintf(stderr, "Warning: cannot open %s: %s\n",NNFS.inodeFile,strerror(errno));
 	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
@@ -1290,7 +1290,7 @@ nnfs_internal_create_inode_map()
     stInode = stParseMsg(inFile,0);
     if(!stInode)
 	{
-	mssError(1,"NNFS","Cannot parse %s",NNFS.inodeFile);
+	fprintf(stderr, "Warning: Cannot parse %s\n",NNFS.inodeFile);
 	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
@@ -1298,7 +1298,7 @@ nnfs_internal_create_inode_map()
 
     nextHandle = stLookup(stInode,"nextFileHandle");
     if(!nextHandle || stGetAttrValue(nextHandle,DATA_T_INTEGER,POD(&NNFS.nextFileHandle),0)<0)
-	mssError(1,"NNFS","Unable to read nextFileHandle");
+	fprintf(stderr, "Warning: Unable to read nextFileHandle\n");
 
     for(i=0;i<stInode->nSubInf;i++)
 	{
@@ -1314,13 +1314,13 @@ nnfs_internal_create_inode_map()
 	    entry = stLookup(group,"path");
 	    if(!entry || stGetAttrValue(entry,DATA_T_STRING,POD(&name),0)<0)
 		{
-		mssError(0,"NNFS","Unable to read inode");
+		fprintf(stderr, "Warning: Unable to read inode\n");
 		continue;
 		}
 	    entry = stLookup(group,"inode");
 	    if(!entry || stGetAttrValue(entry,DATA_T_INTEGER,POD(&inode),0)<0)
 		{
-		mssError(0,"NNFS","Unable to read inode for: %s",name);
+		fprintf(stderr, "Warning: Unable to read inode for: %s\n",name);
 		continue;
 		}
 	    name = strdup(name);
@@ -1384,7 +1384,7 @@ nnfs_internal_dump_inode_map()
 
     if(!NNFS.inodeFile)
 	{
-	mssError(0,"NNFS","No inode map file specified in configuration");
+	fprintf(stderr, "Warning: No inode map file specified in configuration\n");
 	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
@@ -1393,7 +1393,7 @@ nnfs_internal_dump_inode_map()
     outFile = fdOpen(NNFS.inodeFile,O_WRONLY | O_CREAT | O_TRUNC, 0600);
     if(!outFile)
 	{
-	mssError(1,"NNFS","Cannot open inode.map: %s",strerror(errno));
+	fprintf(stderr, "Warning: Cannot open inode.map: %s\n",strerror(errno));
 	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
@@ -1401,7 +1401,7 @@ nnfs_internal_dump_inode_map()
     stInode = stCreateStruct("inode_map","system/inode-map");
     if(!stInode)
 	{
-	mssError(1,"NNFS","Cannot create StructInf");
+	fprintf(stderr, "Warning: Cannot create StructInf\n");
 	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;
@@ -1411,7 +1411,7 @@ nnfs_internal_dump_inode_map()
 
     nextHandle = stAddAttr(stInode,"nextFileHandle");
     if(!nextHandle || stSetAttrValue(nextHandle, DATA_T_INTEGER, POD(&NNFS.nextFileHandle), 0) <0 )
-	mssError(1,"NNFS","Unable to create nextFileHandle attribute");
+	fprintf(stderr, "Warning: Unable to create nextFileHandle attribute\n");
 
     for(i=0;i<NNFS.fhToPath->nRows;i++)
 	{
@@ -1426,14 +1426,14 @@ nnfs_internal_dump_inode_map()
 		{
 		entry = stAddAttr(group,"path");
 		if(!entry || stSetAttrValue(entry, DATA_T_STRING, POD(&(ptr->Data)), 0)<0 )
-		    mssError(1,"NNFS","Unable to create path attribute");
+		    fprintf(stderr, "Warning: Unable to create path attribute\n");
 		entry = stAddAttr(group,"inode");
 		if(!entry || stSetAttrValue(entry, DATA_T_INTEGER, POD(ptr->Key), 0)<0)
-		    mssError(1,"NNFS","Unable to create inode attribute");
+		    fprintf(stderr, "Warning: Unable to create inode attribute\n");
 		}
 	    else
 		{
-		mssError(1,"NNFS","Unable to create inode group");
+		fprintf(stderr, "Warning: Unable to create inode group\n");
 		}
 	    ptr=ptr->Next;
 	    }
@@ -1441,7 +1441,7 @@ nnfs_internal_dump_inode_map()
 
     if(stGenerateMsg(outFile,stInode,ST_F_VERSION2)<0)
 	{
-	mssError(1,"NNFS","Unable to write inode mapping");
+	fprintf(stderr, "Warning: Unable to write inode mapping\n");
 	}
 
     fdClose(outFile,0);
@@ -1516,7 +1516,7 @@ nnfs_internal_get_inode(void* data, xdrproc_t func)
 	CXSEC_EXIT(NFS_FN_KEY);
 	return nnfs_internal_get_inode(&((readdirargs*)data)->dir,(xdrproc_t)xdr_fhandle);
 	}
-    mssError(0,"NNFS","Error getting inode from %p (%p)",data,func);
+    fprintf(stderr, "Warning: Error getting inode from %p (%p)\n",data,func);
     CXSEC_EXIT(NFS_FN_KEY);
     return 0;
     }
@@ -1584,7 +1584,7 @@ nnfs_internal_request_handler(void* v)
 		    {
 		    /** thread 'i' has it locked -- give it up **/
 		    if(xrqEnqueue(&NNFS.threads[i].waitingRequests,entry)!=0)
-			mssError(1,"NNFS","Unable to give request on inode %u to thread %i",requestInode,i);
+			fprintf(stderr, "Warning: Unable to give request on inode %u to thread %i\n",requestInode,i);
 		    else
 			if(NNFS_DEBUG & NNFS_DEBUG_REQUEST)
 			    {
@@ -1602,7 +1602,7 @@ nnfs_internal_request_handler(void* v)
 	/** enqueue the initial request (this makes processing easier) **/
 	if(xrqEnqueue(&(cThread->waitingRequests),entry)!=0)
 	    {
-	    mssError(1,"NNFS","Unable to enqueue request on %i",threadNum);
+	    fprintf(stderr, "Warning: Unable to enqueue request on %i\n",threadNum);
 	    nnfs_internal_destroy_queueentry(entry);
 	    continue;
 	    }
@@ -1656,7 +1656,7 @@ nnfs_internal_request_handler(void* v)
 	    xdrmem_create(&xdr_out,buf,MAX_PACKET_SIZE,XDR_ENCODE);
 	    if(!xdr_replymsg(&xdr_out,&msg_out))
 		{
-		mssError(0,"NNFS","unable to create message to send");
+		fprintf(stderr, "Warning: unable to create message to send\n");
 		}
 	    else
 		{
@@ -1666,7 +1666,7 @@ nnfs_internal_request_handler(void* v)
 		    nnfs_internal_dump_buffer(buf,i);
 		if(netSendUDP(NNFS.nfsSocket,buf,i,0,&(entry->source),NULL,0) == -1)
 		    {
-		    mssError(0,"NNFS","unable to send message: %s",strerror(errno));
+		    fprintf(stderr, "Warning: unable to send message: %s\n",strerror(errno));
 		    }
 		}
 
@@ -1768,7 +1768,7 @@ nnfs_internal_nfs_listener(void* v)
 	    xdrmem_create(&xdr_out,outbuf,MAX_PACKET_SIZE,XDR_ENCODE);
 	    if(!xdr_callmsg(&xdr_in,&msg_in))
 		{
-		mssError(0,"NNFS","unable to retrieve message");
+		fprintf(stderr, "Warning: unable to retrieve message\n");
 		xdr_destroy(&xdr_in);
 		nmFree(entry,sizeof(QueueEntry));
 		continue;
@@ -1820,7 +1820,7 @@ nnfs_internal_nfs_listener(void* v)
 					    }
 					else
 					    {
-					    mssError(0,"NNFS","no more room in queue");
+					    fprintf(stderr, "Warning: no more room in queue\n");
 					    /** no good error -- send GARBAGE_ARGS I guess **/
 					    msg_out.rm_reply.rp_acpt.ar_stat = GARBAGE_ARGS;
 					    xdr_free(nfs_program[entry->procedure].param,entry->param);
@@ -1829,20 +1829,20 @@ nnfs_internal_nfs_listener(void* v)
 					}
 				    else
 					{
-					mssError(0,"NNFS","unable to parse parameters");
+					fprintf(stderr, "Warning: unable to parse parameters\n");
 					msg_out.rm_reply.rp_acpt.ar_stat = GARBAGE_ARGS;
 					nmFree(entry->param,nfs_program[entry->procedure].param_size);
 					}
 				    }
 				else
 				    {
-				    mssError(0,"NNFS","Bad mountd procedure requested: %lu",(unsigned long)msg_in.rm_call.cb_proc);
+				    fprintf(stderr, "Warning: Bad mountd procedure requested: %lu\n",(unsigned long)msg_in.rm_call.cb_proc);
 				    msg_out.rm_reply.rp_acpt.ar_stat = PROC_UNAVAIL;
 				    }
 				}
 			    else
 				{
-				mssError(0,"NNFS","Invalid mount version requested: %lu",(unsigned long)msg_in.rm_call.cb_vers);
+				fprintf(stderr, "Warning: Invalid mount version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_vers);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 				msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 				msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -1850,13 +1850,13 @@ nnfs_internal_nfs_listener(void* v)
 			    }
 			else
 			    {
-			    mssError(0,"NNFS","Invalid program requested: %lu",(unsigned long)msg_in.rm_call.cb_prog);
+			    fprintf(stderr, "Warning: Invalid program requested: %lu\n",(unsigned long)msg_in.rm_call.cb_prog);
 			    msg_out.rm_reply.rp_acpt.ar_stat = PROG_UNAVAIL;
 			    }
 			}
 		    else
 			{
-			mssError(0,"NNFS","Invalid RPC version requested: %lu",(unsigned long)msg_in.rm_call.cb_rpcvers);
+			fprintf(stderr, "Warning: Invalid RPC version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_rpcvers);
 			msg_out.rm_reply.rp_stat = MSG_DENIED;
 			msg_out.rm_reply.rp_rjct.rj_vers.low = 2;
 			msg_out.rm_reply.rp_rjct.rj_vers.high = 2;
@@ -1873,7 +1873,7 @@ nnfs_internal_nfs_listener(void* v)
 		    {
 		    if(!xdr_replymsg(&xdr_out,&msg_out))
 			{
-			mssError(0,"NNFS","unable to create message to send");
+			fprintf(stderr, "Warning: unable to create message to send\n");
 			}
 		    else
 			{
@@ -1882,7 +1882,7 @@ nnfs_internal_nfs_listener(void* v)
 //			nnfs_internal_dump_buffer(outbuf,i);
 			if(netSendUDP(NNFS.nfsSocket,outbuf,i,0,&remoteaddr,NULL,0) == -1)
 			    {
-			    mssError(0,"NNFS","unable to send message: %s",strerror(errno));
+			    fprintf(stderr, "Warning: unable to send message: %s\n",strerror(errno));
 			    }
 			}
 		    }
@@ -1890,11 +1890,11 @@ nnfs_internal_nfs_listener(void* v)
 	    else if(msg_in.rm_direction==REPLY)
 		{
 		/** it's a reply message.... -- ignore it **/
-		mssError(0,"reply message recieved, but we shouldn't get one.....");
+		fprintf(stderr, "Warning: reply message recieved, but we shouldn't get one.....\n");
 		}
 	    else
 		{
-		mssError(0,"NNFS","invalid message direction: %i",msg_in.rm_direction);
+		fprintf(stderr, "Warning: invalid message direction: %i\n",msg_in.rm_direction);
 		}
 	    xdr_destroy(&xdr_out);
 	    xdr_destroy(&xdr_in); // param is still valid, even after the XDR it came from is destroyed
@@ -1935,7 +1935,7 @@ void nnfs_internal_get_exports(pStructInf inf)
 
 	if (!path)
 	    {
-	    mssError(1,"NNFS","Mount point '%s' must have a path defined.",inf->SubInf[i]->Name);
+	    fprintf(stderr, "Warning: Mount point '%s' must have a path defined.\n",inf->SubInf[i]->Name);
 	    continue;
 	    }
 
@@ -1976,7 +1976,7 @@ nnfs_internal_mount_listener(void* v)
 	my_config = stLookup(CxGlobals.ParsedConfig, "net_nfs");
 	if (!my_config)
 	    {
-	    mssError(1,"NNFS","No configuration for net_nfs in config file.");
+	    fprintf(stderr, "Warning: No configuration for net_nfs in config file.\n");
 	    }
 
 	/** Got the config.  Now lookup what the UDP port is that we listen on **/
@@ -1999,7 +1999,7 @@ nnfs_internal_mount_listener(void* v)
 	mp_config=stLookup(my_config, "exports");
 	if (!mp_config)
 	    {
-	    mssError(1,"NNFS","No mount points defined in config file");
+	    fprintf(stderr, "Warning: No mount points defined in config file\n");
 	    }
 	else
 	    {
@@ -2039,7 +2039,7 @@ nnfs_internal_mount_listener(void* v)
 	    /** next line crashes quite often -- need to debug this... **/
 	    if(!xdr_callmsg(&xdr_in,&msg_in))
 		{
-		mssError(0,"NNFS","unable to retrieve message");
+		fprintf(stderr, "Warning: unable to retrieve message\n");
 		xdr_destroy(&xdr_in);
 		continue;
 		}
@@ -2134,20 +2134,20 @@ nnfs_internal_mount_listener(void* v)
 				    }
 				else
 				    {
-				    mssError(0,"NNFS","unable to parse parameters");
+				    fprintf(stderr, "Warning: unable to parse parameters\n");
 				    msg_out.rm_reply.rp_acpt.ar_stat = GARBAGE_ARGS;
 				    }
 				nmFree(param,mount_program[procnum].param_size);
 				}
 			    else
 				{
-				mssError(0,"NNFS","Bad mountd procedure requested: %lu",(unsigned long)msg_in.rm_call.cb_proc);
+				fprintf(stderr, "Warning: Bad mountd procedure requested: %lu\n",(unsigned long)msg_in.rm_call.cb_proc);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROC_UNAVAIL;
 				}
 			    }
 			else
 			    {
-			    mssError(0,"NNFS","Invalid mount version requested: %lu",(unsigned long)msg_in.rm_call.cb_vers);
+			    fprintf(stderr, "Warning: Invalid mount version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_vers);
 			    msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 			    msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 			    msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -2155,20 +2155,20 @@ nnfs_internal_mount_listener(void* v)
 			}
 		    else
 			{
-			mssError(0,"NNFS","Invalid program requested: %lu",(unsigned long)msg_in.rm_call.cb_prog);
+			fprintf(stderr, "Warning: Invalid program requested: %lu\n",(unsigned long)msg_in.rm_call.cb_prog);
 			msg_out.rm_reply.rp_acpt.ar_stat = PROG_UNAVAIL;
 			}
 		    }
 		else
 		    {
-		    mssError(0,"NNFS","Invalid RPC version requested: %lu",(unsigned long)msg_in.rm_call.cb_rpcvers);
+		    fprintf(stderr, "Warning: Invalid RPC version requested: %lu\n",(unsigned long)msg_in.rm_call.cb_rpcvers);
 		    msg_out.rm_reply.rp_stat = MSG_DENIED;
 		    msg_out.rm_reply.rp_rjct.rj_vers.low = 2;
 		    msg_out.rm_reply.rp_rjct.rj_vers.high = 2;
 		    }
 		if(!xdr_replymsg(&xdr_out,&msg_out))
 		    {
-		    mssError(0,"NNFS","unable to create message to send");
+		    fprintf(stderr, "Warning: unable to create message to send\n");
 		    }
 		else
 		    {
@@ -2178,7 +2178,7 @@ nnfs_internal_mount_listener(void* v)
 			nnfs_internal_dump_buffer(outbuf,i);
 		    if(netSendUDP(listen_socket,outbuf,i,0,&remoteaddr,NULL,0) == -1)
 			{
-			mssError(0,"NNFS","unable to send message: %s",strerror(errno));
+			fprintf(stderr, "Warning: unable to send message: %s\n",strerror(errno));
 			}
 		    }
 		xdr_free((xdrproc_t)&xdr_replymsg,(char*)&msg_out);
@@ -2189,11 +2189,11 @@ nnfs_internal_mount_listener(void* v)
 	    else if(msg_in.rm_direction==REPLY)
 		{
 		/** it's a reply message.... -- ignore it **/
-		mssError(0,"reply message recieved, but we shouldn't get one.....");
+		fprintf(stderr, "Warning: reply message recieved, but we shouldn't get one.....\n");
 		}
 	    else
 		{
-		mssError(0,"NNFS","invalid message direction: %i",msg_in.rm_direction);
+		fprintf(stderr, "Warning: invalid message direction: %i\n",msg_in.rm_direction);
 		}
 	    //xdr_free((xdrproc_t)xdr_callmsg,(char*)&msg_in);
 	    xdr_destroy(&xdr_in);

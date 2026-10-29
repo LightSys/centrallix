@@ -834,7 +834,7 @@ berkInternalRead(pBerkData inf, int maxcnt, int offset, int flags)
 	/* if inf->AutoName, then the only data that exists is in pData already */
 	if(inf->AutoName)
 	    {
-	    mssError(0, "BERK", "berkRead note: autoname hasn't been resolved yet: data possbily not complete");
+	    fprintf(stderr, "Warning: berkRead note: autoname hasn't been resolved yet: data possbily not complete\n");
 	    if(inf->pData->data)
 		return 0;
 	    mssError(0, "BERK", "berkRead tried to read from an empty uninitialized DBT opened using AUTONAME");

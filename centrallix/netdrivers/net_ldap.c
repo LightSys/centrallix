@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2017 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -245,7 +245,7 @@ nldap_i_CheckAccessLog()
 	    NLDAP.AccessLogFD = fdOpen(NLDAP.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 	    if (!NLDAP.AccessLogFD)
 		{
-		mssErrorErrno(1,"NLDAP","Could not open access_log file '%s'", NLDAP.AccessLogFile);
+		fprintf(stderr, "Warning: Could not open access_log file '%s' (%s)\n", NLDAP.AccessLogFile, strerror(errno));
 		}
 	    }
 	else
@@ -257,7 +257,7 @@ nldap_i_CheckAccessLog()
 		test_fd = fdOpen(NLDAP.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 		if (!test_fd)
 		    {
-		    mssErrorErrno(1,"NLDAP","Could not reopen access log file '%s'", NLDAP.AccessLogFile);
+		    fprintf(stderr, "Warning: Could not reopen access log file '%s' (%s)\n", NLDAP.AccessLogFile, strerror(errno));
 		    }
 		else
 		    {
@@ -428,7 +428,7 @@ nldap_i_TLSHandler(void* v)
 	    }
 	if (SSL_CTX_check_private_key(NLDAP.SSL_ctx) != 1)
 	    {
-	    mssError(1,"HTTP", "Integrity check failed for key; connection handshake might not succeed.");
+	    fprintf(stderr, "Warning: Integrity check failed for key; connection handshake might not succeed.\n");
 	    }
 	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) != 0)
 	    {
@@ -446,7 +446,7 @@ nldap_i_TLSHandler(void* v)
 		}
 	    else
 		{
-		mssErrorErrno(1, "HTTP", "Warning: could not open certificate chain file.");
+		fprintf(stderr, "Warning: could not open certificate chain file. (%s)\n", strerror(errno));
 		}
 	    }
 
@@ -493,7 +493,7 @@ nldap_i_TLSHandler(void* v)
 	    if (!thCreate(nldap_i_ConnHandler, 0, conn))
 	        {
 		nldap_i_FreeConn(conn);
-		mssError(1,"NLDAP","Could not create thread to handle TLS connection!");
+		fprintf(stderr, "Warning: Could not create thread to handle TLS connection!\n");
 		}
 	    }
 
@@ -571,7 +571,7 @@ nldap_i_Handler(void* v)
 	    if (!thCreate(nldap_i_ConnHandler, 0, conn))
 	        {
 		nldap_i_FreeConn(conn);
-		mssError(1,"NLDAP","Could not create thread to handle connection!");
+		fprintf(stderr, "Warning: Could not create thread to handle connection!\n");
 		}
 	    }
 

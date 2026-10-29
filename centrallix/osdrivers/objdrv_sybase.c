@@ -37,7 +37,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -565,7 +565,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		    {
 		    if (rval == CS_FAIL)
 			{
-			mssError(0,"SYBD","Warning: could not change default password for user '%s'", user);
+			fprintf(stderr, "Warning: could not change default password for user '%s'\n", user);
 			break;
 			}
 		    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
@@ -979,7 +979,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
-		    mssError(0, "SYBD", "Error in constraint expression %s", ptr);
+		    fprintf(stderr, "Warning: Error in constraint expression %s\n", ptr);
 		else 
 		    {
 		    if (hints->Constraint) expFreeExpression(hints->Constraint);
@@ -990,7 +990,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
-		    mssError(0, "SYBD", "Error in default expression %s", ptr);
+		    fprintf(stderr, "Warning: Error in default expression %s\n", ptr);
 		else 
 		    {
 		    if (hints->DefaultExpr) expFreeExpression(hints->DefaultExpr);
@@ -1001,7 +1001,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
-		    mssError(0, "SYBD", "Error in min expression %s", ptr);
+		    fprintf(stderr, "Warning: Error in min expression %s\n", ptr);
 		else 
 		    {
 		    if (hints->MinValue) expFreeExpression(hints->MinValue);
@@ -1012,7 +1012,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
-		    mssError(0, "SYBD", "Error in max expression %s", ptr);
+		    fprintf(stderr, "Warning: Error in max expression %s\n", ptr);
 		else 
 		    {
 		    if (hints->MaxValue) expFreeExpression(hints->MaxValue);
@@ -4647,7 +4647,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			{
 			if (is_key)
 			    {
-			    mssError(1,"SYBD","Warning: could not retrieve primary key updated record");
+			    fprintf(stderr, "Warning: could not retrieve primary key updated record\n");
 			    }
 			else
 			    {
@@ -5168,11 +5168,11 @@ sybdInitialize()
 	    maxconn = 256;
 	    if (ct_config(SYBD_INF.Context, CS_SET, CS_MAX_CONNECT, &maxconn, CS_UNUSED, NULL) == CS_FAIL)
 		{
-		mssError(1, "SYBD", "Warning: could not increase connection limit to %d", SYBD_MAX_CONNECTIONS);
+		fprintf(stderr, "Warning: could not increase connection limit to %d\n", SYBD_MAX_CONNECTIONS);
 		}
 	    else
 		{
-		mssError(1, "SYBD", "Warning: could only increase connection limit to %d instead of %d", maxconn, SYBD_MAX_CONNECTIONS);
+		fprintf(stderr, "Warning: could only increase connection limit to %d instead of %d\n", maxconn, SYBD_MAX_CONNECTIONS);
 		}
 	    }
 
