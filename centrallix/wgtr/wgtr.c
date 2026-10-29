@@ -95,15 +95,6 @@ typedef struct
     short	    Type;
     short	    Flags;
     ObjData	    Val;
-    union
-	{
-	char	    String[16];
-	MoneyType   Money;
-	DateTime    Date;
-	IntVec	    IV;
-	StringVec   SV;
-	}
-	Buf;	/** buffer for various data types **/
     } ObjProperty, *pObjProperty;
 
 
@@ -1247,15 +1238,7 @@ void wgtr_internal_FreeProperty(pObjProperty prop)
     {
 	if (!prop) return;
 
-	switch (prop->Type)
-	    {
-	    case DATA_T_STRING:
-		if (prop->Val.String) nmSysFree(prop->Val.String);
-		break;
-	    case DATA_T_CODE:
-		if (prop->Val.Generic) expFreeExpression((pExpression)prop->Val.Generic);
-		break;
-	    }
+	objFreeDeepCopy(&(prop->Val), prop->Type);
 	nmFree(prop, sizeof(ObjProperty));
 
     }
@@ -1463,43 +1446,10 @@ wgtrAddProperty(pWgtrNode widget, char* name, int datatype, pObjData val, int is
 	    {
 	    prop->Flags |= WGTR_PROP_F_NULL;
 	    }
-	else
+	else if (objDeepCopyData(val, &(prop->Val), datatype) != 0)
 	    {
-	    /** Make sure the value is assigned correctly. A little nasty when these
-	     ** two interfaces meet
-	     **/
-	    switch (datatype)
-		/** XXX Is this right? XXX **/
-		{
-		case DATA_T_INTEGER: 
-		    prop->Val.Integer = val->Integer; 
-		    break;
-		case DATA_T_STRING: 
-		    prop->Val.String = nmSysStrdup(val->String); 
-		    break;
-		case DATA_T_DOUBLE: 
-		    prop->Val.Double = val->Double; 
-		    break;
-		case DATA_T_DATETIME: 
-		    prop->Buf.Date = *(val->DateTime);
-		    prop->Val.DateTime = &(prop->Buf.Date);
-		    break;	
-		case DATA_T_MONEY:
-		    prop->Buf.Money = *(val->Money);
-		    prop->Val.Money = &(prop->Buf.Money);
-		    break;
-		case DATA_T_INTVEC:
-		    prop->Buf.IV = *(val->IntVec);
-		    prop->Val.IntVec = &(prop->Buf.IV);
-		    break;
-		case DATA_T_STRINGVEC:
-		    prop->Buf.SV = *(val->StringVec);
-		    prop->Val.StringVec = &(prop->Buf.SV);
-		    break;
-		case DATA_T_CODE:
-		    prop->Val.Generic = (void*)expDuplicateExpression((pExpression)val->Generic);    
-		    break;
-		}
+	    nmFree(prop, sizeof(ObjProperty));
+	    return -1;
 	    }
 
 	/** Remove existing property? **/
@@ -1558,36 +1508,10 @@ wgtrSetProperty(pWgtrNode widget, char* name, int datatype, pObjData val)
 	if (i == count) return -1;
 
 	/** Clean up whatever was there before **/
-	if (prop->Type == DATA_T_STRING && prop->Val.String)
-	    {
-	    nmSysFree(prop->Val.String);
-	    prop->Val.String = NULL;
-	    }
+	objFreeDeepCopy(&(prop->Val), prop->Type);
 
 	prop->Type = datatype;
-	switch (datatype)
-	    /** XXX Is this right? XXX **/
-	    {
-	    case DATA_T_INTEGER: prop->Val.Integer = val->Integer; break;
-	    case DATA_T_STRING: prop->Val.String = nmSysStrdup(val->String); break;
-	    case DATA_T_DOUBLE: prop->Val.Double = val->Double; break;
-	    case DATA_T_DATETIME: 
-		prop->Buf.Date = *(val->DateTime);
-		prop->Val.DateTime = &(prop->Buf.Date);
-		break;	
-	    case DATA_T_MONEY:
-		prop->Buf.Money = *(val->Money);
-		prop->Val.Money = &(prop->Buf.Money);
-		break;
-	    case DATA_T_INTVEC:
-		prop->Buf.IV = *(val->IntVec);
-		prop->Val.IntVec = &(prop->Buf.IV);
-		break;
-	    case DATA_T_STRINGVEC:
-		prop->Buf.SV = *(val->StringVec);
-		prop->Val.StringVec = &(prop->Buf.SV);
-		break;
-	    }
+	if (objDeepCopyData(val, &(prop->Val), datatype) != 0) return -1;
 	return 0;
     }
 
