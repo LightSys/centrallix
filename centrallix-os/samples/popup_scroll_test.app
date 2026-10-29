@@ -278,6 +278,7 @@ popup_scroll_test "widget/page"
 	x = 410; y = 100; width = 180; height = 100;
 	style = dialog;
 	title = "Pointing Window";
+	titlebar = no;
 	bgcolor = "#e0e0e0";
 	visible = no;
 	toplevel = yes;
