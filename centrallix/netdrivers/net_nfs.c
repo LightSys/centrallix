@@ -1291,6 +1291,7 @@ nnfs_internal_create_inode_map()
     if(!stInode)
 	{
 	fprintf(stderr, "Warning: Cannot parse %s\n",NNFS.inodeFile);
+	mssClearError();
 	syPostSem(NNFS.inodeFileSemaphore,1,0);
 	CXSEC_EXIT(NFS_FN_KEY);
 	return;

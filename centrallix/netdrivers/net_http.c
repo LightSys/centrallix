@@ -3255,6 +3255,7 @@ nhtInitialize()
 	    else
 		{
 		fprintf(stderr, "Warning: Could not initialize nonce/hash keystream; X-Nonce headers will not be emitted\n");
+		mssClearError();
 		}
 	    }
 

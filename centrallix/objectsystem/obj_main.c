@@ -321,6 +321,7 @@ objInitialize()
 	        if (!ct->TypeNameExpression)
 	            {
 		    fprintf(stderr, "Warning: Could not compile expression for type '%s'\n",ct->Name);
+		    mssClearError();
 		    break;
 		    }
 		}

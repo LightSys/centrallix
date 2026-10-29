@@ -119,6 +119,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	if (ifcHtmlInit(s, tree) < 0)
 	    {
 	    fprintf(stderr, "Warning: Error Initializing Html Interface code...continuing, but things might not work for client\n");
+	    mssClearError();
 	    }
 	
 	/** Auto-call startup and cleanup **/

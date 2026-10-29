@@ -192,6 +192,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		fprintf(stderr, "Warning: Module '%s' load failed\n",modpath);
+		mssClearError();
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		continue;
 		}
@@ -791,6 +792,7 @@ cxLinkSigningSetup(pStructInf my_config)
 	    if (cxssLinkInitialize((unsigned char*)key, strlen(key), sites) < 0)
 		{
 		fprintf(stderr, "Warning: Link signing initialization failed, disabling link signing\n");
+		mssClearError();
 		}
 	    }
 

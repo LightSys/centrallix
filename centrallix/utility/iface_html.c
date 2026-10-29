@@ -99,6 +99,7 @@ int ifc_internal_ObjToJS(pXString str, pObject obj)
 	    if (objGetAttrValue(obj, name, type, &val) < 0)
 		{
 		fprintf(stderr, "Warning: ifc_internal_ObjToJS - couldn't get value for property %s\n", name);
+		mssClearError();
 		name = objGetNextAttr(obj);
 		continue;
 		}

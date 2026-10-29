@@ -566,6 +566,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		    if (rval == CS_FAIL)
 			{
 			fprintf(stderr, "Warning: could not change default password for user '%s'\n", user);
+			mssClearError();
 			break;
 			}
 		    if (rval == CS_END_RESULTS || restype == CS_CMD_DONE) break;
@@ -979,7 +980,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    fprintf(stderr, "Warning: Error in constraint expression %s\n", ptr);
+		    mssClearError();
+		    }
 		else 
 		    {
 		    if (hints->Constraint) expFreeExpression(hints->Constraint);
@@ -990,7 +994,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    fprintf(stderr, "Warning: Error in default expression %s\n", ptr);
+		    mssClearError();
+		    }
 		else 
 		    {
 		    if (hints->DefaultExpr) expFreeExpression(hints->DefaultExpr);
@@ -1001,7 +1008,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    fprintf(stderr, "Warning: Error in min expression %s\n", ptr);
+		    mssClearError();
+		    }
 		else 
 		    {
 		    if (hints->MinValue) expFreeExpression(hints->MinValue);
@@ -1012,7 +1022,10 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 	    if (ptr) 
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
+		    {
 		    fprintf(stderr, "Warning: Error in max expression %s\n", ptr);
+		    mssClearError();
+		    }
 		else 
 		    {
 		    if (hints->MaxValue) expFreeExpression(hints->MaxValue);
@@ -4648,6 +4661,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			if (is_key)
 			    {
 			    fprintf(stderr, "Warning: could not retrieve primary key updated record\n");
+			    mssClearError();
 			    }
 			else
 			    {

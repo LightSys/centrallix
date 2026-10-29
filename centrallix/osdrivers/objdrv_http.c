@@ -3178,7 +3178,10 @@ httpInitialize()
 	/** Set up header nonce **/
 	HTTP_INF.NonceData = cxssKeystreamNew(NULL, 0);
 	if (!HTTP_INF.NonceData)
+	    {
 	    fprintf(stderr, "Warning: X-Nonce headers will not be emitted\n");
+	    mssClearError();
+	    }
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"HTTP - HTTP/HTTPS Protocol for objectsystem");
