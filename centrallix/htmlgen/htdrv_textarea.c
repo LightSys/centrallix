@@ -55,7 +55,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
     char* ptr;
     char name[64];
     char elementid[16];
-    //char main_bg[128];
+    char main_bg[128];
     int x=-1,y=-1,w,h;
     int is_readonly = 0;
     int is_raised = 0;
@@ -108,7 +108,7 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Background color/image? **/
-	//htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg));
+	if (htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg)) < 0) goto err;
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
@@ -138,6 +138,13 @@ httxRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTTX", "Failed to write styles.");
+	    goto err;
+	    }
+
+	/** Write textarea background. **/
+	if (main_bg[0] != '\0' && htrAddStylesheetItem_va(s, "\t\t#tx%POSbase textarea { %STR }\n", id, main_bg) != 0)
+	    {
+	    mssError(0, "HTTX", "Failed to write background styles.");
 	    goto err;
 	    }
 
