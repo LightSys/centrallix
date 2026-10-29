@@ -265,11 +265,12 @@ popup_scroll_test "widget/page"
 	btn_pane_a_c "widget/connector" { event = Click; target = point_pane; action = Point; AtWidget = "target_a"; BorderColor = "#000000"; FillColor = "#ffffc0"; }
 	}
 
+    // Over the scrollpane, just below Target A, so it is within reach of the point.
     point_pane "widget/pane"
 	{
-	x = 410; y = 360; width = 220; height = 60;
+	x = 120; y = 225; width = 250; height = 50;
 	bgcolor = "#ffffc0";
-	point_pane_lbl "widget/label" { x = 5; y = 5; width = 210; height = 50; text = "This pane points at Target A after its button is clicked."; }
+	point_pane_lbl "widget/label" { x = 5; y = 5; width = 240; height = 40; text = "This pane points at Target A after its button is clicked."; }
 	}
 
     point_win "widget/childwindow"
