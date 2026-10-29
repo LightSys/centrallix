@@ -105,8 +105,9 @@ htfuRender(pHtSession s, pWgtrNode tree, int z)
 		"input:document.getElementById('fu%POSinput'), "
 		"iframe:document.getElementById('fu%POSiframe'), "
 		"target:'%STR&JSSTR', "
+		"form:'%STR&JSSTR', "
 	    "});\n",
-	    name, id, id, id, target
+	    name, id, id, id, target, form
 	) != 0)
 	    {
 	    mssError(0, "HTFU", "Failed to write JS init call.");
