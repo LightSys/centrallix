@@ -697,6 +697,13 @@ function wn_do_move()
     /** No window is selected, so we don't have to move anything. **/
     if (wn_current === null) return true;
 
+    /** A dragged window stops pointing at its target. **/
+    if (wn_current.placement.mode === 'point')
+	{
+	htr_hide_point(wn_current);
+	delete wn_current.point_local;
+	}
+
     /** A dragged window keeps where it was dropped, moving only to stay on screen. **/
     wn_current.placement = {
 	mode: 'absolute',
