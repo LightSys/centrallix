@@ -102,6 +102,7 @@ typedef struct
 typedef struct
     {
     char name[64];
+    char bgnd[128];
     char hdr_bgnd[128];
     char colsep_bgnd[128];
     char textcolor[64];
@@ -161,13 +162,15 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 		"width:"ht_flex_format"; "
 		"height:"ht_flex_format"; "
 		"z-index:%POS; "
+		"%STR"
 	    "}\n",
 	    t->id,
 	    ht_flex_x(t->x, tree),
 	    ht_flex_y(t->y, tree),
 	    ht_flex_w(content_width, tree),
 	    ht_flex_h(t->h, tree),
-	    z + 0
+	    z + 0,
+	    t->bgnd
 	) != 0)
 	    {
 	    mssError(0, "HTTBL", "Failed to write base table CSS.");
@@ -673,6 +676,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "titlecolor", DATA_T_STRING, POD(&ptr)) == 0)
 	    strtcpy(t->titlecolor, ptr, sizeof(t->titlecolor));
 	if (!*t->titlecolor) strcpy(t->titlecolor, t->textcolor);
+	htrGetBackground(tree, NULL, !s->Capabilities.Dom0NS, t->bgnd, sizeof(t->bgnd));
 	htrGetBackground(tree, "colsep", !s->Capabilities.Dom0NS, t->colsep_bgnd, sizeof(t->colsep_bgnd));
 	htrGetBackground(tree, "hdr", !s->Capabilities.Dom0NS, t->hdr_bgnd, sizeof(t->hdr_bgnd));
 	htrGetBackground(tree, "newrow", !s->Capabilities.Dom0NS, t->newrow_bgnd, sizeof(t->newrow_bgnd));
