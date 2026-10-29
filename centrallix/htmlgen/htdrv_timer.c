@@ -65,8 +65,8 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Get auto reset and auto start settings **/
-	if (wgtrGetPropertyValue(tree,"auto_reset",DATA_T_INTEGER,POD(&auto_reset)) != 0) auto_reset = 0;
-	if (wgtrGetPropertyValue(tree,"auto_start",DATA_T_INTEGER,POD(&auto_start)) != 0) auto_start = 1;
+	auto_reset = htrGetBoolean(tree, "auto_reset", 0);
+	auto_start = htrGetBoolean(tree, "auto_start", 1);
 
 	/** Get name **/
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto err;
