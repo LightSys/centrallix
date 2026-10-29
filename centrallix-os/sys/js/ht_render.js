@@ -807,7 +807,7 @@ function htr_style_item(widget, prefix, defaults, item)
 function htr_style_data(widget, prefix, defaults)
     {
     var styleobj = {};
-    var items=['textcolor','style','font_size','font','bgcolor','padding','border_color','border_radius','border_style','align','wrap','shadow_color','shadow_radius','shadow_offset','shadow_location','shadow_angle'];
+    var items=['textcolor','style','font_size','font','bgcolor','background','padding','border_color','border_radius','border_style','align','wrap','shadow_color','shadow_radius','shadow_offset','shadow_location','shadow_angle'];
 
     for(var item in items)
 	{
@@ -922,6 +922,7 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	'text-decoration': (styleobj.style=='underline')?'underline':'none',
 	'font-family': styleobj.font,
 	'background-color': styleobj.bgcolor,
+	'background-image': styleobj.background?("URL('" + styleobj.background + "')"):'none',
 	'padding': styleobj.padding + 'px',
 	'border-radius': styleobj.border_radius + 'px',
 	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):(styleobj.border_style?('1px ' + styleobj.border_style + ' #c0c0c0'):'none'),
