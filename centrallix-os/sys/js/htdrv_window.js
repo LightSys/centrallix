@@ -683,6 +683,7 @@ function wn_do_move_internal(wn, attract, x, y)
 
     /** An attached point moves with the window it belongs to. **/
     wn_update_point(wn, {});
+    htr_clip_to_anchor(wn, wn_clip_anchor(wn));
 
     /** Clicking and dragging a window is not a click event. **/
     wn.clicked = 0;
@@ -940,6 +941,8 @@ function wn_update_point(wn, geom)
 	const divs = htutil_point(wn, wn.point_local.x, wn.point_local.y, null, null, null, wn.point1, wn.point2);
 	wn.point1 = divs.p1;
 	wn.point2 = divs.p2;
+	if (wn.point1) htr_clip_to_anchor(wn.point1, wn_clip_anchor(wn));
+	if (wn.point2) htr_clip_to_anchor(wn.point2, wn_clip_anchor(wn));
 	}
     else if (wn.resize && wn.resize.param)
 	{
@@ -951,6 +954,18 @@ function wn_update_point(wn, geom)
 	}
     }
 
+/*** Gets the anchor element that a window points at so the window can be
+ *** clipped as the anchor scrolls out of view.
+ ***
+ *** @param wn The window.
+ *** @returns The pointed-at widget's DOM node, or null if there is none.
+ ***/
+function wn_clip_anchor(wn)
+    {
+    const { mode, at } = wn.placement;
+    return (mode === 'point' && at && at.tagName) ? at : null;
+    }
+
 /** Places a single window (and its point) from its placement descriptor. **/
 function wn_place(wn)
     {
@@ -959,11 +974,13 @@ function wn_place(wn)
 	{
 	/** Nowhere to point at anymore, so stop pointing. **/
 	if (wn.placement.mode === 'point') htr_hide_point(wn);
+	htr_clip_to_anchor(wn, wn_clip_anchor(wn));
 	return;
 	}
 
     moveToAbsolute(wn, geom.x, geom.y);
     wn_update_point(wn, geom);
+    htr_clip_to_anchor(wn, wn_clip_anchor(wn));
     }
 
 /** Places a window if it is open, for re-placement on resize. **/

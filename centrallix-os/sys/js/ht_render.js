@@ -1042,7 +1042,8 @@ function htr_place_all()
 /*** Clips an element drawn at page level so it scrolls out of view with the
  *** element it follows.  On each side where the anchor extends past a
  *** clipping ancestor (such as a scrollpane), the element is clipped at that
- *** ancestor's edge.
+ *** ancestor's edge.  Once the anchor is entirely out of view, the element is
+ *** hidden.
  ***
  *** @param el The element to clip.
  *** @param anchor The element it follows, or null to remove the clip.
@@ -1070,8 +1071,15 @@ function htr_clip_to_anchor(el, anchor)
 	    }
 	}
 
-    /** Clip the element on each side where the anchor passes the clip box. **/
+    /** Hide the element if the anchor is entirely outside the clip box. **/
     const a = getPageRect(anchor);
+    if (a.bottom <= clip.top || a.top >= clip.bottom || a.right <= clip.left || a.left >= clip.right)
+	{
+	el.style.clipPath = 'inset(50%)';
+	return;
+	}
+
+    /** Clip the element on each side where the anchor passes the clip box. **/
     const r = getPageRect(el);
     const top    = (a.top    < clip.top)    ? Math.max(0, clip.top - r.top)       : 0;
     const right  = (a.right  > clip.right)  ? Math.max(0, r.right - clip.right)   : 0;
