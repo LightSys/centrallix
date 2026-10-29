@@ -766,6 +766,8 @@ char* objDataToStringTmp(int data_type, void* data_ptr, int flags);
 int objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_ptr_2);
 char* objDataToWords(int data_type, void* data_ptr);
 int objCopyData(pObjData src, pObjData dst, int type);
+int objDeepCopyData(pObjData src, pObjData dst, int type);
+void objFreeDeepCopy(pObjData data, int type);
 int objTypeID(char* name);
 int objTypeFromStr(const char* str);
 char* objTypeToStr(const int type);
