@@ -278,7 +278,7 @@ gap1 "widget/autolayoutspacer"
 
 			<action name="SetText">Called from a connector, this action sets the button's text to the value passed in through connector's "Text" parameter.</action>
 
-			<action name="Click">Triggers a Click event on the button with the "from_action" parameter set to 1.</action>
+			<action name="Click">Triggers a Click event on the button with the event's from_action parameter set to 1.</action>
 
 			<action name="Disable">This action causes the button to enter its disabled state, displaying the disable_color, if specified.</action>
 
@@ -1751,7 +1751,7 @@ mySoundPlayer "widget/execmethod"
 
 		<actions>
 
-			<action name="Clear">Clears the form to a 'no data' state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</action>
+			<action name="Clear">Clears the form to a "no data" state. Specify 1 for the 'force' parameter to clear data even if it has not been saved.</action>
 
 			<action name="Delete"><ni />Deletes the current object displayed.</action>
 
@@ -4032,6 +4032,8 @@ myTabControl "widget/tab"
 			<action name="Clear">Drops all elements from the table.</action>
 
 			<action name="ShowSelection">Enables the initial_selection property and redraws the table.</action>
+
+			<action name="Refresh">Redraws the table from its objectsource's current data.  Does not requery the server.</action>
 
 		</actions>
 
