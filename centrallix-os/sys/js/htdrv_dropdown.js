@@ -923,14 +923,14 @@ function dd_add_items(l,ary)
 function dd_mouseout(e)
     {
     var ti=dd_target_img;
-    if (ti && ti.dataset.type === 'thumb' && dd_current)
+    if (ti && ti.dataset?.type === 'thumb' && dd_current)
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
     }
 
 function dd_mousemove(e)
     {
     var ti=dd_target_img;
-    if (ti != null && ti.dataset.type === 'thumb' && dd_current && dd_current.enabled !== 'disabled')
+    if (ti != null && ti.dataset?.type === 'thumb' && dd_current && dd_current.enabled !== 'disabled')
         {
         var pl=ti.mainlayer.PaneLayer;
         var v=getClipHeight(pl)-(3*18)-4;
