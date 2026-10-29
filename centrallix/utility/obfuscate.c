@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2013 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -126,7 +126,7 @@ obf_internal_ParseWordList(pObjSession sess, pLxSession lexer, char* pathname)
     {
     pObfWord word, del, head = NULL, *tail;
     pObject words_obj = NULL;
-    pLxSession words_lexer;
+    pLxSession words_lexer = NULL;
     int t;
     char* ptr;
 
@@ -1134,7 +1134,7 @@ obfObfuscateData(pObjData srcval, pObjData dstval, int data_type, char* attrname
     {
     SHA_CTX sha1ctx;
     int round;
-    char* val_str;
+    char* val_str = NULL;
     unsigned char hash[SHA_DIGEST_LENGTH];
     unsigned char hash_novalue[SHA_DIGEST_LENGTH];
     static MoneyType m;

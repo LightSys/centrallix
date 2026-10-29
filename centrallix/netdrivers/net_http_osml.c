@@ -448,7 +448,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
     char hexbuf[3];
     int mode,mask;
     char* usrtype;
-    int i,t,n,o,cnt,start,flags,rval;
+    int i,t,n,o,cnt,start,flags,rval=0;
     pStruct subinf, find_inf;
     MoneyType m;
     DateTime dt;
@@ -920,6 +920,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		else
 		    flags = strtoi(ptr,NULL,0);
 		start = 1;
+		cnt = 0;
 		while(n > 0 && (cnt=objRead(obj,sbuf,(256>n)?n:256,(o != -1)?o:0,(o != -1)?flags|OBJ_U_SEEK:flags)) > 0)
 		    {
 		    if(start)

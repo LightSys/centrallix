@@ -8,7 +8,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -988,7 +988,7 @@ nht_i_CacheHandler(pNhtConn conn)
 int
 nht_i_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
     {
-    pNhtControlMsg cm, usr_cm;
+    pNhtControlMsg cm = NULL, usr_cm;
     pNhtControlMsgParam cmp;
     pNhtSessionData sess = conn->NhtSession;
     int i;
@@ -1009,7 +1009,6 @@ nht_i_ControlMsgHandler(pNhtConn conn, pStruct url_inf)
 	    /** Get control message id **/
 	    stAttrValue_ne(stLookup_ne(url_inf, "cx_cm_id"), &cm_ptr);
 	    usr_cm = (pNhtControlMsg)strtoul(cm_ptr, NULL, 16);
-	    cm = NULL;
 	    for(i=0;i<sess->ControlMsgsList.nItems;i++)
 		{
 		if ((pNhtControlMsg)(sess->ControlMsgsList.Items[i]) == usr_cm)
@@ -1439,7 +1438,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    return payload; //Error
 	    }
 	snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
-	snprintf(payload->path, sizeof (payload->path), NHT.UploadTmpDir);
+	strtcpy(payload->path, NHT.UploadTmpDir, sizeof(payload->path));
 	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s/%s", payload->path, payload->newname);
 
 	/** Validate that the new file name matches the mime type **/
@@ -1713,7 +1712,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 		    nht_i_WriteErrResponse(conn, 500, "Internal Server Error", NULL);
 		    goto error;
 		    }
-		snprintf(buffer, sizeof buffer, "%s/%s", find_inf->StrVal, payload->newname);
+		snprintf(buffer, sizeof buffer, "%s/%s?ls__type=application%%2foctet-stream", find_inf->StrVal, payload->newname);
 		xsConcatQPrintf(json, ",{\"fn\":\"%STR&JSONSTR\",\"up\":\"%STR&JSONSTR\"}", payload->filename, buffer);
 		obj = objOpen(nsess->ObjSess, buffer, O_CREAT | O_RDWR | O_EXCL, 0660, "application/file");
 		if (!obj)
@@ -3439,9 +3438,6 @@ nhtInitialize()
 	    /** Allowed file upload extensions **/
 	    for(i=0; stAttrValue(stLookup(my_config, "upload_extensions"), NULL, &strval, i) >= 0; i++)
 		xaAddItem(&NHT.AllowedUploadExts, nmSysStrdup(strval));
-
-	    /** Link signing key **/
-	    cxLinkSigningSetup(my_config);
 	    }
 
 	/** Start the watchdog timer thread **/

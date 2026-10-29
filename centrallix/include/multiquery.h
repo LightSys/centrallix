@@ -104,6 +104,7 @@ typedef struct _QE
 #define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_EF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 #define MQ_EF_PAGED		512		/* SELECT ... FROM PAGED ... */
+#define MQ_EF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
@@ -305,6 +306,9 @@ pQueryStructure mq_internal_AllocQS(int type);
 pQueryStructure mq_internal_FindItem(pQueryStructure tree, int type, pQueryStructure next);
 pQueryElement mq_internal_AllocQE();
 int mq_internal_FreeQE(pQueryElement qe);
+int mq_internal_AddOrderBy(pQueryElement qe, pExpression exp);
+int mq_internal_ClearOrderBy(pQueryElement qe);
+int mq_internal_nOrderBy(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);

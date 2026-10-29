@@ -3,7 +3,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -41,6 +41,7 @@
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "cxlib/util.h"
+#include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
 #include "stparse.h"
 #include "obj.h"
@@ -264,7 +265,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		    mssError(0, "IFC", "Couldn't retrieve name from '%s'", MemberObj->Pathname->Pathbuf+1);
 		    goto error;
 		    }
-		strncpy(MemberName, Val.String, 64);
+		strtcpy(MemberName, Val.String, 64);
 		/** check member type, get category **/
 		if(objGetAttrValue(MemberObj, "outer_type", DATA_T_STRING, &Val)<0)
 		    {
@@ -554,7 +555,7 @@ ifcGetHandle(pObjSession s, char* ref)
 	    fprintf(stderr, "ifcGetHandle('%s')\n", ref);
 
 	/** get the absolute path **/
-	if (ref[0] == '/') strncpy(path, ref, 512);
+	if (ref[0] == '/') strtcpy(path, ref, 512);
 	else snprintf(path, 512, "%s/%s", IFC.IfaceDir, ref);
 
 	/** check for a cached handle **/
@@ -609,7 +610,7 @@ ifcGetHandle(pObjSession s, char* ref)
 	    return NULL;
 	    }
 	/** get the absolute path again, since we destroyed it above **/
-	if (ref[0] == '/') strncpy(path, ref, 512);
+	if (ref[0] == '/') strtcpy(path, ref, 512);
 	else snprintf(path, 512, "%s/%s", IFC.IfaceDir, ref);
 	/** cache the handle **/
 	xhAdd(&(IFC.HandleCache), handle->FullPath, (void*)handle);
@@ -689,8 +690,8 @@ ifcContains(IfcHandle h, int category, char* member)
 	/** make sure that's a legit category for the given type **/
 	if (category < 0 || category >= IFC.NumCategories[h->Type])
 	    {
-	    mssError(1, "IFC", "illegal category number '%d' for category '%s' of handle '%s'",
-		category, IFC.CategoryNames[h->Type], h->DefPath);
+	    mssError(1, "IFC", "illegal category number '%d' for handle '%s' (type %d has %d categories)",
+		category, h->DefPath, h->Type, IFC.NumCategories[h->Type]);
 	    return -1;
 	    }
 	
@@ -714,8 +715,8 @@ ifcGetProperties(IfcHandle h, int category, char* member)
 	/** make sure that's a legit category for the given type **/
 	if (category < 0 || category >= IFC.NumCategories[h->Type])
 	    {
-	    mssError(1, "IFC", "illegal category number '%d' for category '%s' of handle '%s'",
-		category, IFC.CategoryNames[h->Type], h->DefPath);
+	    mssError(1, "IFC", "illegal category number '%d' for handle '%s' (type %d has %d categories)",
+		category, h->DefPath, h->Type, IFC.NumCategories[h->Type]);
 	    return NULL;
 	    }
 	
@@ -727,7 +728,7 @@ ifcGetProperties(IfcHandle h, int category, char* member)
 	if (count == i)
 	    {
 	    mssError(1, "IFC", "'%s' is not a member of category '%s' of handle '%s v%d.%d'", member,
-		IFC.CategoryNames[h->Type], h->DefPath, h->MajorVersion, h->MinorVersion);
+		IFC.CategoryNames[h->Type][category], h->DefPath, h->MajorVersion, h->MinorVersion);
 	    return NULL;
 	    }
 	return objOpen(h->ObjSession, xaGetItem(&(h->Properties[category]), i), O_RDONLY, 0600, "system/structure");
