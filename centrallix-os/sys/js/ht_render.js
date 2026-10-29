@@ -1131,8 +1131,8 @@ function htr_update_point(point_target)
  *** @param param Pointing parameters.
  *** @param param.X The x value for where to point.
  *** @param param.Y The y value for where to point.
- *** @param param.AtWidget True to point at a widget, false to point at the
- *** 	coordinates specified above.
+ *** @param param.AtWidget The widget (node or name) to point at, overriding
+ *** 	the coordinates above.
  *** @param param.BorderColor The border color of the point element.
  *** @param param.FillColor The fill color of the point element.
  ***/

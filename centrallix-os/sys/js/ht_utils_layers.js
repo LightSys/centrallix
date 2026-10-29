@@ -25,8 +25,7 @@ function htutil_tag_images(d,t,l,ml)
  *** @param wthis The widget on whose edge the point is drawn.
  *** @param x The x value for where to point.
  *** @param y The y value for where to point.
- *** @param at True to point at a widget, false to point at the coordinates
- *** 	specified above.
+ *** @param at The widget (node or name) to point at, overriding x and y.
  *** @param bc The border color of the point element.
  *** @param fc The fill color of the point element.
  *** @param p1 Point DOM node 1 (optional).
@@ -36,14 +35,21 @@ function htutil_tag_images(d,t,l,ml)
 function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
     {
     // Determine x/y to point at
+    var widget = null;
     if (at)
 	{
 	if (typeof at == 'object' && wgtrIsNode(at))
-	    var widget = at;
+	    widget = at;
 	else
-	    var widget = wgtrGetNode(at);
-	if (!widget)
-	    return { "p1":p1, "p2":p2 };
+	    widget = wgtrGetNode(wthis, at);
+	const geom = (widget) ? wgtrGetGeom(widget) : null;
+	if (!geom)
+	    return htutil_hide_point(p1, p2);
+
+	// Aim at the spot on the widget nearest this widget's center
+	const r = getPageRect(wthis);
+	x = Math.clamp(geom.x, r.left + r.width/2, geom.x + geom.width) - r.left;
+	y = Math.clamp(geom.y, r.top + r.height/2, geom.y + geom.height) - r.top;
 	}
     else if (x || y)
 	{
@@ -52,12 +58,7 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	}
     else
 	{
-	if (p1)
-	    {
-	    $(p1).css({"visibility": "hidden"});
-	    $(p2).css({"visibility": "hidden"});
-	    }
-	return { "p1":p1, "p2":p2 };
+	return htutil_hide_point(p1, p2);
 	}
 
     // Get width/height of the pane
@@ -66,7 +67,7 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 
     // Ensure x/y is within the "point diamond"
     if (x+y <= 0 || x+y >= w+h || x-y >= w || y-x >= h)
-	return { "p1":p1, "p2":p2 };
+	return htutil_hide_point(p1, p2);
 
     // Determine border color and fill color
     bc = bc?bc:wgtrGetServerProperty(wthis, "border_color", "black");
@@ -100,6 +101,11 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	var c1 = bc + " transparent transparent transparent";
 	var c2 = fc + " transparent transparent transparent";
 	var doffs = {x:0, y:-1};
+	}
+    else
+	{
+	// The target is inside this widget
+	return htutil_hide_point(p1, p2);
 	}
     if (size%2 == 0)
 	{
@@ -147,7 +153,25 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	"z-index": htr_getzindex(wthis) + 2
 	});
 
+    // Clip the point where its widget scrolls out of view
+    const anchor = (widget && widget.tagName) ? widget : null;
+    htr_clip_to_anchor(p1, anchor);
+    htr_clip_to_anchor(p2, anchor);
+
     return { "p1":p1, "p2":p2 };
+    }
+
+/*** Hides a pointing UI element, if it exists.
+ ***
+ *** @param p1 Point DOM node 1 (optional).
+ *** @param p2 Point DOM node 2 (optional).
+ *** @returns { p1, p2 } The same DOM nodes.
+ ***/
+function htutil_hide_point(p1, p2)
+    {
+    if (p1) $(p1).css({"visibility": "hidden"});
+    if (p2) $(p2).css({"visibility": "hidden"});
+    return { "p1": p1, "p2": p2 };
     }
 
 

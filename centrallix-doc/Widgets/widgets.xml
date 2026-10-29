@@ -657,7 +657,7 @@ checkbox_test "widget/page"
 
 			<action name="Open">Opens the window.  Set the "X" and "Y" parameters to the coordinates of the upper-left corner of the window to open it at that location.  If the parameter "Center" is set to any value other than no (the default), the window is centered on the specified coordinates instead.  Set the "PointAt" parameter with a widget name to make the new window point at that widget.  Set the "PointSide" parameter with a value of top, bottom, left, or right to force the window to point from that side.  Set the "PointOffset" parameter to the distance in pixels that the window should be from the widget it points at.  This action also takes the "IsModal","NoClose", and "Cascade" parameters, described in the SetVisibility action.</action>
 
-			<action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.</action>
+			<action name="Point">Creates a triangular pointer on the edge of the window to point at a given (X,Y) coordinate.  Or, set the "AtWidget" parameter with a widget name to point at that widget.  The pointer's base is twice its length and must fit on one edge, so it only reaches widgets closer than half that edge's length.</action>
 
 			<action name="Popup">Opens a window like a pop-up at the specified "X" and "Y" with the specified "Width" and "Height" (in pixels).  Or, set the "PopTo" parameter with a widget name to copy those properties from it.  In either case, the "OffsetX" and "OffsetY" parameters move the popup right and down respectively.  Finally, specify the "ExtendTo" parameter with a widget name to ensure that the popup extends to that parameter.</action>
 
@@ -3097,7 +3097,7 @@ MyPage "widget/page"
 
 		<actions>
 
-			<action name="Point">Creates a triangular pointer on the edge of a pane to point at a given (X,Y) coordinate.</action>
+			<action name="Point">Creates a triangular pointer on the edge of a pane to point at a given (X,Y) coordinate.  Or, set the "AtWidget" parameter with a widget name to point at that widget.  The pointer's base is twice its length and must fit on one edge, so it only reaches widgets closer than half that edge's length.</action>
 
 			<action name="Resize">Changes the width and height of the pane to the given (Width,Height).</action>
 
