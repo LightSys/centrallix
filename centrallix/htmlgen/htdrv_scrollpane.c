@@ -97,16 +97,8 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Get the background color or image. **/
-	char background_color[64] = "";
-	if (wgtrGetPropertyValue(tree, "bgcolor", DATA_T_STRING, POD(&str)) == 0)
-	    {
-	    strtcpy(background_color, str, sizeof(background_color));
-	    }
-	char background_image[64] = "";
-	if (wgtrGetPropertyValue(tree, "background", DATA_T_STRING, POD(&str)) == 0)
-	    {
-	    strtcpy(background_image, str, sizeof(background_image));
-	    }
+	char background[128];
+	if (htrGetBackground(tree, NULL, 1, background, sizeof(background)) < 0) goto err;
 	
 	/** Get visibility. **/
 	const int visible = htrGetBoolean(tree, "visible", 1);
@@ -146,6 +138,13 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	) != 0)
 	    {
 	    mssError(0, "HTSPANE", "Failed to write JS init call.");
+	    goto err;
+	    }
+	
+	/** Write the scrollpane background. **/
+	if (background[0] != '\0' && htrAddStylesheetItem_va(s, "\t\t#sp%POSpane { %STR }\n", id, background) != 0)
+	    {
+	    mssError(0, "HTSPANE", "Failed to write scrollpane background CSS.");
 	    goto err;
 	    }
 	
