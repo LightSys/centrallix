@@ -92,7 +92,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	
 	/** Background color/image? **/
-	htrGetBackground(tree, NULL, 0, main_bg, sizeof(main_bg));
+	if (htrGetBackground(tree, NULL, 1, main_bg, sizeof(main_bg)) < 0) return -1;
 
 	/** Military Time? **/
 	if (wgtrGetPropertyValue(tree,"hrtype",DATA_T_INTEGER,POD(&ptr)) == 0 && (intptr_t)ptr == 24)
@@ -158,12 +158,14 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 		"top:"ht_flex_format"; "
 		"width:"ht_flex_format"; "
 		"z-index:%POS; "
+		"%STR"
 	    "}\n",
 	    id,
 	    ht_flex_x(x, tree),
 	    ht_flex_y(y, tree),
 	    ht_flex_w(w, tree),
-	    z
+	    z,
+	    main_bg
 	) != 0)
 	    {
 	    mssError(0, "HTCL", "Failed to write base CSS.");
@@ -236,7 +238,7 @@ htclRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** HTML body <DIV> element for the base layer. **/
 	htrAddBodyItem_va(s, "<DIV ID=\"cl%POSbase\">\n",id);
-	htrAddBodyItem_va(s, "    <BODY %STR><TABLE width=%POS height=%POS border=0 cellpadding=0 cellspacing=0><TR><TD></TD></TR></TABLE></BODY>\n",main_bg,w,h);
+	htrAddBodyItem_va(s, "    <TABLE width=%POS height=%POS border=0 cellpadding=0 cellspacing=0><TR><TD></TD></TR></TABLE>\n",w,h);
 	htrAddBodyItem_va(s, "    <DIV ID='cl%POScon1' CLASS='cl%POScon' style='visibility:inherit;'></DIV>\n", id, id);
 	htrAddBodyItem_va(s, "    <DIV ID='cl%POScon2' CLASS='cl%POScon' style='visibility:hidden;'></DIV>\n", id, id);
 	htrAddBodyItem(s,    "</DIV>\n");
