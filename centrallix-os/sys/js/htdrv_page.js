@@ -337,6 +337,7 @@ function pg_init_box_side(layer, parent_layer, x, y, w, h, color, z)
     htr_setbgcolor(layer, color);
     htr_setzindex(layer, z);
     htr_setvisibility(layer, 'inherit');
+    htr_clip_to_anchor(layer, parent_layer);
     
     return;
     }

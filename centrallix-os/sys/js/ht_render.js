@@ -1039,6 +1039,48 @@ function htr_place_all()
 	}
     }
 
+/*** Clips an element drawn at page level so it scrolls out of view with the
+ *** element it follows.  On each side where the anchor extends past a
+ *** clipping ancestor (such as a scrollpane), the element is clipped at that
+ *** ancestor's edge.
+ ***
+ *** @param el The element to clip.
+ *** @param anchor The element it follows, or null to remove the clip.
+ ***/
+function htr_clip_to_anchor(el, anchor)
+    {
+    el.style.clipPath = '';
+    if (!anchor) return;
+
+    /** Intersect the padding boxes of the anchor's clipping ancestors. **/
+    const clip = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+    for (let p = anchor.parentElement; p && p !== document.body; p = p.parentElement)
+	{
+	const style = getComputedStyle(p);
+	const rect = getPageRect(p);
+	if (style.overflowX !== 'visible')
+	    {
+	    clip.left = Math.max(clip.left, rect.left + p.clientLeft);
+	    clip.right = Math.min(clip.right, rect.left + p.clientLeft + p.clientWidth);
+	    }
+	if (style.overflowY !== 'visible')
+	    {
+	    clip.top = Math.max(clip.top, rect.top + p.clientTop);
+	    clip.bottom = Math.min(clip.bottom, rect.top + p.clientTop + p.clientHeight);
+	    }
+	}
+
+    /** Clip the element on each side where the anchor passes the clip box. **/
+    const a = getPageRect(anchor);
+    const r = getPageRect(el);
+    const top    = (a.top    < clip.top)    ? Math.max(0, clip.top - r.top)       : 0;
+    const right  = (a.right  > clip.right)  ? Math.max(0, r.right - clip.right)   : 0;
+    const bottom = (a.bottom > clip.bottom) ? Math.max(0, r.bottom - clip.bottom) : 0;
+    const left   = (a.left   < clip.left)   ? Math.max(0, clip.left - r.left)     : 0;
+    if (top || right || bottom || left)
+	el.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+    }
+
 /** Hides the point belonging to a target, if it has one. **/
 function htr_hide_point(point_target)
     {

@@ -1016,8 +1016,12 @@ function dt_position(l) {
 	if (!l.PaneLayer) return;
 	const offset = getPageRect(l);
 	pg_positionpopup(l.PaneLayer, offset.left, offset.top, l.h, l.w);
+	htr_clip_to_anchor(l.PaneLayer, l);
 	if (l.PaneLayer2 && l.form && l.form.mode == 'Query' && l.sbr)
+	    {
 	    pg_positionpopup(l.PaneLayer2, offset.left + getClipWidth(l.PaneLayer) + 5, offset.top, l.h, l.w);
+	    htr_clip_to_anchor(l.PaneLayer2, l);
+	    }
 }
 
 // Update the position of open datetimes, ignoring those that are closed.

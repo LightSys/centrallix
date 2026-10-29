@@ -241,14 +241,14 @@ popup_scroll_test "widget/page"
 	x = 410; y = 160; width = 220; height = 30;
 	text = "Window: point at A";
 	bgcolor = "#3a2a8a";
-	btn_win_a_c "widget/connector" { event = Click; target = point_win; action = Open; PointAt = "target_a"; PointSide = "right"; }
+	btn_win_a_c "widget/connector" { event = Click; target = point_win; action = Open; PointAt = "target_a"; PointSide = runclient("right"); }
 	}
     btn_win_b "widget/textbutton"
 	{
 	x = 410; y = 200; width = 220; height = 30;
 	text = "Window: point at B";
 	bgcolor = "#3a2a8a";
-	btn_win_b_c "widget/connector" { event = Click; target = point_win; action = Open; PointAt = "target_b"; PointSide = "right"; }
+	btn_win_b_c "widget/connector" { event = Click; target = point_win; action = Open; PointAt = "target_b"; PointSide = runclient("right"); }
 	}
     btn_pop_a "widget/textbutton"
 	{

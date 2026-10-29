@@ -400,6 +400,7 @@ function dd_position(l)
     if (!l || !l.PaneLayer) return;
     var offset = getPageRect(l);
     pg_positionpopup(l.PaneLayer, offset.left, offset.top, l.h, getClipWidth(l));
+    htr_clip_to_anchor(l.PaneLayer, l);
     }
 
 /*** Move the pane of an open dropdown to follow its widget, ignoring dropdowns
