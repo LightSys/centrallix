@@ -3897,7 +3897,7 @@ myTabControl "widget/tab"
 
 			<property name="row_border_radius" type="string">Determines the sharpness of the row corners, smaller is more sharp.</property>
 
-			<property name="rowcashe_size" type="integer">How many rows are shown in the table.</property>
+			<property name="rowcache_size" type="integer">How many rows are shown in the table.</property>
 
 			<property name="rowheight" type="integer">The height of the individual rows in pixels.  Default is 15 pixels.</property>
 
@@ -4262,7 +4262,7 @@ term1 "widget/terminal"
 
 			<property name="height" type="integer">The height of the textarea, in pixels</property>
 
-			<property name="maxchars" type="integer">The maximum number of characters the textarea should accept from the user</property>
+			<property name="max_chars" type="integer">The maximum number of characters the textarea should accept from the user</property>
 
 			<property name="mode" type="string">Can hold text, html, or wiki and display.</property>
 
