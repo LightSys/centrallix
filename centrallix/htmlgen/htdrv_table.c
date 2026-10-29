@@ -581,6 +581,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
     int rval;
     pWgtrNode children[HTTBL_MAX_COLS];
     httbl_col* col;
+    int image_maxwidth = 0;
+    int image_maxheight = 0;
 
 	/*** Only render "widget/table". Other widgets (e.g. table-column or
 	 *** table-row-detail) are rendered elsewhere (see links below).
@@ -713,6 +715,10 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		}
 	    }
 
+	/** Get the default image size limits for columns. **/
+	wgtrGetPropertyValue(tree, "image_max_width", DATA_T_INTEGER, POD(&image_maxwidth));
+	wgtrGetPropertyValue(tree, "image_max_height", DATA_T_INTEGER, POD(&image_maxheight));
+
 	/** Get specific column data for each column. **/
 	t->ncols = wgtrGetMatchingChildList(tree, "widget/table-column", children, sizeof(children)/sizeof(pWgtrNode));
 	for (i=0;i<t->ncols;i++)
@@ -745,6 +751,8 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		if (wgtrGetPropertyValue(sub_tree, "caption_textcolor", DATA_T_STRING,POD(&ptr)) == 0)
 		    strtcpy(col->caption_textcolor, ptr, sizeof(col->caption_textcolor));
 		wgtrGetPropertyValue(sub_tree, "width", DATA_T_INTEGER,POD(&(col->width)));
+		col->image_maxwidth = image_maxwidth;
+		col->image_maxheight = image_maxheight;
 		wgtrGetPropertyValue(sub_tree, "image_maxwidth", DATA_T_INTEGER,POD(&(col->image_maxwidth)));
 		wgtrGetPropertyValue(sub_tree, "image_maxheight", DATA_T_INTEGER,POD(&(col->image_maxheight)));
 		if (wgtrGetPropertyValue(sub_tree, "title", DATA_T_STRING,POD(&ptr)) == 0)
