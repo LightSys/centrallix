@@ -477,13 +477,24 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	warnFail(fflush(stdout));
 
-	/** Write the warning message. **/
-	fprintf(stderr, "Warning: %s:%d: %s: ", file, line, module);
+	/** Write the warning message using the requested logging method. **/
 	va_list args;
 	va_start(args, message);
-	vfprintf(stderr, message, args);
+	if (strcmp(MSS.LogMethod, "syslog") == 0)
+	    {
+	    char warn_msg[256];
+	    vsnprintf(warn_msg, sizeof(warn_msg), message, args);
+	    syslog(LOG_WARNING, "Warning: %s:%d: %s: %s\n", file, line, module, warn_msg);
+	    }
+	else
+	    {
+	    FILE* out = (strcmp(MSS.LogMethod, "stdout") == 0) ? stdout : stderr;
+	    fprintf(out, "Warning: %s:%d: %s: ", file, line, module);
+	    vfprintf(out, message, args);
+	    fputc('\n', out);
+	    fflush(out);
+	    }
 	va_end(args);
-	fputc('\n', stderr);
     }
 
 
