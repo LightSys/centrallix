@@ -19,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -284,6 +284,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Page init **/
 	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
+	if (s->ClientInfo->Zoom > 0.0)
+	    htrAddScriptInit_va(s, "    pg_init_zoom(%DBL);\n", s->ClientInfo->Zoom);
 	htrAddScriptInit_va(s, "    pg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n", name, attract);
 	htrAddScriptInit_va(s, "    pg_username = '%STR&JSSTR';\n", mssUserName());
 	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
@@ -369,6 +371,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	htrAddStylesheetItem_va(s, "\thtml { overflow:hidden; }\n");
+	if (s->ClientInfo->Zoom > 0.0)
+	    htrAddStylesheetItem_va(s, "\thtml { zoom:%DBL; }\n", s->ClientInfo->Zoom);
 	htrAddStylesheetItem_va(s, "\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");

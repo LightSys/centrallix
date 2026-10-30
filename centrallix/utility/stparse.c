@@ -288,6 +288,7 @@ stAddAttr(pStructInf inf, char* name)
 	memccpy(newinf->Name, name,0,ST_NAME_STRLEN-1);
 	newinf->Name[ST_NAME_STRLEN-1] = '\0';
 	newinf->Flags |= ST_F_ATTRIB;
+	if (inf->Flags & ST_F_VERSION2) newinf->Flags |= ST_F_VERSION2;
 	if (stAddInf(inf, newinf) < 0)
 	    {
 	    stFreeInf(newinf);
@@ -314,6 +315,7 @@ stAddGroup(pStructInf inf, char* name, char* type)
 	memccpy(newinf->UsrType, type,0,ST_USRTYPE_STRLEN-1);
 	newinf->Name[ST_USRTYPE_STRLEN-1] = '\0';
 	newinf->Flags |= ST_F_GROUP;
+	if (inf->Flags & ST_F_VERSION2) newinf->Flags |= ST_F_VERSION2;
 	if (stAddInf(inf, newinf) < 0)
 	    {
 	    stFreeInf(newinf);
