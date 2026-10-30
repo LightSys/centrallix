@@ -504,29 +504,29 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 		    strcpy(col->group, "yes");
 		col->allow_sorting = htrGetBoolean(sub_tree, "allow_sorting", t->allow_sorting);
 
-		// ItemList column type properties
+		/** ItemList column type properties **/
 		if (!strcmp(col->type, "itemlist"))
 		    {
 		    if (wgtrGetPropertyValue(sub_tree, "item_separator", DATA_T_STRING,POD(&ptr)) == 0)
 			strtcpy(col->item_separator, ptr, sizeof(col->item_separator));
 		    else
 			strcpy(col->item_separator, ",");
-		    
+
 		    if (wgtrGetPropertyValue(sub_tree, "item_type", DATA_T_STRING,POD(&ptr)) == 0)
 			strtcpy(col->item_type, ptr, sizeof(col->item_type));
 		    else
 			strcpy(col->item_type, "text");
-		    
+
 		    if (wgtrGetPropertyValue(sub_tree, "item_source", DATA_T_STRING,POD(&ptr)) == 0)
 			strtcpy(col->item_source, ptr, sizeof(col->item_source));
 		    else
 			strcpy(col->item_source, "field");
-		   
+
 		    col->item_width = 0;
 		    col->item_height = 0;
 		    wgtrGetPropertyValue(sub_tree, "item_width", DATA_T_INTEGER,POD(&(col->item_width)));
 		    wgtrGetPropertyValue(sub_tree, "item_height", DATA_T_INTEGER,POD(&(col->item_height)));
-		    
+
 		    if (wgtrGetPropertyValue(sub_tree, "item_spacing", DATA_T_INTEGER,POD(&(col->item_spacing))) != 0)
 			col->item_spacing = 2;
 		    }
