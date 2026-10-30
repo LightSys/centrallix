@@ -988,6 +988,7 @@ start(void* v)
     char* logmethod;
     char* logprog;
     int log_all_errors;
+    int warn_history;
     pFile fd;
     pLxSession cmdfile;
     int alloc;
@@ -1022,9 +1023,10 @@ start(void* v)
 	if (stAttrValue(stLookup(mss_conf,"log_progname"),NULL,&logprog,0) < 0) logprog = "centrallix";
 	log_all_errors = 0;
 	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
+	if (stAttrValue(stLookup(mss_conf,"warn_history"),&warn_history,NULL,0) < 0) warn_history = MSS_WARN_HISTORY_DEFAULT;
 
 	/** Initialize the various parts **/
-	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
+	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog, warn_history);
 	nmInitialize();
 	expInitialize();
 	if (objInitialize() < 0) exit(1);

@@ -20,7 +20,7 @@ test(char** tname)
 
 	*tname = "mtlexer-13 normal/oversized integers";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	iter = 20000;
 	iv=0;

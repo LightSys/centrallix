@@ -46,8 +46,8 @@
 #define MSS_USERNAME_SIZE	32
 
 
-/** Number of recent warnings kept per session **/
-#define MSS_WARN_HISTORY	16
+/** Default number of recent warnings kept per session **/
+#define MSS_WARN_HISTORY_DEFAULT	16
 
 
 /** Structure for a session. **/
@@ -76,7 +76,7 @@ typedef struct
 
 
 /** User auth Functions **/
-int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname);
+int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname, int warn_history);
 char* mssUserName();
 char* mssPassword();
 int mssAuthenticate(char* username, char* password, int bypass_crypt);

@@ -22,7 +22,7 @@ test(char** tname)
 
 	*tname = "mtlexer-08 string quoting";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	iter = 150000;
 

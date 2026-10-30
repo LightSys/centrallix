@@ -58,6 +58,7 @@ static struct
     char	LogMethod[32];
     int		LogAllErrors;
     char	AppName[32];
+    int		WarnHistory;
     }
     MSS;
 
@@ -88,7 +89,7 @@ mssLog(int level, char* msg)
 /*** mssInitialize - init the globals, etc.
  ***/
 int 
-mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname)
+mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname, int warn_history)
     {
 
 	/** Setup auth method & log method settings **/
@@ -104,6 +105,14 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
 	    {
 	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
 	    }
+
+	/** Setup warning history **/
+	if (warn_history < 0)
+	    {
+	    mssWarn("MSS", "warn_history must not be negative (got %d); using %d.", warn_history, MSS_WARN_HISTORY_DEFAULT);
+	    warn_history = MSS_WARN_HISTORY_DEFAULT;
+	    }
+	MSS.WarnHistory = warn_history;
    
 	/** Setup the sessions list **/
 	xaInit(&(MSS.Sessions),16);
@@ -413,7 +422,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 
 	/** Initialize the error info **/
 	xaInit(&(s->ErrList), 16);
-	xrqInit(&s->WarnList, MSS_WARN_HISTORY + 1);
+	xrqInit(&s->WarnList, MSS.WarnHistory + 1);
 	xhInit(&s->Params, 17, 0);
 
 	/** Add to session list **/
@@ -517,9 +526,9 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	    }
 	va_end(args);
 
-	/** Only sessions store recent warnings. **/
+	/** Only sessions store recent warnings, if history is enabled. **/
 	pMtSession s = thGetParam(NULL, "mss");
-	if (s == NULL) goto end;
+	if (s == NULL || MSS.WarnHistory == 0) goto end;
 
 	/** Format the warning using an XString. **/
 	if (warnFail(xsInit(&warn_msg_xstring)) != 0) goto end;
@@ -534,7 +543,7 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	if (UNLIKELY(allocated_warn_msg == NULL)) goto end;
 
 	/** Drop the oldest warning when the list is full. **/
-	if (xrqCount(&s->WarnList) >= MSS_WARN_HISTORY)
+	if (xrqCount(&s->WarnList) >= MSS.WarnHistory)
 	    nmSysFree(xrqDequeue(&s->WarnList));
 
 	/** Store the warning. **/
