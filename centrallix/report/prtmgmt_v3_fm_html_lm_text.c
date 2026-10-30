@@ -115,9 +115,10 @@ prt_htmlfm_IsMarkersOnly(pPrtObjStream scan, pPrtObjStream linetail)
     }
 
 
-/*** prt_htmlfm_Justification() - finds the justification of a run of
- *** objects: that of its last non-empty object, or of its last object if
- *** the run has only style changes (empty strings) and border decorations.
+/*** prt_htmlfm_Justification() - returns the justification for the run of
+ *** objects.  Uses the justification of the last non-empty object, or the
+ *** justification of last if the run is empty (aka. it's only style changes
+ *** and border decorations).
  ***
  *** @param first The first object in the run.
  *** @param last The last object in the run.
