@@ -55,11 +55,8 @@ printWarningInternal(const int error_code, const char* c_str, const char* file_n
 	if (error_code != -1)
 	    strtcatf(extra_info_buf, sizeof(extra_info_buf), &i, " (error code %d)", error_code);
 
-	/** Print the warning message. **/
-	fprintf(stderr,
-	    "%s:%d: Warning! %s%s.\n",
-	    file_name, line_number, c_str, extra_info_buf
-	);
+	/** Log the warning. **/
+	mss_i_warn("WARN", (char*)file_name, line_number, "%s%s.", c_str, extra_info_buf);
 
     return;
     }

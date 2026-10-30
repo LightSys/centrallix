@@ -58,8 +58,12 @@ static struct
     char	LogMethod[32];
     int		LogAllErrors;
     char	AppName[32];
+    int		WarnHistory;
     }
     MSS;
+
+/** Set while mss_i_warn() runs, so warnings raised while handling a warning do not recurse. **/
+static bool MssInWarn = false;
 
 
 /*** mssMemoryErr - called by newmalloc when a memory allocation fails.
@@ -85,7 +89,7 @@ mssLog(int level, char* msg)
 /*** mssInitialize - init the globals, etc.
  ***/
 int 
-mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname)
+mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname, int warn_history)
     {
 
 	/** Setup auth method & log method settings **/
@@ -101,6 +105,14 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
 	    {
 	    syslog(LOG_INFO, "%s initializing...", MSS.AppName);
 	    }
+
+	/** Setup warning history **/
+	if (warn_history < 0)
+	    {
+	    mssWarn("MSS", "warn_history must not be negative (got %d); using %d.", warn_history, MSS_WARN_HISTORY_DEFAULT);
+	    warn_history = MSS_WARN_HISTORY_DEFAULT;
+	    }
+	MSS.WarnHistory = warn_history;
    
 	/** Setup the sessions list **/
 	xaInit(&(MSS.Sessions),16);
@@ -247,7 +259,8 @@ mssUnlinkSession(pMtSession s)
 int 
 mssAuthenticate(char* username, char* password, int bypass_crypt)
     {
-    pMtSession s;
+    int rval = -1;
+    pMtSession s = NULL;
     char* encrypted_pwd;
     char* pwd;
     struct passwd* pw = NULL;
@@ -262,10 +275,13 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
     int found_user;
     gid_t grps[16];
     int n_grps;
+    pXArray err_list = NULL;
+    pXRingQueue warn_list = NULL;
+    pXHashTable params = NULL;
 
 	/** Allocate a new session structure. **/
 	s = (pMtSession)nmMalloc(sizeof(MtSession));
-	if (!s) return -1;
+	if (!s) goto end;
 	memset(s, 0, sizeof(MtSession));
 	s->LinkCnt = 1;
 	strtcpy(s->UserName, username, sizeof(s->UserName));
@@ -275,9 +291,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	if (strchr(username,':'))
 	    {
 	    mssError(1, "MSS", "Attempt to use invalid username '%s'", username);
-	    cxsecShred(s, sizeof(MtSession));
-	    nmFree(s,sizeof(MtSession));
-	    return -1;
+	    goto end;
 	    }
 
 	/** Attempt to authenticate. **/
@@ -285,12 +299,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	    {
 	    /** Use system auth (passwd/shadow files) **/
 	    pw = getpwnam(s->UserName);
-	    if (!pw)
-		{
-		cxsecShred(s, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
-		}
+	    if (!pw) goto end;
 #ifdef HAVE_SHADOW_H
 	    spw = getspnam(s->UserName);
 	    if (!spw)
@@ -310,12 +319,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	    if (!bypass_crypt)
 		{
 		encrypted_pwd = (char*)crypt(s->Password,pwd);
-		if (!encrypted_pwd || strcmp(encrypted_pwd,pwd))
-		    {
-		    cxsecShred(s, sizeof(MtSession));
-		    nmFree(s,sizeof(MtSession));
-		    return -1;
-		    }
+		if (!encrypted_pwd || strcmp(encrypted_pwd,pwd)) goto end;
 		}
 	    }
 	else if (!strcmp(MSS.AuthMethod, "altpasswd"))
@@ -325,9 +329,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	    if (!altpass_fd)
 		{
 		mssErrorErrno(1, "MSS", "Could not open auth file '%s'", MSS.AuthFile);
-		cxsecShred(s, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
+		goto end;
 		}
 	    altpass_lxs = mlxOpenSession(altpass_fd, MLX_F_LINEONLY | MLX_F_EOF);
 
@@ -338,11 +340,9 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		if (t == MLX_TOK_ERROR)
 		    {
 		    mssError(0, "MSS", "Could not read auth file '%s'", MSS.AuthFile);
-		    cxsecShred(s, sizeof(MtSession));
-		    nmFree(s,sizeof(MtSession));
 		    mlxCloseSession(altpass_lxs);
 		    fdClose(altpass_fd, 0);
-		    return -1;
+		    goto end;
 		    }
 		mlxCopyToken(altpass_lxs, pwline, 80);
 		if (strlen(username) < strlen(pwline) && !strncmp(pwline, username, strlen(username)) && pwline[strlen(username)] == ':')
@@ -366,26 +366,42 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		if (!bypass_crypt)
 		    {
 		    encrypted_pwd = (char*)crypt(s->Password,pwd);
-		    if (strcmp(encrypted_pwd,pwd))
-			{
-			cxsecShred(s, sizeof(MtSession));
-			nmFree(s,sizeof(MtSession));
-			return -1;
-			}
+		    if (strcmp(encrypted_pwd,pwd)) goto end;
 		    }
 		}
 	    else
 		{
-		cxsecShred(s, sizeof(MtSession));
-		nmFree(s,sizeof(MtSession));
-		return -1;
+		goto end;
 		}
 	    }
 	else
 	    {
 	    mssError(1, "MSS", "Invalid auth method '%s'", MSS.AuthMethod);
-	    return -1;
+	    goto end;
 	    }
+
+	/** Initialize the error info **/
+	if (xaInit(&(s->ErrList), 16) < 0)
+	    {
+	    mssError(1, "MSS", "Failed to allocate error list for user '%s'.", username);
+	    goto end;
+	    }
+	err_list = &(s->ErrList);
+	if (xrqInit(&s->WarnList, MSS.WarnHistory + 1) < 0)
+	    {
+	    mssError(1, "MSS",
+		"Failed to allocate warning history of size %d for user '%s'.",
+		MSS.WarnHistory, username
+	    );
+	    goto end;
+	    }
+	warn_list = &(s->WarnList);
+	if (xhInit(&s->Params, 17, 0) < 0)
+	    {
+	    mssError(1, "MSS", "Failed to allocate session params for user '%s'.", username);
+	    goto end;
+	    }
+	params = &(s->Params);
 
 	/** Set the session information **/
 	if (!strcmp(MSS.AuthMethod,"system"))
@@ -408,14 +424,27 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	thSetGroupID(NULL,s->GroupID);
 	thSetUserID(NULL,s->UserID);
 
-	/** Initialize the error info **/
-	xaInit(&(s->ErrList), 16);
-	xhInit(&s->Params, 17, 0);
-
 	/** Add to session list **/
 	xaAddItem(&(MSS.Sessions), (void*)s);
 
-    return 0;
+	/** Success. **/
+	rval = 0;
+
+    end:
+	/** Free the session if authentication failed. **/
+	if (rval != 0)
+	    {
+	    if (params != NULL) xhDeInit(params);
+	    if (warn_list != NULL) xrqDeInit(warn_list);
+	    if (err_list != NULL) xaDeInit(err_list);
+	    if (s != NULL)
+		{
+		cxsecShred(s, sizeof(MtSession));
+		nmFree(s,sizeof(MtSession));
+		}
+	    }
+
+    return rval;
     }
 
 
@@ -442,8 +471,10 @@ mssEndSession(pMtSession s)
 	    thSetUserID(NULL,0);
 	    }
 
-	/** Free the session info and error list **/
+	/** Free the session info, error list, and warning list **/
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
+	while (xrqCount(&s->WarnList) > 0) nmSysFree(xrqDequeue(&s->WarnList));
+	xrqDeInit(&s->WarnList);
 	xhClear(&s->Params, NULL, NULL);
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
@@ -474,11 +505,26 @@ mssEndSession(pMtSession s)
 void
 mss_i_warn(char* module, char* file, int line, char* message, ...)
     {
+    XString warn_msg_xstring; warn_msg_xstring.String = NULL;
+    char* allocated_warn_msg;
+    va_list args;
+
+	/** Print nested warnings directly to stderr. **/
+	if (UNLIKELY(MssInWarn))
+	    {
+	    va_start(args, message);
+	    fprintf(stderr, "Warning: %s:%d: %s: ", file, line, module);
+	    vfprintf(stderr, message, args);
+	    fputc('\n', stderr);
+	    va_end(args);
+	    return;
+	    }
+	MssInWarn = true;
+
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	warnFail(fflush(stdout));
 
 	/** Write the warning message using the requested logging method. **/
-	va_list args;
 	va_start(args, message);
 	if (strcmp(MSS.LogMethod, "syslog") == 0)
 	    {
@@ -495,6 +541,41 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	    fflush(out);
 	    }
 	va_end(args);
+
+	/** Only sessions store recent warnings, if history is enabled. **/
+	pMtSession s = (thCurrent() != NULL) ? thGetParam(NULL, "mss") : NULL;
+	if (s == NULL || MSS.WarnHistory == 0) goto end;
+
+	/** Format the warning using an XString. **/
+	if (warnFail(xsInit(&warn_msg_xstring)) != 0) goto end;
+	bool format_ok = (warnNeg(xsConcatPrintf(&warn_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
+	va_start(args, message);
+	format_ok &= (warnNeg(xsGenPrintf_va(xsWrite, &warn_msg_xstring, NULL, NULL, message, args)) >= 0);
+	va_end(args);
+	if (UNLIKELY(!format_ok)) goto end;
+
+	/** Allocate space for the warning text. **/
+	allocated_warn_msg = warnNull(nmSysStrdup(xsString(&warn_msg_xstring)));
+	if (UNLIKELY(allocated_warn_msg == NULL)) goto end;
+
+	/** Drop the oldest warning when the list is full. **/
+	if (xrqCount(&s->WarnList) >= MSS.WarnHistory)
+	    nmSysFree(xrqDequeue(&s->WarnList));
+
+	/** Store the warning. **/
+	if (warnNeg(xrqEnqueue(&s->WarnList, (void*)allocated_warn_msg)) < 0)
+	    {
+	    nmSysFree(allocated_warn_msg);
+	    goto end;
+	    }
+
+    end:
+	/** Clean up. **/
+	if (warn_msg_xstring.String != NULL)
+	    warnFail(xsDeInit(&warn_msg_xstring));
+	MssInWarn = false;
+
+	return;
     }
 
 
@@ -698,6 +779,7 @@ int
 mssStringError(pXString str)
     {
     int i;
+    int n_warnings;
     pMtSession s;
 
 	/** Get session. **/
@@ -710,7 +792,18 @@ mssStringError(pXString str)
 	    {
 	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
 	    }
-    	
+
+	/** Print recent warnings, newest first to match the error stack. **/
+	n_warnings = xrqCount(&s->WarnList);
+	if (n_warnings > 0)
+	    {
+	    xsConcatenate(str, "Recent warnings:\r\n", -1);
+	    for(i=n_warnings-1;i>=0;i--)
+		{
+		xsConcatPrintf(str, "--- %s\r\n", (char*)xrqGetItem(&s->WarnList, i));
+		}
+	    }
+
     return 0;
     }
 

@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -40,6 +40,8 @@ xrqInit(pXRingQueue this, int initSize)
 	/** sensible default if caller forgot to fill it in **/
 	if (this->nAlloc==0) this->nAlloc = 16;
 	this->Items = (void**)nmSysMalloc(this->nAlloc*sizeof(void*));
+	if (!this->Items)
+	    return -1;
 	this->nextIn=0;
 	this->nextOut=0;
 
@@ -117,6 +119,19 @@ xrqDequeue(pXRingQueue this)
 	}
     else
 	return NULL;
+    }
+
+
+/*** xrqGetItem - return the item at the given index without removing it.
+ *** Index 0 is the oldest item.  Returns NULL if the index is out of range.
+ ***/
+void*
+xrqGetItem(pXRingQueue this, int index)
+    {
+
+	if (index < 0 || index >= xrqCount(this)) return NULL;
+
+    return this->Items[(this->nextOut + index) % this->nAlloc];
     }
 
 

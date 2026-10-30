@@ -246,6 +246,9 @@ Whether to log all errors (yes) or just those occurring outside of a user's sess
 .TP 8
 \fBlog_progname = "programname";\fP
 The program name to use when logging via syslog, typically set to "centrallix".
+.TP 8
+\fBwarn_history = number;\fP
+The number of recent warnings kept per session and appended to error messages. Defaults to 16; 0 disables warning history.
 .SH "MODULES"
 Centrallix supports runtime-loadable modules, which are handy for providing optional functionality such as database server connectivity.  This allows binary distributions to be made of Centrallix where not all installations will have the runtime libraries needed to load all possible database drivers.
 
@@ -327,6 +330,7 @@ centrallix "system/config"
         log_method = "stdout";
         log_all_errors = "yes";
         log_progname = "centrallix";
+        warn_history = 16;
         }
 
     // Loadable Modules

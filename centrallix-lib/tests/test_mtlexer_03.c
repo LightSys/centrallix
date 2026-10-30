@@ -26,7 +26,7 @@ test(char** tname)
 
 	*tname = "mtlexer-03 BID#156 - line length based failure";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	iter = 6000;
 

@@ -61,7 +61,7 @@ test(char** tname)
 
 	*tname = "mtlexer-22 semicolon ends a filename";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	/** Path longer than the token buffer, followed by a semicolon. **/
 	longpath[0] = '/';
