@@ -1,0 +1,4 @@
+##NAME Object info of a multipart and a part
+
+show /tests/MimePartTypes.eml
+show /tests/MimePartTypes.eml/attachment1.txt

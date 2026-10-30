@@ -1,0 +1,8 @@
+##NAME MimeTest unencoded content
+
+query select :name, start = substring(:objcontent, 1, 40) from object /tests/mimetest/M3-1.eml
+query select :name, start = substring(:objcontent, 1, 40) from object /tests/mimetest/M4.1.1.eml
+query select :name, start = substring(:objcontent, 1, 40) from object /tests/mimetest/M4.1.4.eml
+query select :name, start = substring(:objcontent, 1, 40) from object /tests/mimetest/M5.eml
+query select :name, start = substring(:objcontent, 1, 40) from object /tests/mimetest/EM1.2.eml
+query select :name, start = substring(:objcontent, 1, 40) from object /tests/mimetest/EM4.2.eml
