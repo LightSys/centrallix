@@ -97,10 +97,10 @@ function ib_mouseup(e)
     if (ib_cur_img)
         {
 	var ly = ib_cur_img.layer;
-        if (e.pageX >= $(ly).offset().left &&
-            e.pageX < $(ly).offset().left + $(ly).width() &&
-            e.pageY >= $(ly).offset().top &&
-            e.pageY < $(ly).offset().top + $(ly).height())
+        if (e.pageX >= getPageRect(ly).left &&
+            e.pageX < getPageRect(ly).left + $(ly).width() &&
+            e.pageY >= getPageRect(ly).top &&
+            e.pageY < getPageRect(ly).top + $(ly).height())
         /*if (e.pageX >= getPageX(ly) &&
             e.pageX < getPageX(ly) + getClipWidth(ly) &&
             e.pageY >= getPageY(ly) &&
