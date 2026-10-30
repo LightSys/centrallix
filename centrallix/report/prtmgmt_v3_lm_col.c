@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <errno.h>
 #include "barcode.h"
 #include "report.h"
@@ -20,7 +21,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -239,6 +240,15 @@ prt_collm_ChildResizeReq(pPrtObjStream this, pPrtObjStream child, double req_wid
 		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
 		return 0;
 
+	    /*** An empty child at the top of a column must grow anyway, since a
+	     *** column break would leave it just as empty and short.
+	     ***/
+	    const bool child_empty = (!child->ContentHead
+		|| (child->ContentHead->X + child->ContentHead->Width == 0.0 && !child->ContentHead->Next));
+	    if (child->Y < PRT_FP_FUDGE && child_empty && !(parent->Flags & PRT_OBJ_F_FIXEDSIZE) &&
+		    this->LayoutMgr->Resize(this,this->Width,new_h) >= 0)
+		return 0;
+
 	    /** If not in the last column, simply force a break to make things start
 	     ** spreading out between the columns. 
 	     **/
@@ -315,6 +325,7 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 	    {
 	    rval = 0;
 	    ow = this->Width;
+	    oh = this->Height;
 	    npw = new_width - this->Width + this->Parent->Width;
 	    nph = new_height + this->Y + this->Parent->MarginTop + this->Parent->MarginBottom;
 	    if (nph < this->Parent->Height) nph = this->Parent->Height;
@@ -332,11 +343,11 @@ prt_collm_Resize(pPrtObjStream this, double new_width, double new_height)
 		    col_obj->X += (new_width - ow);
 		    }
 		}
-            // TODO Initialize oh and ow before use
 	    if (rval >= 0 && new_height != oh)
 		{
 		this->Height = new_height;
 		}
+
 	    return rval;
 	    }
 
@@ -688,5 +699,3 @@ prt_collm_Initialize()
 
     return 0;
     }
-
-

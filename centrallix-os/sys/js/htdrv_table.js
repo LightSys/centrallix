@@ -39,9 +39,9 @@ function tbld_format_cell(cell, color)
     if (!colinfo.widget || colinfo.widget.visible)
 	{
 	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image' && colinfo.type != 'checkbox')
-	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
+	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no' && colinfo.wrap != 'newline');
 	else
-	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
+	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no' && colinfo.wrap != 'newline');
 	if (colinfo.wrap != 'no')
 	    str = htutil_nlbr(str);
 	if (cell.subkind != 'headercell' && colinfo.type == 'progress')
@@ -96,15 +96,15 @@ function tbld_format_cell(cell, color)
 		var sep = colinfo.item_separator || ',';
 		var items = this.ParseItemlist(cell, String(cell.data), sep);
 		cell.itemlist = items;
-		
+
 		if (items.length > 0)
 		    {
 		    var item_html = '<div style="display:flex; flex-wrap:wrap; gap:' + (colinfo.item_spacing || 2) + 'px;">';
-		    
+
 		    for (var k = 0; k < items.length; k++)
 			{
 			var item_text = htutil_nlbr(htutil_encode(String(items[k].item), true));
-			
+
 			var item_style = 'display:inline-block; ';
 			var item_width = wgtrGetServerProperty(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item_width') || 0;
 			var item_height = wgtrGetServerProperty(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item_height') || 0;
@@ -112,19 +112,19 @@ function tbld_format_cell(cell, color)
 			    item_style += 'width:' + item_width + 'px; ';
 			if (item_height)
 			    item_style += 'height:' + item_height + 'px; overflow:hidden; ';
-			
+
 			// Apply styling from widget properties (including item_wrap)
 			//item_style = htutil_encode(item_style + htutil_getstyle(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item', {}));
 			item_style = item_style + htutil_getstyle(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item', {});
-			
+
 			if (colinfo.item_type == 'image')
 			    {
-			    // Image item
-			    var img_url = items[k];
+			    // Image item, left empty for non-local URLs so divs stay aligned with cell.itemlist
+			    var img_url = String(items[k].item);
+			    var img_html = '';
 			    if (img_url && !(img_url.indexOf(':') >= 0 || img_url.indexOf('//') >= 0 || img_url.charAt(0) != '/'))
-				{
-				item_html += '<div style="' + item_style + '"><img src="' + htutil_encode(img_url) + '" style="max-width:100%; max-height:100%;"></div>';
-				}
+				img_html = '<img src="' + img_url.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" style="max-width:100%; max-height:100%;">';
+			    item_html += '<div style="' + item_style + '">' + img_html + '</div>';
 			    }
 			else
 			    {
@@ -132,7 +132,7 @@ function tbld_format_cell(cell, color)
 			    item_html += '<div style="' + item_style + '">' + item_text + '</div>';
 			    }
 			}
-		    
+
 		    item_html += '</div>';
 		    txt = item_html;
 		    }
@@ -176,14 +176,14 @@ function tbld_format_cell(cell, color)
 	if (cell.capdata)
 	    {
 	    // Caption (added to any of the above types)
-	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		captxt = htutil_nlbr(captxt);
 	    capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	    }
 	if (cell.titledata)
 	    {
-	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
+	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		titletxt = htutil_nlbr(titletxt);
 	    titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
@@ -517,7 +517,7 @@ function tbld_parse_itemlist(cell, str, separator)
     var i = 0;
 
     var has_keys = htr_boolean(wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'item_keys'));
-    
+
     while (i < str.length)
 	{
 	if (str[i] == '\\' && i + 1 < str.length)
@@ -547,11 +547,11 @@ function tbld_parse_itemlist(cell, str, separator)
 	    i++;
 	    }
 	}
-    
+
     // Add the last item if there is one
     if (current_item !== '' || items.length > 0)
 	items.push({item:current_item, key:current_key});
-    
+
     return items;
     }
 
@@ -1589,7 +1589,7 @@ function tbld_apply_row_geom(row, firstcol)
 	    new_w -= (this.bdr_width*2 + this.colsep);
 	$(c).width(new_w);
 	setRelativeX(c, this.cols[j].xoffset);
-	if (this.cols[j].wrap != 'no')
+	if (this.cols[j].wrap != 'no' && this.cols[j].wrap != 'newline')
 	    change_wrapped_cell = true;
 	}
     return change_wrapped_cell;
@@ -2693,9 +2693,9 @@ function tbld_find_clicked_item(cell, e)
 	cell = cell.cell;
     if (!cell.data || cell.data == 'null' || cell.data == '')
 	return null;
-    
+
     var items = cell.itemlist;
-    
+
     // Find the item container div
     var container = cell.firstChild;
     if (!container || container.tagName != 'P')
@@ -2703,7 +2703,7 @@ function tbld_find_clicked_item(cell, e)
     var flex_div = container.firstChild;
     if (!flex_div || flex_div.tagName != 'DIV')
 	return null;
-    
+
     // Check each item div
     var item_divs = $(flex_div).children('div');
     for (var i = 0; i < item_divs.length && i < items.length; i++)
@@ -2712,7 +2712,7 @@ function tbld_find_clicked_item(cell, e)
 	var offset = getPageRect(item_div);
 	var width = $(item_div).outerWidth();
 	var height = $(item_div).outerHeight();
-	
+
 	if (e.pageX >= offset.left && e.pageX < offset.left + width &&
 	    e.pageY >= offset.top && e.pageY < offset.top + height)
 	    {
@@ -2724,7 +2724,7 @@ function tbld_find_clicked_item(cell, e)
 	    };
 	    }
 	}
-    
+
     return null;
     }
 
@@ -2747,7 +2747,7 @@ function tbld_create_drag_outline(item_element, table)
 	'z-index': 10000,
 	'box-sizing': 'border-box'
     });
-    
+
     // Copy the text content
     var content = $(item_element).clone();
     $(content).css({
@@ -2755,7 +2755,7 @@ function tbld_create_drag_outline(item_element, table)
 	'pointer-events': 'none'
     });
     $(outline).append(content);
-    
+
     document.body.appendChild(outline);
     return outline;
     }
@@ -3187,13 +3187,13 @@ function tbld_mousemove(e)
 	{
 	var dx = e.pageX - t.itemlist_drag_pending.start_x;
 	var dy = e.pageY - t.itemlist_drag_pending.start_y;
-	
+
 	// Drag threshold of 5 pixels
 	if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 	    {
 	    // Create the drag outline
 	    var outline = tbld_create_drag_outline(t.itemlist_drag_pending.item.element, t);
-	    
+
 	    // Start the drag
 	    t.ifcProbe(ifEvent).Activate("DragStartItem", {
 		Item: t.itemlist_drag_pending.item.text,
@@ -3205,7 +3205,7 @@ function tbld_mousemove(e)
 		OffsetX: dx,
 		OffsetY: dy
 	    });
-	    
+
 	    // Track active drag
 	    t.itemlist_drag_active = t.itemlist_drag_pending;
 	    t.itemlist_drag_active.outline = outline;
@@ -3214,7 +3214,7 @@ function tbld_mousemove(e)
 	    t.itemlist_drag_pending = null;
 	    }
 	}
-    
+
     // Update drag outline position
     if (t && t.itemlist_drag_active && t.itemlist_drag_active.outline)
 	{
@@ -3302,7 +3302,7 @@ function tbld_mouseup(e)
 		    {
 		    // Find drop position within the itemlist
 		    var drop_item = ly.table.FindClickedItem(ly, e);
-		    
+
 		    t.ifcProbe(ifEvent).Activate("DragDropItem", {
 			Item: t.itemlist_drag_active.item.text,
 			ItemKey: t.itemlist_drag_active.item.key,
@@ -3311,7 +3311,7 @@ function tbld_mouseup(e)
 			SourceColumn: t.cols[t.itemlist_drag_active.column].fieldname,
 			SourceColumnName: t.cols[t.itemlist_drag_active.column].name,
 			TargetRow: ly.row.rownum,
-			TargetColumn: t.cols[ly.colnum].fieldname,
+			TargetColumn: drop_colinfo.fieldname,
 			TargetColumnName: drop_colinfo.name,
 			BeforeItem: drop_item ? drop_item.text : null,
 			AfterItem: null // Could be enhanced to determine before/after
@@ -3342,7 +3342,7 @@ function tbld_mouseup(e)
 		    ColumnName: t.cols[t.itemlist_drag_active.column].name
 		});
 		}
-	    
+
 	    // Remove the drag outline
 	    tbld_remove_drag_outline(t.itemlist_drag_active.outline);
 	    t.itemlist_drag_active = null;
@@ -3359,11 +3359,11 @@ function tbld_mouseup(e)
 		ColumnName: t.cols[t.itemlist_drag_pending.column].name
 	    });
 	    }
-	
+
 	// Clear pending drag if click didn't turn into drag
 	if (t.itemlist_drag_pending)
 	    t.itemlist_drag_pending = null;
-	
+
 	// Clear the global reference
 	window.tbld_itemlist_drag_table = null;
 	}
