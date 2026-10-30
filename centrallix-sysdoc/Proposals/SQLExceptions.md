@@ -44,14 +44,14 @@ If a statement fails due to an internal or OSML error rather than a `RAISERROR` 
 | 1          | EPERM - operation not permitted (system-level / inherent)
 | 2          | ENOENT - the object or file does not exist
 | 12         | ENOMEM - out of memory
-| 13         | EACCESS - access denied (by policy, file permissions, etc.)
+| 13         | EACCES - access denied (by policy, file permissions, etc.)
 | 17         | EEXIST - the object or file exists (i.e. already exists)
 | 22         | EINVAL - Invalid argument or parameter (e.g., bad function argument, parameter failed hints evaluation, etc.)
 | 33         | EDOM - Mathematical function argument outside of allowed range of values
 | 34         | ERANGE - Mathematical result cannot be represented: overflow, underflow, etc.
 | 200        | Syntax or parse error: any malformed command or object
 
-Values matching common Linux errno codes can be matched as numeric values or as their symbolic equivalents (e.g. access denied can be matched as numeric 13 or as EACCESS).
+Values matching common Linux errno codes can be matched as numeric values or as their symbolic equivalents (e.g. access denied can be matched as numeric 13 or as EACCES).
 
 ## RAISERROR statement
 
@@ -159,14 +159,14 @@ Though raised errors will be placed on the mssError() error stack, it can also b
 int objQueryError(pObjQuery qy, int* error_id, char* error_message, int maxlen);
 ```
 
-This function will store the error ID and message in `error_id` and `error_message`, respectively.  Its return value is 0 if the error information was successfully stored, or (-1) if no error message was available (i.e., the script succeeded).  If `error_id` and/or `error_message` are NULL, this script returns the 0 or -1 return value without storing either or both the ID and message, and can thus be used to check for an error condition without actually storing the id or message.
+This function will store the error ID and message in `error_id` and `error_message`, respectively.  Its return value is 0 if the error information was successfully stored, or (-1) if no error message was available (i.e., the script succeeded).  If `error_id` and/or `error_message` are NULL, this function returns the 0 or -1 return value without storing either or both the ID and message, and can thus be used to check for an error condition without actually storing the id or message.
 
 ## OSML Driver Interface Updates
 
 The query process in the OSML (and the MultiQuery layer itself) will need to feed error data back to the OSML:
 
 ```c
-int obj_internal_RaiseQueryError(pObjQuery qy, int error_id, char error_message);
+int obj_internal_RaiseQueryError(pObjQuery qy, int error_id, char* error_message);
 ```
 
 Note that this method is not for general mssError() style low level errors, but instead for errors that are noted during the execution of a query or SQL command.  An operation failing, logging error messages via mssError(), and returning a failure status can still result in an error condition that can later be caught or sent to the user.
