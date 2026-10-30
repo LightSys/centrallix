@@ -4994,7 +4994,7 @@ rpt_internal_DoImage(pRptData inf, pStructInf image, pRptSession rs, pRptSource 
 	    }
 
 	/** Load the image **/
-	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0, inf->Obj->Session, NULL) != 0)
+	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&imgsrc), 0, inf->Obj->Session, NULL, 0) != 0)
 	    {
 	    mssError(1,"RPT","report/image object must have a valid 'source' attribute");
 	    return -1;
@@ -5051,7 +5051,7 @@ rpt_internal_DoSvg(pRptData inf, pStructInf image, pRptSession rs, pRptSource th
 	    }
 
 	/** Load the image **/
-	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&svgsrc), 0, inf->Obj->Session, NULL) != 0)
+	if (stGetAttrValueOSML(stLookup(image,"source"), DATA_T_STRING, POD(&svgsrc), 0, inf->Obj->Session, NULL, 0) != 0)
 	    {
 	    mssError(1,"RPT","report/svg object must have a valid 'source' attribute");
 	    return -1;
@@ -6903,4 +6903,3 @@ rptInitialize()
 
     return 0;
     }
-
