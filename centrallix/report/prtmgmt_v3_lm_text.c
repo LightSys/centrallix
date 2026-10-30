@@ -413,6 +413,27 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
     }
 
 
+/*** prt_textlm_LineJustification() - returns the justification for the line
+ *** ending at line_tail.  We use the justification of the last non-empty
+ *** object, or the justification of line_tail if the line is empty (aka. it's
+ *** only style changes).
+ ***/
+int
+prt_textlm_LineJustification(pPrtObjStream line_tail)
+    {
+    pPrtObjStream scan;
+
+	for(scan=line_tail; scan; scan=scan->Prev)
+	    {
+	    if (scan->ObjType->TypeID != PRT_OBJ_T_STRING || scan->Content[0] != '\0') return scan->Justification;
+	    if (scan->Flags & PRT_OBJ_F_XSET) break;
+	    if (scan->Prev && scan->Prev->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
+	    }
+
+    return line_tail->Justification;
+    }
+
+
 /*** prt_textlm_FindWrapPoint() - finds a suitable location within a given
  *** string object to break it in order to do word wrapping.  Basically,
  *** a hyphen or a space makes a wrap point.  This function will find the
@@ -1009,7 +1030,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** New line needed.
 		 ** Justify previous line?
 		 **/
-		prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
+		prt_textlm_JustifyLine(this->ContentTail, prt_textlm_LineJustification(this->ContentTail));
 
 		/** Start a new line at the left edge **/
 		objptr->X = 0.0;
@@ -1256,7 +1277,7 @@ prt_textlm_Finalize(pPrtObjStream this)
     pPrtTextLMData lm_inf = (pPrtTextLMData)(this->LMData);
 
 	/** Finish off justification? **/
-	if (this->ContentTail) prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
+	if (this->ContentTail) prt_textlm_JustifyLine(this->ContentTail, prt_textlm_LineJustification(this->ContentTail));
 
 	/** Border? **/
 	if (lm_inf->AreaBorder.nLines > 0)
