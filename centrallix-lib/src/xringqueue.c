@@ -40,6 +40,8 @@ xrqInit(pXRingQueue this, int initSize)
 	/** sensible default if caller forgot to fill it in **/
 	if (this->nAlloc==0) this->nAlloc = 16;
 	this->Items = (void**)nmSysMalloc(this->nAlloc*sizeof(void*));
+	if (!this->Items)
+	    return -1;
 	this->nextIn=0;
 	this->nextOut=0;
 

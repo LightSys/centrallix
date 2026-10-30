@@ -399,6 +399,35 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	    return -1;
 	    }
 
+	/** Initialize the error info **/
+	if (xaInit(&(s->ErrList), 16) < 0)
+	    {
+	    mssError(1, "MSS", "Failed to allocate error list for user '%s'.", username);
+	    cxsecShred(s, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
+	    return -1;
+	    }
+	if (xrqInit(&s->WarnList, MSS.WarnHistory + 1) < 0)
+	    {
+	    mssError(1, "MSS",
+		"Failed to allocate warning history of size %d for user '%s'.",
+		MSS.WarnHistory, username
+	    );
+	    xaDeInit(&(s->ErrList));
+	    cxsecShred(s, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
+	    return -1;
+	    }
+	if (xhInit(&s->Params, 17, 0) < 0)
+	    {
+	    mssError(1, "MSS", "Failed to allocate session params for user '%s'.", username);
+	    xrqDeInit(&s->WarnList);
+	    xaDeInit(&(s->ErrList));
+	    cxsecShred(s, sizeof(MtSession));
+	    nmFree(s,sizeof(MtSession));
+	    return -1;
+	    }
+
 	/** Set the session information **/
 	if (!strcmp(MSS.AuthMethod,"system"))
 	    {
@@ -419,11 +448,6 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 	thSetSupplementalGroups(NULL, n_grps, grps);
 	thSetGroupID(NULL,s->GroupID);
 	thSetUserID(NULL,s->UserID);
-
-	/** Initialize the error info **/
-	xaInit(&(s->ErrList), 16);
-	xrqInit(&s->WarnList, MSS.WarnHistory + 1);
-	xhInit(&s->Params, 17, 0);
 
 	/** Add to session list **/
 	xaAddItem(&(MSS.Sessions), (void*)s);

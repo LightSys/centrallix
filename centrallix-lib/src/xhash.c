@@ -114,7 +114,8 @@ xhInit(pXHashTable this, int rows, int keylen)
 	this->nItems = 0;
 
 	/** Initialize xarray **/
-	xaInit(&(this->Rows),this->nRows);
+	if (xaInit(&(this->Rows),this->nRows) < 0)
+	    return -1;
 	for(i=0;i<this->nRows;i++) xaAddItem(&(this->Rows),NULL);
 
     return 0;
