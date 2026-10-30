@@ -527,7 +527,7 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	va_end(args);
 
 	/** Only sessions store recent warnings, if history is enabled. **/
-	pMtSession s = thGetParam(NULL, "mss");
+	pMtSession s = (thCurrent() != NULL) ? thGetParam(NULL, "mss") : NULL;
 	if (s == NULL || MSS.WarnHistory == 0) goto end;
 
 	/** Format the warning using an XString. **/
