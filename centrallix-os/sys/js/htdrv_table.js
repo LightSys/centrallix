@@ -13,42 +13,6 @@
 window.tbld_touches = [];
 window.tbld_itemlist_drag_table = null;
 
-// Updates all table content after a table is resized.
-function tbld_resize(table)
-    {
-    // Set the new size.
-    const { width, height } = getPageRect(table);
-    table.param_width = width;
-    table.param_height = height;
-
-    // The columns and rows span the content width (inside the cell spacing).
-    const row_width = width - table.cellhspacing*2;
-
-    // Recompute the visible-area geometry: vis_height, scroll container, and
-    // scrollbar area.
-    table.UpdateGeom();
-
-    // Update the scroll thumb, no data message, and reflow the columns.
-    if (table.rows.first !== null) table.Scroll(table.scroll_y, false);
-    else table.UpdateThumb(false);
-    table.UpdateNDM($(table).children('#ndm'));
-    table.ReflowWidth(row_width);
-
-    // Resize all rows.
-    const { rows } = table;
-    for (let i = (table.has_header) ? 0 : rows.first; i <= rows.last; i++)
-	{
-	const row = rows[i];
-	if (!row) continue;
-	$(row).css({ width: (row.w = row_width) });
-	}
-    }
-
-function tbld_deinit()
-    {
-    htr_unwatch_size(this);
-    }
-
 function tbld_log_status()
     {
     var rowstr = '';
@@ -75,9 +39,9 @@ function tbld_format_cell(cell, color)
     if (!colinfo.widget || colinfo.widget.visible)
 	{
 	if (cell.subkind != 'headercell' && colinfo.type != 'check' && colinfo.type != 'image' && colinfo.type != 'checkbox')
-	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no');
+	    var str = htutil_encode(String(htutil_obscure(cell.data)), colinfo.wrap != 'no' && colinfo.wrap != 'newline');
 	else
-	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no');
+	    var str = htutil_encode(String(cell.data), colinfo.wrap != 'no' && colinfo.wrap != 'newline');
 	if (colinfo.wrap != 'no')
 	    str = htutil_nlbr(str);
 	if (cell.subkind != 'headercell' && colinfo.type == 'progress')
@@ -97,33 +61,27 @@ function tbld_format_cell(cell, color)
 		var bartext = wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'bar_textcolor');
 		if (!bartext) bartext = 'black';
 		bartext = String(bartext).replace(/[^a-z0-9A-Z#]/g, "");
-		const width_percent = ('' + (100 * Math.clamp(0, val, 1)) + '%').replace(/[^0-9.%]/g, "");
-		const percent = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
+		var actpct = '' + (100 * ((val < 0)?0:((val > 1)?1:val))) + '%';
+		actpct = String(actpct).replace(/[^0-9.%]/g, "");
+		var pct = '' + (Math.round(val * 100 / roundto) * roundto) + '%';
 		if (val >= 0.5)
 		    {
-		    innertxt = percent + ' ';
+		    innertxt = pct + ' ';
 		    outertxt = '';
 		    }
 		else
 		    {
 		    innertxt = ' ';
-		    outertxt = ' ' + percent;
+		    outertxt = ' ' + pct;
 		    }
-		txt =
-		    '<div style="display:inline-block; width:100%;">' +
-			'<div style="' +
-			    'display:inline-block; ' +
-			    `color:${bartext}; ` +
-			    `background-color:${barcolor}; ` +
-			    `padding:${pad}px; ` +
-			    'text-align:right; ' +
-			    'min-width:1px; ' +
-			    `width:${width_percent};`+
-			'">' +
-			    htutil_encode(innertxt) +
-			'</div>' +
-			((outertxt) ? ('<span style="padding:' + pad + 'px;">' + htutil_encode(outertxt) + '</span>') : '') +
-		    '</div>';
+		txt = '<div style="display:inline-block; width:100%;">' +
+			  '<div style="display:inline-block; color:' + bartext + '; background-color:' + barcolor + '; padding:' + pad + 'px; text-align:right; min-width:1px; width:' + actpct + ';">' +
+			      htutil_encode(innertxt) + 
+			  '</div>' +
+			  (outertxt?('<span style="padding:' + pad + 'px;">' +
+			      htutil_encode(outertxt) + 
+			  '</span>'):'') + 
+		      '</div>';
 		}
 	    else
 		txt = '';
@@ -138,15 +96,15 @@ function tbld_format_cell(cell, color)
 		var sep = colinfo.item_separator || ',';
 		var items = this.ParseItemlist(cell, String(cell.data), sep);
 		cell.itemlist = items;
-		
+
 		if (items.length > 0)
 		    {
 		    var item_html = '<div style="display:flex; flex-wrap:wrap; gap:' + (colinfo.item_spacing || 2) + 'px;">';
-		    
+
 		    for (var k = 0; k < items.length; k++)
 			{
 			var item_text = htutil_nlbr(htutil_encode(String(items[k].item), true));
-			
+
 			var item_style = 'display:inline-block; ';
 			var item_width = wgtrGetServerProperty(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item_width') || 0;
 			var item_height = wgtrGetServerProperty(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item_height') || 0;
@@ -154,19 +112,19 @@ function tbld_format_cell(cell, color)
 			    item_style += 'width:' + item_width + 'px; ';
 			if (item_height)
 			    item_style += 'height:' + item_height + 'px; overflow:hidden; ';
-			
+
 			// Apply styling from widget properties (including item_wrap)
 			//item_style = htutil_encode(item_style + htutil_getstyle(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item', {}));
 			item_style = item_style + htutil_getstyle(wgtrFindDescendent(cell.table, colinfo.name, colinfo.ns), 'item', {});
-			
+
 			if (colinfo.item_type == 'image')
 			    {
-			    // Image item
-			    var img_url = items[k];
+			    // Image item, left empty for non-local URLs so divs stay aligned with cell.itemlist
+			    var img_url = String(items[k].item);
+			    var img_html = '';
 			    if (img_url && !(img_url.indexOf(':') >= 0 || img_url.indexOf('//') >= 0 || img_url.charAt(0) != '/'))
-				{
-				item_html += '<div style="' + item_style + '"><img src="' + htutil_encode(img_url) + '" style="max-width:100%; max-height:100%;"></div>';
-				}
+				img_html = '<img src="' + img_url.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '" style="max-width:100%; max-height:100%;">';
+			    item_html += '<div style="' + item_style + '">' + img_html + '</div>';
 			    }
 			else
 			    {
@@ -174,7 +132,7 @@ function tbld_format_cell(cell, color)
 			    item_html += '<div style="' + item_style + '">' + item_text + '</div>';
 			    }
 			}
-		    
+
 		    item_html += '</div>';
 		    txt = item_html;
 		    }
@@ -212,20 +170,20 @@ function tbld_format_cell(cell, color)
 	else
 	    {
 	    // Text
-	    txt = '<span onclick="() => {}">' + str + '</span>';
+	    txt = '<span onclick="function() {}">' + str + '</span>';
 	    }
 	style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
 	if (cell.capdata)
 	    {
 	    // Caption (added to any of the above types)
-	    captxt = '<span onclick="() => {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no') + '</span>';
+	    captxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		captxt = htutil_nlbr(captxt);
 	    capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	    }
 	if (cell.titledata)
 	    {
-	    titletxt = '<span onclick="() => {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no') + '</span>';
+	    titletxt = '<span onclick="function() {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		titletxt = htutil_nlbr(titletxt);
 	    titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});
@@ -293,9 +251,10 @@ function tbld_format_cell(cell, color)
 
 	// If an image, then test for final image loading, and readjust row
 	// height once the image is loaded.
-	const img = cell?.firstChild?.firstChild;
-	if (img?.tagName === 'IMG')
+	//
+	if (cell.firstChild && cell.firstChild.firstChild && cell.firstChild.firstChild.tagName == 'IMG')
 	    {
+	    var img = cell.firstChild.firstChild;
 	    img.layer = cell;
 	    $(img).one("load", function()
 		{
@@ -399,10 +358,18 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	var max = this.osrc.LastRecord + this.is_new;
 	}
 
-    // Redraw the no data message.
-    var $ndm = $(this).children('#ndm');
-    if (max >= min) $ndm.hide();
-    else { $ndm.show(); this.UpdateNDM($ndm); }
+    // "no data" message?
+    var ndm = $(this).children('#ndm');
+    if (max >= min)
+	{
+	ndm.hide();
+	}
+    else
+	{
+	ndm.show();
+	ndm.text(wgtrGetServerProperty(this,"nodata_message"));
+	ndm.css({"top":((this.param_height - ndm.height())/2) + "px", "color":wgtrGetServerProperty(this,"nodata_message_textcolor") });
+	}
 
     // (re)draw the loaded records
     var selected_position_changed = false;
@@ -550,7 +517,7 @@ function tbld_parse_itemlist(cell, str, separator)
     var i = 0;
 
     var has_keys = htr_boolean(wgtrGetServerProperty(wgtrFindDescendent(this, this.cols[cell.colnum].name, this.cols[cell.colnum].ns), 'item_keys'));
-    
+
     while (i < str.length)
 	{
 	if (str[i] == '\\' && i + 1 < str.length)
@@ -580,11 +547,11 @@ function tbld_parse_itemlist(cell, str, separator)
 	    i++;
 	    }
 	}
-    
+
     // Add the last item if there is one
     if (current_item !== '' || items.length > 0)
 	items.push({item:current_item, key:current_key});
-    
+
     return items;
     }
 
@@ -695,7 +662,7 @@ function tbld_get_selected_column_geom()
     if (t.last_clicked && t.last_clicked.cell && t.last_clicked.cell != t.last_clicked && this.colnum && t.cols[this.colnum].type == 'itemlist')
 	{
 	// Itemlist item geometry
-	return { x:getPageX(t.last_clicked), y:getPageY(t.last_clicked), width:$(t.last_clicked).width(), height:$(t.last_clicked).height() };
+	return { x:getPageRect(t.last_clicked).left, y:getPageRect(t.last_clicked).top, width:$(t.last_clicked).width(), height:$(t.last_clicked).height() };
 	}
     else
 	{
@@ -704,7 +671,7 @@ function tbld_get_selected_column_geom()
 	    var obj = this.table.rows[this.table.cr];
 	else
 	    var obj = this.table;
-	return { x:getPageX(obj) + this.col.xoffset, y:getPageY(obj), width:this.col.width, height:$(obj).height() };
+	return { x:getPageRect(obj).left + this.col.xoffset, y:getPageRect(obj).top, width:this.col.width, height:$(obj).height() };
 	}
     }
 
@@ -715,15 +682,22 @@ function tbld_get_selected_geom()
 	var obj = this.rows[this.cr];
     else
 	var obj = this;
-    return { x:getPageX(obj), y:getPageY(obj), width:$(obj).width(), height:$(obj).height() };
+    return { x:getPageRect(obj).left, y:getPageRect(obj).top, width:$(obj).width(), height:$(obj).height() };
     }
 
-function tbld_get_height(node) {
-    return parseFloat($(node).css("height"));
-}
-function tbld_set_height(node, new_height) {
-    $(node).css("height", new_height + "px");
-}
+
+function tbld_css_height(element, seth)
+    {
+    if (seth == null)
+	{
+	return parseFloat($(element).css("height"));
+	}
+    else
+	{
+	$(element).css("height",seth + "px");
+	}
+    }
+
 
 function tbld_update_height(row)
     {
@@ -742,8 +716,8 @@ function tbld_update_height(row)
 		h = this.max_rowheight - this.cellvspacing*2;
 	    if (h < this.min_rowheight - this.cellvspacing*2)
 		h = this.min_rowheight - this.cellvspacing*2;
-	    if (tbld_get_height(col) != h)
-		tbld_set_height(col, h);
+	    if (tbld_css_height(col) != h)
+		tbld_css_height(col,h);
 	    if (h > maxheight)
 		maxheight = h;
 	    }
@@ -762,11 +736,10 @@ function tbld_update_height(row)
 	}
 
     // No change?
-    const new_height = maxheight + this.innerpadding*2;
-    if (tbld_get_height(row) === new_height)
+    if (tbld_css_height(row) == maxheight + this.innerpadding*2)
 	return false;
 
-    tbld_set_height(row, new_height);
+    tbld_css_height(row,maxheight + this.innerpadding*2);
     return true;
     }
 
@@ -832,6 +805,7 @@ function tbld_format_row(id, selected, do_new)
 
 function tbld_bring_into_view(rownum)
     {
+    //this.log.push("tbld_bring_into_view(" + rownum + ")");
     this.bring_into_view = null;
 
     // Clamp the requested row to the available range
@@ -1089,10 +1063,10 @@ function tbld_detail_showcontainer()
 	}
     }
 
-/** @param dw The detail widget DOM node. **/
+
 function tbld_update_detail(dw)
     {
-    if (dw.display_for && ((dw.on_new) ? wgtrGetServerProperty(dw, 'show_on_new', 0) : (this.table.initselect !== 2)))
+    if (dw.display_for && (this.table.initselect !== 2 || (this.table.initselect == 2 && dw.on_new)) /* 2 = noexpand */ && (!dw.on_new || wgtrGetServerProperty(dw, 'show_on_new', 0)))
 	{
 	var found=false;
 	for(var j=0; j<this.detail.length; j++)
@@ -1106,9 +1080,8 @@ function tbld_update_detail(dw)
 
 	if (!found)
 	    {
-	    // Check if the detail widget is already in use for another row.
-	    const vis = $(dw).css("visibility");
-	    if (vis === 'inherit' || vis === 'visible')
+	    // already a part of another row?
+	    if ($(dw).css("visibility") == 'inherit' || $(dw).css("visibility") == 'visible')
 		{
 		if (dw.parentElement && dw.parentElement.detail)
 		    {
@@ -1121,16 +1094,16 @@ function tbld_update_detail(dw)
 			    }
 			}
 		    }
-
-		// Hide it so we can use it.
 		pg_reveal_event(dw, dw, 'Obscure');
 		dw.is_visible = 0;
 		dw.ifcProbe(ifEvent).Activate('Close', {});
 		}
 
-	    // Add the row detail.
+	    // Add to this row and show it.
 	    this.detail.push(dw);
-	    this.detail.sort((a, b) => a.display_order - b.display_order);
+	    this.detail.sort(
+		(a,b)=>{return a.display_order - b.display_order}
+	    );
 	    this.appendChild(dw);
 	    $(dw).css
 		({
@@ -1138,8 +1111,6 @@ function tbld_update_detail(dw)
 		"left": "0px",
 		"top": "0px",
 		});
-
-	    // Show the row detail.
 	    pg_reveal_event(dw, dw, 'Reveal');
 	    dw.is_visible = 1;
 	    dw.ifcProbe(ifEvent).Activate('Open', {});
@@ -1222,7 +1193,7 @@ function tbld_set_visible(attr, val)
 	    this.visible = 0;
 	    this.colhdr.ChangeWidth(-this.visible_width, true);
 	    }
-	this.table.ReflowWidth(this.table.hdrrow.w);
+	this.table.ReflowWidth();
 	}
     }
 
@@ -1339,7 +1310,7 @@ function tbld_sched_scroll(y)
     if (this.scroll_timeout)
 	pg_delsched(this.scroll_timeout);
     $(this.scrolldiv).stop(false, true);
-    $(this.thumb).stop(false, true);
+    $(this.box).stop(false, true);
     this.scroll_timeout = pg_addsched_fn(this, "Scroll", [y], 0);
     }
 
@@ -1349,29 +1320,26 @@ function tbld_scroll(y, animate)
     {
     if (animate == true)
 	animate = 'swing';
-
+    //this.log.push("tbld_scroll(" + y + ")");
     this.target_y = null;
 
-    const first_row = this.rows[this.rows.first];
-    const last_row = this.rows[this.rows.last];
-
     // Not enough data to scroll?
-    if (this.thumb_height == this.thumb_avail && y != -getRelativeY(first_row))
+    if (this.thumb_height == this.thumb_avail && y != 0 - getRelativeY(this.rows[this.rows.first]))
 	{
 	this.OsrcDispatch();
 	return;
 	}
 
     // No rows currently accessible?
-    if (!this.rows.first || !this.rows.last || !first_row || !last_row)
+    if (!this.rows.first || !this.rows.last || !this.rows[this.rows.first] || !this.rows[this.rows.last])
 	{
 	this.OsrcDispatch();
 	return;
 	}
 
-    // Current start and end of scrollable content (rows exist by now).
-    const scroll_start = getRelativeY(first_row);
-    const scroll_end = getRelativeY(last_row) + $(last_row).height() + this.cellvspacing*2;
+    // Current start and end of scrollable content
+    var scroll_start = getRelativeY(this.rows[this.rows.first]);
+    var scroll_end = getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2;
 
     // Clamp the scroll range
     if (this.rows.lastosrc == this.rows.last && (0-y) > scroll_end - this.vis_height)
@@ -1458,14 +1426,14 @@ function tbld_bar_click(e)
     {
     var sb = e.layer;
     var t = sb.table;
-    if (e.pageY > getPageY(sb.b) + $(sb.b).height() && t.rows.lastvis && t.rows[t.rows.lastvis])
+    if (e.pageY > getPageRect(sb.b).top + $(sb.b).height() && t.rows.lastvis && t.rows[t.rows.lastvis])
 	{
 	// Down a page
 	var target_row = t.rows[t.rows.lastvis];
 	var target_y = 0 - (getRelativeY(target_row) + $(target_row).height() + t.cellvspacing*2);
 	t.Scroll(target_y, true);
 	}
-    else if (e.pageY < getPageY(sb.b) && t.rows.firstvis && t.rows[t.rows.firstvis])
+    else if (e.pageY < getPageRect(sb.b).top && t.rows.firstvis && t.rows[t.rows.firstvis])
 	{
 	// Up a page
 	var target_row = t.rows[t.rows.firstvis];
@@ -1477,169 +1445,131 @@ function tbld_bar_click(e)
 
 function tbld_change_width(move, compensate)
     {
-    const { colnum, resizebdr, table: t } = this;
-    const { colcount, cols, rows } = t;
-    const rw = $(resizebdr).width() ?? 0;
-    const { width: col_info_width, xoffset: col_info_xoffset } = cols[colnum];
+    var l=this;
+    var t=l.row.table;
+    var rw = $(l.resizebdr).width();
+    var colinfo = t.cols[l.colnum];
 
     // Sanity checks on column resizing...
-    if (col_info_xoffset + col_info_width + rw + move < 0)
-	move = 0 - col_info_xoffset - rw;
-    if (col_info_width + move < 3)
-	move = 3 - col_info_width;
-    if (resizebdr && resizebdr.xoffset + move < 0)
-	move = 0 - resizebdr.xoffset;
+    //if(colinfo.xoffset+colinfo.width+move+rw>l.row.w)
+    //	move = l.row.w - rw - colinfo.xoffset - colinfo.width;
+    if(colinfo.xoffset+colinfo.width+rw+move<0)
+	move=0-colinfo.xoffset-rw;
+    if (colinfo.width + move < 3)
+	move = 3-colinfo.width;
+    if(l.resizebdr.xoffset+move<0)
+	move=0-l.resizebdr.xoffset;
+    //if(getPageX(l.resizebdr) + t.colsep + t.bdr_width*2 + move >= getPageX(t) + t.param_width)
+    //	move = getPageX(t) + t.param_width - getPageX(l.resizebdr) - t.colsep - t.bdr_width*2;
 
     // Figure how much space on the right of this resize handle we're adjusting, too...
-    let total_right_width = 0;
-    for (let i = colnum + 1; i < colcount; i++)
-	total_right_width += cols[i].width;
+    var cols_right = t.colcount - l.colnum - 1;
+    var adj = [];
+    var total_right_width = 0;
+    for(var j=l.colnum+1; j<t.colcount; j++)
+	total_right_width += t.cols[j].width;
 
-    // Adjust the column metadata.
-    for (let i = colnum, total_move = move; i < colcount; i++)
+    // Adjust the column metadata
+    var total_move = move;
+    for(var j=l.colnum; j<t.colcount; j++)
 	{
-	const col = cols[i];
-	if (i === colnum) // First iteration
+	if (j == l.colnum)
 	    {
 	    // Column to the left of adjustment
-	    col.width += move;
+	    t.cols[j].width += move;
 	    }
-	else if (compensate) // Later iterations
+	else
 	    {
 	    // Columns to the right of adjustment
-	    const adj = move * col.width / total_right_width;
-	    col.width -= adj;
-	    col.xoffset += total_move;
-	    total_move -= adj;
+	    if (compensate)
+		adj[j] = t.cols[j].width/total_right_width*move;
+	    else
+		adj[j] = 0;
+	    t.cols[j].width -= adj[j];
+	    t.cols[j].xoffset += total_move;
+	    total_move -= adj[j];
 	    }
-	else col.xoffset += total_move;
 
-	// Adjust the resize border lines.
-	const resize_border = rows?.[0]?.cols?.[i]?.resizebdr;
-	if (resize_border)
+	// Adjust the resize border lines
+	if (t.rows[0] && t.rows[0].cols[j].resizebdr)
 	    {
-	    resize_border.xoffset += total_move;
-	    setRelativeX(resize_border, resize_border.xoffset);
+	    var rb = t.rows[0].cols[j].resizebdr;
+	    rb.xoffset += total_move;
+	    setRelativeX(rb, rb.xoffset);
 	    }
 	}
 
-    t.ReflowRows(colnum);
-
-    return move;
-    }
-
-
-// tbld_reflow_rows - Applies the settled column geometry to every rendered row,
-// repositioning any rows that a height change displaced.  Pass the leftmost
-// column whose geometry changed.
-//
-function tbld_reflow_rows(firstcol)
-    {
-    const t = this;
-    const { rows } = t;
-
     // Adjust the actual header and data rows and columns
-    const updated_rows = [];
-    const { first, last } = rows;
-    const inflexible_row_height = (t.min_rowheight === t.max_rowheight);
-    for (let i = 0; i <= last; i++)
+    var upd_rows = [];
+    for(var i=0; i<=t.rows.last; i++)
 	{
-	if (i < first && i !== 0) continue;
-	
-	const rowi = rows[i];
-	if (!t.ApplyRowGeom(rowi, firstcol) || inflexible_row_height) continue;
-	
-	// Need to update height of row?
-	if (!t.UpdateHeight(rowi)) continue;
-	
-	for (let j = i + 1; j <= last; j++)
+	if (i == 0 || i >= t.rows.first)
 	    {
-	    const rowj = rows[j];
-	    if (rowj.positioned)
+	    if (t.ApplyRowGeom(t.rows[i], l.colnum) && t.min_rowheight != t.max_rowheight)
 		{
-		rowj.positioned = false;
-		updated_rows.push(rowj);
+		// Need to update height of row?
+		if (t.UpdateHeight(t.rows[i]))
+		    {
+		    for(var j=i+1; j<=t.rows.last; j++)
+			{
+			if (t.rows[j].positioned)
+			    {
+			    t.rows[j].positioned = false;
+			    upd_rows.push(t.rows[j]);
+			    }
+			}
+		    }
 		}
 	    }
 	}
-    
-    if (updated_rows.length)
+    if (upd_rows.length)
 	{
-	t.PositionRows(updated_rows);
+	t.PositionRows(upd_rows);
 	t.CheckBottom();
 	}
 
     // Update overall table geometry based on header size changes
     t.UpdateGeom();
+
+    return move;
     }
 
 
-function tbld_reflow_width(new_width)
+function tbld_reflow_width()
     {
-    // Compute the width adjustment factor for each row, based on the space
-    // excess or deficit.  The columns currently span up to the right edge of
-    // the last column; scale them so that edge lands on new_width (the row's
-    // content width).
-    const table = this;
-    const { colcount, cols, rows } = table;
-    const last_col = cols[colcount - 1];
-    const cur_width = last_col.xoffset + last_col.width;
-    const adj = new_width - cur_width;
-    const adj_factor = adj / cur_width;
-
-    // Drop cached cell box adjustment because the cells may have been rebuilt.
-    table.cell_width_adj = undefined;
-    
-    // Go through the columns and proportion the excess/deficit to them.
-    let shift = 0;
-    for (let i = 0; i < colcount; i++)
+    if (this.hdrrow)
 	{
-	const col = cols[i];
-	
-	// Slide the column to account for columns to the left widening.
-	col.xoffset += shift;
-
-	let move = col.width * adj_factor;
-
-	// Sanity checks on column resizing...
-	if (col.xoffset + col.width + move < 0)
-	    move = 0 - col.xoffset;
-	if (col.width + move < 3)
-	    move = 3 - col.width;
-
-	col.width += move;
-	shift += move;
-
-	// Adjust the resize border lines.
-	const resize_border = rows?.[0]?.cols?.[i]?.resizebdr;
-	if (resize_border)
+	var logstr = 'Before reflow widths:';
+	var ttl = 0;
+	for(var i=0; i<this.colcount; i++)
 	    {
-	    resize_border.xoffset += shift;
-	    setRelativeX(resize_border, resize_border.xoffset);
+	    logstr += ' ' + this.cols[i].width;
+	    ttl += this.cols[i].width;
 	    }
+	console.log(logstr + ' (total ' + ttl + ')');
+
+	// What's our space excess or deficit?
+	var colinfo = this.cols[this.colcount - 1];
+	var total = this.hdrrow.w;
+	var curtotal = (colinfo.xoffset + colinfo.width);
+	var adj = total - curtotal;
+	console.log('Reflowing total ' + total + ', curtotal ' + curtotal + ', adj ' + adj);
+
+	// Go through the columns and proportion the excess/deficit to them
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    this.hdrrow.cols[i].ChangeWidth(adj * this.cols[i].width / curtotal, false);
+	    }
+
+	var logstr = 'After reflow widths:';
+	var ttl = 0;
+	for(var i=0; i<this.colcount; i++)
+	    {
+	    logstr += ' ' + this.cols[i].width;
+	    ttl += this.cols[i].width;
+	    }
+	console.log(logstr + ' (total ' + ttl + ')');
 	}
-
-    table.ReflowRows(0);
-    }
-
-
-// tbld_cell_width_adj - Returns the padding and border that jQuery's .width()
-// setter would add to a cell of this table.  This operation is expensive so
-// the value is cached in table.cell_width_adj.  If the padding or border of
-// the cells changes, this must be invalidated by setting it to undefined.
-//
-function tbld_cell_width_adj(table, cell)
-    {
-    if (table.cell_width_adj !== undefined) return table.cell_width_adj;
-    if (!cell) return 0;
-
-    // Get jQuery width to calculate the padding + border that it adds.
-    const probe = 1000, saved = cell.style.width;
-    $(cell).width(probe);
-    const adj = parseInt(cell.style.width) - probe;
-    cell.style.width = saved;
-
-    return table.cell_width_adj = (isNaN(adj)) ? 0 : adj;
     }
 
 
@@ -1648,24 +1578,19 @@ function tbld_cell_width_adj(table, cell)
 //
 function tbld_apply_row_geom(row, firstcol)
     {
-    if (!row) return false;
-    
-    const { colcount, cols: this_cols, colsep, dragcols, bdr_width } = this;
-    const target_cols = row.cols;
-    const width_adj = tbld_cell_width_adj(this, target_cols[firstcol]);
- 
-    let change_wrapped_cell = false;
-    for(let i = firstcol; i < colcount; i++)
+    if (!row)
+	return false;
+    var change_wrapped_cell = false;
+    for(var j=firstcol; j<this.colcount; j++)
 	{
-	const target_col = target_cols[i], this_col = this_cols[i];
-	let new_w = this_col.width; // - this.innerpadding*2;
-
-	if (colsep > 0 || dragcols) new_w -= (bdr_width*2 + colsep);
-
-	target_col.style.width = (new_w + width_adj) + 'px';
-	setRelativeX(target_col, this_col.xoffset);
-	
-	change_wrapped_cell |= (this_col.wrap != 'no');
+	var c=row.cols[j];
+	var new_w = this.cols[j].width; // - this.innerpadding*2;
+	if (this.colsep > 0 || this.dragcols)
+	    new_w -= (this.bdr_width*2 + this.colsep);
+	$(c).width(new_w);
+	setRelativeX(c, this.cols[j].xoffset);
+	if (this.cols[j].wrap != 'no' && this.cols[j].wrap != 'newline')
+	    change_wrapped_cell = true;
 	}
     return change_wrapped_cell;
     }
@@ -1817,6 +1742,7 @@ function tbld_remove_row(rowobj)
 	}
     if (this.rows.firstvis > this.rows.lastvis)
 	{
+	console.log('TABLE ' + this.__WgtrName + ': resetting firstvis/lastvis to null (firstvis > lastvis)');
 	this.rows.firstvis = null;
 	this.rows.lastvis = null;
 	}
@@ -1899,14 +1825,12 @@ function tbld_display_row(rowobj, rowslot)
 	    if (!this.rows.lastvis || this.rows.lastvis < rowslot)
 		this.rows.lastvis = rowslot;
 	    }
-	const rowY = getRelativeY(rowobj);
-	if (rowY < this.scroll_minheight || this.scroll_minheight == null)
-	    this.scroll_minheight = rowY;
+	if (getRelativeY(rowobj) < this.scroll_minheight || this.scroll_minheight == null)
+	    this.scroll_minheight = getRelativeY(rowobj);
 	if (rowslot < this.scroll_minrec || this.scroll_minrec == null)
 	    this.scroll_minrec = rowslot;
-	const rowHeight = $(rowobj).height();
-	if (rowslot == this.rows.lastosrc || (rowY + rowHeight + this.cellvspacing*2 > this.scroll_maxheight))
-	    this.scroll_maxheight = rowY + rowHeight + this.cellvspacing*2;
+	if (rowslot == this.rows.lastosrc || (getRelativeY(rowobj) + $(rowobj).height() + this.cellvspacing*2 > this.scroll_maxheight))
+	    this.scroll_maxheight = getRelativeY(rowobj) + $(rowobj).height() + this.cellvspacing*2;
 	if (rowslot > this.scroll_maxrec)
 	    this.scroll_maxrec = rowslot;
 	}
@@ -2057,12 +1981,16 @@ function tbld_osrc_dispatch()
 	case 'ScrollTo':
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //console.log("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.ScrollTo(item.start, item.end);
 	    break;
 
 	case 'MoveToRecord':
 	    this.osrc_busy = true;
 	    this.osrc_last_op = item.type;
+	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
+	    //console.log("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.MoveToRecord(item.rownum, this);
 	    break;
 
@@ -2118,6 +2046,7 @@ function tbld_update_geom()
     this.max_display = Math.ceil(this.vis_height / this.min_rowheight);
     if (this.rowcache_size < this.max_display*2)
 	this.rowcache_size = this.max_display*2;
+    this.target_range = {start:1, end:this.rowcache_size};
     $(this.scrollctr).css
 	({
 	"visibility": "inherit",
@@ -2143,18 +2072,15 @@ function tbld_init(param)
     {
     var t = param.table;
     var scroll = param.scroll;
-    
-    // Initialize table.
     ifc_init_widget(t);
     t.table = t;
-    t.name = param.name; // Debug value.
     t.param_width = param.width;
     t.param_height = param.height;
     t.dragcols = param.dragcols;
     t.colsep = param.colsep;
     t.colsepbg = param.colsep_bgnd;
     t.colsepmode = param.colsep_mode;
-    t.gridinemptyrows = param.grid_in_empty_rows;
+    t.gridinemptyrows = param.gridinemptyrows;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
     t.initselect = param.initial_selection;
@@ -2167,15 +2093,12 @@ function tbld_init(param)
     t.cr = 0;
     t.is_new = 0;
     t.rowdivcache = [];
+    t.followcurrent = param.followcurrent>0?true:false;
     t.hdr_bgnd = param.hdrbgnd;
     htr_init_layer(t, t, "tabledynamic");
-    
-    // Initialize scrollbar.
     t.scrollbar = scroll;
     htr_init_layer(t.scrollbar, t, "tabledynamic");
     t.scrollbar.Click = tbld_bar_click;
-    
-    // Initialize scrollbar images.
     var imgs = pg_images(t.scrollbar);
     for(var img in imgs)
 	{
@@ -2186,23 +2109,29 @@ function tbld_init(param)
 	else if (imgs[img].name == 'd')
 	    t.down = imgs[img];
 	}
-    
-    // Initialize scroll thumb.
-    t.thumb = htr_subel(scroll, param.thumb_name);
-    htr_init_layer(t.thumb, t, "tabledynamic");
-    t.scrollbar.b = t.thumb;
-    
-    // Initialize events for scrolling.
+    t.box=htr_subel(scroll,param.boxname);
+    htr_init_layer(t.box, t, "tabledynamic");
+    t.scrollbar.b=t.box;
     t.up.Click=tbld_up_click;
     t.down.Click=tbld_down_click;
-    t.thumb.Click = new Function();
-    t.scrollbar.table = t.up.table = t.down.table = t.thumb.table = t;
+    t.box.Click = new Function( );
+    t.scrollbar.table = t.up.table = t.down.table = t.box.table = t;
     t.up.subkind='up';
     t.down.subkind='down';
-    t.thumb.subkind='thumb';
+    t.box.subkind='box';
     t.scrollbar.subkind='bar';
+    /*t.dispatch_queue = {};
+    t.dispatch_parallel_max = 1;
+    t.Dispatch = tbld_dispatch;
+    t.Request = tbld_request;*/
+    t.osrc_request_queue = [];
+    t.osrc_busy = false;
+    t.osrc_last_op = null;
+    //t.log = [];
+    t.ttf_string = '';
+    t.selected_row = null;
+    t.selected = null;
     
-    // Initialize layout data.
     t.rowheight=param.min_rowheight>0?param.min_rowheight:15;
     t.min_rowheight = param.min_rowheight;
     t.max_rowheight = param.max_rowheight;
@@ -2213,6 +2142,9 @@ function tbld_init(param)
     t.textcolorhighlight=param.textcolorhighlight?param.textcolorhighlight:param.textcolor;
     t.textcolornew=param.newrow_textcolor;
     t.titlecolor=param.titlecolor;
+    t.row_bgnd1=param.rowbgnd1?param.rowbgnd1:"bgcolor='white'";
+    t.row_bgnd2=param.rowbgnd2?param.rowbgnd2:t.row_bgnd1;
+    t.row_bgndhigh=param.rowbgndhigh?param.rowbgndhigh:"bgcolor='black'";
     t.row_bgndnew=param.newrow_bgnd;
     t.cols=param.cols;
     t.colcount=0;
@@ -2223,29 +2155,17 @@ function tbld_init(param)
 	else
 	    delete t.cols[i];
 	}
-    if (t.colcount <= 0)
+    if (param.osrc)
+	t.osrc = wgtrGetNode(t, param.osrc, "widget/osrc");
+    else
+	t.osrc = wgtrFindContainer(t, "widget/osrc");
+    if(!t.osrc || !(t.colcount>0))
 	{
-	alert('The table widget requires at least one column');
+	alert('table widget requires an objectsource and at least one column');
 	return t;
 	}
-    
-    // Initialize ObjectSource values.
-    t.osrc_request_queue = [];
-    t.osrc_busy = false;
-    t.osrc_last_op = null;
-    t.ttf_string = '';
-    t.selected_row = null;
-    t.selected = null;
-    t.osrc = (param.osrc)
-	? wgtrGetNode(t, param.osrc, "widget/osrc")
-	: wgtrFindContainer(t, "widget/osrc");
-    if (!t.osrc)
-	{
-	alert('The table widget requires an ObjectSource');
-	return t;
-	}
-    
-    // Bind table widget functions.
+
+    // Main table widget methods
     t.RedrawAll = tbld_redraw_all;
     t.InstantiateRow = tbld_instantiate_row;
     t.DisplayRow = tbld_display_row;
@@ -2268,14 +2188,13 @@ function tbld_init(param)
     t.SchedScroll = tbld_sched_scroll;
     t.CheckBottom = tbld_check_bottom;
     t.ApplyRowGeom = tbld_apply_row_geom;
-    t.UpdateNDM = tbld_update_ndm;
+    t.InitBH = tbld_init_bh;
     t.OsrcDispatch = tbld_osrc_dispatch;
     t.OsrcRequest = tbld_osrc_request;
     t.EndTTF = tbld_end_ttf;
     t.CheckHighlight = tbld_check_highlight;
     t.UpdateGeom = tbld_update_geom;
     t.ReflowWidth = tbld_reflow_width;
-    t.ReflowRows = tbld_reflow_rows;
     t.ShowSelection = tbld_show_selection;
     t.LogStatus = tbld_log_status;
     t.ParseItemlist = tbld_parse_itemlist;
@@ -2293,7 +2212,6 @@ function tbld_init(param)
     t.ObjectModified = tbld_object_modified;
     t.osrc.Register(t);
     
-    // Set the number of records visible in the table at one time.
     if (param.windowsize > 0)
 	{
 	t.windowsize = param.windowsize;
@@ -2313,15 +2231,12 @@ function tbld_init(param)
     if (t.datamode != 1 && t.windowsize > t.osrc.replicasize)
 	t.windowsize = t.osrc.replicasize;
 
-    // Handle header row.
     t.totalwindowsize = t.windowsize + 1;
     if (!t.has_header)
 	t.windowsize = t.totalwindowsize;
     t.firstdatarow = t.has_header?1:0;
 
-    /*** Handle columns without widths by assigning a default and resizing other
-     *** columns proportionally.
-     ***/
+    // Handle column resizing and columns without widths
     var total_w = 0;
     for (var i in t.cols)
 	{
@@ -2351,10 +2266,11 @@ function tbld_init(param)
 	    t.grpby = i;
 	}
 
-    // Set some other values.
     t.maxwindowsize = t.windowsize;
     t.maxtotalwindowsize = t.totalwindowsize;
     t.rows = {first:null, last:null, firstvis:null, lastvis:null, lastosrc:null};
+    setClipWidth(t, param.width);
+    setClipHeight(t, param.height);
     t.subkind='table';
     t.bdr_width = (t.colsep > 0)?3:0;
     t.target_y = null;
@@ -2378,7 +2294,7 @@ function tbld_init(param)
 	    l.resizebdr = htr_new_layer(t.bdr_width*2 + t.colsep, t);
 	    $(l.resizebdr).css
 		({
-		"cursor": "col-resize",
+		"cursor": "move", 
 		"height": (t.colsepmode == 0)?(((t.gridinemptyrows)?(t.param_height):t.rowheight) + "px"):(t.rowheight + "px"), 
 		"visibility": "inherit",
 		"width": t.colsep + t.bdr_width*2 + "px",
@@ -2433,7 +2349,6 @@ function tbld_init(param)
 	    }
 	}
 
-    // Initialize scrollbar values.
     t.scroll_maxheight = null;
     t.scroll_maxrec = null;
     t.scroll_minheight = null;
@@ -2446,10 +2361,6 @@ function tbld_init(param)
     // set working area height and scrollbar size
     t.UpdateGeom();
 
-    // Initially display the first cache-worth of records.
-    t.target_range = { start: 1, end: t.rowcache_size };
-
-    // Create the scrolling content div.
     t.scrolldiv = htr_new_layer(t.param_width, t.scrollctr);
     htr_init_layer(t.scrolldiv, t, "tabledynamic");
     t.scrolldiv.subkind = "scrolldiv";
@@ -2468,24 +2379,11 @@ function tbld_init(param)
     if (window.tbld_mcurrent == undefined)
 	window.tbld_mcurrent = null;
 
-    // Handle resizing.
-    htr_watch_size(t, tbld_resize);
-    t.destroy_widget = tbld_deinit;
-
     // No data message
-    var $ndm = $('<div id="ndm"></div>');
-    $ndm[0].table = t;
-    $ndm.text(wgtrGetServerProperty(t, "nodata_message"));
-    $ndm.css({
-	position: 'absolute',
-	width: '100%',
-	left: '0px',
-	textAlign: 'center',
-	color: wgtrGetServerProperty(t, "nodata_message_textcolor"),
-    });
-    $ndm.show();
-    $(t).append($ndm);
-    t.UpdateNDM($ndm);
+    var ndm = document.createElement("div");
+    $(ndm).css({"position":"absolute", "width":"100%", "text-align":"center", "left":"0px"});
+    $(ndm).attr({"id":"ndm"});
+    $(t).append(ndm);
 
     // Events
     var ie = t.ifcProbeAdd(ifEvent);
@@ -2514,28 +2412,22 @@ function tbld_init(param)
 
     // Locate any row detail subwidgets
     t.detail_widgets = wgtrFindMatchingDescendents(t, 'widget/table-row-detail');
-    for (let i = 0; i < t.detail_widgets.length; i++)
+    for(var i=0; i<t.detail_widgets.length; i++)
 	{
-	const dw = t.detail_widgets[i];
-	
-	// Initialize row detail data.
+	var dw = t.detail_widgets[i];
 	dw.table = t;
+	dw.Reveal = tbld_cb_dw_reveal;
+	pg_reveal_register_triggerer(dw);
 	dw.display_for = 1;
 	dw.is_visible = 0;
 	dw.display_order = i;
-	dw.showcontainer = tbld_detail_showcontainer;
-	dw.Reveal = tbld_cb_dw_reveal;
-	pg_reveal_register_triggerer(dw);
 	ifc_init_widget(dw);
-	
-	// Add events.
-	const ie = dw.ifcProbeAdd(ifEvent);
+	var ie = dw.ifcProbeAdd(ifEvent);
 	ie.Add("Open");
 	ie.Add("Close");
-	
-	// Add values.
-	const iv = dw.ifcProbeAdd(ifValue);
+	var iv = dw.ifcProbeAdd(ifValue);
 	iv.Add("display_for", tbld_get_displayfor, tbld_set_displayfor);
+	dw.showcontainer = tbld_detail_showcontainer;
 	}
 
     // Easing function for touch drag
@@ -2548,14 +2440,17 @@ function tbld_init(param)
 	    }
 	}
 
+    t.InitBH();
+
     return t;
     }
 
-function tbld_update_ndm($ndm)
+function tbld_init_bh()
     {
-    $ndm.css({
-	top: ((this.param_height - $ndm.height()) / 2) + "px",
-    });
+    var ndm = $(this).children('#ndm');
+    ndm.show();
+    ndm.text(wgtrGetServerProperty(this,"nodata_message"));
+    ndm.css({"top":((this.param_height - ndm.height())/2) + "px", "color":wgtrGetServerProperty(this,"nodata_message_textcolor") });
     }
 
 function tbld_touchstart(e)
@@ -2722,10 +2617,10 @@ function tbld_wheel(e)
 	ly = tbld_mcurrent;
     if (ly && wgtrIsNode(ly) && wgtrGetType(ly) == 'widget/table')
 	{
-	if (e.pageX >= getPageX(ly) &&
-	    e.pageX < getPageX(ly) + ly.param_width &&
-	    e.pageY >= getPageY(ly) &&
-	    e.pageY < getPageY(ly) + ly.param_height)
+	if (e.pageX >= getPageRect(ly).left &&
+	    e.pageX < getPageRect(ly).left + ly.param_width &&
+	    e.pageY >= getPageRect(ly).top &&
+	    e.pageY < getPageRect(ly).top + ly.param_height)
 	    {
 	    if (e.Dom2Event.deltaMode == 0)
 		var multiplier = 1;
@@ -2798,9 +2693,9 @@ function tbld_find_clicked_item(cell, e)
 	cell = cell.cell;
     if (!cell.data || cell.data == 'null' || cell.data == '')
 	return null;
-    
+
     var items = cell.itemlist;
-    
+
     // Find the item container div
     var container = cell.firstChild;
     if (!container || container.tagName != 'P')
@@ -2808,7 +2703,7 @@ function tbld_find_clicked_item(cell, e)
     var flex_div = container.firstChild;
     if (!flex_div || flex_div.tagName != 'DIV')
 	return null;
-    
+
     // Check each item div
     var item_divs = $(flex_div).children('div');
     for (var i = 0; i < item_divs.length && i < items.length; i++)
@@ -2817,7 +2712,7 @@ function tbld_find_clicked_item(cell, e)
 	var offset = getPageRect(item_div);
 	var width = $(item_div).outerWidth();
 	var height = $(item_div).outerHeight();
-	
+
 	if (e.pageX >= offset.left && e.pageX < offset.left + width &&
 	    e.pageY >= offset.top && e.pageY < offset.top + height)
 	    {
@@ -2829,7 +2724,7 @@ function tbld_find_clicked_item(cell, e)
 	    };
 	    }
 	}
-    
+
     return null;
     }
 
@@ -2852,7 +2747,7 @@ function tbld_create_drag_outline(item_element, table)
 	'z-index': 10000,
 	'box-sizing': 'border-box'
     });
-    
+
     // Copy the text content
     var content = $(item_element).clone();
     $(content).css({
@@ -2860,7 +2755,7 @@ function tbld_create_drag_outline(item_element, table)
 	'pointer-events': 'none'
     });
     $(outline).append(content);
-    
+
     document.body.appendChild(outline);
     return outline;
     }
@@ -2959,9 +2854,7 @@ function tbld_keydown(e)
 		    for(var c in row.cols)
 			{
 			var col = row.cols[c];
-			if (t.cols[col.colnum].type != 'check' &&
-			    t.cols[col.colnum].type != 'image' &&
-			    t.cols[col.colnum].type != 'checkbox')
+			if (t.cols[col.colnum].type != 'check' && t.cols[col.colnum].type != 'image' && t.cols[col.colnum].type != 'checkbox')
 			    {
 			    if (t.CheckHighlight(col, t.ttf_string))
 				{
@@ -3053,7 +2946,7 @@ function tbld_mousedown(e)
                 ly=ly.cell.row;
                 }
             }
-	if (ly.subkind == 'thumb')
+	if (ly.subkind == 'box')
 	    {
 	    tbldx_current = ly;
 	    tbldx_start = e.pageY;
@@ -3239,10 +3132,7 @@ function tbld_mousedown(e)
                 }
 	    ly.row.table.osrc.ifcProbe(ifAction).Invoke("OrderObject", {orderobj:neworder});
             }
-        if (ly.subkind === 'up'
-	    || ly.subkind === 'bar'
-	    || ly.subkind === 'down'
-	    || ly.subkind === 'thumb')
+        if(ly.subkind=='up' || ly.subkind=='bar' || ly.subkind=='down' || ly.subkind=='box')
             {
 	    ly.Click(e);
             }
@@ -3282,9 +3172,9 @@ function tbld_mousemove(e)
 	var t = tbldx_current.table;
 	if (tbldx_tstart + incr < 18)
 	    incr = 18 - tbldx_tstart;
-	if (tbldx_tstart + incr + $(t.thumb).height() > $(t.scrollbar).height() - 18 - 3)
-	    incr = $(t.scrollbar).height() - 18 - 3 - tbldx_tstart - $(t.thumb).height();
-	setRelativeY(t.thumb, tbldx_tstart + incr);
+	if (tbldx_tstart + incr + $(t.box).height() > $(t.scrollbar).height() - 18 - 3)
+	    incr = $(t.scrollbar).height() - 18 - 3 - tbldx_tstart - $(t.box).height();
+	setRelativeY(t.box, tbldx_tstart + incr);
 	if (t.thumb_avail > t.thumb_height)
 	    {
 	    t.SchedScroll((-t.scroll_minheight) - Math.floor((tbldx_tstart + incr - 18)*t.thumb_sh/(t.thumb_avail - t.thumb_height)));
@@ -3297,13 +3187,13 @@ function tbld_mousemove(e)
 	{
 	var dx = e.pageX - t.itemlist_drag_pending.start_x;
 	var dy = e.pageY - t.itemlist_drag_pending.start_y;
-	
+
 	// Drag threshold of 5 pixels
 	if (Math.abs(dx) > 5 || Math.abs(dy) > 5)
 	    {
 	    // Create the drag outline
 	    var outline = tbld_create_drag_outline(t.itemlist_drag_pending.item.element, t);
-	    
+
 	    // Start the drag
 	    t.ifcProbe(ifEvent).Activate("DragStartItem", {
 		Item: t.itemlist_drag_pending.item.text,
@@ -3315,16 +3205,16 @@ function tbld_mousemove(e)
 		OffsetX: dx,
 		OffsetY: dy
 	    });
-	    
+
 	    // Track active drag
 	    t.itemlist_drag_active = t.itemlist_drag_pending;
 	    t.itemlist_drag_active.outline = outline;
-	    t.itemlist_drag_active.offset_x = e.pageX - getPageX(outline);
-	    t.itemlist_drag_active.offset_y = e.pageY - getPageY(outline);
+	    t.itemlist_drag_active.offset_x = e.pageX - getPageRect(outline).left;
+	    t.itemlist_drag_active.offset_y = e.pageY - getPageRect(outline).top;
 	    t.itemlist_drag_pending = null;
 	    }
 	}
-    
+
     // Update drag outline position
     if (t && t.itemlist_drag_active && t.itemlist_drag_active.outline)
 	{
@@ -3375,7 +3265,7 @@ function tbld_mouseup(e)
 		if (t.colsep > 0 || t.dragcols)
 		    maxw += (t.bdr_width*2 + t.colsep);
                 l.ChangeWidth(maxw-t.cols[l.colnum].width, true);
-		t.ReflowWidth(t.hdrrow.w);
+		t.ReflowWidth();
                 }
             else
                 {
@@ -3412,7 +3302,7 @@ function tbld_mouseup(e)
 		    {
 		    // Find drop position within the itemlist
 		    var drop_item = ly.table.FindClickedItem(ly, e);
-		    
+
 		    t.ifcProbe(ifEvent).Activate("DragDropItem", {
 			Item: t.itemlist_drag_active.item.text,
 			ItemKey: t.itemlist_drag_active.item.key,
@@ -3421,7 +3311,7 @@ function tbld_mouseup(e)
 			SourceColumn: t.cols[t.itemlist_drag_active.column].fieldname,
 			SourceColumnName: t.cols[t.itemlist_drag_active.column].name,
 			TargetRow: ly.row.rownum,
-			TargetColumn: t.cols[ly.colnum].fieldname,
+			TargetColumn: drop_colinfo.fieldname,
 			TargetColumnName: drop_colinfo.name,
 			BeforeItem: drop_item ? drop_item.text : null,
 			AfterItem: null // Could be enhanced to determine before/after
@@ -3452,7 +3342,7 @@ function tbld_mouseup(e)
 		    ColumnName: t.cols[t.itemlist_drag_active.column].name
 		});
 		}
-	    
+
 	    // Remove the drag outline
 	    tbld_remove_drag_outline(t.itemlist_drag_active.outline);
 	    t.itemlist_drag_active = null;
@@ -3469,11 +3359,11 @@ function tbld_mouseup(e)
 		ColumnName: t.cols[t.itemlist_drag_pending.column].name
 	    });
 	    }
-	
+
 	// Clear pending drag if click didn't turn into drag
 	if (t.itemlist_drag_pending)
 	    t.itemlist_drag_pending = null;
-	
+
 	// Clear the global reference
 	window.tbld_itemlist_drag_table = null;
 	}
