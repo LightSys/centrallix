@@ -61,6 +61,9 @@ static struct
     }
     MSS;
 
+/** Set while mss_i_warn() runs, so warnings raised while handling a warning do not recurse. **/
+static bool MssInWarn = false;
+
 
 /*** mssMemoryErr - called by newmalloc when a memory allocation fails.
  ***/
@@ -479,12 +482,24 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
     {
     XString warn_msg_xstring; warn_msg_xstring.String = NULL;
     char* allocated_warn_msg;
+    va_list args;
+
+	/** Print nested warnings directly to stderr. **/
+	if (UNLIKELY(MssInWarn))
+	    {
+	    va_start(args, message);
+	    fprintf(stderr, "Warning: %s:%d: %s: ", file, line, module);
+	    vfprintf(stderr, message, args);
+	    fputc('\n', stderr);
+	    va_end(args);
+	    return;
+	    }
+	MssInWarn = true;
 
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	warnFail(fflush(stdout));
 
 	/** Write the warning message using the requested logging method. **/
-	va_list args;
 	va_start(args, message);
 	if (strcmp(MSS.LogMethod, "syslog") == 0)
 	    {
@@ -533,6 +548,7 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	/** Clean up. **/
 	if (warn_msg_xstring.String != NULL)
 	    warnFail(xsDeInit(&warn_msg_xstring));
+	MssInWarn = false;
 
 	return;
     }
