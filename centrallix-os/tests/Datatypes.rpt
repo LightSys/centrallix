@@ -25,6 +25,7 @@ Datatypes "system/report"
 	dt_item "report/data"
 	    {
 	    value = runserver(:dt_qy:name + ' ' + :dt_qy:f_integer + ' ' + :dt_qy:f_string);
+	    autonewline = yes;
 	    }
 	}
     }

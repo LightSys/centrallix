@@ -325,10 +325,10 @@ function tb_mouseup(e)
     if (ly.mainlayer) ly = ly.mainlayer;
     if (ly.kind == 'tb' && ly.enabled)
         {
-        if (e.pageX >= $(ly).offset().left &&
-            e.pageX < $(ly).offset().left + $(ly).width() &&
-            e.pageY >= $(ly).offset().top &&
-            e.pageY < $(ly).offset().top + $(ly).height())
+        if (e.pageX >= getPageRect(ly).left &&
+            e.pageX < getPageRect(ly).left + $(ly).width() &&
+            e.pageY >= getPageRect(ly).top &&
+            e.pageY < getPageRect(ly).top + $(ly).height())
             {
 	    if (ly.mode == 2)
 		{
