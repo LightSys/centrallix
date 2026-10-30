@@ -9,7 +9,7 @@ index "widget/page"
 
     cximg "widget/image"
 	{
-	x=263; y=10; height=66; width=374; 
+	x=263; y=10; height=66; width=374;
 	source="/sys/images/centrallix_374x66.png";
 	}
 

@@ -45,7 +45,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -383,6 +383,8 @@ extern NHT_t NHT;
 #define NHT_AUTH_HTTPSTRICT	2	/* HTTP Basic auth with strict logout management */
 #define NHT_AUTH_HTTPBEARER	4	/* HTTP Bearer token auth (future) */
 #define NHT_AUTH_WEBFORM	8	/* Web form based auth (future) */
+
+#define NHT_ZOOM_MIN		0.4	/* smallest zoom a page shrinks to at load */
 
 typedef struct
     {
