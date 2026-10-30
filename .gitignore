@@ -7,6 +7,8 @@
 Makefile
 config.log
 config.status
+*.o
+*.lo
 stamp-h
 
 # Rebuild Temp Files
@@ -61,6 +63,7 @@ autom4te.cache
 /centrallix/tests/*.bin
 /centrallix/tests/*.out
 /centrallix/tests/*.to.tmp
+/centrallix-temp
 
 # Debugging & Profiling Files
 *.gcda
