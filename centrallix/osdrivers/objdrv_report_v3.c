@@ -2841,18 +2841,18 @@ rpt_internal_DoData(pRptData inf, pStructInf data, pRptSession rs, int container
 
 	/** Put the fonts etc back **/
 	prtSetTextStyle(container_handle, &oldstyle);
-	prtSetJustification(container_handle, oldjust);
 	if (url)
 	    prtSetURL(container_handle, NULL);
+	prtSetJustification(container_handle, oldjust);
 	cxssPopContext();
 
 	return 0;
 
     error:
 	prtSetTextStyle(container_handle, &oldstyle);
-	prtSetJustification(container_handle, oldjust);
 	if (url)
 	    prtSetURL(container_handle, NULL);
+	prtSetJustification(container_handle, oldjust);
 	if (context_pushed)
 	    cxssPopContext();
 	return -1;
