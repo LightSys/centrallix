@@ -410,6 +410,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 
 	/** Initialize the error info **/
 	xaInit(&(s->ErrList), 16);
+	xrqInit(&s->WarnList, MSS_WARN_HISTORY + 1);
 	xhInit(&s->Params, 17, 0);
 
 	/** Add to session list **/
@@ -442,8 +443,10 @@ mssEndSession(pMtSession s)
 	    thSetUserID(NULL,0);
 	    }
 
-	/** Free the session info and error list **/
+	/** Free the session info, error list, and warning list **/
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
+	while (xrqCount(&s->WarnList) > 0) nmSysFree(xrqDequeue(&s->WarnList));
+	xrqDeInit(&s->WarnList);
 	xhClear(&s->Params, NULL, NULL);
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
@@ -474,6 +477,9 @@ mssEndSession(pMtSession s)
 void
 mss_i_warn(char* module, char* file, int line, char* message, ...)
     {
+    XString warn_msg_xstring; warn_msg_xstring.String = NULL;
+    char* allocated_warn_msg;
+
 	/** Prevent issues from interlacing this function with prints to stdout. **/
 	warnFail(fflush(stdout));
 
@@ -495,6 +501,40 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	    fflush(out);
 	    }
 	va_end(args);
+
+	/** Only sessions store recent warnings. **/
+	pMtSession s = thGetParam(NULL, "mss");
+	if (s == NULL) goto end;
+
+	/** Format the warning using an XString. **/
+	if (warnFail(xsInit(&warn_msg_xstring)) != 0) goto end;
+	bool format_ok = (warnNeg(xsConcatPrintf(&warn_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
+	va_start(args, message);
+	format_ok &= (warnNeg(xsGenPrintf_va(xsWrite, &warn_msg_xstring, NULL, NULL, message, args)) >= 0);
+	va_end(args);
+	if (UNLIKELY(!format_ok)) goto end;
+
+	/** Allocate space for the warning text. **/
+	allocated_warn_msg = warnNull(nmSysStrdup(xsString(&warn_msg_xstring)));
+	if (UNLIKELY(allocated_warn_msg == NULL)) goto end;
+
+	/** Drop the oldest warning when the list is full. **/
+	if (xrqCount(&s->WarnList) >= MSS_WARN_HISTORY)
+	    nmSysFree(xrqDequeue(&s->WarnList));
+
+	/** Store the warning. **/
+	if (warnNeg(xrqEnqueue(&s->WarnList, (void*)allocated_warn_msg)) < 0)
+	    {
+	    nmSysFree(allocated_warn_msg);
+	    goto end;
+	    }
+
+    end:
+	/** Clean up. **/
+	if (warn_msg_xstring.String != NULL)
+	    warnFail(xsDeInit(&warn_msg_xstring));
+
+	return;
     }
 
 
@@ -698,6 +738,7 @@ int
 mssStringError(pXString str)
     {
     int i;
+    int n_warnings;
     pMtSession s;
 
 	/** Get session. **/
@@ -710,7 +751,18 @@ mssStringError(pXString str)
 	    {
 	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
 	    }
-    	
+
+	/** Print recent warnings, newest first to match the error stack. **/
+	n_warnings = xrqCount(&s->WarnList);
+	if (n_warnings > 0)
+	    {
+	    xsConcatenate(str, "Recent warnings:\r\n", -1);
+	    for(i=n_warnings-1;i>=0;i--)
+		{
+		xsConcatPrintf(str, "--- %s\r\n", (char*)xrqGetItem(&s->WarnList, i));
+		}
+	    }
+
     return 0;
     }
 

@@ -25,11 +25,13 @@
 #include "xarray.h"
 #include "xstring.h"
 #include "xhash.h"
+#include "xringqueue.h"
 #else
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xringqueue.h"
 #endif
 
 #include <errno.h>
@@ -44,6 +46,10 @@
 #define MSS_USERNAME_SIZE	32
 
 
+/** Number of recent warnings kept per session **/
+#define MSS_WARN_HISTORY	16
+
+
 /** Structure for a session. **/
 typedef struct
     {
@@ -52,6 +58,7 @@ typedef struct
     char	UserName[MSS_USERNAME_SIZE];
     char	Password[MSS_PASSWORD_SIZE];
     XArray	ErrList;
+    XRingQueue	WarnList;
     XHashTable	Params;
     int		LinkCnt;
     }
