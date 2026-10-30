@@ -98,7 +98,7 @@ int ifc_internal_ObjToJS(pXString str, pObject obj)
 	    type = objGetAttrType(obj, name);
 	    if (objGetAttrValue(obj, name, type, &val) < 0)
 		{
-		fprintf(stderr, "Warning: ifc_internal_ObjToJS - couldn't get value for property %s\n", name);
+		mssWarn("IFC", "ifc_internal_ObjToJS - couldn't get value for property %s.", name);
 		mssClearError();
 		name = objGetNextAttr(obj);
 		continue;
@@ -124,7 +124,7 @@ int ifc_internal_ObjToJS(pXString str, pObject obj)
 		    break;
 		/** TODO: Support for other datatypes should probably be added **/
 		default:
-		    fprintf(stderr, "Warning: Can't convert properties of type %d in ObjToJS - FIXME!\n", type);
+		    mssWarn("IFC", "Can't convert properties of type %d in ObjToJS - FIXME!", type);
 		    break;
 		}
 	    name = objGetNextAttr(obj);
@@ -179,7 +179,7 @@ ifcToHtml(pFile file, pObjSession s, char* def_str)
 		mssError(0, "IFC", "Couldn't parse interface definition '%s'", def_str);
 		return -1;
 		}
-	    if (xhAdd(&(IFC.Definitions), def->Path, (void*)def) < 0) fprintf(stderr, "Warning: Couldn't cache\n");
+	    if (xhAdd(&(IFC.Definitions), def->Path, (void*)def) < 0) mssWarn("IFC", "Couldn't cache.");
 	    }
 	
 	/** we've got an interface definition, one way or another. Time to translate**/

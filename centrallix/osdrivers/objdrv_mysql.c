@@ -330,7 +330,7 @@ mysd_internal_GetConn(pMysdNode node)
 
 		    if (result == MYSD_RUNQUERY_ERROR)
 			{
-			fprintf(stderr, "Warning: could not update password for user [%s]: %s\n",
+			mssWarn("MYSD", "could not update password for user [%s]: %s.",
 				username, mysql_error(&conn->Handle));
 			mssClearError();
 			}

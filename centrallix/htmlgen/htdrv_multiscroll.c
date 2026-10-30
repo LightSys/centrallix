@@ -109,7 +109,7 @@ htmsRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    fprintf(stderr, "Warning: Cannot render - environment unsupported\n");
+	    mssWarn("HTMS", "Cannot render - environment unsupported.");
 	    }
 
 	/** DOM linkages **/

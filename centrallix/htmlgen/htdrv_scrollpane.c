@@ -167,7 +167,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    fprintf(stderr, "Warning: Browser not supported\n");
+	    mssWarn("HTSPNE", "Browser not supported.");
 	    }
 
 	/** Add the event handling scripts **/
@@ -191,7 +191,7 @@ htspaneRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    fprintf(stderr, "Warning: browser not supported\n");
+	    mssWarn("HTSPNE", "browser not supported.");
 	    }
 
     return 0;

@@ -245,7 +245,7 @@ nldap_i_CheckAccessLog()
 	    NLDAP.AccessLogFD = fdOpen(NLDAP.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 	    if (!NLDAP.AccessLogFD)
 		{
-		fprintf(stderr, "Warning: Could not open access_log file '%s' (%s)\n", NLDAP.AccessLogFile, strerror(errno));
+		mssWarn("NLDAP", "Could not open access_log file '%s' (%s).", NLDAP.AccessLogFile, strerror(errno));
 		}
 	    }
 	else
@@ -257,7 +257,7 @@ nldap_i_CheckAccessLog()
 		test_fd = fdOpen(NLDAP.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 		if (!test_fd)
 		    {
-		    fprintf(stderr, "Warning: Could not reopen access log file '%s' (%s)\n", NLDAP.AccessLogFile, strerror(errno));
+		    mssWarn("NLDAP", "Could not reopen access log file '%s' (%s).", NLDAP.AccessLogFile, strerror(errno));
 		    }
 		else
 		    {
@@ -428,7 +428,7 @@ nldap_i_TLSHandler(void* v)
 	    }
 	if (SSL_CTX_check_private_key(NLDAP.SSL_ctx) != 1)
 	    {
-	    fprintf(stderr, "Warning: Integrity check failed for key; connection handshake might not succeed.\n");
+	    mssWarn("HTTP", "Integrity check failed for key; connection handshake might not succeed.");
 	    }
 	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) != 0)
 	    {
@@ -446,7 +446,7 @@ nldap_i_TLSHandler(void* v)
 		}
 	    else
 		{
-		fprintf(stderr, "Warning: could not open certificate chain file. (%s)\n", strerror(errno));
+		mssWarn("HTTP", "could not open certificate chain file. (%s).", strerror(errno));
 		}
 	    }
 
@@ -493,7 +493,7 @@ nldap_i_TLSHandler(void* v)
 	    if (!thCreate(nldap_i_ConnHandler, 0, conn))
 	        {
 		nldap_i_FreeConn(conn);
-		fprintf(stderr, "Warning: Could not create thread to handle TLS connection!\n");
+		mssWarn("NLDAP", "Could not create thread to handle TLS connection!");
 		}
 	    }
 
@@ -571,7 +571,7 @@ nldap_i_Handler(void* v)
 	    if (!thCreate(nldap_i_ConnHandler, 0, conn))
 	        {
 		nldap_i_FreeConn(conn);
-		fprintf(stderr, "Warning: Could not create thread to handle connection!\n");
+		mssWarn("NLDAP", "Could not create thread to handle connection!");
 		}
 	    }
 

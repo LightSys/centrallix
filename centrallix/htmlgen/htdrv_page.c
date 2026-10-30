@@ -118,7 +118,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Initialize the html-related interface stuff **/
 	if (ifcHtmlInit(s, tree) < 0)
 	    {
-	    fprintf(stderr, "Warning: Error Initializing Html Interface code...continuing, but things might not work for client\n");
+	    mssWarn("HTR", "Error Initializing Html Interface code...continuing, but things might not work for client.");
 	    mssClearError();
 	    }
 	

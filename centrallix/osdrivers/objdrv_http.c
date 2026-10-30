@@ -1233,7 +1233,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 			}
 		    else
 			{
-			fprintf(stderr, "Warning: Unsupported data type for '%s' header\n", one_http_param->Parameter->Name);
+			mssWarn("HTTP", "Unsupported data type for '%s' header.", one_http_param->Parameter->Name);
 			}
 		    }
 		}
@@ -1800,7 +1800,7 @@ http_internal_GetPageStream(pHttpData inf)
 		    {
 		    if (inf->ForceSecureRedirects)
 			{
-			fprintf(stderr, "Warning: Server '%s' tried to redirect to insecure URL '%s', using HTTPS instead\n", inf->Server, hdr_val);
+			mssWarn("HTTP", "Server '%s' tried to redirect to insecure URL '%s', using HTTPS instead.", inf->Server, hdr_val);
 			nmSysFree(inf->Protocol);
 			inf->Protocol = nmSysStrdup("https");
 			if (!inf->Protocol)
@@ -2582,7 +2582,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** Warn if http_4xx retry type is provided while allowing subdirs **/
 	if (inf->RetryLimit > 0 && inf->AllowSubDirs && (inf->RetryFor & HTTP_RETRY_F_HTTP4XX))
 	    {
-	    fprintf(stderr, "Warning: both retry_for http_4xx and allowsubdirs are enabled; retry on 404 Not Found is disabled.\n");
+	    mssWarn("HTTP", "both retry_for http_4xx and allowsubdirs are enabled; retry on 404 Not Found is disabled.");
 	    }
 
 	/** Ensure all required config items are given **/
@@ -3179,7 +3179,7 @@ httpInitialize()
 	HTTP_INF.NonceData = cxssKeystreamNew(NULL, 0);
 	if (!HTTP_INF.NonceData)
 	    {
-	    fprintf(stderr, "Warning: X-Nonce headers will not be emitted\n");
+	    mssWarn("HTTP", "X-Nonce headers will not be emitted.");
 	    mssClearError();
 	    }
 

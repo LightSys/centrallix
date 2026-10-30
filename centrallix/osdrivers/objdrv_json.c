@@ -261,7 +261,7 @@ json_internal_ReadDoc(pObject obj)
 		rcnt = objRead(obj->Prev, rbuf, JSON_READ_SIZE, 0, first_read?OBJ_U_SEEK:0);
 		if (rcnt > 0)
 		    {
-		    fprintf(stderr, "Warning: trailing data beyond end of JSON document.\n");
+		    mssWarn("JSON", "trailing data beyond end of JSON document.");
 		    }
 		}
 	    json_tokener_free(jtok);

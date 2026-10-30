@@ -95,7 +95,7 @@ cx_internal_LoadModules(char* type)
 	modules_inf = stLookup(CxGlobals.ParsedConfig, "modules");
 	if (!modules_inf) 
 	    {
-	    fprintf(stderr, "Warning: no modules section in config file\n");
+	    mssWarn("CX", "no modules section in config file.");
 	    return 0;
 	    }
 
@@ -111,7 +111,7 @@ cx_internal_LoadModules(char* type)
 	    if (!modpath || !modtype)
 		{
 		if (!CxGlobals.QuietInit) printf("mod: driver %s failed\n", one_module->Name);
-		fprintf(stderr, "Warning: Module '%s' must have path and type settings; load failed\n",one_module->Name);
+		mssWarn("CX", "Module '%s' must have path and type settings; load failed.",one_module->Name);
 		continue;
 		}
 
@@ -138,8 +138,8 @@ cx_internal_LoadModules(char* type)
 		{
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		fprintf(stderr, "Warning: Module '%s' could not be loaded\n",modpath);
-		fprintf(stderr, "Warning: %s\n",dlerror());
+		mssWarn("CX", "Module '%s' could not be loaded.",modpath);
+		mssWarn("CX", "%s",dlerror());
 		continue;
 		}
 
@@ -150,7 +150,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		fprintf(stderr, "Warning: Module '%s' has no Init function declared: %s\n",modpath, dlerror());
+		mssWarn("CX", "Module '%s' has no Init function declared: %s.",modpath, dlerror());
 		continue;
 		}
 	    moduledata->DeinitFn = dlsym(moduledata->dlhandle, "moduleDeInitialize");
@@ -163,7 +163,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		fprintf(stderr, "Warning: Module '%s' has no Interface Version declared: %s\n",modpath,dlerror());
+		mssWarn("CX", "Module '%s' has no Interface Version declared: %s.",modpath,dlerror());
 		continue;
 		}
 
@@ -181,7 +181,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		fprintf(stderr, "Warning: Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?)\n",
+		mssWarn("CX", "Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?).",
 		    modpath, *(moduledata->InterfaceVer));
 		continue;
 		}
@@ -191,7 +191,7 @@ cx_internal_LoadModules(char* type)
 		{
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
-		fprintf(stderr, "Warning: Module '%s' load failed\n",modpath);
+		mssWarn("CX", "Module '%s' load failed.",modpath);
 		mssClearError();
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		continue;
@@ -773,12 +773,12 @@ cxLinkSigningSetup(pStructInf my_config)
 	    {
 	    if (cxssGenerateHexKey((char*)key, 32) < 0)
 		{
-		fprintf(stderr, "Warning: no link_signing_key provided and temporal key generation failed, disabling link signing\n");
+		mssWarn("CX", "no link_signing_key provided and temporal key generation failed, disabling link signing.");
 		strtcpy(key, "", sizeof(key));
 		}
 	    else
 		{
-		fprintf(stderr, "Warning: no link_signing_key provided, signing links with temporal key only\n");
+		mssWarn("CX", "no link_signing_key provided, signing links with temporal key only.");
 		}
 	    }
 
@@ -791,7 +791,7 @@ cxLinkSigningSetup(pStructInf my_config)
 	    {
 	    if (cxssLinkInitialize((unsigned char*)key, strlen(key), sites) < 0)
 		{
-		fprintf(stderr, "Warning: Link signing initialization failed, disabling link signing\n");
+		mssWarn("CX", "Link signing initialization failed, disabling link signing.");
 		mssClearError();
 		}
 	    }

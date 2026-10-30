@@ -294,7 +294,7 @@ prt_internal_LoadColors()
 	    prtRegisterColor("gray", 0xbebebe);
 	    prtRegisterColor("grey", 0xbebebe);
 
-	    fprintf(stderr, "Warning: did not load any color names from rgb.txt; using builtin defaults.\n");
+	    mssWarn("PRT", "did not load any color names from rgb.txt; using builtin defaults.");
 	    }
 
     return 0;

@@ -132,7 +132,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
 	    else if(!strcmp(data, "no")) \
 		agentCap->Capabilities.attr = 0; \
 	    else \
-		fprintf(stderr, "Warning: %s must be yes, no, 0, or 1 in %s\n", # attr ,node->Name); \
+		mssWarn("HTR", "%s must be yes, no, 0, or 1 in %s.", # attr ,node->Name); \
 	    } \
 	else if(stGetAttrValue(entry, DATA_T_INTEGER, POD(&i), 0)>=0) \
 	    { \
@@ -142,7 +142,7 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
 		agentCap->Capabilities.attr = 1; \
 	    } \
 	else \
-	    fprintf(stderr, "Warning: %s must be yes, no, 0, or 1 in %s\n", # attr ,node->Name); \
+	    mssWarn("HTR", "%s must be yes, no, 0, or 1 in %s.", # attr ,node->Name); \
 	}
 
     PROCESS_CAP_INIT(Dom0NS);
@@ -1705,7 +1705,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    {
 	    s->Class = (pHtClass)xhLookup(&(HTR.Classes), classname);
 	    if(!s->Class)
-		fprintf(stderr, "Warning: class %s is not defined... acting like it wasn't specified\n",classname);
+		mssWarn("HTR", "class %s is not defined... acting like it wasn't specified.",classname);
 	    }
 	else
 	    s->Class = NULL;
@@ -1718,7 +1718,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 		}
 	    else
 		{
-		fprintf(stderr, "Warning: no capabilities found for %s in class %s\n",agent, s->Class->ClassName);
+		mssWarn("HTR", "no capabilities found for %s in class %s.",agent, s->Class->ClassName);
 		memset(&(s->Capabilities),0,sizeof(HtCapabilities));
 		}
 	    }

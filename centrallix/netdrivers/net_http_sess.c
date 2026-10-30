@@ -59,7 +59,7 @@ int
 nht_i_LinkSess(pNhtSessionData sess)
     {
     if (sess->LinkCnt <= 0 || sess->LinkCnt > 65535)
-	fprintf(stderr, "Warning: Bark!  Bad link count %d for session %s\n", sess->LinkCnt, sess->Cookie);
+	mssWarn("NHT", "Bark!  Bad link count %d for session %s.", sess->LinkCnt, sess->Cookie);
     sess->LinkCnt++;
     sess->LastAccess = NHT.AccCnt++;
     return 0;

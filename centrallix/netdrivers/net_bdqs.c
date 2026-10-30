@@ -120,7 +120,7 @@ bnet_internal_Handler(void* v)
 		    BDQS_PROTO_F_LSB | BDQS_PROTO_F_MULTIQUERY | BDQS_PROTO_F_SELECT |
 		    BDQS_PROTO_F_COLLATE | BDQS_PROTO_F_EVAL | BDQS_PROTO_F_EVENTS) < 0)
 	        {
-		fprintf(stderr, "Warning: Could not start BDQS server on the connection!\n");
+		mssWarn("BNET", "Could not start BDQS server on the connection!");
 		netCloseTCP(connection_socket,0,0);
 		}
 	    }

@@ -565,7 +565,7 @@ sybd_internal_GetConn(pSybdNode db_node)
 		    {
 		    if (rval == CS_FAIL)
 			{
-			fprintf(stderr, "Warning: could not change default password for user '%s'\n", user);
+			mssWarn("SYBD", "could not change default password for user '%s'.", user);
 			mssClearError();
 			break;
 			}
@@ -981,7 +981,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
 		    {
-		    fprintf(stderr, "Warning: Error in constraint expression %s\n", ptr);
+		    mssWarn("SYBD", "Error in constraint expression %s.", ptr);
 		    mssClearError();
 		    }
 		else 
@@ -995,7 +995,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
 		    {
-		    fprintf(stderr, "Warning: Error in default expression %s\n", ptr);
+		    mssWarn("SYBD", "Error in default expression %s.", ptr);
 		    mssClearError();
 		    }
 		else 
@@ -1009,7 +1009,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
 		    {
-		    fprintf(stderr, "Warning: Error in min expression %s\n", ptr);
+		    mssWarn("SYBD", "Error in min expression %s.", ptr);
 		    mssClearError();
 		    }
 		else 
@@ -1023,7 +1023,7 @@ sybd_internal_MergeTypeHints(pStructInf type_inf, pObjPresentationHints hints, i
 		{
 		if ( (exp = expCompileExpression(ptr, tmplist, MLX_F_ICASE | MLX_F_FILENAMES, 0)) == NULL)
 		    {
-		    fprintf(stderr, "Warning: Error in max expression %s\n", ptr);
+		    mssWarn("SYBD", "Error in max expression %s.", ptr);
 		    mssClearError();
 		    }
 		else 
@@ -4660,7 +4660,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 			{
 			if (is_key)
 			    {
-			    fprintf(stderr, "Warning: could not retrieve primary key updated record\n");
+			    mssWarn("SYBD", "could not retrieve primary key updated record.");
 			    mssClearError();
 			    }
 			else
@@ -5182,11 +5182,11 @@ sybdInitialize()
 	    maxconn = 256;
 	    if (ct_config(SYBD_INF.Context, CS_SET, CS_MAX_CONNECT, &maxconn, CS_UNUSED, NULL) == CS_FAIL)
 		{
-		fprintf(stderr, "Warning: could not increase connection limit to %d\n", SYBD_MAX_CONNECTIONS);
+		mssWarn("SYBD", "could not increase connection limit to %d.", SYBD_MAX_CONNECTIONS);
 		}
 	    else
 		{
-		fprintf(stderr, "Warning: could only increase connection limit to %d instead of %d\n", maxconn, SYBD_MAX_CONNECTIONS);
+		mssWarn("SYBD", "could only increase connection limit to %d instead of %d.", maxconn, SYBD_MAX_CONNECTIONS);
 		}
 	    }
 

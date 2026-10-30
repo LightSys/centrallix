@@ -664,7 +664,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 		    obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
 		    if (!obj || !ISMAGIC(obj, MGK_OBJECT)) 
 			{
-			fprintf(stderr, "Warning: Invalid object id(s) in OSML 'close' request\n");
+			mssWarn("NHT", "Invalid object id(s) in OSML 'close' request.");
 			continue;
 			}
 		    xhnFreeHandle(&(sess->Hctx), obj_handle);
@@ -712,7 +712,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			obj = (pObject)xhnHandlePtr(&(sess->Hctx), obj_handle);
 			if (!obj || !ISMAGIC(obj, MGK_OBJECT)) 
 			    {
-			    fprintf(stderr, "Warning: Invalid object id(s) in OSML multiquery 'ls__closeobjs' request\n");
+			    mssWarn("NHT", "Invalid object id(s) in OSML multiquery 'ls__closeobjs' request.");
 			    continue;
 			    }
 			xhnFreeHandle(&(sess->Hctx), obj_handle);
