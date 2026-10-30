@@ -1438,7 +1438,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    return payload; //Error
 	    }
 	snprintf(payload->newname, sizeof (payload->newname), "%s%s", name, payload->extension);
-	snprintf(payload->path, sizeof (payload->path), "%s", NHT.UploadTmpDir);
+	strtcpy(payload->path, NHT.UploadTmpDir, sizeof(payload->path));
 	snprintf(payload->full_new_path, sizeof (payload->full_new_path), "%s/%s", payload->path, payload->newname);
 
 	/** Validate that the new file name matches the mime type **/
@@ -2093,6 +2093,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    wgtr_params.CharWidth = 7;
 		    wgtr_params.CharHeight = 16;
 		    wgtr_params.ParagraphHeight = 16;
+
+		    /** Specify design geometry **/
+		    wgtr_params.IsDesign = 1;
 		    }
 		else
 		    {
@@ -3438,9 +3441,6 @@ nhtInitialize()
 	    /** Allowed file upload extensions **/
 	    for(i=0; stAttrValue(stLookup(my_config, "upload_extensions"), NULL, &strval, i) >= 0; i++)
 		xaAddItem(&NHT.AllowedUploadExts, nmSysStrdup(strval));
-
-	    /** Link signing key **/
-	    cxLinkSigningSetup(my_config);
 	    }
 
 	/** Start the watchdog timer thread **/

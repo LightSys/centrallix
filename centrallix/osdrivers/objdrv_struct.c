@@ -22,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -607,7 +607,7 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     {
     pStxData inf = STX(inf_v);
     pStructInf find_inf;
-    int t;
+    int t, len;
 
 	/** Choose the attr name **/
 	if (!strcmp(attrname,"name"))
@@ -656,8 +656,31 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	find_inf = stLookup(inf->Data,attrname);
 	if (!find_inf) 
 	    {
-	    mssError(1,"STX","Requested structure file attribute not found");
-	    return -1;
+	    /** The attribute is unset (null), so add it with the requested type **/
+	    if (!val) return 0;
+	    /** Only add names the parser can read back **/
+	    len = strlen(attrname);
+	    if (len == 0 || len >= ST_NAME_STRLEN || strchr("0123456789.", attrname[0]) ||
+		    strspn(attrname, "0123456789._ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") != len)
+		{
+		mssError(1,"STX","Invalid structure file attribute name '%s'", attrname);
+		return -1;
+		}
+	    /** Version 1 files only store integers and strings **/
+	    if (!(inf->Data->Flags & ST_F_VERSION2) && datatype != DATA_T_INTEGER && datatype != DATA_T_STRING)
+		{
+		mssError(1,"STX","Version 1 structure files cannot store %s attribute '%s'", obj_type_names[datatype], attrname);
+		return -1;
+		}
+	    find_inf = stAddAttr(inf->Data, attrname);
+	    if (!find_inf)
+		{
+		mssError(1,"STX","Failed to add structure file attribute '%s'", attrname);
+		return -1;
+		}
+	    stSetAttrValue(find_inf, datatype, val, 0);
+	    inf->Node->Status = SN_NS_DIRTY;
+	    return 0;
 	    }
 	if (stStructType(find_inf) != ST_T_ATTRIB) return -1;
 
@@ -831,4 +854,3 @@ stxInitialize()
 
     return 0;
     }
-

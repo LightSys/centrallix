@@ -22,7 +22,7 @@
 #include "memstr.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 static bool
 doTest(void)
@@ -57,5 +57,5 @@ long long
 test(char** tname)
     {
     *tname = "memstr-00 correct null ptr";
-    return loopTest(doTest) * 5;
+    return loopTest(doTest) * 6;
     }

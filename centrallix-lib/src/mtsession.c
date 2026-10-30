@@ -498,7 +498,7 @@ mssEndSession(pMtSession s)
  ***	of the error.
  *** @param file The name of the file where the error was detected.
  *** @param line The line number where the error was detected.
- *** @param format The format text for the error, which accepts any format
+ *** @param message The format text for the error, which accepts any format
  ***	specifier that would be accepted by printf().
  *** @param ... Variables matching format specifiers in the format.
  ***/
@@ -523,10 +523,9 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	     ***/
 	    format_ok &= (warnNeg(xsConcatPrintf(&err_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
 
-	    /*** Append the caller's message.  This goes through xsGenPrintf_va()
-	     *** rather than xsConcatPrintf() because the latter does not use
-	     *** vsnprintf() so it only supports some printf() functionality.
-	     *** xsWrite() appends when given no XS_U_SEEK.
+	    /*** Append the caller's message.  We use xsGenPrintf_va() because
+	     *** it uses vsnprintf() so it supports all printf() functionality.
+	     *** xsWrite() is given no XS_U_SEEK here so it appends.
 	     ***/
 	    va_list args;
 	    va_start(args, message);
@@ -534,7 +533,8 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    va_end(args);
 
 	    /** Get the error message from the xstring. **/
-	    if (format_ok) err_msg = warnNull(xsString(&err_msg_xstring));
+	    if (LIKELY(format_ok))
+		err_msg = warnNull(xsString(&err_msg_xstring));
 	    }
 
 	/*** Fallback: If formatting fails, format into a fixed-size buffer on
@@ -543,7 +543,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	 ***/
 	if (UNLIKELY(err_msg == NULL))
 	    {
-	    fprintf(stderr, "%s:%d: %s: Failed to format the error message with an XString.\n", file, line, module);
+	    fprintf(stderr, "Warning: %s:%d: %s: Failed to format the error message with an XString.\n", file, line, module);
 
 	    /** Write the source location and the module in front of the message. **/
 	    int prefix_len = snprintf(fallback_msg, sizeof(fallback_msg), "%s:%d: %s: ", file, line, module);
@@ -560,7 +560,7 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	/** Fallback: If all formatting fails, just use the unformatted message. **/
 	if (UNLIKELY(err_msg == NULL))
 	    {
-	    fprintf(stderr, "Failed to format the error message at all.\n");
+	    fprintf(stderr, "Warning: Failed to format the error message at all.\n");
 	    err_msg = message;
 	    }
 
@@ -596,14 +596,14 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	    char* allocated_err_msg = warnNull(nmSysStrdup(err_msg));
 	    if (UNLIKELY(allocated_err_msg == NULL))
 		{
-		fprintf(stderr, "Failed to store error message: %s\n", err_msg);
+		fprintf(stderr, "Warning: Failed to store error message: %s\n", err_msg);
 		goto end; /* Give up. */
 		}
 
 	    /** Store the error. **/
 	    if (warnNeg(xaAddItem(&(s->ErrList), (void*)allocated_err_msg)) < 0)
 		{
-		fprintf(stderr, "Failed to add error message to session error list: %s\n", err_msg);
+		fprintf(stderr, "Warning: Failed to add error message to session error list: %s\n", err_msg);
 		nmSysFree(allocated_err_msg);
 		goto end; /* Give up. */
 		}
@@ -628,7 +628,7 @@ void
 mssClearError()
     {
 	/** Get session pointer. **/
-	pMtSession s = warnNull(thGetParam(NULL, "mss"));
+	pMtSession s = thGetParam(NULL, "mss");
 	if (s == NULL) return; /* No errors to clear. */
 
 	/** Free all error strings in the error list/error stack. **/
@@ -662,7 +662,7 @@ mssPrintError(pFile fd)
 	rval = 0;
 
     end:
-	if (UNLIKELY(rval != 0)) /* Make sure we print something if a failure happenned. */
+	if (UNLIKELY(rval != 0)) /* Make sure we print something if a failure happened. */
 	    fprintf(stderr, "Warning: Failed to print session errors.\n");
 
 	/** Clean up. **/

@@ -740,8 +740,8 @@ function htr_event(e)
 
 	cx__event.target = t;
 
-	cx__event.pageX = e.clientX + window.pageXOffset;
-	cx__event.pageY = e.clientY + window.pageYOffset;
+	cx__event.pageX = toLayoutPx(e.clientX + window.pageXOffset);
+	cx__event.pageY = toLayoutPx(e.clientY + window.pageYOffset);
 	}
     else if(cx__capabilities.Dom0IE)
 	{
