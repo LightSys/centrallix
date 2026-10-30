@@ -91,7 +91,7 @@ objCloseSession(pObjSession this)
 	/** Close session being re-entered? **/
 	if (this->Flags & OBJ_SESS_F_CLOSING)
 	    {
-	    mssError(1,"OSML","Bark! Session close was re-entered");
+	    mssWarn("OSML", "Bark! Session close was re-entered.");
 	    return 0;
 	    }
 	this->Flags |= OBJ_SESS_F_CLOSING;
@@ -125,7 +125,7 @@ objCloseSession(pObjSession this)
 		}
 	    if (!closed)
 		{
-		mssError(1,"OSML","Bark! %d unmanaged object(s) remained unclosed at session destroy", this->OpenObjects.nItems);
+		mssWarn("OSML", "Bark! %d unmanaged object(s) remained unclosed at session destroy.", this->OpenObjects.nItems);
 		for(i=0;i<this->OpenObjects.nItems;i++)
 		    {
 		    obj = (pObject)this->OpenObjects.Items[i];

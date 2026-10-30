@@ -1040,7 +1040,7 @@ nht_i_TLSHandler(void* v)
 	    }
 	if (SSL_CTX_check_private_key(NHT.SSL_ctx) != 1)
 	    {
-	    mssError(1,"HTTP", "Integrity check failed for key; connection handshake might not succeed.");
+	    mssWarn("HTTP", "Integrity check failed for key; connection handshake might not succeed.");
 	    }
 	if (stAttrValue(stLookup(my_config,"ssl_cert_chain"), NULL, &strval, 0) == 0)
 	    {
@@ -1058,7 +1058,7 @@ nht_i_TLSHandler(void* v)
 		}
 	    else
 		{
-		mssErrorErrno(1, "HTTP", "Warning: could not open certificate chain file.");
+		mssWarn("HTTP", "could not open certificate chain file. (%s).", strerror(errno));
 		}
 	    }
 
@@ -1101,7 +1101,7 @@ nht_i_TLSHandler(void* v)
 	    if (conn->SSLpid <= 0)
 		{
 		nht_i_FreeConn(conn);
-		mssError(1,"NHT","Could not start TLS on the connection!");
+		mssWarn("NHT", "Could not start TLS on the connection!");
 		continue;
 		}
 
@@ -1109,7 +1109,7 @@ nht_i_TLSHandler(void* v)
 	    if (!thCreate(nht_i_ConnHandler, 0, conn))
 	        {
 		nht_i_FreeConn(conn);
-		mssError(1,"NHT","Could not create thread to handle TLS connection!");
+		mssWarn("NHT", "Could not create thread to handle TLS connection!");
 		}
 	    }
 
@@ -1189,7 +1189,7 @@ nht_i_Handler(void* v)
 	    if (!thCreate(nht_i_ConnHandler, 0, conn))
 	        {
 		nht_i_FreeConn(conn);
-		mssError(1,"NHT","Could not create thread to handle connection!");
+		mssWarn("NHT", "Could not create thread to handle connection!");
 		}
 	    }
 

@@ -244,7 +244,7 @@ wgtalVerify(pWgtrVerifySession s)
 			    continue;
 			    }
 			else
-			    mssError(1, "WGTRAL", "Warning: overflow of end of hbox '%s'",al->Name);
+			    mssWarn("WGTRAL", "overflow of end of hbox '%s'.",al->Name);
 			}
 		    child->x = child->pre_x = xo;
 		    child->pre_width = child->width = possible_width;
@@ -281,7 +281,7 @@ wgtalVerify(pWgtrVerifySession s)
 			    continue;
 			    }
 			else
-			    mssError(1, "WGTRAL", "Warning: overflow of end of vbox '%s'",al->Name);
+			    mssWarn("WGTRAL", "overflow of end of vbox '%s'.",al->Name);
 			}
 		    child->y = child->pre_y = yo;
 		    child->pre_height = child->height = possible_height;

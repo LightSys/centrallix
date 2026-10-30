@@ -137,7 +137,7 @@ shl_internal_UpdateStatus(pShlData inf)
     else
 	{
 	/** hmm... error... **/
-	mssError(0,"SHL","Error checking for dead child: %s\n",strerror(errno));
+	mssWarn("SHL", "Error checking for dead child: %s.",strerror(errno));
 	return;
 	}
     }
@@ -546,7 +546,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 			pEV->changeable = 1;
 			}
 		    else
-			mssError(0,"SHL","can't find %s to mark changeable\n",((pExpression)(values->Items[i]))->String);
+			mssWarn("SHL", "can't find %s to mark changeable.",((pExpression)(values->Items[i]))->String);
 		    }
 		}
 	    else
@@ -563,7 +563,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		    pEV->changeable = 1;
 		    }
 		else
-		    mssError(0,"SHL","can't find %s to mark changeable\n",ptr);
+		    mssWarn("SHL", "can't find %s to mark changeable.",ptr);
 		}
 	    }
 
@@ -627,7 +627,7 @@ shlClose(void* inf_v, pObjTrxTree* oxt)
 		    }
 		}
 	    if(waitret<0)
-		mssError(0,"SHL","Error while trying to reap process %i: %i\n",inf->shell_pid,errno);
+		mssWarn("SHL", "Error while trying to reap process %i: %i.",inf->shell_pid,errno);
 
 	    if(SHELL_DEBUG & SHELL_DEBUG_FORK)
 		printf("child (%i) returned: %i\n",inf->shell_pid,childstat);

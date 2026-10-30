@@ -333,13 +333,13 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	if(regexec(&XML_INF.namematch,ptr,3,pmatch,0)!=0)
 	    {
 	    /** be optimistic: maybe this is for another driver **/
-	    mssError(0,"XML","Warning: pattern didn't match!");
+	    mssWarn("XML", "pattern didn't match!");
 	    return 0;
 	    }
 	if(pmatch[1].rm_so==-1 || pmatch[1].rm_so==pmatch[1].rm_eo)
 	    {
 	    /** be optimistic: maybe this is for another driver **/
-	    mssError(0,"XML","Warning: there was no base text matched!");
+	    mssWarn("XML", "there was no base text matched!");
 	    return 0;
 	    }
 	i=pmatch[1].rm_eo-pmatch[1].rm_so; /* length of the string we're going to copy */
@@ -1039,7 +1039,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 	    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 	    if(!pHE)
 		{
-		mssError(0,"XML","nmMalloc failed!");
+		mssWarn("XML", "nmMalloc failed!");
 		return;
 		}
 	    pHE->type=XML_ATTR;

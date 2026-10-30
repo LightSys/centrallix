@@ -469,7 +469,7 @@ wgtrLoadAddTemplate(pObjSession s, char* path, pWgtrClientInfo client_info, pStr
 		/** Check duplicates **/
 		if (!strcmp(path, templates[i]->ThisTemplatePath))
 		    {
-		    mssError(1,"WGTR","Warning - cannot add duplicate template '%s'", path);
+		    mssWarn("WGTR", "cannot add duplicate template '%s'.", path);
 		    return 0;
 		    }
 		}
@@ -2277,7 +2277,7 @@ wgtrRenameProperty(pWgtrNode tree, char* oldname, char* newname)
 	prop = xaGetItem(&(tree->Properties), oldid);
 	strtcpy(prop->Name, newname, sizeof(prop->Name));
 
-	mssError(1, "WGTR", "WARNING: deprecated property '%s' used for widget '%s'; please use '%s' in the future.", oldname, tree->Name, newname);
+	mssWarn("WGTR", "deprecated property '%s' used for widget '%s'; please use '%s' in the future.", oldname, tree->Name, newname);
 
     return 0;
     }

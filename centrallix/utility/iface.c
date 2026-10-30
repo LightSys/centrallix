@@ -601,7 +601,7 @@ ifcGetHandle(pObjSession s, char* ref)
 		mssError(0, "IFC", "Couldn't parse interface definition '%s'", path);
 		return NULL;
 		}
-	    if (xhAdd(&(IFC.Definitions), def->Path, (char*)def) < 0) mssError(0, "IFC", "Couldn't cache");
+	    if (xhAdd(&(IFC.Definitions), def->Path, (char*)def) < 0) mssWarn("IFC", "Couldn't cache.");
 	    }
 	/** we have the interface definition. Now let's build a handle from it **/
 	if ( (handle = ifc_internal_BuildHandle(def, major, minor)) == NULL)
@@ -671,7 +671,7 @@ ifcInitialize()
 	/** Pull the base interface directory from the config file **/
 	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "iface_dir"), NULL, &IFC.IfaceDir, 0) < 0)
 	    {
-	    mssError(0, "IFC", "iface_dir not set in centrallix.conf, defaulting to /etc/iface");
+	    mssWarn("IFC", "iface_dir not set in centrallix.conf, defaulting to /etc/iface.");
 	    IFC.IfaceDir = "/ifc";
 	    }
 //	fprintf(stderr, "IfaceDir = %s\n", IFC.IfaceDir);

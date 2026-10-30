@@ -118,7 +118,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Initialize the html-related interface stuff **/
 	if (ifcHtmlInit(s, tree) < 0)
 	    {
-	    mssError(0, "HTR", "Error Initializing Html Interface code...continuing, but things might not work for client");
+	    mssWarn("HTR", "Error Initializing Html Interface code...continuing, but things might not work for client.");
+	    mssClearError();
 	    }
 	
 	/** Auto-call startup and cleanup **/
