@@ -102,7 +102,7 @@ page_test "widget/page"
     editbox "widget/editbox"
     {
       bgcolor="white"; empty_description="this is an editbox";
-      width=160; height=60; maxchars=300;
+      width=160; height=60; max_chars=300;
     }
 
     html "widget/html"

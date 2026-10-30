@@ -14,12 +14,12 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer. Timers can be used to create animations, delayed effects, and more.</p>
+			<p>A timer widget is used to schedule an Event to occur after a specified amount of time.  Timers can be set to expire a set amount of time after the page is loaded, or they can be triggered into counting down via activating an Action on the timer.  Timers can be used to create animations, delayed effects, and more.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-			<p>Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however. Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.</p>
+			<p>Timers are nonvisual widgets which can be placed almost anywhere in an application.  They are most commonly found at the top-level of the application, however.  Timers have no direct effects on the object in which they are placed.  Timers can only contain Connector widgets.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -56,7 +56,7 @@
 </tr>
 <tr>
 <td class="name">SetTimer</td>
-<td class="description">Action takes two parameters: "Time" (integer in milliseconds) and "AutoReset" (integer 0 or 1). It causes a timer to begin counting down towards an Expire event.</td>
+<td class="description">Action takes two parameters: "Time" (integer in milliseconds) and "AutoReset" (integer 0 or 1).  It causes a timer to begin counting down towards an Expire event.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -66,14 +66,14 @@
 <th class="description">Description</th>
 </tr>
 <tr>
-<td class="name">expire</td>
+<td class="name">Expire</td>
 <td class="description">This occurs when the timer hits its timeout and the auto reset is not enabled.</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -85,7 +85,7 @@ $Version=2$
 
 //
 
-mytimerOne "widget/timer"
+my_timer1 "widget/timer"
 
 	{
 
@@ -99,7 +99,7 @@ mytimerOne "widget/timer"
 
 		{ 
 
-		event="Expire"; target="mytimerTwo";action="SetTimer";
+		event="Expire"; target="my_timer2";action="SetTimer";
 
 		Time="500"; AutoReset="0";
 
@@ -107,7 +107,7 @@ mytimerOne "widget/timer"
 
 	}
 
-mytimerTwo "widget/timer"
+my_timer2 "widget/timer"
 
 	{
 
@@ -121,7 +121,7 @@ mytimerTwo "widget/timer"
 
 		{ 
 
-		event="Expire"; target="mytimerOne";action="SetTimer";
+		event="Expire"; target="my_timer1";action="SetTimer";
 
 		Time="500"; AutoReset="0";
 
@@ -129,7 +129,7 @@ mytimerTwo "widget/timer"
 
 	}
 
-		
+			
 
 		</pre>
 </body>

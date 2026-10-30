@@ -21,6 +21,9 @@ var EVENT_HALT = 1;
 var EVENT_ALLOW_DEFAULT_ACTION = 0;
 var EVENT_PREVENT_DEFAULT_ACTION = 2;
 
+/** Rezoom the page before any other resize handler measures it. **/
+window.addEventListener('resize', () => window.updateZoom?.());
+
 
 /*
  * object.watch polyfill
@@ -286,8 +289,6 @@ function cxjs_convert(dt,v)
 	if (String(v).substr(0,1) == '$')
 	    return parseFloat(String(v).substr(1));
 	else if (String(v).substr(0,2) == ' $' || String(v).substr(0,2) == '+$')
-	    return parseFloat(String(v).substr(2));
-	else if (String(v).substr(0,2) == '$ ')
 	    return parseFloat(String(v).substr(2));
 	else if (String(v).substr(0,2) == '-$')
 	    return -parseFloat(String(v).substr(2));
@@ -806,7 +807,7 @@ function htr_style_item(widget, prefix, defaults, item)
 function htr_style_data(widget, prefix, defaults)
     {
     var styleobj = {};
-    var items=['textcolor','style','font_size','font','bgcolor','padding','border_color','border_radius','border_style','align','wrap','shadow_color','shadow_radius','shadow_offset','shadow_location','shadow_angle'];
+    var items=['textcolor','style','font_size','font','bgcolor','background','padding','border_color','border_radius','border_style','align','wrap','shadow_color','shadow_radius','shadow_offset','shadow_location','shadow_angle'];
 
     for(var item in items)
 	{
@@ -921,6 +922,7 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	'text-decoration': (styleobj.style=='underline')?'underline':'none',
 	'font-family': styleobj.font,
 	'background-color': styleobj.bgcolor,
+	'background-image': styleobj.background?("URL('" + styleobj.background + "')"):'none',
 	'padding': styleobj.padding + 'px',
 	'border-radius': styleobj.border_radius + 'px',
 	'border': styleobj.border_color?('1px ' + (styleobj.border_style?styleobj.border_style:'solid') + ' ' + styleobj.border_color):(styleobj.border_style?('1px ' + styleobj.border_style + ' #c0c0c0'):'none'),
@@ -937,6 +939,222 @@ function htr_stylize_element(element, widget, prefix, defaults)
 	(
 	obj
 	);
+    }
+
+
+/*** Resize handling:  Watches widgets and a viewport-sized sentinel dom node
+ *** to run widget resize and placement handlers.  These run after layout, but
+ *** before paint.
+ ***/
+const htr_placed = new Set();
+let htr_viewport_sentinel = null;
+const htr_resize_observer = new ResizeObserver((entries) =>
+    {
+    let resized = false;
+    for (const { target } of entries)
+	{
+	/*** Skip events that don't change the size, including the
+	 *** browser's initial resize.
+	 ***/
+	const size = target.__htr_size;
+	if (!size) continue;
+	const w = target.offsetWidth;
+	const h = target.offsetHeight;
+	if (w === size.w && h === size.h) continue;
+	size.w = w;
+	size.h = h;
+
+	resized = true;
+	target.__htr_size_fn?.(target);
+	}
+    if (resized) htr_place_all();
+    });
+
+/*** Watches the size of an element.
+ ***
+ *** Note: An element with a resize that only moves its anchored elements may
+ *** omit fn because a resize on a watched element automatically runs its
+ *** placement handlers. 
+ ***
+ *** @param el The element to watch.
+ *** @param fn Called as fn(el) after el changes size.
+ ***/
+function htr_watch_size(el, fn)
+    {
+    el.__htr_size_fn = fn;
+    el.__htr_size = { w: el.offsetWidth, h: el.offsetHeight };
+    htr_resize_observer.observe(el);
+    }
+
+/** Stops watching the size of an element. **/
+function htr_unwatch_size(el)
+    {
+    htr_resize_observer.unobserve(el);
+    delete el.__htr_size_fn;
+    delete el.__htr_size;
+    }
+
+/*** Registers an element drawn at page level that follows another element,
+ *** such as a dropdown menu's dropdown.  Placement handlers run after any
+ *** watched element or the viewport resizes, and on htr_place_all().
+ ***
+ *** Note: fn might be called even when nothing has moved.
+ ***
+ *** @param el The element to watch.
+ *** @param fn Called as fn(el) to reposition the element.
+ ***/
+function htr_watch_place(el, fn)
+    {
+    /*** Set up the viewport sentinel: a fixed, viewport-sized element that
+     *** we can watch to detect changes to the size of the viewport.
+     ***/
+    if (!htr_viewport_sentinel)
+	{
+	htr_viewport_sentinel = document.createElement('div');
+	htr_viewport_sentinel.style.cssText = 'position:fixed; inset:0; visibility:hidden; pointer-events:none;';
+	document.body.appendChild(htr_viewport_sentinel);
+	htr_watch_size(htr_viewport_sentinel);
+	}
+
+    el.__htr_place_fn = fn;
+    htr_placed.add(el);
+    }
+
+/** Unregisters an element registered with htr_watch_place(). **/
+function htr_unwatch_place(el)
+    {
+    htr_placed.delete(el);
+    delete el.__htr_place_fn;
+    }
+
+/*** Runs every placement handler.  Call this after moving widgets causing a
+ *** resize event to update any anchored elements.
+ ***/
+function htr_place_all()
+    {
+    for (const el of htr_placed)
+	{
+	if (el.isConnected) el.__htr_place_fn(el);
+	else htr_unwatch_place(el);
+	}
+    }
+
+/*** Clips an element drawn at page level so it scrolls out of view with the
+ *** element it follows.  On each side where the anchor extends past a
+ *** clipping ancestor (such as a scrollpane), the element is clipped at that
+ *** ancestor's edge.  Once the anchor is entirely out of view, the element is
+ *** hidden.
+ ***
+ *** @param el The element to clip.
+ *** @param anchor The element it follows, or null to remove the clip.
+ ***/
+function htr_clip_to_anchor(el, anchor)
+    {
+    el.style.clipPath = '';
+    if (!anchor) return;
+
+    /** Intersect the padding boxes of the anchor's clipping ancestors. **/
+    const clip = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
+    for (let p = anchor.parentElement; p && p !== document.body; p = p.parentElement)
+	{
+	const style = getComputedStyle(p);
+	const rect = getPageRect(p);
+	if (style.overflowX !== 'visible')
+	    {
+	    clip.left = Math.max(clip.left, rect.left + p.clientLeft);
+	    clip.right = Math.min(clip.right, rect.left + p.clientLeft + p.clientWidth);
+	    }
+	if (style.overflowY !== 'visible')
+	    {
+	    clip.top = Math.max(clip.top, rect.top + p.clientTop);
+	    clip.bottom = Math.min(clip.bottom, rect.top + p.clientTop + p.clientHeight);
+	    }
+	}
+
+    /** Hide the element if the anchor is entirely outside the clip box. **/
+    const a = getPageRect(anchor);
+    if (a.bottom <= clip.top || a.top >= clip.bottom || a.right <= clip.left || a.left >= clip.right)
+	{
+	el.style.clipPath = 'inset(50%)';
+	return;
+	}
+
+    /** Clip the element on each side where the anchor passes the clip box. **/
+    const r = getPageRect(el);
+    const top    = (a.top    < clip.top)    ? Math.max(0, clip.top - r.top)       : 0;
+    const right  = (a.right  > clip.right)  ? Math.max(0, r.right - clip.right)   : 0;
+    const bottom = (a.bottom > clip.bottom) ? Math.max(0, r.bottom - clip.bottom) : 0;
+    const left   = (a.left   < clip.left)   ? Math.max(0, clip.left - r.left)     : 0;
+    if (top || right || bottom || left)
+	el.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+    }
+
+/** Hides the point belonging to a target, if it has one. **/
+function htr_hide_point(point_target)
+    {
+    const { point1, point2 } = point_target;
+    if (point1) htr_setvisibility(point1, 'hidden');
+    if (point2) htr_setvisibility(point2, 'hidden');
+    }
+
+/*** Updates a point when the page has been resized. Fails if the target does
+ *** not have a point element. (Call htr_action_point() to create a point,
+ *** this function is only intended to update existing points.)
+ *** 
+ *** @param point_target The target of the point being updated (necessary
+ *** 	because it stores the resize data for the point).
+ ***/
+function htr_update_point(point_target)
+    {
+    const resize_param = point_target?.resize?.param;
+    if (!resize_param)
+	{
+	// Skip: No available resize data. Maybe this DOM node doesn't have an associated point?
+	console.warn('Failed to get resize data to update point on', point_target);
+	return;
+	}
+    
+    /** Hide the point if the target is hidden. **/
+    if (!point_target.getClientRects().length)
+	{
+	htr_hide_point(point_target);
+	return;
+	}
+
+    /** Update the point with data from the resize object. **/
+    const { X, Y, AtWidget, BorderColor, FillColor } = resize_param;
+    const { p1, p2 } = htutil_point(point_target,
+	X, Y, AtWidget, BorderColor, FillColor,
+	point_target.point1, point_target.point2
+    );
+    point_target.point1 = p1;
+    point_target.point2 = p2;
+    }
+
+/*** This function updates the pointing UI element that points from the point_target,
+ *** or creates one if it does not exist, and saves the param for redrawing it.
+ *** Often invoked when the point action is used.
+ *** 
+ *** @param point_target The DOM node on whose edge the point is drawn.
+ *** @param param Pointing parameters.
+ *** @param param.X The x value for where to point.
+ *** @param param.Y The y value for where to point.
+ *** @param param.AtWidget The widget (node or name) to point at, overriding
+ *** 	the coordinates above.
+ *** @param param.BorderColor The border color of the point element.
+ *** @param param.FillColor The fill color of the point element.
+ ***/
+function htr_action_point(point_target, param)
+    {
+    // Get the resize data from the point_target (or create it, if needed).
+    if (!point_target.resize) point_target.resize = {};
+    const { resize } = point_target;
+    
+    // Update the saved param.
+    resize.param = param;
+
+    // (Re)render the new point.
+    htr_update_point(point_target);
     }
 
 function htr_alert(obj,maxlevels)
@@ -1237,12 +1455,20 @@ function htr_subel(l, id)
 
 function htr_extract_bgcolor(s)
     {
-    if (s.substr(0,17) == "background-color:")
+    // Handle edge cases.
+    if (typeof(s) !== 'string') return null;
+    s = s.toLocaleLowerCase();
+    
+    // Check for CSS rule.
+    if (s.startsWith("background-color:"))
 	{
-	var cp = s.indexOf(":");
-	return s.substr(cp+2,s.length-cp-3);
+	const color_start = s.indexOf(":") + 1;
+	const color_end = (s.endsWith(';')) ? -1 : undefined;
+	return s.slice(color_start, color_end).trim();
 	}
-    else if (s.substr(0,8) == "bgcolor=" || s.substr(0,8) == "bgColor=")
+    
+    // Check for HTML attribute (deprecated).
+    if (s.startsWith("bgcolor="))
 	{
 	var qp = s.indexOf("'");
 	if (qp < 1)
@@ -1250,6 +1476,8 @@ function htr_extract_bgcolor(s)
 	else
 	    return s.substr(qp+1,s.length-qp-2);
 	}
+    
+    // Fail: Color not found.
     return null;
     }
 
@@ -1270,6 +1498,8 @@ function htr_extract_bgimage(s)
 
 function htr_getvisibility(l)
     {
+    if (!l) return '';
+    
     var v = null;
     if (cx__capabilities.Dom0NS)
         {
@@ -1609,7 +1839,7 @@ function htr_addeventlistener(eventType,obj,handler)
 	if (typeof pg_capturedevents[eventType] == 'undefined')
 	    {
 	    pg_capturedevents[eventType] = handler;
-	    obj.addEventListener(eventType, handler, true);
+	    obj.addEventListener(eventType, handler, { capture: true, passive: false });
 	    }
 	}
     else

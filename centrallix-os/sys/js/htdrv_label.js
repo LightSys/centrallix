@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -103,7 +103,6 @@ function lb_disable()
 function lb_update()
     {
     var v = htutil_nlbr(htutil_encode(htutil_obscure(this.content), true));
-    //var txt = this.stylestr + (v?v:"") + "</font></td></tr></table>";
     var txt = v?v:"";
     $(this).find("span").html(txt).attr("style", htutil_getstyle(this, null, {}));
     /*if (cx__capabilities.Dom0NS) // only serialize this for NS4
@@ -176,7 +175,6 @@ function lbl_init(l, wparam)
     l.content = wparam.text;
     l.orig_content = wparam.text;
     l.fieldname = wparam.field;
-    l.stylestr = wparam.style;
     l.tooltip = wparam.tooltip;
     l.tipid = null;
     l.pointcolor = wparam.pfg;

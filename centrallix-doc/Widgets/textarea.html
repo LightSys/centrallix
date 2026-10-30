@@ -97,15 +97,15 @@
 </tr>
 <tr>
 <td class="name">InsertText</td>
-<td class="description">Checks to see if things need to be changed (new is different from old) then calls set value.</td>
+<td class="description">Checks to see if things need to be changed (new is different from old) then calls SetValue with the provided "Text".  Specify 1 for the "SetFocus" parameter to cause this textarea to become the focus when the text is inserted.</td>
 </tr>
 <tr>
 <td class="name">SetFocus</td>
-<td class="description">Sets the focus on a selected widget.</td>
+<td class="description">Sets the focus on a selected widget.  Specify the optional "X" or "Y" parameters to move the focus box that appears on the textarea.</td>
 </tr>
 <tr>
 <td class="name">SetValue</td>
-<td class="description">Sets the content to the text parameter sent.</td>
+<td class="description">Sets the content to the specified "Value" parameter.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -132,7 +132,7 @@
 </tr>
 <tr>
 <td class="name">GetFocus</td>
-<td class="description">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
+<td class="description">This event occurs when the textarea receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</td>
 </tr>
 <tr>
 <td class="name">KeyPress</td>
@@ -140,7 +140,11 @@
 </tr>
 <tr>
 <td class="name">LoseFocus</td>
-<td class="description">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</td>
+<td class="description">This event occurs when the textarea loses keyboard focus (if the user tabs off of it, for instance).</td>
+</tr>
+<tr class="notimplimented">
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</td>
 </tr>
 <tr>
 <td class="name">MouseDown</td>
@@ -167,7 +171,5 @@
 <td class="description">This event occurs when the user presses the tab key.</td>
 </tr>
 </table>
-<h3 class="sample">Sample Code:</h3>
-<p class="none">none currently available</p>
 </body>
 </html>

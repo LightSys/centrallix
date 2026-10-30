@@ -1,17 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/datatypes.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -37,6 +28,10 @@
 /* Description:								*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "wgtr.h"
 
 
 /*** wgthtmlVerify - allows the driver to check elsewhere in the tree
@@ -58,6 +53,9 @@ wgthtmlVerify(pWgtrVerifySession s)
     int Static;
     wgtrGetPropertyValue(s->CurrWidget, "mode", DATA_T_STRING, &val);
     Static = ((val.String == NULL) || !strcmp(val.String, "static"));
+
+    /** Only a dynamic html widget wraps its children (in #htNpane). **/
+    if (!Static) s->CurrWidget->Flags |= WGTR_F_VISUAL_CONTAINER;
     
     if(s->CurrWidget->fl_width < 0)
         {
@@ -73,6 +71,15 @@ wgthtmlVerify(pWgtrVerifySession s)
                 s->CurrWidget->fl_height = 0;
             else
                 s->CurrWidget->fl_height = 100;
+	}
+
+    /*** An html widget with no height grows to fit the loaded document. We
+     *** don't know what height that will be, so we guess that it's a square.
+     ***/
+    if (s->CurrWidget->height < 0 && s->CurrWidget->width >= 0)
+	{
+	s->CurrWidget->Flags |= WGTR_F_AUTOHEIGHT;
+	s->CurrWidget->height = s->CurrWidget->pre_height = s->CurrWidget->width;
 	}
 	
     return 0;

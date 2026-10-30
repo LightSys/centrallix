@@ -1,31 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <sys/types.h>
-#include <regex.h>
-#include <stdarg.h>
-#include <math.h>
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "centrallix.h"
-#include "expression.h"
-#include "cxlib/qprintf.h"
-#include <assert.h>
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -45,13 +22,47 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	ht_render.h,ht_render.c					*/
+/* Module: 	ht_render.h, ht_render.c				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	November 19, 1998					*/
 /* Description:	HTML Page rendering engine that interacts with the 	*/
 /*		various widget drivers to produce a dynamic HTML page.	*/
 /************************************************************************/
 
+#include <assert.h>
+#include <ctype.h>
+#include <fcntl.h>
+#include <math.h>
+#include <regex.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "centrallix.h"
+#include "cxlib/datatypes.h"
+#include "cxlib/expect.h"
+#include "cxlib/mtask.h"
+#include "cxlib/mtsession.h"
+#include "cxlib/newmalloc.h"
+#include "cxlib/qprintf.h"
+#include "cxlib/strtcpy.h"
+#include "cxlib/warn.h"
+#include "cxlib/xarray.h"
+#include "cxlib/xhash.h"
+#include "cxlib/xstring.h"
+#include "expression.h"
+#include "ht_render.h"
+#include "obj.h"
+#include "stparse_ne.h"
+#include "stparse.h"
+#include "wgtr.h"
 
 
 /*** GLOBALS ***/
@@ -197,9 +208,9 @@ htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities paren
 void
 htr_internal_writeCxCapabilities(pHtSession s)
     {
-    htrWrite(s,"    cx__capabilities = {};\n",27);
+    htrWrite(s,"\tcx__capabilities = {};\n",24);
 #define PROCESS_CAP_OUT(attr) \
-    htrWrite(s,"    cx__capabilities.",21); \
+    htrWrite(s,"\tcx__capabilities.",18); \
     htrWrite(s, # attr ,strlen( # attr )); \
     htrWrite(s," = ",3); \
     htrWrite(s,(s->Capabilities.attr?"1;\n":"0;\n"),3);
@@ -366,15 +377,25 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
     {
     int l,n,cnt;
     char* ptr;
+    const size_t block_size = 2048lu;
 
     	/** Need new block? **/
 	if (arr->nItems == 0)
 	    {
-	    ptr = (char*)nmMalloc(2048);
-	    if (!ptr) return -1;
+	    ptr = (char*)nmMalloc(block_size);
+	    if (UNLIKELY(ptr == NULL))
+		{
+		mssError(1, "HTR", "nmMalloc(%zu) failed.", block_size);
+		goto err;
+		}
 	    *(int*)ptr = 0;
 	    l = 0;
-	    xaAddItem(arr,ptr);
+	    if (UNLIKELY(xaAddItem(arr, ptr) < 0))
+		{
+		mssError(1, "HTR", "Failed to add text block to XArray.");
+		nmFree(ptr, block_size);
+		goto err;
+		}
 	    }
 	else
 	    {
@@ -395,15 +416,31 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	    *(int*)ptr = l;
 	    if (n)
 	        {
-		ptr = (char*)nmMalloc(2048);
-		if (!ptr) return -1;
+		ptr = (char*)nmMalloc(block_size);
+		if (UNLIKELY(ptr == NULL))
+		    {
+		    mssError(1, "HTR", "nmMalloc(%zu) failed.", block_size);
+		    goto err;
+		    }
 		*(int*)ptr = 0;
 		l = 0;
-		xaAddItem(arr,ptr);
+		if (UNLIKELY(xaAddItem(arr, ptr) < 0))
+		    {
+		    mssError(1, "HTR", "Failed to add text block to XArray.");
+		    nmFree(ptr, block_size);
+		    goto err;
+		    }
 		}
 	    }
 
-    return 0;
+	return 0;
+
+    err:
+	mssError(0, "HTR",
+	    "Failed to add text to array with %d items: \"%s\"",
+	    xaCount(arr), txt
+	);
+	return -1;
     }
 
 
@@ -415,98 +452,148 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     {
     pHtDriver drv;
     pXHashTable widget_drivers = NULL;
-    int rval;
+    int rval = -1;
+    
+	/** Guard segfault. **/
+	if (UNLIKELY(widget == NULL))
+	    {
+	    mssError(1, "HTR", "Failed to render NULL widget.");
+	    return -1;
+	    }
 
 	/** Check recursion **/
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1,"HTR","Could not render application: resource exhaustion occurred");
-	    return -1;
+	    goto end;
 	    }
 
 	/** Find the hashtable keyed with widget names for this combination of
 	 ** user-agent:style that contains pointers to the drivers to use.
 	 **/
-	if(!session->Class)
+	if (UNLIKELY(session->Class == NULL))
 	    {
-	    printf("Class not defined %s:%i\n",__FILE__,__LINE__);
-	    return -1;
+	    mssError(1, "HTR", "Class not defined.");
+	    goto end;
 	    }
-	widget_drivers = &( session->Class->WidgetDrivers);
-	if (!widget_drivers)
-	    {
-	    htrAddBodyItem_va(session, "No widgets have been defined for your browser type and requested class combination.");
-	    mssError(1, "HTR", "Invalid UserAgent:class combination");
-	    return -1;
-	    }
+	widget_drivers = &session->Class->WidgetDrivers;
 
 	/** Get the name of the widget.. **/
-	if (strncmp(widget->Type,"widget/",7))
+	if (UNLIKELY(strncmp(widget->Type, "widget/", 7) != 0))
 	    {
 	    mssError(1,"HTR","Invalid content type for widget - must be widget/xxx");
-	    return -1;
+	    goto end;
 	    }
 
 	/** Lookup the driver. These are what are defined in the various htdrv_* functions **/
 	drv = (pHtDriver)xhLookup(widget_drivers,widget->Type+7);
-	if (!drv)
+	if (UNLIKELY(drv == NULL))
 	    {
 	    mssError(1,"HTR","Unknown widget object type '%s'", widget->Type);
-	    return -1;
+	    goto end;
 	    }
 
 	/** Has this driver been used this session yet? **/
 	if (xhLookup(&session->UsedDrivers, drv->WidgetName) == NULL)
 	    {
-	    xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv);
-	    if (drv->Setup)
+	    if (UNLIKELY(xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv) != 0))
 		{
-		if (drv->Setup(session) < 0)
-		    return -1;
+		mssError(1, "HTR", "Failed to add \"%s\" to used drivers.", drv->WidgetName);
+		goto end;
+		}
+	    if (drv->Setup != NULL && UNLIKELY(drv->Setup(session) < 0))
+		{
+		mssError(0, "HTR", "\"%s\" setup failed.", drv->Name);
+		goto end;
 		}
 	    }
 
 	/** Crossing a namespace boundary? **/
-	htrCheckNSTransition(session, widget->Parent, widget);
+	if (UNLIKELY(htrCheckNSTransition(session, widget->Parent, widget) != 0)) goto end;
 
 	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
 	rval = drv->Render(session, widget, z);
+	if (UNLIKELY(rval != 0))
+	    {
+	    char error_code[32] = {'\0'};
+	    if (rval != -1) snprintf(error_code, sizeof(error_code), " (error code: %d)", rval);
+	    mssError(0, "HTR", "\"%s\" render failed%s.", drv->Name, error_code);
+	    }
 
-	/** Going back to previous namespace? **/
-	htrCheckNSTransitionReturn(session, widget->Parent, widget);
+	/** Going back to previous namespace? (Even if rendering failed.) **/
+	if (UNLIKELY(htrCheckNSTransitionReturn(session, widget->Parent, widget) != 0))
+	    {
+	    rval = -1;
+	    goto end;
+	    }
 
-    return rval;
+    end:
+	if (UNLIKELY(rval != 0))
+	    {
+	    mssError(0, "HTR",
+		"Failed to render \"%s\":\"%s\".",
+		widget->Name, widget->Type
+	    );
+	    }
+	
+	return rval;
     }
 
 
-/*** htrCheckNSTransition -- check to see if we are transitioning between
- *** namespaces, and if so, emit the code to switch the context.
+/*** Check to see if we are transitioning when we move from the parent's
+ *** namespace to the child's namespace. If so, write code to switch the
+ *** namespace context.
+ ***
+ *** @param s The current session.
+ *** @param parent The parent we are moving away from.
+ *** @param child The child of the parent we are moving to.
+ *** @returns 0 if successful, and -1 if an error occurs.
  ***/
 int
 htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
     {
-
 	/** Crossing a namespace boundary? **/
-	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	if (child != NULL && parent != NULL &&
+	    strcmp(child->Namespace, parent->Namespace) != 0)
 	    {
-	    htrAddNamespace(s, NULL, child->Namespace, 1);
+	    if (UNLIKELY(htrAddNamespace(s, NULL, child->Namespace, 1) != 0))
+		{
+		mssError(0, "HTR",
+		    "Transition failed: \"%s\":\"%s\" (parent) --> \"%s\":\"%s\" (child).",
+		    parent->Name, parent->Type, child->Name, child->Type
+		);
+		return -1;
+		}
 	    }
 
     return 0;
     }
 
 
-/*** htrCheckNSTransitionReturn -- check to see if we are transitioning between
- *** namespaces, and if so, emit the code to switch the context.
+/*** Check to see if we are transitioning when we move from the child's
+ *** namespace back up to the parent's namespace. If so, write code to
+ *** switch the namespace context.
+ ***
+ *** @param s The current session.
+ *** @param parent The parent we are returning to.
+ *** @param child The child we are moving away from.
+ *** @returns 0 if successful, and -1 if an error occurs.
  ***/
 int
 htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
     {
-
 	/** Crossing a namespace boundary? **/
-	if (child && parent && strcmp(child->Namespace, parent->Namespace) != 0)
+	if (child != NULL && parent != NULL &&
+	    strcmp(child->Namespace, parent->Namespace) != 0)
 	    {
-	    htrLeaveNamespace(s);
+	    if (UNLIKELY(htrLeaveNamespace(s) != 0))
+		{
+		mssError(0, "HTR",
+		    "Transition return failed: \"%s\":\"%s\" (parent) <-- \"%s\":\"%s\" (child).",
+		    parent->Name, parent->Type, child->Name, child->Type
+		);
+		return -1;
+		}
 	    }
 
     return 0;
@@ -519,7 +606,13 @@ htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
 int
 htrAddStylesheetItem(pHtSession s, char* html_text)
     {
-    return htr_internal_AddTextToArray(&(s->Page.HtmlStylesheet), html_text);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlStylesheet), html_text) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add style sheet item.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -529,7 +622,13 @@ htrAddStylesheetItem(pHtSession s, char* html_text)
 int
 htrAddHeaderItem(pHtSession s, char* html_text)
     {
-    return htr_internal_AddTextToArray(&(s->Page.HtmlHeader), html_text);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlHeader), html_text) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add header item.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -539,7 +638,13 @@ htrAddHeaderItem(pHtSession s, char* html_text)
 int
 htrAddBodyItem(pHtSession s, char* html_text)
     {
-    return htr_internal_AddTextToArray(&(s->Page.HtmlBody), html_text);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlBody), html_text) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add body item.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -549,7 +654,13 @@ htrAddBodyItem(pHtSession s, char* html_text)
 int
 htrAddExpressionItem(pHtSession s, char* html_text)
     {
-    return htr_internal_AddTextToArray(&(s->Page.HtmlExpressionInit), html_text);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlExpressionInit), html_text) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add expression item.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -560,7 +671,13 @@ htrAddExpressionItem(pHtSession s, char* html_text)
 int
 htrAddBodyParam(pHtSession s, char* html_param)
     {
-    return htr_internal_AddTextToArray(&(s->Page.HtmlBodyParams), html_param);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlBodyParams), html_param) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add body parameter.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -577,19 +694,22 @@ htr_internal_GrowFn(char** str, size_t* size, size_t offs, void* arg, size_t req
     char* new_buf;
     size_t new_buf_size;
 
-	if (*size >= req_size) return 1;
+	if (UNLIKELY(*size >= req_size)) return 1;
 
 	assert(*str == s->Tmpbuf);
 	assert(*size == s->TmpbufSize);
 	new_buf_size = s->TmpbufSize * 2;
 	while(new_buf_size < req_size) new_buf_size *= 2;
 	new_buf = nmSysRealloc(s->Tmpbuf, new_buf_size);
-	if (!new_buf)
-	    return 0;
+	if (UNLIKELY(new_buf == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysRealloc(%p, %zu) failed.", s->Tmpbuf, new_buf_size);
+	    return false;
+	    }
 	*str = s->Tmpbuf = new_buf;
 	*size = s->TmpbufSize = new_buf_size;
 
-    return 1; /* OK */
+    return true; /* Success. */
     }
 
 
@@ -599,7 +719,8 @@ htr_internal_GrowFn(char** str, size_t* size, size_t offs, void* arg, size_t req
 int
 htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
     {
-    int rval;
+    int rval = -1, tmp;
+    pQPSession error_session = NULL;
 
 	/** Print a warning if we think the format string isn't a constant.
 	 ** We'll need to upgrade this once htdrivers start being loaded as
@@ -613,18 +734,47 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    }
 #endif
 
-	rval = qpfPrintf_va_internal(NULL, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va);
-	if (rval < 0)
+	/** Create a pQPSession to track errors from qpfPrintf. **/
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
 	    {
-	    printf("WARNING:  QPAddText() failed for format: %s\n", fmt);
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
 	    }
-	if (rval < 0 || rval > (s->TmpbufSize - 1))
-	    return -1;
 
-	/** Ok, now add the tmpbuf normally. **/
-	fn(s, s->Tmpbuf);
+	/** Print text using qpfPrintf(). **/
+	tmp = qpfPrintf_va_internal(error_session, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va);
+	if (UNLIKELY(tmp < 0))
+	    {
+	    mssError(1, "HTR", "QPAddText() failed to format: \"%s\"", fmt);
+	    qpfLogErrors(error_session);
+	    goto end;
+	    }
+	if (UNLIKELY(s->TmpbufSize - 1 < tmp))
+	    {
+	    mssError(1, "HTR", "qpfPrintf() failed to write all the required text.");
+	    qpfLogErrors(error_session);
+	    goto end;
+	    }
 
-    return 0;
+	/** Add the text using the callback function. **/
+	tmp = fn(s, s->Tmpbuf);
+	if (UNLIKELY(tmp != 0))
+	    {
+	    char error_code[32] = {'\0'};
+	    if (UNLIKELY(tmp != -1)) snprintf(error_code, sizeof(error_code), " (error code: %d)", tmp);
+	    mssError(0, "HTR", "Provided callback function failed%s.", error_code);
+	    goto end;
+	    }
+	
+	/** Success. **/
+	rval = 0;
+	
+    end:
+	/** Clean up. **/
+	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
+
+	return rval;
     }
 
 
@@ -634,10 +784,7 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 int
 htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
     {
-    va_list orig_va;
-    int rval;
-    char* new_buf;
-    int new_buf_size;
+    int tmp;
 
 	/** Print a warning if we think the format string isn't a constant.
 	 ** We'll need to upgrade this once htdrivers start being loaded as
@@ -651,40 +798,58 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    }
 #endif
 
-	/** Save the current va_list state so we can retry it. **/
+	/** Save a copy of the va_list so we can retry. **/
+	va_list orig_va;
 	va_copy(orig_va, va);
 
+    retry:
 	/** Attempt to print the thing to the tmpbuf. **/
-	while(1)
+	tmp = vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va);
+	if (UNLIKELY(tmp < 0))
 	    {
-	    rval = vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va);
-
-	    /** Sigh.  Some libc's return -1 and some return # bytes that would be written. **/
-	    if (rval < 0 || rval > (s->TmpbufSize - 1))
+	    mssError(1, "HTR", "vsnprintf() failed to format: \"%s\"", fmt);
+	    goto err;
+	    }
+	if (UNLIKELY(tmp > s->TmpbufSize - 1))
+	    {
+	    /** Increase buffer size, including space for the NUL-terminator. **/
+	    size_t new_buf_size = s->TmpbufSize * 2lu;
+	    while (new_buf_size < tmp + 1) new_buf_size *= 2lu;
+	    
+	    /** Allocate the new buffer. **/
+	    void* new_buf = nmSysMalloc(new_buf_size);
+	    if (UNLIKELY(new_buf == NULL))
 		{
-		/** I think I need a bigger box.  Fix it and try again. **/
-		new_buf_size = s->TmpbufSize * 2;
-		while(new_buf_size < rval) new_buf_size *= 2;
-		new_buf = nmSysMalloc(new_buf_size);
-		if (!new_buf)
-		    {
-		    return -1;
-		    }
-		nmSysFree(s->Tmpbuf);
-		s->Tmpbuf = new_buf;
-		s->TmpbufSize = new_buf_size;
-		va = orig_va;
+		mssError(1, "HTR", "nmSysMalloc(%zu) failed.", new_buf_size);
+		goto err;
 		}
-	    else
-		{
-		break;
-		}
+	    nmSysFree(s->Tmpbuf); /* Clean up. */
+	    
+	    /** Set new buffer. **/
+	    s->TmpbufSize = new_buf_size;
+	    s->Tmpbuf = new_buf;
+	    
+	    /** Try the write again. **/
+	    va = orig_va;
+	    goto retry;
 	    }
 
-	/** Ok, now add the tmpbuf normally. **/
-	fn(s, s->Tmpbuf);
-
-    return 0;
+	/** Add the text using the callback function. **/
+	tmp = fn(s, s->Tmpbuf);
+	if (UNLIKELY(tmp != 0))
+	    {
+	    char error_code[32] = {'\0'};
+	    if (UNLIKELY(tmp != -1)) snprintf(error_code, sizeof(error_code), " (error code: %d)", tmp);
+	    mssError(0, "HTR", "Provided callback function failed%s.", error_code);
+	    goto err;
+	    }
+	
+	/** Success. **/
+	return 0;
+	
+	err:
+	mssError(0, "HTR", "Failed to add text using format: \"%s\"", fmt);
+	return -1;
     }
 
 
@@ -697,10 +862,11 @@ htrAddBodyItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddBodyItem, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddBodyItem, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add HTML body item.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -713,10 +879,11 @@ htrAddExpressionItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddExpressionItem, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddExpressionItem, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add expression item.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -729,10 +896,11 @@ htrAddStylesheetItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddStylesheetItem, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddStylesheetItem, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add CSS stylesheet item.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -745,10 +913,11 @@ htrAddHeaderItem_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddHeaderItem, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddHeaderItem, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add HTML document header item.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -761,10 +930,11 @@ htrAddBodyParam_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddBodyParam, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddBodyParam, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add body parameter.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -777,10 +947,11 @@ htrAddScriptWgtr_va(pHtSession s, char* fmt, ...)
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddScriptWgtr, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddScriptWgtr, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add JS code.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -793,6 +964,10 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     {
     va_list va;
 
+	/*** TODO: Greg - Can we remove this code? It seems like this is the
+	 *** concern of htrRender(), and if it's not, should we remove the
+	 *** line from htrRender() that also does the same thing?
+	 ***/
 	if (!s->Namespace->HasScriptInits)
 	    {
 	    /** No script inits for this namespace yet?  Issue the context
@@ -800,14 +975,15 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
 	     **/
 	    s->Namespace->HasScriptInits = 1;
 	    /*htrAddScriptInit_va(s, "\n    nodes = wgtrNodeList(%STR&SYM);\n", s->Namespace->DName);*/
-	    htrAddScriptInit_va(s, "\n    ns = \"%STR&SYM\";\n", s->Namespace->DName);
+	    htrAddScriptInit_va(s, "\tns = \"%STR&SYM\";\n", s->Namespace->DName);
 	    }
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddScriptInit, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddScriptInit, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add JS init call.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -820,10 +996,11 @@ htrAddScriptCleanup_va(pHtSession s, char* fmt, ... )
     va_list va;
 
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddScriptCleanup, fmt, va);
+	const int ret = htr_internal_QPAddText(s, htrAddScriptCleanup, fmt, va);
 	va_end(va);
+	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add JS clean up code.");
 
-    return 0;
+    return ret;
     }
 
 
@@ -835,30 +1012,45 @@ int
 htrAddScriptInclude(pHtSession s, char* filename, int flags)
     {
     pStrValue sv;
-    char* scripts_already;
 
-	/** What scripts has the client already loaded?  If the
-	 ** requested script is in the list, ignore it since the
-	 ** client already has it.
-	 **/
-	scripts_already = htrParamValue(s, "cx__scripts");
-	if (scripts_already && strstr(scripts_already, filename))
+	/** Ignore this call if the script is already included. **/
+	char* scripts_loaded = htrParamValue(s, "cx__scripts");
+	if (scripts_loaded != NULL && strstr(scripts_loaded, filename))
 	    return 0;
+	
+	/** Cache check. **/
+	if (xhLookup(&(s->Page.NameIncludes), filename) != NULL) return 0;
 
     	/** Alloc the string val. **/
-	if (xhLookup(&(s->Page.NameIncludes), filename)) return 0;
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
-	if (!sv) return -1;
+	if (UNLIKELY(sv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
+	    goto err;
+	    }
 	sv->Name = filename;
 	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(filename)+1;
 	sv->Value = "";
 	sv->Alloc = (flags & HTR_F_NAMEALLOC);
 
 	/** Add to the hash table and array **/
-	xhAdd(&(s->Page.NameIncludes), filename, (char*)sv);
-	xaAddItem(&(s->Page.Includes), (char*)sv);
+	if (UNLIKELY(xhAdd(&(s->Page.NameIncludes), filename, (char*)sv) != 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to includes hash table.", filename);
+	    goto err;
+	    }
+	if (UNLIKELY(xaAddItem(&(s->Page.Includes), (char*)sv) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to includes XArray.", filename);
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+	
+    err:
+	mssError(0, "HTR", "Failed to include JS file: \"%s\"", filename);
+	return -1;
     }
 
 
@@ -874,7 +1066,11 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
     	/** Alloc the string val. **/
 	if (xhLookup(&(s->Page.NameFunctions), fn_name)) return 0;
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
-	if (!sv) return -1;
+	if (UNLIKELY(sv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
+	    goto err;
+	    }
 	sv->Name = fn_name;
 	if (flags & HTR_F_NAMEALLOC) sv->NameSize = strlen(fn_name)+1;
 	sv->Value = fn_text;
@@ -882,10 +1078,23 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 	sv->Alloc = flags;
 
 	/** Add to the hash table and array **/
-	xhAdd(&(s->Page.NameFunctions), fn_name, (char*)sv);
-	xaAddItem(&(s->Page.Functions), (char*)sv);
+	if (UNLIKELY(xhAdd(&(s->Page.NameFunctions), fn_name, (char*)sv) != 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to functions hash table.", fn_name);
+	    goto err;
+	    }
+	if (UNLIKELY(xaAddItem(&(s->Page.Functions), (char*)sv) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to functions XArray.", fn_name);
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+    err:
+	mssError(0, "HTR", "Failed to add JS function: %s()", fn_name);
+	return -1;
     }
 
 
@@ -897,10 +1106,16 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
     {
     pStrValue sv;
 
-    	/** Alloc the string val. **/
-	if (xhLookup(&(s->Page.NameGlobals), var_name)) return 0;
+	/** Cache check. **/
+	if (xhLookup(&(s->Page.NameGlobals), var_name) != NULL) return 0;
+	
+	/** Alloc a new string val. **/
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
-	if (!sv) return -1;
+	if (UNLIKELY(sv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
+	    goto err;
+	    }
 	sv->Name = var_name;
 	sv->NameSize = strlen(var_name)+1;
 	sv->Value = initialization;
@@ -908,10 +1123,28 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 	sv->Alloc = flags;
 
 	/** Add to the hash table and array **/
-	xhAdd(&(s->Page.NameGlobals), var_name, (char*)sv);
-	xaAddItem(&(s->Page.Globals), (char*)sv);
+	if (UNLIKELY(xhAdd(&(s->Page.NameGlobals), var_name, (char*)sv) != 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to globals hash table.", var_name);
+	    goto err;
+	    }
+	if (UNLIKELY(xaAddItem(&(s->Page.Globals), (char*)sv) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add \"%s\" to globals XArray.", var_name);
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+	
+    err:;
+	char flags_buf[20] = {'\0'};
+	if (flags != 0) snprintf(flags_buf, sizeof(flags_buf), " (flags %d)", flags);
+	mssError(0, "HTR",
+	    "Failed to add global variable %s = %s%s.",
+	    var_name, initialization, flags_buf
+	);
+	return -1;
     }
 
 
@@ -921,7 +1154,13 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 int
 htrAddScriptInit(pHtSession s, char* init_text)
     {
-    return htr_internal_AddTextToArray(&(s->Page.Inits), init_text);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.Inits), init_text) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add script init.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -930,7 +1169,13 @@ htrAddScriptInit(pHtSession s, char* init_text)
 int
 htrAddScriptWgtr(pHtSession s, char* wgtr_text)
     {
-    return htr_internal_AddTextToArray(&(s->Page.Wgtr), wgtr_text);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.Wgtr), wgtr_text) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add to script in widget tree.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -940,7 +1185,13 @@ htrAddScriptWgtr(pHtSession s, char* wgtr_text)
 int
 htrAddScriptCleanup(pHtSession s, char* init_text)
     {
-    return htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text);
+	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to add script clean up.");
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -951,46 +1202,81 @@ htrAddScriptCleanup(pHtSession s, char* init_text)
  ***          -- drvname is no longer used, just ignored.
  ***/
 int
-htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drvname, char* function)
+htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv_name, char* function)
     {
     pHtDomEvent e = NULL;
-    pHtDomEvent e_srch;
-    int i,cnt;
 
 	/** Look it up? 
 	 ** (GRB note -- is this slow enough to need an XHashTable?)
+	 ** (Israel note -- idk, but it hasn't been a problem over the
+	 **  past 19 years, so it's probably fine.)
 	 **/
-	cnt = xaCount(&s->Page.EventHandlers);
-	for(i=0;i<cnt;i++)
+	const int n_event_handlers = xaCount(&s->Page.EventHandlers);
+	for (unsigned int i = 0u; i < n_event_handlers; i++)
 	    {
-	    e_srch = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
-	    if (!strcmp(event, e_srch->DomEvent))
+	    pHtDomEvent event_handler = xaGetItem(&s->Page.EventHandlers, i);
+	    if (UNLIKELY(event_handler == NULL))
 		{
-		e = e_srch;
+		mssError(1, "HTR", "Event handler #%u/%d is NULL.", i + 1u, n_event_handlers);
+		goto err;
+		}
+	    if (strcmp(event, event_handler->DomEvent) == 0)
+		{
+		e = event_handler;
 		break;
 		}
 	    }
 	
-	/** Make a new one? **/
-	if (!e)
+	/** Make a new event handler, if needed. **/
+	if (e == NULL)
 	    {
 	    e = (pHtDomEvent)nmMalloc(sizeof(HtDomEvent));
-	    if (!e) return -1;
+	    if (UNLIKELY(e == NULL))
+		{
+		mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDomEvent));
+		goto err;
+		}
 	    strtcpy(e->DomEvent, event, sizeof(e->DomEvent));
-	    xaInit(&e->Handlers,64);
-	    xaAddItem(&s->Page.EventHandlers, e);
+	    if (UNLIKELY(xaInit(&e->Handlers,64) != 0))
+		{
+		mssError(1, "HTR", "xaInit(&e->Handlers, 64) failed.");
+		goto err;
+		}
+	    if (UNLIKELY(xaAddItem(&s->Page.EventHandlers, e) < 0))
+		{
+		mssError(1, "HTR", "Failed to add \"%s\" event to XArray.", event);
+		goto err;
+		}
 	    }
 
 	/** Add our handler **/
-	cnt = xaCount(&e->Handlers);
-	for(i=0;i<cnt;i++)
+	const int n_handlers = xaCount(&e->Handlers);
+	for (unsigned int i = 0u; i < n_handlers; i++)
 	    {
-	    if (!strcmp(function, (char*)xaGetItem(&e->Handlers,i)))
+	    char* handler = xaGetItem(&e->Handlers, i);
+	    if (UNLIKELY(handler == NULL))
+		{
+		mssError(1, "HTR", "Handler #%u/%d is NULL.", i + 1u, n_handlers);
+		goto err;
+		}
+	    if (strcmp(function, handler) == 0)
 		return 0;
 	    }
-	xaAddItem(&e->Handlers, function);
+	if (UNLIKELY(xaAddItem(&e->Handlers, function) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to add handler \"%s\" to XArray.", function);
+	    goto err;
+	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+	
+	err:
+	mssError(0, "HTR",
+	    "Failed to add %s event handler function \'%s()\' to %s for driver %s.",
+	    event, function, event_src, drv_name
+	);
+	return -1;
     }
 
 
@@ -1005,84 +1291,6 @@ htrDisableBody(pHtSession s)
     }
 
 
-/*** htrAddEvent - adds an event to a driver.
- ***/
-int
-htrAddEvent(pHtDriver drv, char* event_name)
-    {
-    pHtEventAction event;
-
-	/** Create the action **/
-	event = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	if (!event) return -1;
-	memccpy(event->Name, event_name, 0, 31);
-	event->Name[31] = '\0';
-	xaInit(&(event->Parameters),16);
-	xaAddItem(&drv->Events, (void*)event);
-
-    return 0;
-    }
-
-
-/*** htrAddAction - adds an action to a widget.
- ***/
-int
-htrAddAction(pHtDriver drv, char* action_name)
-    {
-    pHtEventAction action;
-
-	/** Create the action **/
-	action = (pHtEventAction)nmSysMalloc(sizeof(HtEventAction));
-	if (!action) return -1;
-	memccpy(action->Name, action_name, 0, 31);
-	action->Name[31] = '\0';
-	xaInit(&(action->Parameters),16);
-	xaAddItem(&drv->Actions, (void*)action);
-
-    return 0;
-    }
-
-
-/*** htrAddParam - adds a parameter to a widget's action or event
- ***/
-int
-htrAddParam(pHtDriver drv, char* eventaction, char* param_name, int datatype)
-    {
-    pHtEventAction ea = NULL;
-    int i;
-    pHtParam p;
-
-	/** Look for a matching event/action **/
-	for(i=0;i<drv->Actions.nItems;i++)
-	    {
-	    if (!strcmp(((pHtEventAction)(drv->Actions.Items[i]))->Name, eventaction))
-	        {
-		ea = (pHtEventAction)(drv->Actions.Items[i]);
-		break;
-		}
-	    }
-	if (!ea) for(i=0;i<drv->Events.nItems;i++)
-	    {
-	    if (!strcmp(((pHtEventAction)(drv->Events.Items[i]))->Name, eventaction))
-	        {
-		ea = (pHtEventAction)(drv->Events.Items[i]);
-		break;
-		}
-	    }
-	if (!ea) return -1;
-
-	/** Add the parameter **/
-	p = nmSysMalloc(sizeof(HtParam));
-	if (!p) return -1;
-	memccpy(p->ParamName, param_name, 0, 31);
-	p->ParamName[31] = '\0';
-	p->DataType = datatype;
-	xaAddItem(&(ea->Parameters), (void*)p);
-
-    return 0;
-    }
-
-
 /*** htrAddBodyItemLayer_va - adds an entire "layer" to the document.  A layer
  *** in the traditional netscape-4 sense of a layer, which might be implemented
  *** in a number of different ways in the actual user agent itself.
@@ -1093,17 +1301,23 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, co
     va_list va;
 
 	/** Add the opening tag **/
-	htrAddBodyItemLayerStart(s, flags, id, cnt, cls);
+	if (UNLIKELY(htrAddBodyItemLayerStart(s, flags, id, cnt, cls) != 0)) goto err;
 
 	/** Add the content **/
 	va_start(va, fmt);
-	htr_internal_QPAddText(s, htrAddBodyItem, (char*)fmt, va);
+	const int rval = htr_internal_QPAddText(s, htrAddBodyItem, (char*)fmt, va);
 	va_end(va);
+	if (UNLIKELY(rval != 0)) goto err;
 
 	/** Add the closing tag **/
-	htrAddBodyItemLayerEnd(s, flags);
+	if (UNLIKELY(htrAddBodyItemLayerEnd(s, flags) != 0)) goto err;
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+	err:
+	mssError(0, "HTR", "Failed to add body item layer of format: \"%s\".", fmt);
+	return -1;
     }
 
 
@@ -1115,28 +1329,51 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, co
  *** PARAMETER WHICH IS A FORMAT STRING FOR THE LAYER'S ID!!!
  ***/
 int
-htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* cls)
+htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class)
     {
-    char* starttag;
     char id_sbuf[64];
-
-	if(s->Capabilities.HTML40)
+    int rval = -1;
+    pQPSession error_session = NULL;
+	
+	/** Create a pQPSession to track errors from qpfPrintf. **/
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
 	    {
-	    if (flags & HTR_LAYER_F_DYNAMIC)
-		starttag = "IFRAME frameBorder=\"0\"";
-	    else
-		starttag = "DIV";
-	    }
-	else
-	    {
-	    starttag = "DIV";
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
 	    }
 
-	/** Add it. **/
-	qpfPrintf(NULL, id_sbuf,sizeof(id_sbuf),id,cnt);
-	htrAddBodyItem_va(s, "<%STR %[class=\"%STR&HTE\" %]id=\"%STR&HTE\">", starttag, cls != NULL, cls, id_sbuf);
+	/** Pick a starting tag. **/
+	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC));
+	const char* start_tag = (use_iframe) ? "iframe style='border:0'" : "div";
 
-    return 0;
+	/** Add the starting tag. **/
+	if (UNLIKELY(qpfPrintf(error_session, id_sbuf, sizeof(id_sbuf), id, cnt) < 0))
+	    {
+	    mssError(1, "HTR", "Failed to format \"%s\" with %d", id, cnt);
+	    qpfLogErrors(error_session);
+	    goto end;
+	    }
+	if (UNLIKELY(htrAddBodyItem_va(s,
+	    "<%STR %[class='%STR&HTE' %]id='%STR&HTE'>",
+	    start_tag, (class != NULL), class, id_sbuf
+	) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to write HTML tag to start body item.");
+	    goto end;
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+	end:
+	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add starting body item with id: %s.", id);
+	
+	/** Clean up. **/
+	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
+	
+	/** Done. **/
+	return rval;
     }
 
 
@@ -1146,23 +1383,18 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* cls)
 int
 htrAddBodyItemLayerEnd(pHtSession s, int flags)
     {
-    char* endtag;
-
-	if(s->Capabilities.HTML40)
-	    {
-	    if (flags & HTR_LAYER_F_DYNAMIC)
-		endtag = "IFRAME";
-	    else
-		endtag = "DIV";
-	    }
-	else
-	    {
-	    endtag = "DIV";
-	    }
-
+	/** Pick a closing tag. **/
+	const int use_iframe = (s->Capabilities.HTML40 && (flags & HTR_LAYER_F_DYNAMIC));
+	const char* end_tag = (use_iframe) ? "iframe" : "div";
+	
 	/** Add it. **/
-	htrAddBodyItem_va(s, "</%STR>", endtag);
+	if (UNLIKELY(htrAddBodyItem_va(s, "</%STR>", end_tag) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to write HTML tag to end body item.");
+	    return -1;
+	    }
 
+    /** Done. **/
     return 0;
     }
 
@@ -1173,43 +1405,77 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
 int
 htrGetExpParams(pExpression exp, pXString xs)
     {
-    int i, first;
-    XArray objs, props;
-    char* obj;
-    char* prop;
+    int rval = -1;
+    XArray objs = { nAlloc: 0 }, props = { nAlloc: 0 };
 
 	/** setup **/
-	xaInit(&objs, 16);
-	xaInit(&props, 16);
+	if (UNLIKELY(xaInit(&objs, 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&objs, 16) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xaInit(&props, 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&props, 16) failed.");
+	    goto end;
+	    }
 
 	/** Find the properties accessed by the expression **/
-	expGetPropList(exp, &objs, &props);
+	if (UNLIKELY(expGetPropList(exp, &objs, &props) < 0))
+	    {
+	    mssError(1, "HTR", "expGetPropList() failed.");
+	    goto end;
+	    }
 
 	/** Build the list **/
-	xsCopy(xs,"[",-1);
-	first=1;
-	for(i=0;i<objs.nItems;i++)
+	if (UNLIKELY(xsCopy(xs, "[", 1) != 0))
 	    {
-	    obj = (char*)(objs.Items[i]);
-	    prop = (char*)(props.Items[i]);
-	    if (obj && prop)
-		{
-		xsConcatQPrintf(xs,"%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}", !first, obj, prop);
-		first = 0;
+	    mssError(1, "HTR", "xsCopy() failed.");
+	    goto end;
+	    }
+	bool first = true;
+	for (unsigned int i = 0u; i < objs.nItems; i++)
+	    {
+	    const char* obj = objs.Items[i];
+	    const char* prop = props.Items[i];
+	    if (LIKELY(
+		obj  != NULL && obj[0]  != '\0' &&
+		prop != NULL && prop[0] != '\0'
+	    ))	{
+		if (UNLIKELY(xsConcatQPrintf(xs,
+		    "%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}",
+		    (!first), obj, prop
+		) < 0))
+		    {
+		    mssError(1, "HTR", "Failed to write property %s.%s.", obj, prop);
+		    goto end;
+		    }
+		first = false;
 		}
 	    }
-	xsConcatenate(xs,"]",1);
-
-	/** cleanup **/
-	for(i=0;i<objs.nItems;i++)
+	if (UNLIKELY(xsConcatenate(xs, "]", 1) < 0))
 	    {
-	    if (objs.Items[i]) nmSysFree(objs.Items[i]);
-	    if (props.Items[i]) nmSysFree(props.Items[i]);
+	    mssError(1, "HTR", "xsConcatenate() failed.");
+	    goto end;
 	    }
-	xaDeInit(&objs);
-	xaDeInit(&props);
+	
+	/** Success. **/
+	rval = 0;
 
-    return 0;
+	end:
+	if (UNLIKELY(rval != 0))
+	    mssError(0, "HTR", "Failed to get params for expression: \"%s\".", exp->Name);
+	
+	/** Clean up. **/
+	for (unsigned int i = 0u; i < objs.nItems; i++)
+	    if (LIKELY(objs.Items[i] != NULL)) nmSysFree(objs.Items[i]);
+	if (LIKELY(objs.nAlloc != 0)) warnFail(xaDeInit(&objs));
+	for (unsigned int i = 0u; i < props.nItems; i++)
+	    if (LIKELY(props.Items[i] != NULL)) nmSysFree(props.Items[i]);
+	if (LIKELY(props.nAlloc != 0)) warnFail(xaDeInit(&props));
+	
+	/** Done. **/
+	return rval;
     }
 
 
@@ -1223,45 +1489,100 @@ htrGetExpParams(pExpression exp, pXString xs)
 int
 htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
     {
-    int i,first;
-    XArray objs, props;
-    XString xs,exptxt;
-    char* obj;
-    char* prop;
+    int rval = -1;
+    XArray objs = { nAlloc: 0 }, props = { nAlloc: 0 };
+    XString xs = { AllocLen: 0 }, exptxt = { AllocLen: 0 };
 
-	xaInit(&objs, 16);
-	xaInit(&props, 16);
-	xsInit(&xs);
-	xsInit(&exptxt);
-	expGetPropList(exp, &objs, &props);
-
-	xsCopy(&xs,"[",-1);
-	first=1;
-	for(i=0;i<objs.nItems;i++)
+	/** Allocate data structures. **/
+	if (UNLIKELY(xaInit(&objs, 16) != 0))
 	    {
-	    obj = (char*)(objs.Items[i]);
-	    prop = (char*)(props.Items[i]);
-	    if (obj && prop)
-		{
-		xsConcatQPrintf(&xs,"%[,%]['%STR&JSSTR','%STR&JSSTR']", !first, obj, prop);
-		first = 0;
+	    mssError(1, "HTR", "xaInit(&objs, 16) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xaInit(&props, 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&props, 16) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xsInit(&xs) != 0))
+	    {
+	    mssError(1, "HTR", "xsInit(&xs) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(xsInit(&exptxt) != 0))
+	    {
+	    mssError(1, "HTR", "xsInit(&exptxt) failed.");
+	    goto end;
+	    }
+	if (UNLIKELY(expGetPropList(exp, &objs, &props) < 0))
+	    {
+	    mssError(1, "HTR", "expGetPropList() failed.");
+	    goto end;
+	    }
+
+	/** Copy expression data. **/
+	if (UNLIKELY(xsCopy(&xs, "[", 1) < 0))
+	    {
+	    mssError(1, "HTR", "xsCopy() failed.");
+	    goto end;
+	    }
+	bool first = true;
+	for (unsigned int i = 0u; i < objs.nItems; i++)
+	    {
+	    const char* obj = (char*)(objs.Items[i]);
+	    const char* prop = (char*)(props.Items[i]);
+	    if (LIKELY(
+		obj  != NULL && obj[0]  != '\0' &&
+		prop != NULL && prop[0] != '\0'
+	    ))	{
+		if (UNLIKELY(xsConcatQPrintf(&xs,
+		    "%[,%]['%STR&JSSTR','%STR&JSSTR']",
+		    (!first), obj, prop
+		) < 0))
+		    {
+		    mssError(1, "HTR", "Failed to write property %s.%s.", obj, prop);
+		    goto end;
+		    }
+		first = false;
 		}
 	    }
-	xsConcatenate(&xs,"]",1);
-	expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
-	htrAddExpressionItem_va(s, "    pg_expression('%STR&SYM','%STR&SYM',function (_context, _this) { return %STR; },%STR,'%STR&SYM');\n", objname, property, exptxt.String, xs.String, s->Namespace->DName);
-
-	for(i=0;i<objs.nItems;i++)
+	if (UNLIKELY(xsConcatenate(&xs, "]", 1) < 0))
 	    {
-	    if (objs.Items[i]) nmSysFree(objs.Items[i]);
-	    if (props.Items[i]) nmSysFree(props.Items[i]);
+	    mssError(1, "HTR", "xsConcatenate() failed.");
+	    goto end;
 	    }
-	xaDeInit(&objs);
-	xaDeInit(&props);
-	xsDeInit(&xs);
-	xsDeInit(&exptxt);
+	if (UNLIKELY(expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to generate expression text.");
+	    goto end;
+	    }
+	if (UNLIKELY(htrAddExpressionItem_va(s,
+	    "    pg_expression('%STR&SYM','%STR&SYM',function (_context, _this) { return %STR; },%STR,'%STR&SYM');\n",
+	    objname, property, exptxt.String, xs.String, s->Namespace->DName
+	) != 0))
+	    {
+	    mssError(0, "HTR", "Failed to write the expression item.");
+	    goto end;
+	    }
 
-    return 0;
+	/** Success. **/
+	rval = 0;
+
+	end:
+	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add expression \"%s\".", objname);
+	
+	/** Clean up. **/
+	for (unsigned int i = 0u; i < objs.nItems; i++)
+	    if (LIKELY(objs.Items[i] != NULL)) nmSysFree(objs.Items[i]);
+	if (LIKELY(objs.nAlloc != 0)) warnFail(xaDeInit(&objs));
+	for (unsigned int i = 0u; i < props.nItems; i++)
+	    if (LIKELY(props.Items[i] != NULL)) nmSysFree(props.Items[i]);
+	if (LIKELY(props.nAlloc != 0)) warnFail(xaDeInit(&props));
+	if (LIKELY(xs.AllocLen != 0)) warnFail(xsDeInit(&xs));
+	if (LIKELY(exptxt.AllocLen != 0)) warnFail(xsDeInit(&exptxt));
+	
+	/** Done. **/
+	return rval;
     }
 
 
@@ -1271,16 +1592,27 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 int
 htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property)
     {
-    pExpression code;
-
         if (wgtrGetPropertyType(tree,property) == DATA_T_CODE)
             {
-            wgtrGetPropertyValue(tree,property,DATA_T_CODE,POD(&code));
-            htrAddExpression(s, w_name, property, code);
+	    pExpression code;
+	    if (UNLIKELY(wgtrGetPropertyValue(tree, property, DATA_T_CODE, POD(&code)) < 0))
+		{
+		mssError(1, "HTR", "Failed to get property: '%s'", property);
+		goto err;
+		}
+	    if (UNLIKELY(htrAddExpression(s, w_name, property, code) != 0)) goto err;
 	    return 1;
             }
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+	err:
+	mssError(0, "HTR",
+	    "Failed to add expression \"%s\" to widget \"%s\":\"%s\".",
+	    property, tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -1291,28 +1623,24 @@ htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property
  *** as panes and tab pages.
  ***/
 int
-htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int zlevel)
+htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int z_level)
     {
-//    pObjQuery qy;
-//    pObject sub_widget_obj;
-    int i, count;
-
-	/** Open the query for subwidgets **/
-	/*
-	qy = objOpenQuery(widget_obj, "", NULL, NULL, NULL, 0);
-	if (qy)
+	/** Iterate through each sub_widget and call its render function. **/
+	const unsigned int n_sub_widgets = widget->Children.nItems;
+	for (unsigned int i = 0u; i < n_sub_widgets; i++)
 	    {
-	    while((sub_widget_obj = objQueryFetch(qy, O_RDONLY)))
-	        {
-		htrRenderWidget(s, sub_widget_obj, zlevel, docname, layername);
-		objClose(sub_widget_obj);
+	    pWgtrNode sub_widget = widget->Children.Items[i];
+	    if (UNLIKELY(htrRenderWidget(s, sub_widget, z_level) != 0))
+		{
+		mssError(0, "HTR",
+		    "Failed to render \"%s\":\"%s\", "
+		    "child #%u/%u of \"%s\":\"%s\" (z: %d).",
+		    sub_widget->Name, sub_widget->Type,
+		    i + 1, n_sub_widgets, widget->Name, widget->Type, z_level
+		);
+		return -1;
 		}
-	    objQueryClose(qy);
 	    }
-	**/
-	count = xaCount(&(widget->Children));
-	for (i=0;i<count;i++) 
-	    htrRenderWidget(s, xaGetItem(&(widget->Children), i), zlevel);
 
     return 0;
     }
@@ -1341,7 +1669,7 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 	    include_file = objOpen(s->ObjSession, filename, O_RDONLY, 0600, "application/x-javascript");
 	    if (include_file)
 		{
-		htrQPrintf(s, "<script language=\"javascript\">\n// Included from: %STR&HTE\n\n", filename);
+		htrQPrintf(s, "\t<script>\n// Included from: %STR&HTE\n\n", filename);
 		while((rcnt = objRead(include_file, buf, sizeof(buf), 0, 0)) > 0)
 		    {
 		    htrWrite(s, buf, rcnt);
@@ -1365,10 +1693,10 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 	    }
 	strtcpy(path, filename, sizeof(path));
 	slash = strrchr(path, '/');
-	if (slash)
+	if (slash != NULL)
 	    {
 	    *slash = '\0';
-	    htrQPrintf(s, "\n<script language=\"javascript\" src=\"%STR%[/CXDC:%STR%]/%STR\"></script>\n", path, buf[0], buf, slash+1);
+	    htrQPrintf(s, "\t<script src='%STR%[/CXDC:%STR%]/%STR'></script>\n", path, buf[0], buf, slash+1);
 	    }
 
     return 0;
@@ -1381,49 +1709,135 @@ htr_internal_GenInclude(pHtSession s, char* filename)
 int
 htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
     {
-    int t;
-    ObjData od;
-    int rval;
-    pExpression code;
-    XString exptxt;
-    XString proptxt;
-
-	t = wgtrGetPropertyType(tree, propname);
-	if (t > 0)
+	/** Get type. **/
+	const int type = wgtrGetPropertyType(tree, propname);
+	if (UNLIKELY(type < 0))
 	    {
-	    rval = wgtrGetPropertyValue(tree, propname, t, &od);
-	    if (rval == 1)
-		{
-		/** null **/
-		htrAddScriptWgtr_va(s, "%STR&SYM:null, ", propname);
-		}
-	    else if (rval == 0)
-		{
-		switch(t)
-		    {
-		    case DATA_T_INTEGER:
-			htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer);
-			break;
-
-		    case DATA_T_STRING:
-			htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String);
-			break;
-
-		    case DATA_T_CODE:
-			wgtrGetPropertyValue(tree,propname,DATA_T_CODE,POD(&code));
-			xsInit(&exptxt);
-			xsInit(&proptxt);
-			htrGetExpParams(code, &proptxt);
-			expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT);
-			htrAddScriptWgtr_va(s, "%STR&SYM:{val:null, exp:function(_this,_context){return ( %STR );}, props:%STR, revexp:null}, ", propname, exptxt.String, proptxt.String);
-			xsDeInit(&proptxt);
-			xsDeInit(&exptxt);
-			break;
-		    }
-		}
+	    mssError(1, "HTR", "Failed to get property type for property '%s'.", propname);
+	    goto err;
 	    }
+	
+	/** Get value. **/
+	ObjData od;
+	const int result = wgtrGetPropertyValue(tree, propname, type, &od);
+	if (UNLIKELY(result < 0))
+	    {
+	    mssError(1, "HTR",
+		"Failed to get property value for property '%s' of type %d.",
+		propname, type
+	    );
+	    goto err;
+	    }
+	
+	/** Value is null. **/
+	if (result == 1)
+	    {
+	    if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:null, ", propname) != 0)) goto err;
+	    return 0; /* success */
+	    }
+	
+	/** Write values by type. **/
+	switch (type)
+	    {
+	    case DATA_T_INTEGER:
+		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer) != 0)) goto err;
+		break;
+	    
+	    case DATA_T_STRING:
+		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String) != 0)) goto err;
+		break;
+	    
+	    case DATA_T_DOUBLE:
+		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:%DBL, ", propname, od.Double) != 0)) goto err;
+		break;
+	    
+	    case DATA_T_DATETIME:
+		if (UNLIKELY(htrAddScriptWgtr_va(s,
+		    "%STR&SYM:new Date(%LL, %LL, %LL, %LL, %LL, %LL), ",
+		    propname,
+		    (long long)od.DateTime->Part.Year + 1900,
+		    (long long)od.DateTime->Part.Month,
+		    (long long)od.DateTime->Part.Day + 1,
+		    (long long)od.DateTime->Part.Hour,
+		    (long long)od.DateTime->Part.Minute,
+		    (long long)od.DateTime->Part.Second
+		) != 0)) goto err;
+		break;
+	    
+	    case DATA_T_INTVEC:
+		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:[", propname) != 0)) goto err;
+		for (unsigned int i = 0; i < od.IntVec->nIntegers; i++)
+		    if (UNLIKELY(htrAddScriptWgtr_va(s, "%[, %]%INT", (i != 0), od.IntVec->Integers[i]) != 0)) goto err;
+		if (UNLIKELY(htrAddScriptWgtr(s, "], ") != 0)) goto err;
+		break;
+	    
+	    case DATA_T_STRINGVEC:
+		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:[", propname) != 0)) goto err;
+		for (unsigned int i = 0; i < od.StringVec->nStrings; i++)
+		    if (UNLIKELY(htrAddScriptWgtr_va(s, "%[, %]'%STR&JSSTR'", (i != 0), od.StringVec->Strings[i]) != 0)) goto err;
+		if (UNLIKELY(htrAddScriptWgtr(s, "], ") != 0)) goto err;
+		break;
+	    
+	    case DATA_T_CODE:
+		{
+		pExpression code;
+		XString exptxt = { AllocLen: 0 };
+		XString proptxt = { AllocLen: 0 };
+		bool successful = false;
 
-    return 0;
+		/** Get the code data. **/
+		if (UNLIKELY(wgtrGetPropertyValue(tree, propname, DATA_T_CODE, POD(&code)) < 0))
+		    {
+		    mssError(1, "HTR", "Failed to get value for property '%s'", propname);
+		    goto end;
+		    }
+		if (UNLIKELY(xsInit(&exptxt) != 0))
+		    {
+		    mssError(1, "HTR", "xsInit(&exptxt) failed.");
+		    goto end;
+		    }
+		if (UNLIKELY(xsInit(&proptxt) != 0))
+		    {
+		    mssError(1, "HTR", "xsInit(&proptxt) failed.");
+		    goto end;
+		    }
+		if (UNLIKELY(htrGetExpParams(code, &proptxt) != 0)) goto end;
+		if (UNLIKELY(expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
+		    {
+		    mssError(0, "HTR", "Failed to generate expression text.");
+		    goto end;
+		    }
+
+		/** Write a script to execute the code. **/
+		if (UNLIKELY(htrAddScriptWgtr_va(s,
+		    "%STR&SYM:{ val:null, exp:(_this, _context) => { return ( %STR ); }, props:%STR, revexp:null }, ",
+		    propname, exptxt.String, proptxt.String
+		) != 0)) goto end;
+		
+		/** Success. **/
+		successful = true;
+
+    end:	/** Clean up. **/
+		if (proptxt.AllocLen != 0) warnNeg(xsDeInit(&proptxt));
+		if (exptxt.AllocLen != 0) warnNeg(xsDeInit(&exptxt));
+		if (!successful) goto err;
+		break;
+		}
+	    
+	    default:
+		fprintf(stderr, "Warning: skipping property '%s' with unhandled datatype %d.\n", propname, type);
+		break;
+	    }
+	
+	/** Success. **/
+	return 0;
+
+	err:
+	mssError(0, "HTR",
+	    "Failed to write widget property \"%s\" to widget \"%s\":\"%s\".",
+	    propname, tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -1433,22 +1847,18 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 int
 htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     {
-    int i;
     int childcnt = xaCount(&tree->Children);
-    char* objinit;
-    char* ctrinit;
     pHtDMPrivateData inf = wgtrGetDMPrivateData(tree);
     pWgtrNode child;
-    int rendercnt;
     char* scope = NULL;
     char* scopename = NULL;
     char* propname;
 
 	/** Check recursion **/
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1,"HTR","Could not render application: resource exhaustion occurred");
-	    return -1;
+	    goto err;
 	    }
 
 	/** Widget name scope **/
@@ -1460,10 +1870,10 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	wgtrGetPropertyValue(tree,"scope_name",DATA_T_STRING,POD(&scopename));
 
 	/** Deploy the widget **/
-	objinit = inf?(inf->ObjectLinkage):NULL;
-	ctrinit = inf?(inf->ContainerLinkage):NULL;
-	htrAddScriptWgtr_va(s, 
-		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%STR, ctl:%STR%[, namespace:'%STR&SYM'%]", 
+	const char* objinit = (inf != NULL) ? (inf->ObjectLinkage) : NULL;
+	const char* ctrinit = (inf != NULL) ? (inf->ContainerLinkage) : NULL;
+	const int result = htrAddScriptWgtr_va(s,
+		"        %STR&*LEN{name:'%STR&SYM'%[, obj:%STR%]%[, cobj:%STR%]%[, scope:'%STR&JSSTR'%]%[, sn:'%STR&JSSTR'%], type:'%STR&JSSTR', vis:%BOOL, ctl:%BOOL%[, namespace:'%STR&SYM'%]",
 		indent*4, "                                        ",
 		tree->Name,
 		objinit, objinit,
@@ -1471,52 +1881,69 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 		scope, scope,
 		scopename, scopename,
 		tree->Type, 
-		(tree->Flags & WGTR_F_NONVISUAL)?"false":"true",
-		(tree->Flags & WGTR_F_CONTROL)?"true":"false",
+		!(tree->Flags & WGTR_F_NONVISUAL),
+		(tree->Flags & WGTR_F_CONTROL),
 		(!tree->Parent || strcmp(tree->Parent->Namespace, tree->Namespace)),
 		tree->Namespace);
+	if (UNLIKELY(result != 0))
+	    {
+	    mssError(0, "HTR", "Failed to write JS data.");
+	    goto err;
+	    }
 
 	/** Parameters **/
-	htrAddScriptWgtr_va(s, ", param:{");
+	if (UNLIKELY(htrAddScriptWgtr(s, ", param:{") != 0)) goto err;
 	if (!(tree->Flags & WGTR_F_NONVISUAL))
 	    {
-	    htr_internal_WriteWgtrProperty(s, tree, "x");
-	    htr_internal_WriteWgtrProperty(s, tree, "y");
-	    htr_internal_WriteWgtrProperty(s, tree, "width");
-	    htr_internal_WriteWgtrProperty(s, tree, "height");
-	    htr_internal_WriteWgtrProperty(s, tree, "r_x");
-	    htr_internal_WriteWgtrProperty(s, tree, "r_y");
-	    htr_internal_WriteWgtrProperty(s, tree, "r_width");
-	    htr_internal_WriteWgtrProperty(s, tree, "r_height");
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "x") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "y") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "width") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "height") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_x") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_y") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_width") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_height") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_width") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_height") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_x") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_y") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_w") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_h") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_parent_w") != 0)) goto err;
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_parent_h") != 0)) goto err;
 	    }
 	propname = wgtrFirstPropertyName(tree);
-	while(propname)
+	while (propname != NULL)
 	    {
-	    htr_internal_WriteWgtrProperty(s, tree, propname);
+	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, propname) != 0)) goto err;
 	    propname = wgtrNextPropertyName(tree);
 	    }
-	htrAddScriptWgtr_va(s, "}");
+	if (UNLIKELY(htrAddScriptWgtr(s, "}") != 0)) goto err;
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
-	for(rendercnt=i=0;i<childcnt;i++)
+	unsigned int rendercnt;
+	for (unsigned int i = rendercnt = 0u; i < childcnt; i++)
 	    {
 	    child = (pWgtrNode)xaGetItem(&tree->Children, i);
 	    if (child->RenderFlags & HT_WGTF_NORENDER)
 		continue;
 	    rendercnt++;
 	    }
-	if (rendercnt)
+	if (LIKELY(rendercnt > 0))
 	    {
-	    htrAddScriptWgtr_va(s, ", sub:\n        %STR&*LEN    [\n", indent*4, "                                        ");
+	    if (htrAddScriptWgtr_va(s,
+		", sub:\n        %STR&*LEN    [\n",
+		indent*4, "                                        "
+	    ) != 0) goto err;
 	    rendercnt = 0;
-	    for(i=0;i<childcnt;i++)
+	    for (unsigned int i = 0u; i < childcnt; i++)
 		{
 		child = (pWgtrNode)xaGetItem(&tree->Children, i);
 		if (child->RenderFlags & HT_WGTF_NORENDER)
 		    continue;
 		rendercnt--;
 		if (htr_internal_BuildClientWgtr_r(s, child, indent+1) < 0)
-		    return -1;
+		    goto err;
 		if (rendercnt == 0) /* last one - no comma */
 		    htrAddScriptWgtr(s, "\n");
 		else
@@ -1526,22 +1953,39 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    }
 	else
 	    {
-	    htrAddScriptWgtr(s, "}");
+	    if (UNLIKELY(htrAddScriptWgtr(s, "}") != 0)) goto err;
 	    }
 
-    return 0;
+	/** Success. **/
+	return 0;
+
+	err:
+	mssError(0, "HTR",
+	    "Failed to build client widget tree for widget \"%s\":\"%s\" (indent: %d).",
+	    tree->Name, tree->Type, indent
+	);
+	
+	return -1;
     }
 
 int
 htrBuildClientWgtr(pHtSession s, pWgtrNode tree)
     {
+	/** Build the JS for the tree. **/
+	if (htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0) != 0) goto err;
+	if (htrAddScriptWgtr_va(s, "    pre_%STR&SYM =\n", tree->DName) != 0) goto err;
+	if (htr_internal_BuildClientWgtr_r(s, tree, 0) != 0) goto err;
+	if (htrAddScriptWgtr(s, ";\n") != 0) goto err;
 
-	htrAddScriptInclude(s, "/sys/js/ht_utils_wgtr.js", 0);
-	htrAddScriptWgtr_va(s, "    pre_%STR&SYM =\n", tree->DName);
-	htr_internal_BuildClientWgtr_r(s, tree, 0);
-	htrAddScriptWgtr(s, ";\n");
+	/** Success. **/
+	return 0;
 
-    return 0;
+	err:
+	mssError(0, "HTR",
+	    "Failed to build client widget tree for widget \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -1627,12 +2071,189 @@ htrQPrintf(pHtSession s, char* fmt, ...)
 	if (!xs)
 	    return -1;
 	va_start(va, fmt);
-	xsQPrintf_va(xs, fmt, va);
+	rval = xsQPrintf_va(xs, fmt, va);
 	va_end(va);
-	rval = htrWrite(s, xsString(xs), -1);
+	if (rval >= 0)
+	    rval = htrWrite(s, xsString(xs), -1);
 	xsFree(xs);
 
     return rval;
+    }
+
+/*** Generates HTML for an error page displaying a caller-supplied message.
+ *** Use htrGetErrorHTML() instead if the message should come from the
+ *** calling thread's error stack.
+ ***
+ *** @param title The title of the error page. e.g. "An error occurred!"
+ *** @param err_str The error message to display, or NULL if unavailable.
+ *** @returns A pointer to a new string buffer allocated with nmSysMalloc(),
+ *** 	containing data that can be sent to a browser as HTML, or NULL in the
+ *** 	rare case that an error page absolutely could not be generated.
+ ***/
+char*
+htrGetErrorHTMLMsg(char* title, char* err_str)
+    {
+    char* page_buf = NULL;
+    unsigned int n_lines = 1u;
+    pQPSession error_session = NULL;
+
+	/** Defaults. **/
+	if (title == NULL) title = "An error occurred!";
+	if (err_str == NULL) err_str = "Failed to fetch error.";
+
+	/** Count the number of lines in the error message. **/
+	for (unsigned int i = 0u; err_str[i] != '\0'; i++)
+	    {
+	    if (err_str[i] == '\n') n_lines++;
+	    }
+
+	const char* page_format = "<!DOCTYPE html>"
+	    "<html lang='en'>"
+	    "<head>"
+		"<title>Error</title>"
+		"<meta charset='utf-8'>"
+		"<meta name='viewport' content='width=device-width, initial-scale=1'>"
+		"<style>"
+		    "* { margin: 0; padding: 0; box-sizing: border-box; }"
+		    "body {"
+			"font-family: system-ui, -apple-system, sans-serif;"
+			"background: #fafafa;"
+			"color: #18181b;"
+			"min-height: 100vh;"
+			"display: flex;"
+			"flex-direction: column;"
+			"padding: 3rem 2rem;"
+		    "}"
+		    "body > * { font-weight: 400; margin-bottom: 0.5rem; }"
+		    "h1 { font-size: 1.5rem; font-weight: 600; }"
+		    "h2 { font-size: 0.9rem; margin-bottom: 1.5rem; color: #71717a; }"
+		    "p  { font-size: 1rem;   margin-bottom: 2.5rem; line-height: 1.5rem; }"
+		    "h3 { font-size: 0.9rem; font-weight: 550; color: #556; }"
+		    ".error {"
+			"background: #fff;"
+			"border-left: 3px solid #6080c0;"
+			"font-family: monospace;"
+			"font-size: 0.8125rem;"
+			"line-height: 1.6;"
+			"overflow: hidden;"
+			"position: relative;"
+		    "}"
+		    ".error .copy-button { visibility: hidden; }"
+		    ".error:hover .copy-button { visibility: inherit; }"
+		    ".copy-button {"
+			"background-color: white;"
+			"border: white solid 0.4rem;"
+			"cursor: pointer;"
+			"float: right;"
+			"font-size: 12px;"
+			"position: absolute;"
+			"right: 1rem;"
+			"top: 0.5rem;"
+		    "}"
+		    ".error_content {"
+			"animation: type-lines 0.4s steps(%POS) 0.1s forwards;"
+			"color: #445;"
+			"display:block;"
+			"max-height: 0;"
+			"overflow: hidden auto;"
+			"padding: 0.8rem 1.25rem;"
+			"white-space: pre-wrap;"
+			"word-break: break-word;"
+		    "}"
+		    "@keyframes type-lines { to { max-height:60vh; } }"
+		"</style>"
+		"<script>"
+		    "async function copy(btn) {"
+			"const content = btn.nextElementSibling.textContent;"
+			"await navigator.clipboard.writeText(content);"
+			"const cur_text = btn.textContent;"
+			"btn.textContent = 'Copied!';"
+			"setTimeout(() => (btn.textContent = cur_text), 1500);"
+		    "}"
+		"</script>"
+	    "</head>"
+	    "<body>"
+		"<h1>Uh oh!</h1>"
+		"<h2>%STR&HTE</h2>"
+		"<p>"
+		    "Sorry for the inconvenience. If this issue persists, please contact "
+		    "your organization's tech support and provide the error below."
+		"</p>"
+		"<h3>Error message:</h3>"
+		"<div class='error'>"
+		    "<div class='copy-button' onclick='copy(this)'>Copy</div>"
+		    "<div class='error_content'>%STR&HTE</div>"
+		"</div>"
+	    "</body>"
+	    "</html>";
+
+	/** Allocate space for page. **/
+	size_t page_buf_size = 0lu
+	    + strlen(page_format)
+	    + 10lu /* %POS (n_lines) */
+	    + strlen(title)
+	    + strlen(err_str)
+	    + 1lu; /* Null terminator. */
+	page_buf = warnNull(nmSysMalloc(page_buf_size));
+	if (page_buf == NULL) goto clean_up;
+
+	/** Write an error HTML for the user. **/
+	error_session = warnNull(qpfOpenSession());
+	if (warnNeg(qpfPrintf_g(
+	    error_session, &page_buf, &page_buf_size, &qpfSysMallocGrow, NULL, page_format,
+	    n_lines, title, err_str
+	)) < 0)
+	    {
+	    if (LIKELY(error_session != NULL)) qpfLogErrors(error_session);
+	    goto fail;
+	    }
+
+	/** Success. **/
+	goto clean_up;
+
+    fail:
+	fprintf(stderr, "Failed to print error page. (Continuing...)\n");
+	if (LIKELY(page_buf != NULL)) nmSysFree(page_buf);
+	page_buf = NULL;
+
+    clean_up:
+	/** Clean up. **/
+	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
+	
+	/** Final fallback chain if we STILL couldn't create an error page. **/
+	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("See server logs"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("err"));
+	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("!"));
+	
+	return page_buf;
+    }
+
+
+/*** Generates HTML for an error page from the calling thread's error stack.
+ *** Used as a fallback if an error occurs during normal rendering.
+ ***
+ *** @param title The title of the error page. e.g. "An error occurred!"
+ *** @returns A pointer to a new string buffer allocated with nmSysMalloc(),
+ *** 	containing data that can be sent to a browser as HTML, or NULL in the
+ *** 	rare case that an error page absolutely could not be generated.
+ ***/
+char*
+htrGetErrorHTML(char* title)
+    {
+    char* page_buf;
+    char* err_str = NULL;
+    pXString err_xs;
+
+	/** Get the error string. **/
+	err_xs = warnNull(xsNew());
+	if (err_xs != NULL && warnFail(mssStringError(err_xs)) == 0 && warnFail(xsTrim(err_xs)) == 0)
+	    err_str = warnNull(xsString(err_xs));
+
+	page_buf = htrGetErrorHTMLMsg(title, err_str);
+
+	if (LIKELY(err_xs != NULL)) xsFree(err_xs);
+
+    return page_buf;
     }
 
 
@@ -1658,11 +2279,10 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
     char* agent = NULL;
     char* classname = NULL;
     int rval;
-    pXString err_xs;
 
 	/** What UA is on the other end of the connection? **/
 	agent = (char*)mssGetParam("User-Agent");
-	if (!agent)
+	if (UNLIKELY(agent == NULL || agent[0] == '\0'))
 	    {
 	    mssError(1, "HTR", "User-Agent undefined in the session parameters");
 	    return -1;
@@ -1670,7 +2290,11 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
     	/** Initialize the session **/
 	s = (pHtSession)nmMalloc(sizeof(HtSession));
-	if (!s) return -1;
+	if (UNLIKELY(s == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtSession));
+	    return -1;
+	    }
 	memset(s,0,sizeof(HtSession));
 	s->Params = params;
 	s->ObjSession = obj_s;
@@ -1786,13 +2410,8 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	s->DisableBody = 0;
 
 	/** first thing in the startup() function should be calling build_wgtr **/
-	htrAddScriptInit_va(s, "    build_wgtr_%STR&SYM();\n",
-		s->Namespace->DName);
-	/*htrAddScriptInit_va(s, "\n    var nodes = wgtrNodeList(%STR&SYM);\n",*/
-	htrAddScriptInit_va(s, "\n    var ns = \"%STR&SYM\";\n",
-			       /*"    var rootname = \"%STR&SYM\";\n", */
-		s->Namespace->DName /*, s->Namespace->DName */);
-	/*htrAddStylesheetItem(s, "\tdiv {position:absolute; visibility:inherit; overflow:hidden; }\n");*/
+	htrAddScriptInit_va(s, "\tvar ns = '%STR&SYM';\n", s->Namespace->DName);
+	htrAddScriptInit_va(s, "\tbuild_wgtr_%STR&SYM();\n", s->Namespace->DName);
 
 	/** Render the top-level widget -- the function that's run
 	  * underneath will be dependent upon what the widget
@@ -1812,7 +2431,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 #ifdef WGTR_DBG_WINDOW
 	htrAddScriptWgtr_va(s, "    wgtrWalk(%STR&SYM);\n", tree->Name);
 	htrAddScriptWgtr(s, "    ifcLoadDef(\"net/centrallix/button.ifc\");\n");
-	htrAddStylesheetItem(s, "\t#dbgwnd {position: absolute; top: 400; left: 50;}\n");
+	htrAddStylesheetItem(s, "\t\t#dbgwnd {position: absolute; top: 400px; left: 50px;}\n");
 	htrAddBodyItem(s,   "<div id=\"dbgwnd\"><form name=\"dbgform\">"
 			    "<textarea name=\"dbgtxt\" cols=\"80\" rows=\"10\"></textarea>"
 			    "</form></div>\n");
@@ -1820,26 +2439,25 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 
 	/** Could not render? **/
-	if (rval < 0)
+	if (UNLIKELY(rval < 0))
 	    {
-	    err_xs = xsNew();
-	    if (err_xs)
-		{
-		mssStringError(err_xs);
-		htrQPrintf(s, "<html><head><title>Error</title></head><body bgcolor=\"white\"><h1>An Error occured while attempting to render this document</h1><br><pre>%STR&HTE</pre></body></html>\r\n", xsString(err_xs));
-		xsFree(err_xs);
-		}
+	    /** Render an error page to gracefully recover from the error. **/
+	    char* error_title = "An error occurred while rendering the page.";
+	    char* error_html = warnNull(htrGetErrorHTML(error_title));
+	    if (UNLIKELY(error_html == NULL)) error_html = error_title;
+	    warnNeg(htrQPrintf(s, "%STR", error_html));
+	    if (LIKELY(error_html != error_title)) nmSysFree(error_html);
+	    mssClearError();
+	    goto end_free;
 	    }
 	
-	/** Output the DOCTYPE for browsers supporting HTML 4.0 -- this will make them use HTML 4.0 Strict **/
-	/** FIXME: should probably specify the DTD.... **/
-	if(s->Capabilities.HTML40 && !s->Capabilities.Dom0IE)
-	    htrWrite(s, "<!doctype html>\n\n", -1);
+	/** Write the DOCTYPE header, enabling standards mode. **/
+	htrWriteConst(s, "<!DOCTYPE HTML>\n\n");
 
-	/** Write the HTML out... **/
+	/** Write HTML header comment & license. **/
 	htrQPrintf(s,	"<!--\n"
 			"Generated by Centrallix/%STR (http://www.centrallix.org)\n"
-			"Centrallix is (c) 1998-2017 by LightSys Technology Services, Inc.\n"
+			"Centrallix is (c) 1998-2026 by LightSys Technology Services, Inc.\n"
 			"and is free software, licensed under the GNU GPL version 2, or\n"
 			"at your option any later version.  This software is provided\n"
 			"with ABSOLUTELY NO WARRANTY, NOT EVEN THE IMPLIED WARRANTIES\n"
@@ -1847,14 +2465,16 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 			"-->\n\n"
 			, cx__version);
 
-	htrQPrintf(s,	"<html>\n"
+	/** Write the start of the HTML document. **/
+	htrQPrintf(s,	"<html lang='en'>\n"
 			"<head>\n"
-			"    <meta name=\"generator\" content=\"Centrallix/%STR\">\n"
-			"    <meta name=\"pragma\" content=\"no-cache\">\n"
-			"    <meta name=\"referrer\" content=\"same-origin\">\n"
+			    "\t<meta charset='utf-8'>\n"
+			    "\t<meta name='generator' content='Centrallix/%STR'>\n"
+			    "\t<meta name='pragma' content='no-cache'>\n"
+			    "\t<meta name='referrer' content='same-origin'>\n"
 			, cx__version);
 
-	htrWrite(s, "    <style type=\"text/css\">\n", -1);
+	htrWriteConst(s, "\t<style>\n");
 	/** Write the HTML stylesheet items. **/
 	for(i=0;i<s->Page.HtmlStylesheet.nItems;i++)
 	    {
@@ -1862,7 +2482,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s, "    </style>\n", -1);
+	htrWriteConst(s, "\t</style>\n");
 	/** Write the HTML header items. **/
 	for(i=0;i<s->Page.HtmlHeader.nItems;i++)
 	    {
@@ -1872,19 +2492,26 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
 	/** Write the script globals **/
-	htrWrite(s, "<script language=\"javascript\">\n\n\n", -1);
+	htrWriteConst(s, "\t<script>\n");
 	for(i=0;i<s->Page.Globals.nItems;i++)
 	    {
 	    sv = (pStrValue)(s->Page.Globals.Items[i]);
-	    if (sv->Value[0])
-		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"if (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n", sv->Name, sv->Name, sv->Value);
+	    if (sv->Value[0] != '\0')
+		{
+		qpfPrintf(NULL, sbuf, HT_SBUF_SIZE,
+		    "\t\tif (typeof %STR&SYM == 'undefined') var %STR&SYM = %STR;\n",
+		    sv->Name, sv->Name, sv->Value
+		);
+		}
 	    else
-		qpfPrintf(NULL, sbuf,HT_SBUF_SIZE,"var %STR&SYM;\n", sv->Name);
+		{
+		qpfPrintf(NULL, sbuf, HT_SBUF_SIZE, "\t\tvar %STR&SYM;\n", sv->Name);
+		}
 	    htrWrite(s, sbuf, -1);
 	    }
 
 	/** Write the includes **/
-	htrWrite(s, "\n</script>\n\n", -1);
+	htrWriteConst(s, "\t</script>\n\n");
 
 	/** include ht_render.js **/
 	htr_internal_GenInclude(s, "/sys/js/ht_render.js");
@@ -1912,7 +2539,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    sv = (pStrValue)(s->Page.Includes.Items[i]);
 	    htr_internal_GenInclude(s, sv->Name);
 	    }
-	htrWrite(s, "<script language=\"javascript\">\n\n", -1);
+	htrWriteConst(s, "\n\t<script>");
 
 	/** Write the script functions **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
@@ -1922,10 +2549,15 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    }
 
 
-	/** Write the event capture lines **/
-	htrQPrintf(s,"\nfunction events_%STR()\n    {\n",s->Namespace->DName);
+	/** Start writing the event registration function. **/
+	htrQPrintf(s, "\nfunction events_%STR()\n\t{\n", s->Namespace->DName);
+
+	/** Write the event captures. **/
 	cnt = xaCount(&s->Page.EventHandlers);
-	strcpy(sbuf,"    if(window.Event)\n        htr_captureevents(");
+	strcpy(sbuf,
+	    "\tif (window.Event)\n"
+		"\t\t{\n"
+		"\t\thtr_captureevents(");
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
@@ -1933,8 +2565,10 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    strcat(sbuf,"Event.");
 	    strcat(sbuf,e->DomEvent);
 	    }
-	strcat(sbuf,");\n");
+	strcat(sbuf,");\n\t\t}\n");
 	htrWrite(s, sbuf, -1);
+
+	/** Write event handlers and listeners. **/
 	for(i=0;i<cnt;i++)
 	    {
 	    e = (pHtDomEvent)xaGetItem(&s->Page.EventHandlers,i);
@@ -1945,18 +2579,29 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    cnt2 = xaCount(&e->Handlers);
 	    for(j=0;j<cnt2;j++)
 		{
-		htrQPrintf(s, "    htr_addeventhandler(%STR&DQUOT,%STR&DQUOT);\n",
-			ename, xaGetItem(&e->Handlers, j));
+		htrQPrintf(s,
+		    "\thtr_addeventhandler(%STR&DQUOT,%STR&DQUOT);\n",
+		    ename, xaGetItem(&e->Handlers, j)
+		);
 		}
-	    if (!strcmp(ename,"mousemove"))
-		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_mousemovehandler);\n",
-			ename);
+	    if (strcmp(ename, "mousemove") == 0)
+		{
+		htrQPrintf(s,
+		    "\thtr_addeventlistener(%STR&DQUOT, document, htr_mousemovehandler);\n",
+		    ename
+		);
+		}
 	    else
-		htrQPrintf(s, "    htr_addeventlistener(%STR&DQUOT, document, htr_eventhandler);\n",
-			ename);
+		{
+		htrQPrintf(s,
+		    "\thtr_addeventlistener(%STR&DQUOT, document, htr_eventhandler);\n",
+		    ename
+		);
+		}
 	    }
 
-	htrWrite(s,"    }\n",-1);
+	/** Finish writing the event registration function. **/
+	htrWriteConst(s, "\t}\n");
 
 	/** Write the expression initializations **/
 	htrQPrintf(s,"\nfunction expinit_%STR()\n    {\n",s->Namespace->DName);
@@ -1966,7 +2611,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s,"    }\n",-1);
+	htrWriteConst(s, "    }\n");
 
 	/** Write the wgtr declaration **/
 	htrQPrintf(s, "\nfunction build_wgtr_%STR()\n    {\n",
@@ -1977,11 +2622,12 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s, "    }\n", -1);
+	htrWriteConst(s, "    }\n");
 
 	/** Write the initialization lines **/
-	htrQPrintf(s,"\nfunction startup_%STR()\n    {\n", s->Namespace->DName);
+	htrQPrintf(s, "\nfunction startup_%STR()\n\t{\n", s->Namespace->DName);
 	htr_internal_writeCxCapabilities(s); //TODO: (by Seth) this really only needs to happen during first-load.
+	htrWriteConst(s, "\n");
 
 	for(i=0;i<s->Page.Inits.nItems;i++)
 	    {
@@ -1989,27 +2635,27 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrQPrintf(s,"    events_%STR();\n", s->Namespace->DName);
-	htrQPrintf(s,"    expinit_%STR();\n", s->Namespace->DName);
-	htrWrite(s,"    }\n",-1);
+	htrQPrintf(s, "\tevents_%STR();\n", s->Namespace->DName);
+	htrQPrintf(s, "\texpinit_%STR();\n", s->Namespace->DName);
+	htrWriteConst(s, "\t}\n");
 
 	/** Write the cleanup lines **/
-	htrWrite(s,"\nfunction cleanup()\n    {\n",-1);
+	htrWriteConst(s,"\nfunction cleanup()\n    {\n");
 	for(i=0;i<s->Page.Cleanups.nItems;i++)
 	    {
 	    ptr = (char*)(s->Page.Cleanups.Items[i]);
 	    n = *(int*)ptr;
 	    htrWrite(s, ptr+8, n);
 	    }
-	htrWrite(s,"    }\n",-1);
+	htrWriteConst(s, "    }\n");
 
 
 	/** If the body part is disabled, skip over body section generation **/
 	if (s->DisableBody == 0)
 	    {
 	    /** Write the HTML body params **/
-	    htrWrite(s, "\n</script>\n</head>",-1);
-	    htrWrite(s, "\n<body", -1);
+	    htrWriteConst(s, "\n</script>\n</head>");
+	    htrWriteConst(s, "\n<body");
 	    for(i=0;i<s->Page.HtmlBodyParams.nItems;i++)
 	        {
 	        ptr = (char*)(s->Page.HtmlBodyParams.Items[i]);
@@ -2019,13 +2665,13 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 	    /** work around the Netscape 4.x bug regarding page resizing **/
 	    if(s->Capabilities.Dom0NS && !s->Capabilities.Dom1HTML)
 		{
-		htrWrite(s, " onResize=\"location.reload()\"",-1);
+		htrWriteConst(s, " onResize=\"location.reload()\"");
 		}
-	    htrWrite(s, ">\n", -1);
+	    htrWriteConst(s, ">\n");
 	    }
 	else
 	    {
-	    htrWrite(s, "\n</script>\n",-1);
+	    htrWriteConst(s, "\n</script>\n");
 	    }
 
 	/** Write the HTML body. **/
@@ -2038,13 +2684,14 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 	if (s->DisableBody == 0)
 	    {
-	    htrWrite(s, "</body>\n</html>\n",-1);
+	    htrWriteConst(s, "</body>\n</html>\n");
 	    }
 	else
 	    {
-	    htrWrite(s, "\n</HTML>\n",-1);
+	    htrWriteConst(s, "\n</HTML>\n");
 	    }
 
+    end_free:
 	/** Deinitialize the session and page structures **/
 	for(i=0;i<s->Page.Functions.nItems;i++)
 	    {
@@ -2125,17 +2772,31 @@ htrAllocDriver()
 
 	/** Allocate the driver structure **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
-	if (!drv) return NULL;
+	if (UNLIKELY(drv == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDriver));
+	    goto err;
+	    }
 	memset(drv, 0, sizeof(HtDriver));
 
 	/** Init some of the basic array structures **/
-	xaInit(&(drv->PosParams),16);
-	xaInit(&(drv->Properties),16);
-	xaInit(&(drv->Events),16);
-	xaInit(&(drv->Actions),16);
-	xaInit(&(drv->PseudoTypes), 4);
+	if (UNLIKELY(xaInit(&(drv->Properties), 16) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&(drv->Properties), 16) failed.");
+	    goto err;
+	    }
+	if (UNLIKELY(xaInit(&(drv->PseudoTypes), 4) != 0))
+	    {
+	    mssError(1, "HTR", "xaInit(&(drv->PseudoTypes), 4) failed.");
+	    goto err;
+	    }
 
-    return drv;
+	/** Success. **/
+	return drv;
+
+	err:
+	mssError(0, "HTR", "Failed to allocate driver.");
+	return NULL;
     }
 
 
@@ -2219,115 +2880,218 @@ htrInitialize()
     }
 
 
-/*** htrGetBackground - gets the background image or color from the config
- *** and converts it into a string we can use in the DHTML
+/*** htrGetBackground - Gets the background color/image from the bgcolor
+ *** or background attributes on the provided widget node, then writes a CSS
+ *** rule or HTML attribute for the background into the provided buffer.
  ***
- *** obj - an open Object for the config data
- *** prefix - the prefix to add to 'bgcolor' and 'background' for the attrs
- *** as_style - set to 1 to build the string as a style rather than as HTML
- *** buf - the buffer to print into
- *** buflen - the buffer length we can use
- ***
- *** returns with buf set to "" if any error occurs.
+ *** @param tree     The widget node to query for attributes.
+ *** @param prefix   The prefix, prepended with an underscore (`_`) to any
+ ***                 attribute queried from the widget by this function.
+ *** @param as_style If true, writes a CSS rule (recommended).  If false,
+ ***                 writes an HTML attribute, which is usually deprecated in
+ ***                 functionality in modern browsers.
+ *** @param buf      The buffer where the written output should be stored.
+ ***                 A value of `""` is always written to buf as long as at
+ ***                 least one character of space was allocated.
+ *** @param buflen   The allocated length of `buf`.
+ *** @returns 0 if successful, 1 if no background attribute was provided, or
+ ***         -1 if an error occurs (and calls `mssError()`).
  ***/
 int
 htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen)
     {
-    char bgcolor_name[64];
-    char background_name[128];
-    char* bgcolor = "bgcolor";
-    char* background = "background";
+    pQPSession error_session = NULL;
     char* ptr;
+    int rval = -1;
 
-	/** init buf **/
-	if (buflen < 1) return -1;
+	/** Initialize the buffer. **/
+	if (UNLIKELY(buflen < 1))
+	    {
+	    mssError(1, "HTR", "Failed! buflen (%d) < 1", buflen);
+	    goto end;
+	    }
 	buf[0] = '\0';
+	
+	/** Create a pQPSession to track errors from qpfPrintf. **/
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
+	    {
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
+	    }
+	
+	/** Allocate space for attribute names. **/
+	char bgcolor_buf[64];
+	char background_buf[128];
+	char* bgcolor = "bgcolor";
+	char* background = "background";
 
 	/** Prefix supplied? **/
-	if (prefix && *prefix)
+	if (prefix != NULL && prefix[0] != '\0')
 	    {
-	    qpfPrintf(NULL, bgcolor_name,sizeof(bgcolor_name),"%STR&SYM_bgcolor",prefix);
-	    qpfPrintf(NULL, background_name,sizeof(background_name),"%STR&SYM_background",prefix);
-	    bgcolor = bgcolor_name;
-	    background = background_name;
+	    /** Write bgcolor_buf. **/
+	    if (UNLIKELY(qpfPrintf(error_session,
+		bgcolor_buf, sizeof(bgcolor_buf),
+		"%STR&SYM_bgcolor", prefix
+	    ) < 0))
+		{
+		mssError(1, "HTR", "Failed to write background color attribute name.");
+		qpfLogErrors(error_session);
+		goto end;
+		}
+	    else qpfClearErrors(error_session);
+
+	    /** Write background_buf. **/
+	    if (UNLIKELY(qpfPrintf(error_session,
+		    background_buf, sizeof(background_buf),
+		    "%STR&SYM_background", prefix
+		) < 0))
+		{
+		mssError(1, "HTR", "Failed to write background image attribute name.");
+		qpfLogErrors(error_session);
+		goto end;
+		}
+	    else qpfClearErrors(error_session);
+	    
+	    /** Update attribute name pointers. **/
+	    bgcolor = bgcolor_buf;
+	    background = background_buf;
 	    }
 
-	/** Image? **/
+	/** Search for different background types. **/
 	if (wgtrGetPropertyValue(tree, background, DATA_T_STRING, POD(&ptr)) == 0)
-	    {
-	    if (strpbrk(ptr,"\"'\n\r\t")) return -1;
-	    if (as_style)
-		qpfPrintf(NULL, buf,buflen,"background-image: URL('%STR&CSSURL');",ptr);
-	    else
-		qpfPrintf(NULL, buf,buflen,"background='%STR&HTE'",ptr);
+	    { /* Background image. */
+	    /** Check for invalid characters in the string. **/
+	    if (UNLIKELY(strpbrk(ptr, "\"'\n\r\t") != NULL))
+		{
+		mssError(1, "HTR",
+		    "Value for attribute '%s' contains invalid characters: \"%s\"",
+		    background, ptr
+		);
+		goto end;
+		}
+	    
+	    /** Write background image. **/
+	    const char* format = (as_style) ? "background-image:URL('%STR&CSSURL');" : "background='%STR&HTE'";
+	    if (UNLIKELY(qpfPrintf(error_session, buf, buflen, format, ptr) < 0))
+		{
+		mssError(1, "HTR", "Failed to write background image using format: \"%s\"", format);
+		qpfLogErrors(error_session);
+		goto end;
+		}
+	    else qpfClearErrors(error_session);
 	    }
 	else if (wgtrGetPropertyValue(tree, bgcolor, DATA_T_STRING, POD(&ptr)) == 0)
-	    {
-	    /** Background color **/
-	    if (strpbrk(ptr,"\"'\n\r\t;}<>&")) return -1;
-	    if (as_style)
-		qpfPrintf(NULL, buf,buflen,"background-color: %STR&CSSVAL;",ptr);
-	    else
-		qpfPrintf(NULL, buf,buflen,"bgColor='%STR&HTE'",ptr);
+	    { /* Background color. */
+	    /** Check for invalid characters in the string. **/
+	    if (UNLIKELY(strpbrk(ptr, "\"'\n\r\t;}<>&") != NULL))
+		{
+		mssError(1, "HTR",
+		    "Value for attribute '%s' contains invalid characters: \"%s\"",
+		    bgcolor, ptr
+		);
+		goto end;
+		}
+	    
+	    /** Write background color. **/
+	    const char* format = (as_style) ? "background-color:%STR&CSSVAL;" : "bgColor='%STR&HTE'";
+	    if (UNLIKELY(qpfPrintf(error_session, buf, buflen, format, ptr) < 0))
+		{
+		mssError(1, "HTR", "Failed to write background color using format: \"%s\"", format);
+		qpfLogErrors(error_session);
+		goto end;
+		}
+	    else qpfClearErrors(error_session);
 	    }
+	/** Null background: return 1. **/
 	else
 	    {
-	    return -1;
+	    rval = 1;
+	    goto free;
 	    }
 
-    return 0;
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(rval != 0))
+	    {
+	    mssError(0, "HTR",
+		"Failed to write \"%s\"-background for \"%s\":\"%s\" into buffer %p of length %d.",
+		prefix, tree->Name, tree->Type, buf, buflen
+	    );
+	    }
+
+    free:
+	/** Clean up. **/
+	if (LIKELY(error_session != NULL)) qpfCloseSession(error_session);
+
+	return rval;
     }
 
 
-/*** htrGetBoolean() - a convenience routine to retrieve a boolean value
- *** from the structure file.  Boolean values can be specified as yes/no,
- *** true/false, on/off, y/n, or 1/0.  This routine checks for those.
- *** Return value = 1 if true, 0 if false, -1 if error, and default_value
- *** if not found.  default_value can be set to -1 to indicate an error
- *** on a nonexistent attribute.
+/*** htrGetBoolean() - Get a widget attribute as a boolean value.
  ***/
 int
 htrGetBoolean(pWgtrNode wgt, char* attrname, int default_value)
     {
-    int t;
-    int rval = default_value;
-    char* ptr;
-    int n;
+    int result = default_value;
 
 	/** type of attr (need to check number if 1/0) **/
-	t = wgtrGetPropertyType(wgt,attrname);
-	if (t < 0) return default_value;
+	const int type = wgtrGetPropertyType(wgt, attrname);
+	if (type < 0) goto end; /* Value not specified. */
 
-	/** integer? **/
-	if (t == DATA_T_INTEGER)
+	switch (type)
 	    {
-	    if (wgtrGetPropertyValue(wgt,attrname,t,POD(&n)) == 0)
+	    case DATA_T_INTEGER:
 		{
-		rval = (n != 0);
+		int n;
+		if (wgtrGetPropertyValue(wgt, attrname, type, POD(&n)) != 0) break;
+		
+		/** Any nonzero int is true. **/
+		result = (n != 0);
+
+		goto end; /* Value found. */
 		}
-	    }
-	else if (t == DATA_T_STRING)
-	    {
-	    /** string? **/
-	    if (wgtrGetPropertyValue(wgt,attrname,t,POD(&ptr)) == 0)
+
+	    case DATA_T_STRING:
 		{
-		if (!strcasecmp(ptr,"yes") || !strcasecmp(ptr,"true") || !strcasecmp(ptr,"on") || !strcasecmp(ptr,"y"))
-		    {
-		    rval = 1;
+		char* ptr;
+		if (wgtrGetPropertyValue(wgt, attrname, type, POD(&ptr)) != 0) break;
+		
+		/** Check truthy strings. **/
+		if (strcasecmp(ptr, "yes") == 0
+		    || strcasecmp(ptr, "true") == 0
+		    || strcasecmp(ptr, "y") == 0
+		    || strcasecmp(ptr, "on") == 0
+		)   {
+		    result = 1;
+		    goto end; /* Value found. */
 		    }
-		else if (!strcasecmp(ptr,"no") || !strcasecmp(ptr,"false") || !strcasecmp(ptr,"off") || !strcasecmp(ptr,"n"))
-		    {
-		    rval = 0;
+
+		/** Check falsy strings. **/
+		if (strcasecmp(ptr, "no") == 0
+		    || strcasecmp(ptr, "false") == 0
+		    || strcasecmp(ptr, "n") == 0
+		    || strcasecmp(ptr, "off") == 0
+		)   {
+		    result = 0;
+		    goto end; /* Value found. */
 		    }
 		}
-	    }
-	else
-	    {
-	    mssError(1,"HT","Invalid data type for attribute '%s'", attrname);
-	    rval = -1;
+
+		break;
 	    }
 
-    return rval;
+	/** Unrecognized boolean value: Warn and use the default. **/
+	fprintf(stderr,
+	    "Ignored unrecognized value for boolean attribute "
+	    "'%s' of \"%s\":\"%s\" (defaulting to %d)\n",
+	    attrname, wgt->Name, wgt->Type, result
+	);
+
+    end:
+    return result;
     }
 
 
@@ -2361,6 +3125,11 @@ htr_internal_CheckDMPrivateData(pWgtrNode widget)
 	if (!inf)
 	    {
 	    inf = (pHtDMPrivateData)nmMalloc(sizeof(HtDMPrivateData));
+	    if (UNLIKELY(inf == NULL))
+		{
+		mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDMPrivateData));
+		return NULL;
+		}
 	    memset(inf, 0, sizeof(HtDMPrivateData));
 	    wgtrSetDMPrivateData(widget, inf);
 	    }
@@ -2402,11 +3171,37 @@ htr_internal_FreeDMPrivateData(pWgtrNode widget)
 int
 htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
-    pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
-    
-	inf->ObjectLinkage = nmSysStrdup(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
-
-    return 0;
+	/** Get private data. **/
+	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+	if (UNLIKELY(inf == NULL)) goto err;
+	
+	/** Get temporary string data. **/
+	char* str_tmp = objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED);
+	if (UNLIKELY(str_tmp == NULL))
+	    {
+	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", linkage);
+	    goto err;
+	    }
+	
+	/** Dup string data. **/
+	char* str = nmSysStrdup(str_tmp);
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
+	    goto err;
+	    }
+	
+	/** Set string data. **/
+	inf->ObjectLinkage = str;
+	
+	return 0;
+	
+    err:
+	mssError(0, "HTR",
+	    "Failed to add object linkage \"%s\" to widget \"%s\":\"%s\".",
+	    linkage, widget->Name, widget->Type
+	);
+	return -1;
     }
 
 
@@ -2417,12 +3212,49 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     {
     va_list va;
     char buf[256];
+    int rval = -1, tmp;
+    pQPSession error_session = NULL;
 
+	/** Create a pQPSession to track errors from qpfPrintf. **/
+	error_session = qpfOpenSession();
+	if (UNLIKELY(error_session == NULL))
+	    {
+	    mssError(1, "HTR", "qpfOpenSession() failed.");
+	    goto end;
+	    }
+
+	/** Process the provided format. **/
 	va_start(va, fmt);
-	qpfPrintf_va(NULL, buf, sizeof(buf), fmt, va);
+	tmp = qpfPrintf_va(error_session, buf, sizeof(buf), fmt, va);
 	va_end(va);
-
-    return htrAddWgtrObjLinkage(s, widget, buf);
+	if (UNLIKELY(tmp < 0))
+	    {
+	    mssError(1, "HTR", "qpfPrintf_va() failed to format: \"%s\"", fmt);
+	    qpfLogErrors(error_session);
+	    rval = tmp;
+	    goto end;
+	    }
+	
+	/** Add the linkage. **/
+	tmp = htrAddWgtrObjLinkage(s, widget, buf);
+	if (UNLIKELY(tmp < 0)) goto end;
+	
+	/** Success. **/
+	rval = 0;
+	
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTR",
+		"Failed to add object linkage of format \"%s\" to widget \"%s\":\"%s\".",
+		fmt, widget->Name, widget->Type
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (LIKELY(error_session != NULL)) qpfCloseSession(error_session);
+	
+	return rval;
     }
 
 
@@ -2433,11 +3265,37 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 int
 htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
-    pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
-    
-	inf->ContainerLinkage = nmSysStrdup(objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED));
+	/** Get private data. **/
+	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+	if (UNLIKELY(inf == NULL)) goto err;
+	
+	/** Get temporary string data. **/
+	char* str_tmp = objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED);
+	if (UNLIKELY(str_tmp == NULL))
+	    {
+	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", linkage);
+	    goto err;
+	    }
+	
+	/** Dup string data. **/
+	char* str = nmSysStrdup(str_tmp);
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
+	    goto err;
+	    }
+	
+	/** Set string data. **/
+	inf->ContainerLinkage = str;
+	
+	return 0;
 
-    return 0;
+    err:
+	mssError(0, "HTR",
+	    "Failed to add container linkage \"%s\" to widget \"%s\":\"%s\".",
+	    linkage, widget->Name, widget->Type
+	);
+	return -1;
     }
 
 
@@ -2448,12 +3306,43 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     {
     va_list va;
     char buf[256];
-
+    int rval = -1;
+    pQPSession error_session = NULL;
+    
+	/** Create a pQPSession to track errors from qpfPrintf. **/
+	error_session = warnNull(qpfOpenSession());
+	
+	/** Process the provided format. **/
 	va_start(va, fmt);
-	qpfPrintf_va(NULL, buf, sizeof(buf), fmt, va);
+	const int print_rval = qpfPrintf_va(error_session, buf, sizeof(buf), fmt, va);
 	va_end(va);
-
-    return htrAddWgtrCtrLinkage(s, widget, buf);
+	if (UNLIKELY(print_rval < 0))
+	    {
+	    mssError(1, "HTR", "qpfPrintf_va() failed to format: \"%s\"", fmt);
+	    qpfLogErrors(error_session);
+	    rval = print_rval;
+	    goto end;
+	    }
+	
+	/** Add the linkage. **/
+	if (UNLIKELY(htrAddWgtrCtrLinkage(s, widget, buf) < 0)) goto end;
+	
+	/** Success. **/
+	rval = 0;
+	
+    end:
+	if (rval != 0)
+	    {
+	    mssError(0, "HTR",
+		"Failed to add container linkage of format \"%s\" to widget \"%s\":\"%s\".",
+		fmt, widget->Name, widget->Type
+	    );
+	    }
+	
+	/** Clean up. **/
+	if (LIKELY(error_session != NULL)) qpfCloseSession(error_session);
+	
+	return rval;
     }
 
 
@@ -2464,15 +3353,39 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
     {
     va_list va;
     char buf[256];
-    pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
     
+	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
+	if (UNLIKELY(inf == NULL)) goto err;
+
+	/** Process format. **/
 	inf->InitFunc = func;
 	va_start(va, paramfmt);
 	vsnprintf(buf, sizeof(buf), paramfmt, va);
 	va_end(va);
-	inf->Param = nmSysStrdup(objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED));
-
-    return 0;
+	
+	/** Process string data. **/
+	char* str_tmp = objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED);
+	if (UNLIKELY(str_tmp == NULL))
+	    {
+	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", buf);
+	    goto err;
+	    }
+	char* str = nmSysStrdup(str_tmp);
+	if (UNLIKELY(str == NULL))
+	    {
+	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
+	    goto err;
+	    }
+	inf->Param = str;
+	
+	return 0;
+	
+    err:
+	mssError(0, "HTR",
+	    "Failed to set widget initialization function to %s(%s) for widget \"%s\":\"%s\".",
+	    func, paramfmt, widget->Name, widget->Type
+	);
+	return -1;
     }
 
 
@@ -2487,7 +3400,11 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
 
 	/** Allocate a new namespace **/
 	new_ns = (pHtNamespace)nmMalloc(sizeof(HtNamespace));
-	if (!new_ns) return -1;
+	if (UNLIKELY(new_ns == NULL))
+	    {
+	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtNamespace));
+	    goto err;
+	    }
 	new_ns->Parent = s->Namespace;
 	strtcpy(new_ns->DName, nspace, sizeof(new_ns->DName));
 
@@ -2512,7 +3429,20 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
 		nspace /*, nspace */);
 #endif
 
-    return 0;
+	return 0;
+
+    err:;
+	char context[153] = "";
+	if (container != NULL)
+	    snprintf(context, sizeof(context),
+	    " to container widget \"%s\":\"%s\"",
+	    container->Name, container->Type
+	);
+	mssError(0, "HTR",
+	    "Failed to add namespace \"%s\"%s.",
+	    nspace, context
+	);
+	return -1;
     }
 
 
@@ -2679,23 +3609,70 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	if (wgtrGetPropertyValue(node, propname, DATA_T_STRING, POD(&strval)) == 0)
 	    shadow_angle = strtod(strval, NULL);
 
-	/** Generate the style CSS **/
-	htrAddStylesheetItem_va(s, "\t%STR { left:%POSpx; top:%POSpx; %[width:%POSpx; %]%[height:%POSpx; %]%[z-index:%POS; %]%[color:%STR&CSSVAL; %]%[font-weight:bold; %]%[text-decoration:underline; %]%[font-style:italic; %]%[font:%STR&CSSVAL; %]%[font-size:%DBLpx; %]%[background-color:%STR&CSSVAL; %]%[background-image:url('%STR&CSSURL'); %]%[padding:%DBLpx; %]%[border:1px %STR&CSSVAL %STR&CSSVAL; %]%[border-radius:%DBLpx; %]%[text-align:%STR&CSSVAL; %]%[white-space:nowrap; %]%[box-shadow:%DBLpx %DBLpx %DBLpx %STR&CSSVAL%STR&CSSVAL; %]%[%STR %]}\n",
-		id,
-		x, y, w > 0, w, h > 0, h, z > 0, z,
-		*textcolor, textcolor,
-		!strcmp(style, "bold"), !strcmp(style, "underline"), !strcmp(style, "italic"),
-		*font, font, font_size > 0, font_size,
-		*bgcolor, bgcolor, *background, background,
-		padding > 0, padding,
-		*border_color, (*border_style)?border_style:"solid", border_color, border_radius > 0, border_radius,
-		*align, align,
-		!wrap,
-		(*shadow_color && shadow_radius > 0), sin(shadow_angle*M_PI/180)*shadow_offset, cos(shadow_angle*M_PI/180)*(-shadow_offset), shadow_radius, shadow_color, (!strcasecmp(shadow_location,"inside"))?" inset":"",
-		addl && *addl, addl
-		);
+	/*** Generate the style CSS.  border-box keeps any border and padding
+	 *** below inside the width and height the layout allotted, rather than
+	 *** growing the element past it.
+	 ***/
+	const int tmp = htrAddStylesheetItem_va(s,
+	    "\t\t%STR { "
+		"box-sizing:border-box; "
+		"left:"ht_flex_format"; "
+		"top:"ht_flex_format"; "
+		"%[width:"ht_flex_format"; %]"
+		"%[height:"ht_flex_format"; %]"
+		"%[z-index:%POS; %]"
+		"%[color:%STR&CSSVAL; %]"
+		"%[font-weight:bold; %]"
+		"%[text-decoration:underline; %]"
+		"%[font-style:italic; %]"
+		"%[font:%STR&CSSVAL; %]"
+		"%[font-size:%DBLpx; %]"
+		"%[background-color:%STR&CSSVAL; %]"
+		"%[background-image:url('%STR&CSSURL'); %]"
+		"%[padding:%DBLpx; %]"
+		"%[border:1px %STR&CSSVAL %STR&CSSVAL; %]"
+		"%[border-radius:%DBLpx; %]"
+		"%[text-align:%STR&CSSVAL; %]"
+		"%[white-space:nowrap; %]"
+		"%[box-shadow:"
+		    "%DBLpx "
+		    "%DBLpx "
+		    "%DBLpx "
+		    "%STR&CSSVAL%STR&CSSVAL; "
+		"%]"
+		"%[%STR %]"
+	    "}\n",
+	    id,
+	             ht_flex_x(x, node),
+	             ht_flex_y(y, node),
+	    (w > 0), ht_flex_w(w, node),
+	    (h > 0), ht_flex_h(h, node),
+	    (z > 0), z,
+	    (*textcolor), textcolor,
+	    (strcmp(style, "bold") == 0),
+	    (strcmp(style, "underline") == 0),
+	    (strcmp(style, "italic") == 0),
+	    (*font), font,
+	    (font_size > 0), font_size,
+	    (*bgcolor), bgcolor,
+	    (*background), background,
+	    (padding > 0), padding,
+	    (*border_color), (*border_style) ? border_style : "solid", border_color,
+	    (border_radius > 0), border_radius,
+	    (*align), align,
+	    (!wrap),
+	    (*shadow_color && shadow_radius > 0),
+	    sin(shadow_angle * M_PI/180) * shadow_offset,
+	    cos(shadow_angle * M_PI/180) *(-shadow_offset),
+	    shadow_radius,
+	    shadow_color, (strcasecmp(shadow_location, "inside") == 0) ? " inset" : "",
+	    (addl != NULL && addl[0] != '\0'), addl
+	);
+	if (UNLIKELY(tmp != 0))
+	    {
+	    mssError(0, "HTR", "Failed to write CSS while formatting element.");
+	    return -1;
+	    }
 
     return 0;
     }
-
-

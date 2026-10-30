@@ -41,7 +41,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -2412,8 +2412,8 @@ thClearFlags(pThread thr, int flags)
 int
 thExcessiveRecursion()
     {
-    unsigned char buf[1];
-    return (MTASK.CurrentThread->Stack - buf > MT_STACK_HIGHWATER);
+    const unsigned char stack_ptr[1];
+    return (MTASK.CurrentThread->Stack - stack_ptr > MT_STACK_HIGHWATER);
     }
 
 
@@ -3611,7 +3611,7 @@ netGetRemotePort(pFile net_filedesc)
     }
 
 
-/*** NETCONNECTTCP creats a client socket and connects it to a
+/*** NETCONNECTTCP creates a client socket and connects it to a
  *** server on a given TCP service/port and host name.  The flag
  *** NET_U_NOBLOCK causes the request to return immediately even
  *** if the connection is still trying to establish.  Further

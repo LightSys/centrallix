@@ -146,7 +146,7 @@ rule_test "widget/page"
         taskid_editbox "widget/editbox"
         {
           x = 0; y = 0; width = 40; height = 40;
-          maxchars = 30;
+          max_chars = 30;
           bgcolor = "#ffffff";
           fieldname = "TaskID";
         }
@@ -176,7 +176,7 @@ rule_test "widget/page"
         percentage_lbl_editbox "widget/editbox"
         {
           x = 360; y = 70; width = 80; height = 20;
-          maxchars = 30;
+          max_chars = 30;
           bgcolor = "#ffffff";
           fieldname = "Percentage";
         }
@@ -190,7 +190,7 @@ rule_test "widget/page"
         task_editbox "widget/editbox"
         {
           x = 20; y = 150; width = 290; height = 20;
-          maxchars = 30;
+          max_chars = 30;
           bgcolor = "#ffffff";
           fieldname = "Name";
         }
@@ -204,7 +204,7 @@ rule_test "widget/page"
         hours_editbox "widget/editbox"
         {
           x = 360; y = 150; width = 80; height = 20;
-          maxchars = 30;
+          max_chars = 30;
           bgcolor = "#ffffff";
           fieldname = "Hours";
         }
@@ -218,7 +218,7 @@ rule_test "widget/page"
         description_lbl_editbox "widget/editbox"
         {
           x = 20; y = 240; width = 420; height = 20;
-          maxchars = 30;
+          max_chars = 30;
           bgcolor = "#ffffff";
           fieldname = "Description";
         }

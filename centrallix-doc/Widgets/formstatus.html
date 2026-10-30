@@ -14,7 +14,7 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>Many times with multi-mode forms like those offered by Centrallix, the end-user can become confused as to what the form is currently "doing" (for instance, is a blank form with a blinking cursor in a "new" state or "enter query" state?).  Centrallix helps to address this issue using the form status widget. A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multi-mode form.  This widget is a special-case form element.</p>
+			<p>Many times with multimodal forms like those offered by Centrallix, the end-user can become confused as to what the form is currently "doing" (for instance, is a blank form with a blinking cursor in a "new" state or "enter query" state?).  Centrallix helps to address this issue using the form status widget.  A form status widget displays the current mode of operation that a form is in, as well as whether the form is busy processing a query, save, or delete operation.  This clear presentation of the form's mode is intended to clear up any confusion created by a multimodal form.  This widget is a special-case form element.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
@@ -49,11 +49,17 @@
 <td class="description">Allows you to set y position in pixels relative to the window.</td>
 </tr>
 </table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="none">none currently available</p>
 <h3 class="events">Events:</h3>
 <table class="events">
 <tr>
 <th class="name">Event</th>
 <th class="description">Description</th>
+</tr>
+<tr class="notimplimented">
+<td class="name">Click</td>
+<td class="description">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</td>
 </tr>
 <tr>
 <td class="name">MouseDown</td>
@@ -79,21 +85,21 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
 formstatus "widget/formstatus" 
 
-    {
+		{
 
-    x=5; y=450;
+		x=5; y=450;
 
-    style="largeflat";
+		style="largeflat";
 
-    }
+		}
 
-		
+			
 
 		</pre>
 </body>

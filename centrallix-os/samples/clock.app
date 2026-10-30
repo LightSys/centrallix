@@ -14,7 +14,6 @@ main "widget/page"
 	shadowx = 2;
 	shadowy = 2;
 	size=1;
-	moveable="true";
 	bold="true";
 	}
     clock2 "widget/clock"
@@ -22,7 +21,6 @@ main "widget/page"
 	background="/sys/images/fade_pixelate_01.gif";
 	x=15; y=55; width=80; height=20;
 	fgcolor1="white";
-	moveable="true";
 	bold="true";
 	}
     clock3 "widget/clock"
@@ -33,7 +31,6 @@ main "widget/page"
 	fgcolor1="orange";
 	fgcolor2="#666666";
 //	size=3;
-	moveable="true";
 	bold="true";
 	}
     }

@@ -1,16 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +28,13 @@
 /* Description:								*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "wgtr.h"
+#include "ht_render.h"
+
+
+#define WGTTBL_DEFAULT_HEIGHT	(100)	/** height to give a table when none is specified, in px **/
 
 
 /*** wgttblVerify - allows the driver to check elsewhere in the tree
@@ -56,6 +55,10 @@ wgttblVerify(pWgtrVerifySession s)
 	    //tbl->Flags |= WGTR_F_FLOATING;
 	    }
 
+	/** Default an unspecified height, since htdrv_table.c requires one. **/
+	if (strcmp(tbl->Type, "widget/table") == 0 && tbl->height < 0)
+	    tbl->height = tbl->pre_height = WGTTBL_DEFAULT_HEIGHT;
+
     return 0;
     }
 
@@ -73,13 +76,17 @@ wgttblNew(pWgtrNode node)
 	    {
 	    if(node->fl_width < 0) node->fl_width = 100;
 	    if(node->fl_height < 0) node->fl_height = 100;
-	    node->Flags |= (WGTR_F_CONTAINER | WGTR_F_VSCROLLABLE);
+	    node->Flags |= (WGTR_F_CONTAINER | WGTR_F_VSCROLLABLE | WGTR_F_VISUAL_CONTAINER);
+
+	    /** Declare an 18px right inset for the scrollbar (see content_width in htdrv_table.c). **/
+	    if (!htrGetBoolean(node, "overlap_scrollbar", 0))
+		wgtrSetInsets(node, 0, 0, 0, 18);
 	    }
 	else if (!strcmp(node->Type, "widget/table-row-detail"))
 	    {
 	    if(node->fl_width < 0) node->fl_width = 100;
 	    if(node->fl_height < 0) node->fl_height = 0;
-	    node->Flags |= WGTR_F_CONTAINER;
+	    node->Flags |= WGTR_F_CONTAINER | WGTR_F_VISUAL_CONTAINER;
 	    }
 	else if (!strcmp(node->Type, "widget/table-column"))
 	    {
