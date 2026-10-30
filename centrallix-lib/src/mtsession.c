@@ -455,6 +455,38 @@ mssEndSession(pMtSession s)
     }
 
 
+/*** mss_i_warn - Displays warning text in the console and adds it to a log
+ *** that can provide extra context if an error fails.
+ ***
+ *** Note: The format is parsed using vsnprintf(), so edge cases like a %s on
+ *** 	a value that isn't a valid string rely on glibc's implementation of C
+ *** 	undefined behavior.
+ ***
+ *** @param module The name or abbreviation of the module in which this 
+ ***	function is being called, to help developers narrow down the location
+ ***	of the warning.
+ *** @param file The name of the file where the function was called.
+ *** @param line The line number where the function was called.
+ *** @param message The format text for the warning, which accepts any format
+ ***	specifier that would be accepted by printf().
+ *** @param ... Variables matching format specifiers in the format.
+ ***/
+void
+mss_i_warn(char* module, char* file, int line, char* message, ...)
+    {
+	/** Prevent issues from interlacing this function with prints to stdout. **/
+	warnFail(fflush(stdout));
+
+	/** Write the warning message. **/
+	fprintf(stderr, "Warning: %s:%d: %s: ", file, line, module);
+	va_list args;
+	va_start(args, message);
+	vfprintf(stderr, message, args);
+	va_end(args);
+	fputc('\n', stderr);
+    }
+
+
 /*** mss_i_error - Displays error text to the user (but no stack trace).
  *** Does not exit the program, allowing the calling function to fail,
  *** creating a cascade of error messages which provides useful info.
