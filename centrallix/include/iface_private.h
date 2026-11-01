@@ -28,7 +28,7 @@
 /* Module: 	Interface Module     					*/
 /* Author:	Matt McGill (MJM)					*/
 /* Creation:	July 26, 2004   					*/
-/* Description:	Provies the functionality for handling interfaces in a  */
+/* Description:	Provides the functionality for handling interfaces in a */
 /*		general way, to be used by any Centrallix module that   */
 /*		has need of support for interfaces.                    	*/
 /************************************************************************/
@@ -55,7 +55,7 @@
  * There is an XArray of members for each category. Within each XArray,
  * members are stored in descending order according to minor version.
  * There is an Offsets XArray for each category as well, which contains
- * The offset for each minor version into the Members XArray.
+ * the offset for each minor version into the Members XArray.
  *
  * This ordering also means the correct member properties for the
  * requested minor version will be returned without any special code.

@@ -151,7 +151,7 @@ htpPageGeom(pPrtSession ps, int lines, int cols)
     }
 
 
-/*** htpGetPitch - return the current character width of character in terms
+/*** htpGetCharWidth - return the current character width of character in terms
  *** of the width of a 'normal' character.  For proportional fonts, such as
  *** times and helvetica, we use the hp-pcl font metrics table to estimate the
  *** font sizes.
@@ -546,7 +546,7 @@ htpSetAttr(pPrtSession ps, int attr)
     }
 
 
-/*** htpAlign - set vertical alignment to a certain column relative to the
+/*** htpAlign - set horizontal alignment to a certain column relative to the
  *** 'normal' pitch units (as in s->Cols)
  ***/
 int
@@ -575,7 +575,7 @@ htpAlign(pPrtSession ps, double x)
     }
 
 
-/*** htpGetAlign - return the current vertical alignment column.
+/*** htpGetAlign - return the current horizontal alignment column.
  ***/
 double
 htpGetAlign(pPrtSession ps)

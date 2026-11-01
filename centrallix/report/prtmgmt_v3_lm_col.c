@@ -668,7 +668,7 @@ prt_collm_Finalize(pPrtObjStream this)
     }
 
 
-/*** prt_collm_Initialize() - initialize the textflow layout manager and
+/*** prt_collm_Initialize() - initialize the columnar layout manager and
  *** register with the print management subsystem.
  ***/
 int

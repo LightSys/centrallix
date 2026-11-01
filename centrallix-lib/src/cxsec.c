@@ -22,7 +22,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	cxsec.h                 				*/
+/* Module: 	cxsec.c                 				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	March 31, 2003    					*/
 /* Description:	This module implements some security hardening features	*/

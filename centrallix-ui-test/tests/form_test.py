@@ -114,7 +114,7 @@ def handle_alert_if_present(driver: webdriver.Chrome, timeout: int = 3):
         pass
 
 def run_test():
-    """Runs the pane test with structured reporting."""
+    """Runs the form test with structured reporting."""
     print("# UI Test coverage: Form + Table Test")
     print("Author: David Hopkins")
     driver = None

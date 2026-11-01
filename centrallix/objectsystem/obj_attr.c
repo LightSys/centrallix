@@ -435,7 +435,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    val->String = "";
 	    }
 	
-	/** Avoid any errors from drivers that do not suport content_charset **/
+	/** Avoid any errors from drivers that do not support content_charset **/
 	if(rval < 0 && !strcmp(attrname, "content_charset"))
 	    {
 	    rval = 0;
@@ -562,7 +562,7 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 	    obj_internal_TrxLog(this, "setattr", "%STR&DQUOT,%INT,%STR&DQUOT", attrname, data_type, str);*/
 	    }
 
-	/** Avoid any errors from drivers that do not suport content_charset **/
+	/** Avoid any errors from drivers that do not support content_charset **/
 	if(rval < 0 && !strcmp(attrname, "content_charset"))
 	    rval = 0;
 
@@ -664,7 +664,7 @@ objPresentationHints(pObject this, char* attrname)
     return ph;
     }
 
-/*** obj_internal_FreeHints - release the Hints structure as well as its
+/*** objFreeHints - release the Hints structure as well as its
  *** associated allocated strings and such.
  ***/
 int

@@ -308,7 +308,7 @@ snSetParamString(pSnNode node, pObject obj, char* paramname, char* default_val)
     }
 
 
-/*** stSetParamInteger - like the above routine, but deals with integer
+/*** snSetParamInteger - like the above routine, but deals with integer
  *** values instead of string values...
  ***/
 int

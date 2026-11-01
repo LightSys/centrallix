@@ -118,7 +118,7 @@ htsetRender(pHtSession s, pWgtrNode tree, int z)
 		htrAddBodyItem_va(s,"    <FRAME SRC=\"./%STR&HTE\" MARGINWIDTH=%POS>\n",ptr,n);
 	    }
 
-	/** End the framset. **/
+	/** End the frameset. **/
 	htrAddBodyItem(s, "</FRAMESET>\n");
 
     return 0;

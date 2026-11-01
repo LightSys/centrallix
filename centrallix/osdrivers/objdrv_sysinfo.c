@@ -10,7 +10,7 @@
 #include "st_node.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
-/** module definintions **/
+/** module definitions **/
 #include "centrallix.h"
 #include "config.h"
 
@@ -417,7 +417,7 @@ sysLoadObjsArray(pSysData inf)
     }
 
 
-/*** sysLoadMethodsArray() - figure out the needed list of subobjects
+/*** sysLoadMethodsArray() - figure out the needed list of methods
  ***/
 int
 sysLoadMethodsArray(pSysData inf)
@@ -620,7 +620,7 @@ sysClose(void* inf_v, pObjTrxTree* oxt)
 	/** allocated name **/
 	if (inf->OurPath) nmSysFree(inf->OurPath);
 
-	/** temporary xarray for list of objects **/
+	/** temporary xarrays for list of attributes and their types **/
 	if (inf->Sid && inf->AttrsArray && inf->AttrsArray != inf->Sid->Attrs)
 	    {
 	    xaDeInit(inf->AttrsArray);

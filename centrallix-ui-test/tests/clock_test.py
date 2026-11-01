@@ -24,7 +24,7 @@ def create_driver(test_url) -> webdriver.Chrome:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--lang=en')
     chrome_options.add_argument('--incognito')
-    chrome_options.add_argument('--ignore-certificate-errors')  # Skip Certificatgite/by pass it 
+    chrome_options.add_argument('--ignore-certificate-errors')  # Skip Certificate/bypass it 
 
     driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.set_window_size(1920, 1080)
@@ -47,7 +47,7 @@ def get_label_info(label):
         print(f"Error retrieving label properties: {e}")
 
 def run_test():
-    """Run the check box test."""
+    """Run the clock test."""
     try:
         config = toml.load("config.toml")
     except FileNotFoundError:

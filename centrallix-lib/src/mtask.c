@@ -936,7 +936,7 @@ mtSched()
 	    MTASK.CurrentThread->StackBottom = (unsigned char*)x;
 	    /** If no tick and thread exec'able, return now; 0 means 'didnt run' **/
 	    /** If caller of mtSched sets status to runnable instead of **/
-	    /** executing,then this code will force a scheduler 'round' **/
+	    /** executing, then this code will force a scheduler 'round' **/
 	    if (MTASK.CurrentThread->Status == THR_S_EXECUTING && ticks_used < MT_TICK_MAX)
 	        {
 		dbg_write(0,"y",1);
@@ -2167,7 +2167,7 @@ thSetUserID(pThread thr, int new_uid)
     }
 
 
-/*** THSETSUPPLEMENTALGROUPS - load the set of supplemental gropu ID's for
+/*** THSETSUPPLEMENTALGROUPS - load the set of supplemental group ID's for
  *** the thread.
  ***/
 int
@@ -2710,7 +2710,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
     int addl_read;
 
 	//printf("reading %i from %08x(%08x--%08x) to %08x with %08x\n",maxlen,(int)filedesc,(int)filedesc->FD,(int)filedesc->Flags,(int)buffer,flags);
-    	/** If closing, cant read **/
+    	/** If closing, can't read **/
     	if (filedesc->Status == FD_S_CLOSING) return -1;
 
 	/** If packet-mode, call packet-read routine **/
@@ -2861,7 +2861,7 @@ fdRead(pFile filedesc, char* buffer, int maxlen, int offset, int flags)
 
 /*** FDUNREAD 'undoes' a read operation, with a maximum of 2048 bytes, which
  *** must all be read before another 'unread' can be performed on the same
- *** file descriptor.  Currentlly, offset and flags are ignored -- this 
+ *** file descriptor.  Currently, offset and flags are ignored -- this 
  *** function should ONLY be used on descriptors that are being treated by
  *** the app as streams (no seeks performed).
  ***/
@@ -2917,10 +2917,10 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
     int rval = -1;
     int code;
 
-    	/** If closing, cant write **/
+    	/** If closing, can't write **/
     	if (filedesc->Status == FD_S_CLOSING) return -1;
 
-	/** If packet-mode, call packet-read routine **/
+	/** If packet-mode, call packet-write routine **/
 	if (flags & FD_U_PACKET) 
 	    return fd_internal_WritePkt(filedesc, buffer, length, offset, flags & ~FD_U_PACKET);
 
@@ -3611,7 +3611,7 @@ netGetRemotePort(pFile net_filedesc)
     }
 
 
-/*** NETCONNECTTCP creats a client socket and connects it to a
+/*** NETCONNECTTCP creates a client socket and connects it to a
  *** server on a given TCP service/port and host name.  The flag
  *** NET_U_NOBLOCK causes the request to return immediately even
  *** if the connection is still trying to establish.  Further
@@ -3963,7 +3963,7 @@ netListenUDP(const char* service_name, int flags)
     return new_fd;
     }
 
-/*** NETCONNECTUDP creats a client socket and connects it to a
+/*** NETCONNECTUDP creates a client socket and connects it to a
  *** server on a given UDP service/port and host name.  The flag
  *** NET_U_NOBLOCK causes the request to return immediately even
  *** if the connection is still trying to establish.  Further
@@ -4114,7 +4114,7 @@ netConnectUDP(const char* host_name, const char* service_name, int flags)
     return connected_fd;
     }
 
-/*** NETRECVUDP recieves from a UDP file descriptor.  The flags can contain the
+/*** NETRECVUDP receives from a UDP file descriptor.  The flags can contain the
  *** option FD_U_NOBLOCK. 
  ***/
 int
@@ -4212,7 +4212,7 @@ netRecvUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
     return rval;
     }
 
-/*** NETSENDUDP recieves from a UDP file descriptor.  The flags can contain the
+/*** NETSENDUDP sends to a UDP file descriptor.  The flags can contain the
  *** option FD_U_NOBLOCK. 
  ***/
 int
@@ -4261,7 +4261,7 @@ netSendUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
 
     	if (filedesc->Status == FD_S_CLOSING) return -1;
 
-    	/** If filedesc not listed as blocked, try reading now. **/
+    	/** If filedesc not listed as blocked, try writing now. **/
     	if (!(filedesc->Flags & FD_F_WRBLK))
     	    {
 	    rval = sendto(filedesc->FD,buffer,maxlen,sendflags,(struct sockaddr*)from,fromlen);
@@ -4309,7 +4309,7 @@ netSendUDP(pFile filedesc, char* buffer, int maxlen, int flags, struct sockaddr_
     	        /** I sincerely hope this doesn't happen... **/
     	        if (rval == -1 && eno == EWOULDBLOCK) 
     	            {
-    	            puts("Got completed readability on fd but it then blocked!");
+    	            puts("Got completed writeability on fd but it then blocked!");
     	            goto DID_BLOCK;
     	            }
 		else if (rval == -1 && (eno == EAGAIN || eno == EINTR)) goto DID_BLOCK;

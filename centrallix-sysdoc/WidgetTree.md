@@ -19,7 +19,7 @@ An overview of the widget tree module (wgtr), and how it affects widget authorin
     - [Auto-generation](#auto-generation)
     - [A well-defined way of representing the widget hierarchy client-side](#a-well-defined-way-of-representing-the-widget-hierarchy-client-side)
     - [A framework in which to place Interface support](#a-framework-in-which-to-place-interface-support)
-    - [Ability to merge dynamicly-loaded components with existing Apps](#ability-to-merge-dynamicly-loaded-components-with-existing-apps)
+    - [Ability to merge dynamically-loaded components with existing Apps](#ability-to-merge-dynamically-loaded-components-with-existing-apps)
   - [Server-side Wgtr vs Client-side Wgtr](#server-side-wgtr-vs-client-side-wgtr)
   - [Server-Side](#server-side)
     - [Description of Module Interface](#description-of-module-interface)
@@ -31,7 +31,7 @@ An overview of the widget tree module (wgtr), and how it affects widget authorin
       - [Wgtr Driver-Related Functions](#wgtr-driver-related-functions)
     - [Wgt Drivers versus Ht Drivers](#wgt-drivers-versus-ht-drivers)
     - [Widget Drivers](#widget-drivers)
-      - ['Initializate' function](#initializate-function)
+      - ['Initialize' function](#initialize-function)
       - ['New' function](#new-function)
       - ['Verify' function](#verify-function)
     - [The Verification Process](#the-verification-process)
@@ -43,14 +43,14 @@ An overview of the widget tree module (wgtr), and how it affects widget authorin
     - [Purposes of the Client-Side Widget Tree](#purposes-of-the-client-side-widget-tree)
 
 ## Description of Wgtr Module
-The nature of a Centrallix Application, and the way in which it is defined, makes it easy to represent in a tree structure, where each wdiget is a node in a 'widget tree.' Previously, this 'widget tree' was only represented inside the structure parsing module, and by the inherently tree-like application definitions, and indirectly (in a browser-dependent format)  by the DOM on the client-side.
+The nature of a Centrallix Application, and the way in which it is defined, makes it easy to represent in a tree structure, where each widget is a node in a 'widget tree.' Previously, this 'widget tree' was only represented inside the structure parsing module, and by the inherently tree-like application definitions, and indirectly (in a browser-dependent format)  by the DOM on the client-side.
 
 The Wgtr module provides a way of representing 'widget-trees' explicitly, and a means of creating, accessing, and modifying them. On the client-side, the Wgtr module provides a browser-independent way of representing the structure of an application and accessing its widgets.
 
 ## Reasons for the Wgtr Module
 The main motivation for the Wgtr module is flexibility. Previously, an application was rendered by calling a set of widget-specific functions recursively, accessing the application definition directly through the OSML. Accessing the application definition through the OSML does not allow for easy manipulation of the application definition prior to actually rendering that application and sending it to the client.
 
-A more flexible approach is to build a widget-tree data structure out of the application definition in a step seperate from the actual rendering process. Once an application definition has been parsed into its corresponding tree, the tree can be modified in whatever ways are desired before being rendered. This opens up a number of possibilities:
+A more flexible approach is to build a widget-tree data structure out of the application definition in a step separate from the actual rendering process. Once an application definition has been parsed into its corresponding tree, the tree can be modified in whatever ways are desired before being rendered. This opens up a number of possibilities:
 
 ### Component widgets
 Support for user-defined widgets that make use of existing widgets and other component widgets can be implemented - the component widget driver can create the widgets specified by the user and graft them into the tree.
@@ -65,20 +65,20 @@ After the initial generation of a tree, an additional pass through the tree coul
 More of the burden of application authoring could be lifted by automating common and repetitive tasks. For example, there may be instances where connector widgets can be generated automatically to save developer time.
 
 ### A well-defined way of representing the widget hierarchy client-side
-Before the Wgtr module, widget objects on the client-side were referenced by global variables, and hierarchy information was represented by a combination of the DOM and extra client-side code. The Wgtr module on the client-side preserves the ability to reference widget objects by global variables, but embeds all hierarchy information directly into those objects, and provides a browser- independent way of retrieving that information.
+Before the Wgtr module, widget objects on the client-side were referenced by global variables, and hierarchy information was represented by a combination of the DOM and extra client-side code. The Wgtr module on the client-side preserves the ability to reference widget objects by global variables, but embeds all hierarchy information directly into those objects, and provides a browser-independent way of retrieving that information.
 
 ### A framework in which to place Interface support
-To properly support component widgets, interface support is being worked into Centrallix as this document is being authored. A stand- alone widget-tree data structure provides a convinient framework for storing interface information on a per-widget basis. When pushed down to the client with the application, this interface information will allow an application to interact with dynamically loaded component widgets in a well-defined manner. The container of a dynamically loaded component widget can, for example, verify that a loaded component meets some required set of functionality by checking that it implements certain interfaces. The client-side Wgtr module provides this functionality.
+To properly support component widgets, interface support is being worked into Centrallix as this document is being authored. A stand-alone widget-tree data structure provides a convenient framework for storing interface information on a per-widget basis. When pushed down to the client with the application, this interface information will allow an application to interact with dynamically loaded component widgets in a well-defined manner. The container of a dynamically loaded component widget can, for example, verify that a loaded component meets some required set of functionality by checking that it implements certain interfaces. The client-side Wgtr module provides this functionality.
 
-### Ability to merge dynamicly-loaded components with existing Apps
+### Ability to merge dynamically-loaded components with existing Apps
 When a new component, perhaps representing an entire window, is loaded dynamically into an existing application, its tree can be grafted onto the main application tree, effectively making that component a part of the application (provided all of its interaction with the application is through the Client-side Wgtr module). For example, a component containing a stock form can be dynamically loaded into an application, and simply walk up the tree to find its parent osrc widget.
 
 ## Server-side Wgtr vs Client-side Wgtr
 The Wgtr module is actually comprised of multiple 'sub-modules.' The main module resides on the server, and is responsible for creating widget trees, whether from application definitions, on the fly, or via component declarations. The server-side module provides all the functionality necessary for creating, modifying, and rendering a widget-tree.
 
-It is a long-term goal to add multiple deployment methods to Centrallix. Currently, applications are rendered to the user in DHTML, but support for additional deployment methods, like XUL, will eventually be included. The server-side Wgtr module is meant to encapsulate everything widget-related that is independent of the deployment method that will be used. For example, the 'verification' step of the rendering process is indenepent of the deployment method, and therefore the responsibility of the widget drivers in the Wgtr module. The default initialization of a widget also falls in this category, along with the responsibility of linking interface information with  widgets.
+It is a long-term goal to add multiple deployment methods to Centrallix. Currently, applications are rendered to the user in DHTML, but support for additional deployment methods, like XUL, will eventually be included. The server-side Wgtr module is meant to encapsulate everything widget-related that is independent of the deployment method that will be used. For example, the 'verification' step of the rendering process is independent of the deployment method, and therefore the responsibility of the widget drivers in the Wgtr module. The default initialization of a widget also falls in this category, along with the responsibility of linking interface information with  widgets.
 
-In addition to the server-side 'sub-module,' there is a client-side Wgtr sub- module for the DHTML deployment method. Presumably there will be similar client-side modules for other deployment methods as well. The client-side Wgtr module is less concerned with the creation of widget-trees than the server-side is, and more concerned with offering a well-defined method for accessing widget properties, events, actions, and so on.
+In addition to the server-side 'sub-module,' there is a client-side Wgtr sub-module for the DHTML deployment method. Presumably there will be similar client-side modules for other deployment methods as well. The client-side Wgtr module is less concerned with the creation of widget-trees than the server-side is, and more concerned with offering a well-defined method for accessing widget properties, events, actions, and so on.
 
 This client-side module is meant to be a tool for widget authors, and a context for dynamically loaded components to exist in.
 
@@ -90,7 +90,7 @@ This client-side module is meant to be a tool for widget authors, and a context 
 
 * pWgtrNode wgtrParseObject(pObjSession s, char* path, int mode, int permission_mask, char* type)
 	
-  	Parses an OSML object into a widget tree. When each node is created, it's corresponding driver's New() function is called do perform widget-specific initialization.
+  	Parses an OSML object into a widget tree. When each node is created, its corresponding driver's New() function is called to perform widget-specific initialization.
 
 * pWgtrNode wgtrParseOpenObject(pObject obj)
   
@@ -184,7 +184,7 @@ This client-side module is meant to be a tool for widget authors, and a context 
 
 * int wgtrAddType(char* name, char* type_name)
     
-    Once a widget driver has registered with the Wgtr module, it needs to inform the module which widget types it is responsible for. One widget driver may support multiple types - for example, the drop- down widget supports widget/dropdown and widget/dropdownitem.
+    Once a widget driver has registered with the Wgtr module, it needs to inform the module which widget types it is responsible for. One widget driver may support multiple types - for example, the drop-down widget supports widget/dropdown and widget/dropdownitem.
 
 * int wgtrAddDeploymentMethod(char* method, int (*Render)())
     
@@ -195,7 +195,7 @@ This client-side module is meant to be a tool for widget authors, and a context 
     Renders a widget tree using the given deployment method.
 
 ### Wgt Drivers versus Ht Drivers
-The htmlgen system was originally responsible for some tasks that were not actually tied specifically to DHMTL. For example, verifying a widget tree is a largely deployment-independent operation. With the addition of the WGTR module, there was a better place to put that deployment-independent code - widget drivers in the WGTR module.
+The htmlgen system was originally responsible for some tasks that were not actually tied specifically to DHTML. For example, verifying a widget tree is a largely deployment-independent operation. With the addition of the WGTR module, there was a better place to put that deployment-independent code - widget drivers in the WGTR module.
 
 With this change comes a change in terminology. 'Widget drivers' are now the drivers that are a part of the WGTR module, responsible for handling all widget-related deployment-independent code. 'HT drivers' are the old widget drivers - the code responsible for generating DHTML for a widget.
     
@@ -204,7 +204,7 @@ Widget drivers are located in the wgtr/ folder of the centrallix cvs module, and
 
 Each widget driver should contain three functions: an 'initialize' function, a 'verify' function, and a 'new' function.
 
-#### 'Initializate' function
+#### 'Initialize' function
 The Initialize function for a widget driver is similar to the one for an HT driver - any initialization code that might be needed for that driver should be placed here. The function takes no parameters.
 
 The function is also responsible for registering with the WGTR module via a call to wgtrRegisterDriver, and for declaring which widget types should be associated with that widget driver.
@@ -283,7 +283,7 @@ These functions can all be found in ht_utils_wgtr.js.
     * event_name:   string  containing the name of the event to add a function for
     * func:	    function to be added
 
-    This function addes a function to a wiget's list of functions to trigger for a given event.
+    This function adds a function to a widget's list of functions to trigger for a given event.
 
 * wgtrWalk(tree, x)
 
@@ -293,7 +293,7 @@ These functions can all be found in ht_utils_wgtr.js.
     This function is for debugging purposes. It walks the widget tree, printing information about each node in order to verify that the tree was constructed correctly.
 
 ### Building the Client-Side Tree
-The client-side widget tree is build immediately after the server-side widget tree has been rendered via the call to htrRenderWidget() on the root node of the tree in htrRender(). htr_internal_BuildClientWgtr() is the function responsible for building the tree.
+The client-side widget tree is built immediately after the server-side widget tree has been rendered via the call to htrRenderWidget() on the root node of the tree in htrRender(). htr_internal_BuildClientWgtr() is the function responsible for building the tree.
 
 The client-side widget tree building code on the client-side is contained in the function 'build_wgtr()'. This function is generated via a series of calls to htrAddScriptWgtr(), each of which adds a line. On the client, build_wgtr() is called at the end of the startup() function.
 
@@ -302,6 +302,6 @@ htr_internal_BuildClientWgtr() declares a local variable to be used in the funct
 ### Purposes of the Client-Side Widget Tree
 The client-side widget tree is at this point largely unused. It was designed in such a way that it would peacefully coexist with rest of the code, and link things together without breaking anything.
 
-The client-side WGTR code currently lacks important functionality, and is not usefull without that functionality. The client-side WGTR code is meant to provide a browser-independent way of representing the relationships among the widgets in an application. To make the module useful, functionality for retrieving this information needs to be included. For example, functions that return the visual and non-visual parents of a widget, or provide access to a widget's children,  might be useful.
+The client-side WGTR code currently lacks important functionality, and is not useful without that functionality. The client-side WGTR code is meant to provide a browser-independent way of representing the relationships among the widgets in an application. To make the module useful, functionality for retrieving this information needs to be included. For example, functions that return the visual and non-visual parents of a widget, or provide access to a widget's children,  might be useful.
 
 Making full use of the client-side WGTR module would require significant modifications to the existing widget set. While this might not be a bad idea at *some* point in the future, it's not critical. However, authors are encouraged to make use of the fact that the information about the relationships among widgets is now embedded in the widget objects themselves, when coding new widgets.

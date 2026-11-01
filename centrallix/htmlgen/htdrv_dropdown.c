@@ -177,7 +177,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
        htrAddEventHandlerFunction(s, "document", "CONTEXTMENU", "dd", "dd_contextmenu");
 
 
-    /** Get the mode (default to 1, dynamicpage) **/
+    /** Get the mode (default to 0, static) **/
     mode = 0;
     if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0) {
 	if (!strcmp(ptr,"static")) mode = 0;
@@ -327,7 +327,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
 	    {
 	    if (wgtrGetPropertyValue(subtree,"label",DATA_T_STRING,POD(&ptr)) != 0) 
 		{
-		mssError(1,"HTDD","Drop Down widget must have a 'width' property");
+		mssError(1,"HTDD","Drop Down widget must have a 'label' property");
 		return -1;
 		}
 	    strtcpy(string, ptr, sizeof(string));

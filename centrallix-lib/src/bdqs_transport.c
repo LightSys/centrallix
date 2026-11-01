@@ -24,7 +24,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	bdqs.c, bdqs.h          				*/
+/* Module: 	bdqs_transport.c, bdqs.h				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	March 18, 2002    					*/
 /* Description:	This module implements the Batchable Data Query Service,*/
@@ -263,7 +263,7 @@ bdqs_internal_ReadMessageHeader(pBDQSTransportConn conn, pBDQSMessageHeader* hdr
     }
 
 
-/*** bdqs_internal_ReadParamHeader - This function reads a message header
+/*** bdqs_internal_ReadParamHeader - This function reads a param header
  *** from the given transport connection, allocating one if space is not 
  *** already provided for one.
  ***/

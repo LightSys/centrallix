@@ -44,12 +44,13 @@
 /*		a new objectsystem driver.				*/
 /*									*/
 /*		To use, some global search/replace must be done.	*/
-/*		Replace all occurrenced of mbox, MBOX, and Mbox with your	*/
-/*		driver's prefix in the same capitalization.  In vi,	*/
+/*		Replace all occurrences of mbox, MBOX, and Mbox with	*/
+/*		your driver's prefix in the same capitalization.	*/
 /*									*/
-/*			:1,$s/Mbox/Pop/g					*/
-/*			:1,$s/MBOX/POP/g					*/
-/*			:1,$s/mbox/pop/g					*/
+/*		In vi,							*/
+/*			:1,$s/Mbox/Pop/g				*/
+/*			:1,$s/MBOX/POP/g				*/
+/*			:1,$s/mbox/pop/g				*/
 /************************************************************************/
 
 
@@ -740,4 +741,3 @@ MODULE_PREFIX("mbox");
 MODULE_DESC("MBOX ObjectSystem Driver");
 MODULE_VERSION(0,0,1);
 MODULE_IFACE(CX_CURRENT_IFACE);
-

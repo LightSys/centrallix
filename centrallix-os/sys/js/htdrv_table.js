@@ -3118,7 +3118,7 @@ function tbld_mousedown(e)
             var colname=ly.row.table.cols[ly.colnum].sort_fieldname;
 	    if (!colname)
 		colname=ly.row.table.cols[ly.colnum].fieldname;
-	    /** check for the this field already in the sort criteria **/
+	    /** check for this field already in the sort criteria **/
             if(':"'+colname+'" asc'==neworder[0])
                 neworder[0]=':"'+colname+'" desc';
             else if (':"'+colname+'" desc'==neworder[0])

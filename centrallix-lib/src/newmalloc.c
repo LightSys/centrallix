@@ -27,7 +27,7 @@
 /*		to ensure memory allocation consistency.  Slower in 	*/
 /*		debugging mode but can improve app speed dramatically	*/
 /*		in implementation mode.  While blocks returned from the	*/
-/*		nm* routines can be mixed-and-matched with the normall	*/
+/*		nm* routines can be mixed-and-matched with the normal 	*/
 /*		libc functions, this defeats the purpose of the system	*/
 /*		and leads to inaccuracies in the debugging information.	*/
 /*		The returned blocks from the nmSys* functions CANNOT	*/
@@ -46,7 +46,7 @@
 ***
 *** the check can be made at any time from normal code by calling:
 ***   nmCheckAll()
-***     -- this functions is still defined if BUFFER_OVERFLOW_CHECKING is
+***     -- this function is still defined if BUFFER_OVERFLOW_CHECKING is
 ***        not defined, but it becomes a NOOP
 **/
 #ifdef BUFFER_OVERFLOW_CHECKING

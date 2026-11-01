@@ -17,7 +17,7 @@ INSERT INTO /path/name
     UPDATE SET {update expression list}
 ```
 
-The INSERT...SELECT is performed as usual, except that duplicate checking is also performed.  If there is already an object inside /path/name that has attributes that match the {expression list} that immediate follows "ON DUPLICATE", then the new object is not inserted, but instead the existing object is updated using the {update expression list} that follows the "UPDATE SET" statement.
+The INSERT...SELECT is performed as usual, except that duplicate checking is also performed.  If there is already an object inside /path/name that has attributes that match the {expression list} that immediately follows "ON DUPLICATE", then the new object is not inserted, but instead the existing object is updated using the {update expression list} that follows the "UPDATE SET" statement.
 
 The ON DUPLICATE expressions may take on the form of SELECT items; that is they may be renamed, as in:
 

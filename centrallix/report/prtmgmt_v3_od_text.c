@@ -304,7 +304,7 @@ prt_textod_GetNearestFontSize(void* context_v, double req_size)
 
 /*** prt_textod_GetCharacterMetric() - return the width of a printed character
  *** in a given font size, attributes, etc., in 10ths of an inch (relative to
- *** 10cpi, or 12point, fonts.  For the plain text driver, we just return the
+ *** 10cpi, or 12point, fonts).  For the plain text driver, we just return the
  *** length of the string, since there is only one font - fixed 12point courier.
  ***/
 void

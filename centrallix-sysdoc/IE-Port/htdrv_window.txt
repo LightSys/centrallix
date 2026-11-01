@@ -5,6 +5,6 @@ Author: Jason Yip
 Date: 3/1/2004
 *********************************************************************
 
-All the changes on this file are mainly on using the geometry library. You are advised to review the gemoetry documentation, gemo-lib.txt, for more information on how to use the geometry library.
+All the changes on this file are mainly on using the geometry library. You are advised to review the geometry documentation, geom-lib.txt, for more information on how to use the geometry library.
 
 One important change on this widget is the setTimeout function in IE doesn't support arguments, so I had to hard code the layer reference in wn_unset_windowshade.

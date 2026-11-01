@@ -25,7 +25,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	stparse_new.c, stparse_new.h 				*/
+/* Module: 	stparse.c, stparse_ne.h 				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	September 29, 1998					*/
 /* Description:	Parser to handle the request data stream from the end-	*/

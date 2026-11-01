@@ -341,7 +341,7 @@ uxp_internal_StartFilter(pUxpData inf)
     	/** Create the socket pair and connect 'em with mtask **/
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, lowlevel_fd) < 0)
 	    {
-	    mssErrorErrno(1,"UXP","Could open socketpair pipe for print writer");
+	    mssErrorErrno(1,"UXP","Could not open socketpair pipe for print writer");
 	    return -1;
 	    }
 	inf->MasterFD = fdOpenFD(lowlevel_fd[0], O_WRONLY);
@@ -601,7 +601,7 @@ uxpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 		}
 	    }
 
-	/** Ok, delayed start of filter process to wait until spoofile-fd is open **/
+	/** Ok, delayed start of filter process to wait until spoolfile-fd is open **/
 	if (start_filter)
 	    {
 	    stAttrValue(stLookup(inf->Node->Data,"type"), NULL, &type, 0);

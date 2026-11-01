@@ -26,7 +26,7 @@
 /* Module: 	Interface Module     					*/
 /* Author:	Matt McGill (MJM)					*/
 /* Creation:	July 26, 2004   					*/
-/* Description:	Provies the functionality for handling interfaces in a  */
+/* Description:	Provides the functionality for handling interfaces in a  */
 /*		general way, to be used by any Centrallix module that   */
 /*		has need of support for interfaces.                    	*/
 /* See centrallix-sysdoc/InterfaceModule.md for more information. */
@@ -52,7 +52,7 @@ struct _IFC IFC;
 
 /************* Functions ***********************/
 
-/*** ifc_internal_FreeMajorVersion - frees an internal represntatino of a major version
+/*** ifc_internal_FreeMajorVersion - frees an internal representation of a major version
  ***/
 void
 ifc_internal_FreeMajorVersion(pIfcMajorVersion v, int type)
@@ -144,7 +144,7 @@ ifc_internal_VerfifyProperties(pObject OldProp, pObject NewProp)
 #endif
 
 /*** ifc_internal_NewMajorVersion - takes an open object representing a single major version
- *** of an interface definition and creates an equivelent internal representation of that
+ *** of an interface definition and creates an equivalent internal representation of that
  *** major version
  ***/
 pIfcMajorVersion 
@@ -197,7 +197,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		}
 	    if (Val.String[0] != 'v' || ( (i=strtoi(Val.String+1, &ptr, 10))==0 && ptr != Val.String+strlen(Val.String)))
 		{
-		mssError(0, "IFC", "Ilegal minor version name '%s' in '%s'", Val.String, def->Pathname->Pathbuf+1);
+		mssError(0, "IFC", "Illegal minor version name '%s' in '%s'", Val.String, def->Pathname->Pathbuf+1);
 		goto error;
 		}
 	    if (IFC_DEBUG)
@@ -274,7 +274,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		    }
 		if (strncmp("iface/", Val.String, 6))
 		    {
-		    mssError(0, "IFC", "Type of '%s' must be 'iface/<category>", MemberObj->Pathname->Pathbuf+1);
+		    mssError(0, "IFC", "Type of '%s' must be 'iface/<category>'", MemberObj->Pathname->Pathbuf+1);
 		    goto error;
 		    }
 		for (MemberCategory=0;MemberCategory<NumCategories;MemberCategory++) 
@@ -291,7 +291,7 @@ ifc_internal_NewMajorVersion(pObject def, int type)
 		    if (!strcmp(xaGetItem(&(MajorVersion->Members[MemberCategory]), i), MemberName))
 			{
 			/** is the duplicate within this minor version, or in another minor version? **/
-			// FIXME Make sure offset is computed!  It us currently set to 0
+			// FIXME Make sure offset is computed!  It is currently set to 0
 			if (i >= ThisOffset)
 			    /** within this minor version **/
 			    {
@@ -606,7 +606,7 @@ ifcGetHandle(pObjSession s, char* ref)
 	/** we have the interface definition. Now let's build a handle from it **/
 	if ( (handle = ifc_internal_BuildHandle(def, major, minor)) == NULL)
 	    {
-	    mssError(0, "IFC", "Coulnd't build handle from interface definition '%s'", path);
+	    mssError(0, "IFC", "Couldn't build handle from interface definition '%s'", path);
 	    return NULL;
 	    }
 	/** get the absolute path again, since we destroyed it above **/

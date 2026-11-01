@@ -128,7 +128,7 @@
 
 			<property name="column_width" type="integer">This specifies the width of columns for a vbox -- should the first column of widgets fill up, a second column will be started at this offset from the start of the first column.</property>
 
-			<property name="height" type="integer">Height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will chose a width and height that maximize the available autolayout area.</property>
+			<property name="height" type="integer">Height, in pixels, of the autolayout area.  If omitted, it defaults to the maximum available height for the given width, without overlapping other visible widgets.  If both width and height are unspecified, Centrallix will choose a width and height that maximize the available autolayout area.</property>
 
 			<property name="justify" type="string">Makes the text fill page (justifies text - google it if you need).</property>
 			
@@ -393,7 +393,7 @@ vbox1 "widget/vbox"
 
 		<properties>
 			<property name="chart_type" type="string">Currently supported types are "bar", "line", "scatter", and "pie". Defaults to "bar". Chart.js supports much more than this, so new types could be added with relative ease.</property>
-			<property name="legend_position" type="string">The position of the legend on the chart. May be "top", "botton", "left", or "right".</property>
+			<property name="legend_position" type="string">The position of the legend on the chart. May be "top", "bottom", "left", or "right".</property>
 			<property name="objectsource" type="string">The name of the ObjectSource widget which will supply data for the chart. We recommend that you do not specify this directly but instead embed the chart widget within a parent ObjectSource, directly or indirectly. If not specified, the chart will look for an ObjectSource in its parents.</property>
 			<property name="start_at_zero" type="boolean">Set to false if you want the y axis to start at the lowest data value. Default is true.</property>
 			<property name="title" type="string">The title of the chart. Default is none.</property>
@@ -581,7 +581,7 @@ checkbox_test "widget/page"
 
 			<property name="border_style" type="string">Determines the look of the outline.</property>
 			
-			<property name="closetype" type="string">Decides wither the screen closes widthwise (1) or heightwise (2).</property>
+			<property name="closetype" type="string">Decides whether the screen closes widthwise (1) or heightwise (2).</property>
 			
 			<property name="gshade" type="string">Acts as a boolean to declare if the window is shaded or not (all but title bar minimized).</property>
 
@@ -649,15 +649,15 @@ checkbox_test "widget/page"
 			
 			<event name="Load">This event is triggered the first time the window is opened.  If the window is visible by default, then this event is triggered when the application loads.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 			<event name="Open">This event is triggered each time the window is opened (becomes visible).</event>
 
@@ -740,7 +740,7 @@ MyWindow "widget/childwindow"
 
 			<property name="shadowy" type="integer">The vertical offset, in pixels, of the shadow.</property>
 
-			<property name="size" type="integer">The size, in points, clock's text.</property>
+			<property name="size" type="integer">The size, in points, of the clock's text.</property>
 
 			<property name="width" type="integer">The width of the clock, in pixels.</property>
 
@@ -830,7 +830,7 @@ MyWindow "widget/childwindow"
 
 				<childproperty name="type" type="string">(e.g. readonly). Must have field be set in order to be "readonly".</childproperty>
 
-				<childproperty name="value" type="string">This is something which can accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
+				<childproperty name="value" type="string">This is something which can be accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
 
 		    </child>
 
@@ -844,7 +844,7 @@ MyWindow "widget/childwindow"
 
 		    <child type="/apps/kardia/modules/base/editbox_tree.cmp">
 
-			    <childproperty name="content" type="string">This is something which can accessed as :this_widget:content (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
+			    <childproperty name="content" type="string">This is something which can be accessed as :this_widget:content (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
 
 		    </child>
 
@@ -1357,7 +1357,7 @@ myDropDown2 "widget/dropdown"
 
 			<property name="description_fgcolor" type="string">A color, RGB or named, editbox's value description.  The value description is displayed to the right of the value in the editbox, in parentheses, and in a different color.</property>
 			
-			<property name="disabled" type="boolean">Specifies wither the edit box can be written in, default is true meaning the edit box cannot be written in.</property>
+			<property name="disabled" type="boolean">Specifies whether the edit box can be written in, default is true meaning the edit box cannot be written in.</property>
 
 			<property name="empty_description" type="string">The value description to display in the editbox when the editbox is empty.  For instance, "optional" or "required" or "type search and press ENTER" might be commonly used empty_description settings.</property>
 
@@ -1549,7 +1549,7 @@ mySoundPlayer "widget/execmethod"
 
 			<p>Occasionally, the user may perform an operation which inherently disregards that the form may contain unsaved data.  When this occurs and there is newly created or modified data in the form, the application must ask the user whether the data in the form should be saved or discarded, or whether to simply not even perform the operation in question.  Since DHTML does not inherently have a "three-way confirm" message box (with save, discard, and cancel buttons), Centrallix allows a form to specify a "three-way confirm" window.  This should be a hidden (visible=no) "widget/htmlwindow" object which may contain any content, but should at least contain three buttons named "_3bConfirmSave", "_3bConfirmDiscard", and "_3bConfirmCancel" directly in the htmlwindow.  During a confirm operation, this window will become "application-modal"; that is, no other widgets in the application may be accessed by the user until one of the three buttons is pushed.</p>
 
-			<p>Several settings on the form widget control what state, or "mode", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can beused to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_search enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.</p>
+			<p>Several settings on the form widget control what state, or "mode", the form can be in: allow_query, allow_new, allow_modify, allow_view, and allow_nodata.  These can be used to constrain a form to perform a specific task, such as only searching, or only creating new records.  For example, a form with only allow_query enabled will always return to the search (QBF) mode and will never display the searched-for data that is returned in the objectsource.</p>
 
 		</overview>
 
@@ -1579,11 +1579,11 @@ mySoundPlayer "widget/execmethod"
 
 			<property name="confirm_delete" type="yes/no"><ni/>Whether to pop up an OK/Cancel message box asking the user whether he/she is sure the record should be deleted.</property>
 
-			<property name="comfirm_discard" type="yes/no">Set to true when the discard button of the 3 buttom confirm window (3bconfirmwindow) is pressed.</property>
+			<property name="comfirm_discard" type="yes/no">Set to true when the discard button of the 3 button confirm window (3bconfirmwindow) is pressed.</property>
 			
 			<property name="enter_mode" type="string"><ni/>Can be "save" (default), "nextfield", or "lastsave".  Controls what to do when the user presses ENTER while in a form element in this form.  "save" means to save the record immediately.  "nextfield" means to move to the next form field, as if TAB were pressed instead.  "lastsave" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer "save" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer "lastsave" since it allows them to perform high-speed data entry using a numeric keypad.</property>
 
-			<property name="interlock_with" type="string">Stores wither this form can be grouped with other forms.</property>
+			<property name="interlock_with" type="string">Stores whether this form can be grouped with other forms.</property>
 			
 			<property name="MultiEnter" type="integer"><ni/>Enable MultiEnter.</property>
 
@@ -1641,7 +1641,7 @@ mySoundPlayer "widget/execmethod"
 			
 			<event name="Query">This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.</event>
 			
-			<event name="StatusChange">The even occurs when the form changes modes or when a child control changes its data.</event>
+			<event name="StatusChange">The event occurs when the form changes modes or when a child control changes its data.</event>
 			
 			<event name="View">This event occurs if and only if there was a mode change and the new mode is the 'View' state (always occurs with both a statusChange event and a ModeChange Event.</event>
 		
@@ -1681,9 +1681,9 @@ mySoundPlayer "widget/execmethod"
 						
 			<action name="SetValue">Modifies a field and puts the form into a new modify or search mode if appropriate.</action>
 						
-			<action name="Submit">Attemps to save data, if there is an error it returns false.</action>
+			<action name="Submit">Attempts to save data, if there is an error it returns false.</action>
 			
-			<action name="test3bconfirm">Debugging tool to test the 3bcomfirm method (only use if you know what this method is).</action>
+			<action name="test3bconfirm">Debugging tool to test the 3bconfirm method (only use if you know what this method is).</action>
 			
 			<action name="View">Changes the form to view mode.</action>
 
@@ -1932,7 +1932,7 @@ BigFrameset "widget/frameset"
 			
 			<property name="default" type="object">A string or integer that specifies the initial, default, starting value for the component which containing this widget/hints widget.</property>
 
-			<property name="enumlist" type="object">A list of string values that give all the possible values of th the parent.</property>
+			<property name="enumlist" type="object">A list of string values that give all the possible values of the parent.</property>
 			
 			<property name="enumquery" type="string">A sql query that is used to get the required value list.</property>
 			
@@ -2061,15 +2061,15 @@ f_trx_mod "widget/checkbox"
 		
 		<events>
 		
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2117,7 +2117,7 @@ HTMLArea "widget/html"
 
 		<properties>
 		
-			<property name="aspect" type="sting">Determines wither the image can be stretched or must stay its original aspect ration.</property>
+			<property name="aspect" type="sting">Determines whether the image can be stretched or must stay its original aspect ratio.</property>
 
 			<property name="fieldname" type="string">If using a form for the image path, the name of the column in the datasource you want to reference.</property>
 
@@ -2137,17 +2137,17 @@ HTMLArea "widget/html"
 		
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the checkbox. No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the widget. No parameters are available from this event.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 		
@@ -2209,7 +2209,7 @@ HTMLArea "widget/html"
 
 			<property name="repeat" type="yes/no">Whether to repeat the click event multiple times while the user holds down the button.</property>
 
-			<property name="tooltip" type="string">The text that appears when the courser hovers over the image button.</property>
+			<property name="tooltip" type="string">The text that appears when the cursor hovers over the image button.</property>
 			
 			<property name="width" type="integer">Width, in pixels, of the image button.</property>
 
@@ -2227,15 +2227,15 @@ HTMLArea "widget/html"
 
 			<event name="Click">This event occurs when the user clicks the button. No parameters are available from this event.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2327,15 +2327,15 @@ MyButton "widget/imagebutton"
 
 			<property name="text" type="string">The text that the label is to display.</property>
 
-			<property name="tooltip" type="string">The text displayed when the courser hovers over the widget.</property>
+			<property name="tooltip" type="string">The text displayed when the cursor hovers over the widget.</property>
 			
 			<property name="valign" type="string">Describes how the text should align vertically within the label (e.g. top, middle, or bottom).</property>
 
 			<property name="width" type="integer">The width of the label.</property>
 
-			<property name="x" type="integer">X-coordinate of the upper left corner of the checkbox, default is 0.</property>
+			<property name="x" type="integer">X-coordinate of the upper left corner of the label, default is 0.</property>
 
-			<property name="y" type="integer">Y-coordinate of the upper left corner of the checkbox, default is 0.</property>
+			<property name="y" type="integer">Y-coordinate of the upper left corner of the label, default is 0.</property>
 
 		</properties>
 
@@ -2345,19 +2345,19 @@ MyButton "widget/imagebutton"
 
 		<events>
 
-			<event name="Click">This event occurs when the user clicks the checkbox. No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the widget. No parameters are available from this event.</event>
 
-			<event name="DataChange">This event occurs when the user has modified the data value of the checkbox (clicked or unclicked it).</event>
+			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2477,21 +2477,21 @@ f_trx_mod_l "widget/label" { width=86; text="User Edit?"; align=right; font_size
 
 		<events>
 
-			<event name="DataChange">This event occurs when the an item in the menu which is not a submenu is changed.</event>
+			<event name="DataChange">This event occurs when an item in the menu which is not a submenu is changed.</event>
 			
 			<event name="GetFocus">This event occurs when the menu which previously was not clicked is clicked.</event>
 			
 			<event name="LoseFocus">This event occurs when the menu which previously was clicked is unselected.</event>
 		
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 			<event name="Select">This event fires when a menu item is selected.  It can be placed in the menu itself, or inside the menu item widget.  When on a menu item, it only fires when that item is selected.  When on a menu, it passes the selected item's value as a parameter named 'Item' (string).</event>
 
@@ -2545,7 +2545,7 @@ myMenu "widget/menu"
 
 			<p>Both form and dynamic table widgets interact with the objectsource nonvisual widget to acquire data, update data, create data, and delete data. In fact, it is possible for more than one form and/or table to be connected with a given objectsource, to perform a variety of functions.</p>
 
-			<p>Objectsources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below) or rule-based connnectivity (see widget/rule).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.</p>
+			<p>Objectsources offer synchronization with other objectsources via the Sync and DoubleSync actions (see below) or rule-based connectivity (see widget/rule).  These actions allow the application to contain multiple objectsources with primary key / foreign key relationships, and to have those objectsources automatically stay in synchronization with each other based on those relationships.</p>
 
 			<p>An objectsource may also be used to run a query which does not return any rows, such as an insert, update, or delete query.  Under normal data maintenance conditions such queries are not needed as the objectsource handles those operations internally, however.</p>
 
@@ -2579,7 +2579,7 @@ myMenu "widget/menu"
 		
 			<property name="replicasize" type="integer">Represents the number of records to store in its replica.  This value should be larger than the maximum number of records that will be displayed at any one time.  At times, Centrallix may increase the number of records cached on the client beyond this number.</property>
 
-			<property name="revealed_only" type="string">Acts as a boolean and delays query until the osrc is visable (if "true").</property>
+			<property name="revealed_only" type="string">Acts as a boolean and delays query until the osrc is visible (if "true").</property>
 
 			<property name="scrollahead" type="integer">Similar to readahead, but relates to how many records should be fetched when more records are needed from the server to fulfill a request to display more data, such as a table widget scrolling without changing the current record.  By default this is set to the value of 'readahead'.</property>
 
@@ -2595,7 +2595,7 @@ myMenu "widget/menu"
 
 			<child type="rule with ruletype=osrc_relationship (replaces the deprecated: sync and double sync)">
 
-				<childproperty name="autoquery" type="true/false">When autoquery is set to true, when the master changes, the slave automatially requeries (otherwise have to explicitly call requery or refresh on the slave osrc).  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes / requeries.</childproperty>
+				<childproperty name="autoquery" type="true/false">When autoquery is set to true, when the master changes, the slave automatically requeries (otherwise have to explicitly call requery or refresh on the slave osrc).  When autoquery is false, it causes relationships to be in enforced, but doesn't cause a re-query when the master's osrc refreshes / requeries.</childproperty>
 
 				<childproperty name="is_slave" type="yes/no">Defaults to 'yes'.  If it is set to 'no', then this osrc is set up to be a master of the target, otherwise the default is for it to be a slave of the target.</childproperty>
 
@@ -2644,7 +2644,7 @@ myMenu "widget/menu"
 
 		<actions>
 
-			<action name="BeginCreateObject">Creates a base of an object and notifies all childeren that a child is creating an object.</action>
+			<action name="BeginCreateObject">Creates a base of an object and notifies all children that a child is creating an object.</action>
 						
 			<action name="CancelCreateObject">If it is called while an object is being created it stops the creation and cleans up the mess.</action>
 			
@@ -2654,7 +2654,7 @@ myMenu "widget/menu"
 
 			<action name="Create"><ni/>Encapsulates data in an array and calls CreateObject.</action>
 
-			<action name="CreateObject">Creates an object though OSML</action>
+			<action name="CreateObject">Creates an object through OSML</action>
 
 			<action name="Delete"><ni/>Deletes an object through OSML.</action>
 
@@ -2662,7 +2662,7 @@ myMenu "widget/menu"
 
 			<action name="DoubleSync">DEPRECATED: Performs a double synchronization with two other objectsources, known as the Parent and the Child, in two steps.  The first step is like Sync (see below), with a ParentOSRC and ParentKey1-ParentKey9] / ParentSelfKey1-ParentSelfKey9.  Next, a Sync is performed between the current objectsource and the ChildOSRC in the same way the first step performed a sync between the ParentOSRC and the current objectsource, respectively, using SelfChildKey1-SelfChildKey9 / ChildKey1-ChildKey9.</action>
 
-			<action name="FindObject">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters:  To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other abitrary field values, set those values in the parameters to this action.</action>
+			<action name="FindObject">Searches for a certain object in the replica (retrieved records), and makes it the current object.  Parameters:  To search by record number, set ID equal to the integer (1 = first record).  To search by object name (primary key), set Name equal to a string containing the primary key (note that concatenated keys use | as a separator).  To search by other arbitrary field values, set those values in the parameters to this action.</action>
 
 			<action name="First"><ni/>Returns first record in the replica.</action>
 
@@ -2690,7 +2690,7 @@ myMenu "widget/menu"
 
 			<action name="Sync">DEPRECATED: Performs a synchronization operation with another objectsource by re-running the query for this objectsource based on another objectsource's data.  Used for implementing relationships between objectsources.  The ParentOSRC (string) parameter specifies the name of the objectsource to sync with.  Up to nine synchronization keys can be specified, as ParentKey1 and ChildKey1 through ParentKey9 and ChildKey9.  The ParentKey indicates the name of the field in the ParentOSRC to sync with (probably a primary key), and ChildKey indicates the name of the field (the foreign key) in the current objectsource to match with the parent objectsource.</action>
 
-			<action name="SaveClients">Save the clients that connect and lets clients of clients know that orsc is conected to them.</action>
+			<action name="SaveClients">Save the clients that connect and lets clients of clients know that osrc is connected to them.</action>
 			
 			<action name="SeqBackward">Moves the current row backwards.</action>
 			
@@ -2814,7 +2814,7 @@ osrc1 "widget/osrc"
 		
 			<event name="Load">This occurs when the page initializes.</event>
 		
-			<event name="RightClick">This occurs when the uses right clicks on a mouse or mouse pad.</event>
+			<event name="RightClick">This occurs when the user right clicks on a mouse or mouse pad.</event>
 
 		</events>
 
@@ -2916,17 +2916,17 @@ MyPage "widget/page"
 
 		<events>
 		
-			<event name="Click">This event occurs when the user clicks the checkbox. No parameters are available from this event.</event>
+			<event name="Click">This event occurs when the user clicks the widget. No parameters are available from this event.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2936,7 +2936,7 @@ MyPage "widget/page"
 			
 			<action name="Resize">Changes the width and height of the pane to the given (Width,Height).</action>
 			
-			<action name="SetBackground">Sets the backgound image or color of the pane, using the attribute Color or Image.</action>
+			<action name="SetBackground">Sets the background image or color of the pane, using the attribute Color or Image.</action>
 		
 		</actions>
 
@@ -2986,7 +2986,7 @@ mypane "widget/pane"
 
 			<property name="deploy_to_client" type="yes/no">Parameter widgets are treated as other widgets and normally would appear as widgets in the namespace on the client, with the parameter values being available in runclient() expressions on the client.  For efficiency reasons, however, parameters to static components, other than parameters of type "object", are not deployed to the client.  To override this behavior, set this option to "yes".</property>
 
-			<property name="find_container" type="string">If this is a parameter to a component, and the parameter has type "object", this can be set to a type of widget that should be searched for in the containing application or component once the component is instantiated.  Note that the object being searched for must be a container of the component instance, either directly or indirectly.  This option is frequently used to link in with a form or objectsource in the contianing application or component, without that form or objectsource having to be explicitly passed to the component.</property>
+			<property name="find_container" type="string">If this is a parameter to a component, and the parameter has type "object", this can be set to a type of widget that should be searched for in the containing application or component once the component is instantiated.  Note that the object being searched for must be a container of the component instance, either directly or indirectly.  This option is frequently used to link in with a form or objectsource in the containing application or component, without that form or objectsource having to be explicitly passed to the component.</property>
 
 			<property name="param_name" type="string">Gives the name of the parameter being passed, thus allowing the parameter widget name (which must be unique within the application or component) to be different from the parameter name as referenced within expressions, SQL, or connectors.</property>
 			
@@ -3186,7 +3186,7 @@ testradio "widget/radiobuttonpanel"
 
 			<p>The remote control manager nonvisual widget allows for one application (or instance of an application) to activate Actions in another running application, even if those applications are on two separate client computer systems. This is done by passing the event/action information through a remote control channel on the server.</p>
 
-			<p>Two remote control widgets are required: a master and slave. This widget is the master widget, which sends remote control events via the Centrallix server. When a this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.</p>
+			<p>Two remote control widgets are required: a master and slave. This widget is the master widget, which sends remote control events via the Centrallix server. When this widget sends an event through the channel, the slave widget (remotectl) is automatically activated and can then trigger the appropriate action on another widget on the remote application's page.</p>
 
 			<p>In order for the remote control event to be passed through Centrallix, the master and slave widgets must both be using the same channel id and be logged in with the same username.They need not be a part of the same session on the server.</p>
 
@@ -3300,7 +3300,7 @@ $Version=2$
 
 		<overview>
 
-			<p>The scrollbar is used to allow the uesr to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
+			<p>The scrollbar is used to allow the user to control a numeric value; typically the scrollbar is tied to the scrolling behavior of another widget.</p>
 
 			<p>Currently, both table and scrollpane widgets have their own scrollbars, so this widget is not used for either of those.</p>
 
@@ -3607,7 +3607,7 @@ myTabControl "widget/tab"
 
 		<usage>
 
-			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit int the container can still be viewed. Table columns are created via "widget/table-column" child widgets within the table widget.</p>
+			<p>Table widgets are normally placed inside of a scrollpane so that any rows which don't fit in the container can still be viewed. Table columns are created via "widget/table-column" child widgets within the table widget.</p>
 
 		</usage>
 
@@ -3667,9 +3667,9 @@ myTabControl "widget/tab"
 			
 			<property name="outer_border" type="integer">width of the outer spacing around the outside of the table, in pixels.  Default0.</property>
 		
-			<property name="overlap_scrollbar" type="integer">Acts as a boolean to allow the scroll bar to overlab with the table (allow is "1").</property>
+			<property name="overlap_scrollbar" type="integer">Acts as a boolean to allow the scroll bar to overlap with the table (allow is "1").</property>
 	
-			<property name="reverse_order" type="integer">Acts as a boolean to reverse to order of the table elements (reverses if set to "1").</property>
+			<property name="reverse_order" type="integer">Acts as a boolean to reverse the order of the table elements (reverses if set to "1").</property>
 		
 			<property name="row1_background" type="string">A background image for the table row cells.</property>
 
@@ -3753,7 +3753,7 @@ myTabControl "widget/tab"
 
 			<event name="DblClick">The DblClick event fires when the user double-clicks the mouse on a row.  Passes three values, 'Caller' which is the table's name, 'recnum' which is the sequential number of the record in the table, and 'data' which is an array of the data in the selected record.</event>
 
-			<event name="RightClick">The Click event fires when a user right clicks on a mouse or mouse pad.</event>
+			<event name="RightClick">The RightClick event fires when a user right clicks on a mouse or mouse pad.</event>
 			
 		</events>
 
@@ -3952,11 +3952,11 @@ objcanvas_test "widget/template"
 
 			<event name="EscapePressed">This event occurs when the user presses the escape key.</event>
 
-			<event name="GetFocus">This event occurs when the editbox receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</event>
+			<event name="GetFocus">This event occurs when the textarea receives keyboard focus (if the user tabs on to it or clicks on it, for instance).</event>
 
 			<event name="KeyPress">This event occurs when the user presses any key.</event>
 			
-			<event name="LoseFocus">This event occurs when the editbox loses keyboard focus (if the user tabs off of it, for instance).</event>
+			<event name="LoseFocus">This event occurs when the textarea loses keyboard focus (if the user tabs off of it, for instance).</event>
 
 			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
@@ -4358,7 +4358,7 @@ mypane "widget/pane"
 
 		    <property name="fieldname" type="string">The field with which to link / connect to the variable.</property>
 
-			<property name="form" type="string">The form (e.g. it's osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</property>
+			<property name="form" type="string">The form (e.g. its osrc) with which to associate the variable and fieldname (if different than the form in which variable is currently nested).</property>
 
 			<property name="value" type="string">Can be accessed as :var_name:value.</property>
 

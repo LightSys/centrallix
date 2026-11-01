@@ -74,12 +74,12 @@ int htmapRender(pHtSession s, pWgtrNode map_node, int z)
 		y = 0;
 	if (wgtrGetPropertyValue(map_node, "width", DATA_T_INTEGER, POD(&w)) != 0)
 	{
-		mssError(1, "HTMAP", "Pane widget must have a 'width' property");
+		mssError(1, "HTMAP", "Map widget must have a 'width' property");
 		return -1;
 	}
 	if (wgtrGetPropertyValue(map_node, "height", DATA_T_INTEGER, POD(&h)) != 0)
 	{
-		mssError(1, "HTMAP", "Pane widget must have a 'height' property");
+		mssError(1, "HTMAP", "Map widget must have a 'height' property");
 		return -1;
 	}
 

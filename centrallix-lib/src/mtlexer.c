@@ -317,7 +317,7 @@ mlxSkipChars(pLxSession s, int n_chars)
     }
 
 
-/*** mlxSkipWhitespace() - skip over any whitespace characters \r \t \n ' '
+/*** mlxSkipWhitespace() - skip over any whitespace characters \r \t ' '
  ***/
 int
 mlxSkipWhitespace(pLxSession s)
@@ -703,7 +703,7 @@ mlxNextToken(pLxSession this)
 		this->Delimiter = ch;
 		mlxSkipChars(this,1);
 
-		/** Keep scanning until delimiter, unless delimiter preceeded by an escape **/
+		/** Keep scanning until delimiter, unless delimiter preceded by an escape **/
 		this->TokStrCnt = mlx_internal_Copy(this, this->TokString, sizeof(this->TokString), &found_end);
 
 		/** Hit EOF or ERROR?  Oops. **/
@@ -833,7 +833,7 @@ mlxNextToken(pLxSession this)
 		}
 	    else if (ch == '-' && !strchr("0123456789.",mlxPeekChar(this,1)))
 	        {
-		/** only a MLX_TOK_PLUS if the next char is not a digit or period (that would make it part of a number) **/
+		/** only a MLX_TOK_MINUS if the next char is not a digit or period (that would make it part of a number) **/
 		this->TokString[0] = ch;
 		this->TokStrCnt = 1;
 		this->TokType = MLX_TOK_MINUS;

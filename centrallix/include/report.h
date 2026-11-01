@@ -25,7 +25,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:      prtmgmt.c,prtmgmt.h                                     */
+/* Module:      report.h                                                */
 /* Author:      Greg Beeley (GRB)                                       */
 /* Creation:    October 16, 1998                                        */
 /* Description: Provides high-level management of the various printer   */

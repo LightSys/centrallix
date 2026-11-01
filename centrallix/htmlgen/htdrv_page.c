@@ -56,9 +56,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     int watchdogtimer;
     char bgstr[128];
     int show, i, count;
-    char kbfocus1[64];	/* kb focus = 3d raised */
+    char kbfocus1[64];	/* kb focus = black rectangle */
     char kbfocus2[64];
-    char msfocus1[64];	/* ms focus = black rectangle */
+    char msfocus1[64];	/* ms focus = 3d raised */
     char msfocus2[64];
     char dtfocus1[64];	/* dt focus = navyblue rectangle */
     char dtfocus2[64];
@@ -226,7 +226,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddScriptGlobal(s, "pg_msg_handlers", "[]", 0);
 	htrAddScriptGlobal(s, "pg_msg_layer", "null", 0);
 	htrAddScriptGlobal(s, "pg_msg_timeout", "null", 0);
-	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0); /* causes pop-up boxes for certain non-fatel warnings */
+	htrAddScriptGlobal(s, "pg_diag", show_diag?"true":"false", 0); /* causes pop-up boxes for certain non-fatal warnings */
 	htrAddScriptGlobal(s, "pg_dpi_scaling", (dpi_scaling) ? "true" : "false", 0); /* Whether to scale launched windows based on display dots-per-inch */
 	htrAddScriptGlobal(s, "pg_width", "0", 0);
 	htrAddScriptGlobal(s, "pg_height", "0", 0);

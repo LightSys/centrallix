@@ -11,7 +11,7 @@
 
 
 // This function will create an ibeam cursor, and 
-// calculate text dimentions for use with text editing 
+// calculate text dimensions for use with text editing 
 // of any sort.
 function ibeam_init()
     {

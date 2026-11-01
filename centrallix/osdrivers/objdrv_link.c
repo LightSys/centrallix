@@ -9,7 +9,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
-/** module definintions **/
+/** module definitions **/
 #include "centrallix.h"
 
 /************************************************************************/
@@ -228,7 +228,7 @@ lnkDelete(pObject obj, pObjTrxTree* oxt)
     }
 
 
-/*** lnkRead - Structure elements have no content.  Fails.
+/*** lnkRead - read content from the underlying object.
  ***/
 int
 lnkRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -238,7 +238,7 @@ lnkRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     }
 
 
-/*** lnkWrite - Again, no content.  This fails.
+/*** lnkWrite - write content to the underlying object.
  ***/
 int
 lnkWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)

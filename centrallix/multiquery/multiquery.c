@@ -1941,7 +1941,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				}
 
 			    /** Create a "from" clause too, the user didn't actually type it,
-			     ** but this is sortof like DELETE FROM /data/source, and SUBTREE
+			     ** but this is sort of like DELETE FROM /data/source, and SUBTREE
 			     ** is supported as are joins.
 	 		     **/
 			    from_cls = mq_internal_AllocQS(MQ_T_FROMCLAUSE);
@@ -2096,7 +2096,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 			    update_cls->Parent = qs;
 
 			    /** Create a "from" clause too, the user didn't actually type it,
-			     ** but this is sortof like UPDATE FROM /data/source, and SUBTREE
+			     ** but this is sort of like UPDATE FROM /data/source, and SUBTREE
 			     ** is supported as are joins.
 	 		     **/
 			    from_cls = mq_internal_AllocQS(MQ_T_FROMCLAUSE);
@@ -3595,7 +3595,7 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
 	objid = mq_internal_GetIdentObjId(inf);
 	if (objid < 0)
 	    {
-	    mssError(1,"MQ","Could not delete - the query must have one valid FROM source labled as the query IDENTITY source");
+	    mssError(1,"MQ","Could not delete - the query must have one valid FROM source labeled as the query IDENTITY source");
 	    return -1;
 	    }
 	rval = objDeleteObj((pObject)(inf->ObjList->Objects[objid]));
@@ -4146,7 +4146,7 @@ mqRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
 	objid = mq_internal_GetIdentObjId(p);
 	if (objid < 0)
 	    {
-	    mssError(1,"MQ","Could not read - the query must have one valid FROM source labled as the query IDENTITY source");
+	    mssError(1,"MQ","Could not read - the query must have one valid FROM source labeled as the query IDENTITY source");
 	    return -1;
 	    }
 	if (!p->ObjList->Objects[objid])
@@ -4172,12 +4172,12 @@ mqWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* 
 	objid = mq_internal_GetIdentObjId(p);
 	if (objid < 0)
 	    {
-	    mssError(1,"MQ","Could not write - the query must have one valid FROM source labled as the query IDENTITY source");
+	    mssError(1,"MQ","Could not write - the query must have one valid FROM source labeled as the query IDENTITY source");
 	    return -1;
 	    }
 	if (!p->ObjList->Objects[objid])
 	    {
-	    /** Object isn't currently valid - return empty. **/
+	    /** Underlying object isn't currently valid **/
 	    mssError(1,"MQ","Could not write - underlying data source not available");
 	    return -1;
 	    }
@@ -4473,7 +4473,7 @@ mqGetNextAttr(void* inf_v, pObjTrxTree* oxt)
 
 
 /*** mqGetFirstAttr - returns the name of the first attribute in the multiquery
- *** result set, and preparse mqGetNextAttr to return subsequent attributes.
+ *** result set, and prepares mqGetNextAttr to return subsequent attributes.
  ***/
 char*
 mqGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
@@ -4840,7 +4840,7 @@ mq_internal_FindCollection(pMultiQuery mq, char* collection)
 	/** Lookup the application scope data **/
 	appdata = appLookupAppData("MQ:appdata");
 
-	/** Next, search the query scope collection list **/
+	/** Next, search the application scope collection list **/
 	if (appdata)
 	    {
 	    for(i=0; i<appdata->DeclaredCollections.nItems; i++)

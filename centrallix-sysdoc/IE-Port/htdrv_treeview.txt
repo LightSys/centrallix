@@ -13,7 +13,7 @@ This function manages the new layer created in the tree, there are two different
    a. Create a div layer with createElement
    b. set the width
    c. set the position as absolute/relative
-   d. append the new nide to the DOM tree
+   d. append the new node to the DOM tree
    
    By setting the layer position to relative when we are creating the node, it is possible to set the position of the layers elsewhere later on.
    

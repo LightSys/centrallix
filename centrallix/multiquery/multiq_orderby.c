@@ -85,9 +85,9 @@ typedef struct
     MQOData, *pMQOData;
 
 
-/*** mqobAnalyze - take a given query syntax structure, look for any group by
+/*** mqobAnalyzeBeforeGroup - take a given query syntax structure, look for any group by
  *** or order by items that need ordering at a higher level than a single 
- *** simple data sources, but not *after* grouping is performed.
+ *** simple data source, but not *after* grouping is performed.
  ***/
 int
 mqobAnalyzeBeforeGroup(pQueryStatement stmt)
@@ -219,7 +219,7 @@ mqobAnalyzeBeforeGroup(pQueryStatement stmt)
     }
 
 
-/*** mqobAnalyze - take a given query syntax structure, look for any order by
+/*** mqobAnalyzeAfterGroup - take a given query syntax structure, look for any order by
  *** items that need to take place *after* grouping (e.g., they contain an
  *** aggregate function)
  ***/

@@ -27,7 +27,7 @@ def create_driver(test_url) -> webdriver.Chrome:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--lang=en')
     chrome_options.add_argument('--incognito')
-    # Skip Certificatgite/by pass it
+    # Skip certificate check/bypass it
     chrome_options.add_argument('--ignore-certificate-errors')
 
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -52,7 +52,7 @@ def run_test():
     driver = create_driver(test_url)
 
     try:
-        # Wait for dropdowns to appear
+        # Wait for tabs to appear
         WebDriverWait(driver, 10).until(EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@id, 'tc')]")))
 
         # Get tab widgets
@@ -63,7 +63,7 @@ def run_test():
 
         for tab in tab_elems:
             if tab == None:
-                raise ValueError("Dropdown element not found")
+                raise ValueError("Tab element not found")
                 sys.exit(1)
 
         # Test 1

@@ -31,7 +31,7 @@ The core of Centrallix uses my (Greg's) coding style, which is similar, but not 
 
 Coding style is as much an art form as writing the code itself.  If you add a new module or file to Centrallix, don't feel you must follow the core coding style, although choosing to use the core coding style is a good thing :).  In any case, be sure to use a style that is clear and consistent.  I'd recommend that we all use no fewer than four spaces when indenting - using two can make the code too difficult to read, although the '%' function in VI does help :)....  
 
-You can find more information on my coding style in the additional sysdoc documentation file "BeeleyCodingStyle.txt" that is included in this distribution.  I chose to separate that document from this one.
+You can find more information on my coding style in the additional sysdoc documentation file "BeeleyCodingStyle.md" that is included in this distribution.  I chose to separate that document from this one.
 
 No matter what style you choose to use, please do not use "indent" (or any other tool for that matter) to reformat any existing code (unless you wrote the code AND no one else is going to be modifying it in CVS; and even then I would strongly discourage reformatting the code with indent).  It is one thing to be sending out patches that have tons of "false diffs" in them from reformatted files.  I'm not worried about that.  What does concern me is the possibility of each developer reformatting files when he/she works on them, thus severely impairing CVS's ability to merge conflicts in an intelligent way.  It will also become quite nontrivial to determine what changes need to be merged when manually merging such files.  And that would be a headache for all of us :)
 
@@ -67,7 +67,7 @@ The main purpose of the return value for a procedural function (a function which
 
 First, if a procedural function returns a pointer, it should return NULL if an error occurs.  In such an event, it should also, if need be, log an error using mssError() or mssErrorErrno().  Note that in some cases it is better for a procedure which generates a pointer to pass that pointer through a reference argument rather than through the return value, so that better status information is possible through the return value (other than just "failed").
 
-Second, if a procedural function normally returns a non-negative integer value of some kind, it should return a negative value if an error occurrs.  To simply indicate "failed", return negative one (-1).  In the future, other more error-specific values may be possible (such as the way Linux kernel functions internally handle errors).
+Second, if a procedural function normally returns a non-negative integer value of some kind, it should return a negative value if an error occurs.  To simply indicate "failed", return negative one (-1).  In the future, other more error-specific values may be possible (such as the way Linux kernel functions internally handle errors).
 
 Third, if a procedural function does not naturally return a value at all, it should return 0 on success and a negative value on failure (as in the above case) for consistency.  Boolean values indicating failure/success status should be avoided - they are to be used for the result of boolean computations in pure functions.
 
@@ -100,7 +100,7 @@ Here are a few tips for improving the security of Centrallix by taking care duri
 - d.  Don't blindly malloc() memory for data as it comes in without taking care to prevent denial-of-service due to memory exhaustion. This is particularly true of network connections.
 
 ### 5.  When creating/opening/writing files,
-- a.  If the directory is world-writable, such as /tmp or /var/spool/mail you MUST use lstat() or similar to check for symlink existence first.  Then open the file and lstat() again to make sure you didnt just follow a link.  That introduces a race condition - a better way is to use the O_NOFOLLOW open() argument, although this only works in recent Linux and BSD systems.
+- a.  If the directory is world-writable, such as /tmp or /var/spool/mail you MUST use lstat() or similar to check for symlink existence first.  Then open the file and lstat() again to make sure you didn't just follow a link.  That introduces a race condition - a better way is to use the O_NOFOLLOW open() argument, although this only works in recent Linux and BSD systems.
 - b.  Generally refuse to write secure data to a file that has insecure permissions.
 - c.  For temporary files, don't use predictable names.  This also helps prevent the symlink problem.  Another solution is to initially create a directory in /tmp that only you can write to (and to do the appropriate checks when creating it), and then from that point on, only create tmp files in that directory.
 

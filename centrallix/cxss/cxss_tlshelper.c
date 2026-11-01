@@ -393,7 +393,7 @@ cxss_internal_DoTLS(SSL_CTX* context, pFile encrypted_fd, pFile decrypted_fd, pF
  *** instead.
  ***
  *** On return, sets ext_conn to the new connection that the process
- *** should comunicate through, and reporting_stream to a file descriptor
+ *** should communicate through, and reporting_stream to a file descriptor
  *** that provides status/error reporting from the SSL helper.  Returns
  *** the PID of the SSL helper process.
  ***/

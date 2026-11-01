@@ -11,7 +11,7 @@
 #include "st_node.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
-/** module definintions **/
+/** module definitions **/
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif

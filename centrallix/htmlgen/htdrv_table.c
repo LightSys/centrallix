@@ -322,7 +322,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->x=-1;
 	t->y=-1;
     
-    	/** Get an id for thit. **/
+    	/** Get an id for this. **/
 	t->id = (HTTBL.idcnt++);
 
 	/** Backwards compat for the time being **/

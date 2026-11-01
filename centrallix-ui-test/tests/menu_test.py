@@ -25,7 +25,7 @@ def create_driver(test_url) -> webdriver.Chrome:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--lang=en')
     chrome_options.add_argument('--incognito')
-    # Skip Certificatgite/by pass it
+    # Skip Certificate/bypass it
     chrome_options.add_argument('--ignore-certificate-errors')
 
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -83,7 +83,7 @@ def run_test():
         reporter.add_test(1, "Mouse over")
         check1_1 = "mouse over behavior"
         # - Test mouse over functionality. For menu expand to display menu items
-        # get "mn##high" div that changes its syle when mouse hover
+        # get "mn##high" div that changes its style when mouse hover
         reporter.record_check(1, check1_1, True)
         high_div = main_menu_elems[0].find_element(
             By.XPATH, "./div[contains(@id, 'high')]")

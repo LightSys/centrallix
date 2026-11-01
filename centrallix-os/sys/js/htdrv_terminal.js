@@ -87,12 +87,12 @@ function term_vt100_process_chunk(chunk)
 	else if(chunk[2]=="J")
 	    {
 	    /** erase to end of page **/
-	    // not impliemented right now 
+	    // not implemented right now 
 	    }
 	else
 	    {
-	    /** unimplimented escape sequence **/
-	    alert("unimplimented escape sequence: "+chunk[0]);
+	    /** unimplemented escape sequence **/
+	    alert("unimplemented escape sequence: "+chunk[0]);
 	    }
 	}
     else if(chunk[3])
@@ -144,7 +144,7 @@ function term_vt100_process_chunk(chunk)
 		}
 	    else
 		{
-		/** we're passed the edge of the terminal and not wrapping... **/
+		/** we're past the edge of the terminal and not wrapping... **/
 		return true;
 		}
 	    }
@@ -340,7 +340,7 @@ function term_disconnect()
     {
     if(!this.connected)
 	return false;
-    alert("disconnect() is not implimented");
+    alert("disconnect() is not implemented");
     }
 
 function term_keyhandler(term, event, key)

@@ -41,7 +41,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	objdrv_query.c         					*/
+/* Module: 	objdrv_query_old.c     					*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	July 14, 1999						*/
 /* Description:	Query object driver.  This object provides a pre-stored	*/
@@ -671,7 +671,7 @@ qyRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
     }
 
 
-/*** qyWrite - As above, attempt to read if we found an actual object.
+/*** qyWrite - As above, attempt to write if we found an actual object.
  ***/
 int
 qyWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
@@ -700,7 +700,7 @@ qyWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* 
  *** subitems will result in exactly one returned object for the query.
  *** Text= types cannot be modified/etc by the enduser.  The .qy must be
  *** opened as a structure file (via objdrv_struct) to modify Text=items.
- *** modifications/addidions/deletions of query results from a Source=
+ *** modifications/additions/deletions of query results from a Source=
  *** item will be passed on to the source driver (such as objdrv_sybase).
  ***/
 int

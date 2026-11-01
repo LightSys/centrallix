@@ -39,7 +39,7 @@ test_hexify(char* str, char* cmp, int dstlen, int cmprval)
 long long
 test(char** name)
     {
-    *name = "cxss_hexify_01 cxss_i_Hexify() same buffer";
+    *name = "cxss_hexify_02 cxss_i_Hexify() same buffer";
 
     test_hexify("", "", 0, 0);
     test_hexify("", "", 1, 0);

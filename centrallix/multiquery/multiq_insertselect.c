@@ -39,7 +39,8 @@
 /* Module: 	multiq_insertselect.c	 				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	March 13, 2008   					*/
-/* Description:	Provides support for a INSERT INTO ... SELECT construct	*/
+/* Description:	Provides support for an INSERT INTO ... SELECT		*/
+/* 		construct.						*/
 /************************************************************************/
 
 

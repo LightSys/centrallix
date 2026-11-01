@@ -115,7 +115,7 @@ Tab Test PASS
 - **Element Presence:** `<body>`
 - **JavaScript Initialization:** `pg_isloaded`
 - **Mouse Interactivity:** Single-click, typing into textbox
-- **Component State:** Inserting various types of random characters (letters, numbers, symbols, etc.) and button clicking. Futhermore, this is part of component declaration widget testing which includes parameter widget testing and component widget testing. This test is made of a .cmp and .app file. 
+- **Component State:** Inserting various types of random characters (letters, numbers, symbols, etc.) and button clicking. Furthermore, this is part of component declaration widget testing which includes parameter widget testing and component widget testing. This test is made of a .cmp and .app file. 
 
 ### 1. Initialization Test
 
@@ -160,12 +160,12 @@ Tab Test PASS
   - Widgets tested: widget/cmp-decl, widget/component, widget/radiobuttonpanel
                     widget/connector, widget/parameter, widget/component-decl-event
   - Verifies that nested layer L1 works
-  - Verifies tat nested layer L2 works 
+  - Verifies that nested layer L2 works 
   - Verifies that the .app file works
 
 ### 2. Table Data Extraction and Formatting 
 - Verifies that the .app file works, with a table and a CSV file as the object source
-- Widgets tested: widget/osrce, widget/table, widget/repeat, widget/label, widget/table-column 
+- Widgets tested: widget/osrc, widget/table, widget/repeat, widget/label, widget/table-column 
 - Verifies that the headers and rows can be clearly read
 
 #### Note
@@ -335,10 +335,10 @@ Tab Test PASS
 ### 2. Test 2-7 (Test First Name, Last Name, and Email Box): Data Extraction
 - Verifies search thru First Name for 'Frank' (whose data is already there)
 - Verifies Frank's details and computers
-- Verifies search thru Last Name for 'Alliste'
-- Verifies Alliste's details and computers
-- Verifies search thru Email for 'erin@nodomain.where'
-- Verifies erin@nodomain.where details and computers 
+- Verifies search thru Last Name for 'Allister'
+- Verifies Allister's details and computers
+- Verifies search thru Email for 'erin@nodomain.nowhere'
+- Verifies erin@nodomain.nowhere details and computers 
 
 ### 3. Test 8-13 CRUD Design
 - Verifies clicking the New button and handles alert well (known bug that when you first save a new data its fine/no alert. But after you delete a record, there will be an alert)
@@ -351,8 +351,8 @@ Tab Test PASS
 ### 4. Test 14 : Advanced UI Interactions
 - Verifies that table row and tabbing works well
 - Verifies that scrollbars arrows works well
-- Verifies that dragging scrolbar works well
-- Verifies that column reszing in the table works well
+- Verifies that dragging scrollbar works well
+- Verifies that column resizing in the table works well
 
 
 #### Note
@@ -360,7 +360,7 @@ Tab Test PASS
 - This is a combination of a form and table test
 - Files involved: The files are located under form folder (tests/ui/form/)
           There are .qyt files, .spec files, .csv files, as well as the .app file
-- Widgets used: widget/osrc, wiget/form, widget/pane, widget/table, widget/label,widget/textbutton, widget/table-column, widget/editbox, widget/connector, widget/rule, widget/page 
+- Widgets used: widget/osrc, widget/form, widget/pane, widget/table, widget/label,widget/textbutton, widget/table-column, widget/editbox, widget/connector, widget/rule, widget/page 
 
 ----------
 
@@ -369,11 +369,11 @@ Tab Test PASS
 - `No Data`, `New`, `View`, `Search`, `Searching`
 
 ### 1. Formstatus update test
-- Verifies the staut updates to No data
-- Verifies the staut updates to New
-- Verifies the staut updates to View
-- Verifies the staut updates to Search
-- Verifies the staut updates to Searching
+- Verifies the status updates to No data
+- Verifies the status updates to New
+- Verifies the status updates to View
+- Verifies the status updates to Search
+- Verifies the status updates to Searching
 
 ### Note
 - None.
@@ -386,7 +386,7 @@ Tab Test PASS
 - **Element Presence:** `<body>`
 - **JavaScript Initialization:** `pg_isloaded`
 - **Mouse Interactivity:** Single-click, typing into textbox, focused keyboard 
-- **Component State:** Inserting text into textbox, static HTML, source correcly loaded 
+- **Component State:** Inserting text into textbox, static HTML, source correctly loaded 
 
 ### 1. Initialization and Content Verification Test 
 
@@ -396,7 +396,7 @@ Tab Test PASS
 - Verifies that the page title and the first header
 
 ### 2. Interactive Element Test
-- Verifies sending text into an inut field 
+- Verifies sending text into an input field 
 - Verifies that the response message received is according
 - Verifies clearing the text field using backspaces
 - Verifies that the text field is empty after clearing
@@ -425,7 +425,7 @@ Tab Test PASS
 ### 2. Interactive Element Test
 - Verifies TwoStateBtn can be clicked
 - Verifies ThreeStatebtn can be clicked and hovered 
-- Verifes EnableBtn click and verification
+- Verifies EnableBtn click and verification
 - Verifies clicking the now-enabled 'DisabledBtn'
 - Verifies DisableBtn click can be disabled
 - Verifies final check confirms button is disabled
@@ -484,7 +484,7 @@ Tab Test PASS
 - Verifies that the browser has fully loaded the page's Document Object Model (DOM)
 - Confirms that the application's core framework and the specific ChildWindow widget have initialized successfully in JavaScript
 
-### 2. Cicking RadioButton Choices 
+### 2. Clicking RadioButton Choices 
 - Verifies that 6 radiobuttons are available
 - Verifies that the 6 radiobuttons can be clicked 
 - Return the value/choices of the radiobuttons
@@ -497,7 +497,7 @@ Tab Test PASS
 ## Repeat Test
 ### Properties Tested
 - `sql`
-- widgest tested for repeating: `menu`, `label`, `component`, `button`, `checkbox`, `clock`, `dropdown`, `editbox`, `html`, `image`, `imagebutton`, `pane`, `radiobuttonpanel`, `scrollpane`, `textarea`, `textbutton`, `scrollpane` 
+- widgets tested for repeating: `menu`, `label`, `component`, `button`, `checkbox`, `clock`, `dropdown`, `editbox`, `html`, `image`, `imagebutton`, `pane`, `radiobuttonpanel`, `scrollpane`, `textarea`, `textbutton`, `scrollpane` 
 
 ### 1. Component click action and event behavior test
 - Test if component event behaves properly
@@ -610,7 +610,7 @@ Tab Test PASS
 
 ### Note
 - Tried adding `outer_border`, `dragcols`, `gridinemptyrows`, `inner_border` properties but had no effect.
-- Table scrollbar often failes, hiding all the row items.
+- Table scrollbar often fails, hiding all the row items.
 
 ----------
 
@@ -673,7 +673,7 @@ Tab Test PASS
 - **Page readiness:** `document.readyState`
 - **Element Presence:** `<body>`
 - **JavaScript Initialization:** `pg_isloaded`
-- **Component State:** Focused cursor, clicking, inputting text into tet area, retrieving HTML components, `auto_start`, `auto_reset`
+- **Component State:** Focused cursor, clicking, inputting text into text area, retrieving HTML components, `auto_start`, `auto_reset`
 
 ### 1. Initialization Test 
 

@@ -21,7 +21,7 @@ def create_driver(test_url) -> webdriver.Chrome:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--lang=en')
     chrome_options.add_argument('--incognito')
-    # Skip Certificatgite/by pass it
+    # Skip Certificate/bypass it
     chrome_options.add_argument('--ignore-certificate-errors')
 
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -187,7 +187,7 @@ def test4(driver):
   ActionChains(driver).click(driver.execute_script("return wgtrFind('setitems_btn')")).perform()
   ActionChains(driver).click(dropdown).perform()
   time.sleep(0.3)
-  # Hard coded check - varifies if dropdown has more that 2 items(default # of dropdown items) after setItems
+  # Hard coded check - verifies if dropdown has more than 2 items(default # of dropdown items) after setItems
   if driver.execute_script("return arguments[0].Items.length",dropdown) < 3:
     reporter.record_check(4,check4_4,False)
 

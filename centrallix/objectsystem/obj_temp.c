@@ -1036,7 +1036,7 @@ tmpQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
-/*** tmpGetAttrType - get the type (DATA_T_tmp) of an attribute by name.
+/*** tmpGetAttrType - get the type (DATA_T_xxx) of an attribute by name.
  ***/
 int
 tmpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)

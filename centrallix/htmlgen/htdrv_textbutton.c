@@ -171,7 +171,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
 	/** Threestate button or twostate? **/
 	if (wgtrGetPropertyValue(tree,"tristate",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"no")) is_ts = 0;
 
-	/** Get normal, point, and click images **/
+	/** Get the button text **/
 	ptr = "-";
 	if (!htrCheckAddExpression(s, tree, name, "text") && wgtrGetPropertyValue(tree,"text",DATA_T_STRING,POD(&ptr)) != 0)
 	    {
@@ -283,7 +283,7 @@ httbtnRender(pHtSession s, pWgtrNode tree, int z)
     }
 
 
-/*** httbtnInitialize. - register with the ht_render module.
+/*** httbtnInitialize - register with the ht_render module.
  ***/
 int
 httbtnInitialize()

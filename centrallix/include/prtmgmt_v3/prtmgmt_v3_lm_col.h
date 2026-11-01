@@ -25,7 +25,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	prtmgmt.c,prtmgmt.h                                     */
+/* Module:	prtmgmt_v3_lm_col.h                                     */
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	December 12, 2001                                       */
 /*									*/
