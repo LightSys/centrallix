@@ -55,6 +55,7 @@
 #include "cxss/cxss.h"
 #include "expression.h"
 #include "obj.h"
+#include "obj_private.h"
 #include "st_node.h"
 
 
