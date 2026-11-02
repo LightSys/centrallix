@@ -7,6 +7,8 @@
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/check.h"
+#include "cxlib/expect.h"
 #include "stparse.h"
 #include "st_node.h"
 #include "hints.h"
@@ -23,7 +25,7 @@
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
 /*                                                                      */
-/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -318,16 +320,13 @@ mysd_internal_GetConn(pMysdNode node)
 			{
 			mssError(1, "MYSD", "Could not connect to MySQL server [%s], DB [%s]: %s",
 				node->Server, node->Database, mysql_error(&conn->Handle));
-			mysql_close(&conn->Handle);
-			nmFree(conn, sizeof(MysdConn));
-			return NULL;
+			goto err;
 			}
 
 		    /** Successfully connected using user default password.
 		     ** Now try to change the password.
 		     **/
 		    result = mysd_internal_RunQuery_conn(conn, node, "SET PASSWORD = PASSWORD('?')", password);
-
 		    if (result == MYSD_RUNQUERY_ERROR)
 			{
 			mssWarn("MYSD", "could not update password for user [%s]: %s.",
@@ -339,9 +338,7 @@ mysd_internal_GetConn(pMysdNode node)
 		    {
 		    mssError(1, "MYSD", "Could not connect to MySQL server [%s], DB [%s]: %s",
 			    node->Server, node->Database, mysql_error(&conn->Handle));
-		    mysql_close(&conn->Handle);
-		    nmFree(conn, sizeof(MysdConn));
-		    return NULL;
+		    goto err;
 		    }
                 }
 
@@ -356,6 +353,9 @@ mysd_internal_GetConn(pMysdNode node)
 		{
 		/** just set to all NULLs **/
 		strcpy(node->DatabaseCollation, "");
+		
+		/** Mark error as resolved. **/
+		mssClearError();
 		}
 	    else
 		{
@@ -384,7 +384,17 @@ mysd_internal_GetConn(pMysdNode node)
         conn->Busy = 1;
         conn->LastAccess = (node->ConnAccessCnt++);
 
-    return conn;
+	return conn;
+
+    err:
+	/** Clean up. **/
+	if (LIKELY(conn != NULL))
+	    {
+	    mysql_close(&conn->Handle);
+	    nmFree(conn, sizeof(MysdConn));
+	    }
+
+	return NULL;
     }
 
 
@@ -430,7 +440,7 @@ mysd_internal_ReleaseConn(pMysdConn * conn)
 MYSQL_RES*
 mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_list ap)
     {
-    MYSQL_RES * result = MYSD_RUNQUERY_ERROR;
+    MYSQL_RES* rval = MYSD_RUNQUERY_ERROR;
     XString query;
     int i, j;
     int length = 0;
@@ -444,7 +454,6 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
     char * str;
     char * endstr;
     int err;
-    char * errtxt;
     char ch;
     pMysdData data;
 
@@ -569,24 +578,47 @@ mysd_internal_RunQuery_conn_va(pMysdConn conn, pMysdNode node, char* stmt, va_li
          **/ 
         /* printf("TEST: query=\"%s\"\n",query.String); */
 
-        if(mysql_query(&conn->Handle,query.String)) goto error;
-        result = mysql_store_result(&conn->Handle);
-	err = mysql_errno(&conn->Handle);
-	if (err)
+	/** Run the query. **/
+	if (UNLIKELY(mysql_query(&conn->Handle, query.String) != 0))
 	    {
-	    errtxt = (char*)mysql_error(&conn->Handle);
-	    mssError(1,"MYSD","SQL command failed: %s", errtxt);
-	    if (result) mysql_free_result(result);
-	    result = MYSD_RUNQUERY_ERROR;
-	    if (err == 1022 || err == 1061 || err == 1062)
-		errno = EEXIST;
-	    else
-		errno = EINVAL;
+	    mssError(1, "MYSD",
+		"MySQL Database ERROR %d: %s",
+		mysql_errno(&conn->Handle), mysql_error(&conn->Handle)
+	    );
+	    goto error;
 	    }
 
+	/** Store the query result. **/
+	MYSQL_RES* query_result = mysql_store_result(&conn->Handle);
+	err = mysql_errno(&conn->Handle);
+	if (UNLIKELY(err != 0))
+	    {
+	    mssError(1, "MYSD",
+		"MySQL Database ERROR %d: %s",
+		err, mysql_error(&conn->Handle)
+	    );
+	    /** We can't print the query.String here because it might contain credentials. **/
+	    mssError(0, "MYSD", "Failed to store MySQL query result.");
+
+	    /** Clean up. **/
+	    if (query_result != NULL) mysql_free_result(query_result);
+
+	    goto error;
+	    }
+
+	/** Success. **/
+	rval = query_result;
+
     error:
+	if (UNLIKELY(rval == MYSD_RUNQUERY_ERROR))
+	    {
+	    mssError(0, "MYSD", "Failed to run SQL query with format: \"%s\"", stmt);
+	    }
+
+	/** Clean up. **/
 	xsDeInit(&query);
-	return result;
+
+	return rval;
     }
 
 MYSQL_RES*
@@ -633,18 +665,39 @@ mysd_internal_RunQuery(pMysdNode node, char* stmt, ...)
 int
 mysd_internal_SafeAppend(MYSQL* conn, pXString dst, char* src)
     {
-        char* escaped_src;
-        int length;
-        int rval = 0;
-        length = strlen(src);
-        
-        escaped_src = nmMalloc(length*2+1);
-        mysql_real_escape_string(conn,escaped_src,src,length);
-        if(xsConcatenate(dst,escaped_src,-1)) rval = -1;
-        
-        nmFree(escaped_src,length*2+1);
-
-    return rval;
+    char* escaped_str = NULL;
+    const size_t src_length = strlen(src);
+    int rval = -1, clear = 1;
+	
+	/** Allocate memory. **/
+	const size_t escaped_str_size = src_length * 2 + 1;
+	escaped_str = checkPtr(nmMalloc(escaped_str_size));
+	if (escaped_str == NULL) goto end;
+	
+	/** Write the escaped string. **/
+	unsigned long escape_result = mysql_real_escape_string(conn, escaped_str, src, src_length);
+	if (UNLIKELY(escape_result == (unsigned long)-1))
+	    {
+	    mssError(1, "MYSD", "MySQL Error: %s", mysql_error(conn));
+	    clear = 0;
+	    goto end;
+	    }
+	if (check(xsConcatenate(dst, escaped_str, -1)) != 0) goto end;
+	
+	/** Success. **/
+	rval = 0;
+	
+    end:
+	if (rval != 0)
+	    {
+	    /** We can't print the string because it might contain credentials. **/
+	    mssError(clear, "MYSD", "Failed to escape string.");
+	    }
+	
+	/** Clean up. **/
+	if (LIKELY(escaped_str != NULL)) nmFree(escaped_str, escaped_str_size);
+	
+	return rval;
     }
 
 /*** mysd_internal_CxDataToMySQL() - convert cx data to mysql field values
@@ -821,7 +874,7 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
         if (result && result != MYSD_RUNQUERY_ERROR)
             mysql_free_result(result);
 	result = mysd_internal_RunQuery(node, "SELECT a,b,c FROM `?` WHERE a = '?'", node->AnnotTable, tablename);
-        if (result && result != MYSD_RUNQUERY_ERROR)
+        if (LIKELY(result != NULL && result != MYSD_RUNQUERY_ERROR))
 	    {
 	    if (mysql_num_rows(result) == 1)
 		{
@@ -834,6 +887,11 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
 		    tdata->RowAnnotExpr = (pExpression)expCompileExpression((row[2])?(row[2]):"''", tdata->ObjList, MLX_F_ICASE | MLX_F_FILENAMES, 0);
 		    }
 		}
+	    }
+	else
+	    {
+	    /** Mark error as handled. **/
+	    mssClearError();
 	    }
 
     error:
@@ -961,8 +1019,9 @@ mysd_internal_GetRowByKey(char* key, pMysdData data)
 		data->TData->Name,
 		data
 		);
-	if (!result || result == MYSD_RUNQUERY_ERROR)
+	if (UNLIKELY(result == NULL || result == MYSD_RUNQUERY_ERROR))
 	    {
+	    mssError(0, "MYSD", "Failed to get row by key \"%s\".", key);
 	    result = NULL;
 	    ret = -1;
 	    }
@@ -995,13 +1054,22 @@ int
 mysd_internal_RefreshRow(pMysdData data)
     {
     char* ptr;
-    int rval;
+    int rval = -1;
 
 	/** Get the object name (primary key) and then retrieve the row again **/
 	ptr = obj_internal_PathPart(data->Obj->Pathname, data->Obj->SubPtr+2, 1);
 	rval = mysd_internal_GetRowByKey(ptr, data);
 	if (data->Result) mysql_free_result(data->Result);
 	data->Result = NULL;
+	
+	/** Check for error. **/
+	if (rval < 0)
+	    {
+	    mssError(0, "MYSD",
+		"Failed to refresh row \"%s\".",
+		(ptr == NULL) ? "UNKNOWN" : ptr
+	    );
+	    }
 
     return rval;
     }
@@ -1128,7 +1196,7 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 		result=mysd_internal_RunQuery_conn(conn, inf->Node,
 			"SELECT ifnull(max(`?`),0)+1 FROM `?` ?q",
 			inf->TData->Cols[colid], inf->TData->Name, sql->String);
-		if (result != MYSD_RUNQUERY_ERROR)
+		if (LIKELY(result != NULL && result != MYSD_RUNQUERY_ERROR))
 		    {
 		    row = mysql_fetch_row(result);
 		    if (row && row[0])
@@ -1141,7 +1209,7 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 		    }
 		else
 		    {
-		    mssError(1,"MYSD","Could not obtain next-value information for key '%s' on table '%s'",
+		    mssError(0,"MYSD","Could not obtain next-value information for key '%s' on table '%s'",
 			    inf->TData->Cols[colid], inf->TData->Name);
 		    rval = -1;
 		    goto exit_BuildAutoname;
@@ -1170,7 +1238,7 @@ mysd_internal_BuildAutoname(pMysdData inf, pMysdConn conn, pObjTrxTree oxt)
 
     exit_BuildAutoname:
 	/** Release resources we used **/
-	if (result && result != MYSD_RUNQUERY_ERROR)
+	if (LIKELY(result != NULL && result != MYSD_RUNQUERY_ERROR))
 	    mysql_free_result(result);
 	/*if (rval < 0)
 	    syPostSem(inf->TData->AutonameSem, 1, 0);*/
@@ -1217,10 +1285,19 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
 		use_quotes,
 		data
 		);
-	if (result == MYSD_RUNQUERY_ERROR)
-	    return -1;
 
-	mysd_internal_RefreshRow(data);
+	/** Note: result == null is fine because UPDATE queries don't usually return results. **/
+	if (UNLIKELY(result == MYSD_RUNQUERY_ERROR))
+	    {
+	    mssError(0, "MYSD",
+		"Failed to update column \"%s\" (%d) to \"%s\".",
+		data->TData->Cols[col], col, (newval != NULL) ? newval : "NULL"
+	    );
+	    return -1;
+	    }
+
+	if (mysd_internal_RefreshRow(data) < 0) return -1;
+
         return 0;
     }
     
@@ -1241,8 +1318,13 @@ mysd_internal_DeleteRow(pMysdData data)
 		data->TData->Name,
 		data
 		);
-	if (result == MYSD_RUNQUERY_ERROR)
+
+	/** Note: result == null is fine because DELETE queries don't usually return results. **/
+	if (UNLIKELY(result == MYSD_RUNQUERY_ERROR))
+	    {
+	    mssError(0, "MYSD", "Failed to delete row.");
 	    return -1;
+	    }
         return 0;
     }
 
@@ -1422,7 +1504,7 @@ mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
 	    nmFree(insbuf,sizeof(XString));
 	    }
 
-    return (result == MYSD_RUNQUERY_ERROR)?(-1):0;
+    return (UNLIKELY(result == MYSD_RUNQUERY_ERROR))?(-1):0;
     }
 
 
@@ -1438,8 +1520,11 @@ mysd_internal_GetTablenames(pMysdNode node)
     char* tablename;
     
         result = mysd_internal_RunQuery(node,"SHOW TABLES");
-	if (result == MYSD_RUNQUERY_ERROR || !result)
+	if (UNLIKELY(result == NULL || result == MYSD_RUNQUERY_ERROR))
+	    {
+	    mssError(0, "MYSD", "Failed to get table names in database.");
 	    return -1;
+	    }
 
         nTables = mysql_num_rows(result);
         xaInit(&node->Tablenames,nTables);
@@ -2659,6 +2744,16 @@ mysdQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	return (void*)inf;
 
     error:
+	mssError(0, "MYSD", "Failed to fetch data for query.");
+	
+	/** Mark the error as resolved because we can't return an error from mysdQueryFetch(). **/
+	fprintf(stderr,
+	    "Warning: Dropped error that occurred while fetching data. "
+	    "Some data may be missing from query results.\n"
+	);
+	mssClearError();
+
+	/** Clean up. **/
 	if (inf)
 	    mysd_internal_Close(inf);
 	return NULL;
@@ -2675,8 +2770,11 @@ mysdQueryDelete(void* qy_v, pObjTrxTree* oxt)
 
 	/** Run the delete. **/
 	result = mysd_internal_RunQuery(qy->Data->Node, "DELETE FROM `?` ?q", qy->Data->TData->Name, qy->Clause.String);
-	if (result == MYSD_RUNQUERY_ERROR)
+	if (UNLIKELY(result == MYSD_RUNQUERY_ERROR))
+	    {
+	    mssError(0, "MYSD", "Failed to run delete query.");
 	    return -1;
+	    }
 
     return 0;
     }
@@ -3396,7 +3494,7 @@ mysdInitialize()
     pObjDriver drv;
 
         /** Allocate the driver **/
-        drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));
+	drv = (pObjDriver)checkPtr(nmMalloc(sizeof(ObjDriver)));
         if (!drv) return -1;
         memset(drv, 0, sizeof(ObjDriver));
 
@@ -3406,7 +3504,7 @@ mysdInitialize()
         xaInit(&MYSD_INF.DBNodeList,127);
 
         /** Init mysql client library **/
-        if (mysql_library_init(0, NULL, NULL) != 0)
+	if (check(mysql_library_init(0, NULL, NULL)) != 0)
             {
             mssError(1, "MYSQL", "Could not init mysql client library");
             return -1;
