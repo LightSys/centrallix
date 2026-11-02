@@ -1,0 +1,81 @@
+Code review on libmime / smtp / mime changes during summer 2014.
+
+1.  The TODO note in ptodFree is correct -- the memory is apparently being
+    leaked.  The fix is more involved than just changing the expression; the
+    ptod creation logic is sometimes using nmMalloc and other times using
+    nmSysMalloc, which are not interchangeable.  The logic needs to be fixed to
+    either use one or the other, or to detect when one or the other has been
+    used and properly free the object.
+
+2.  smtp_internal_IsEmail() -- does not handle situation where the filename
+    length is less than 4 characters.  Need to get strlen() at beginning and
+    check it for >= 4, then do rest of expression.
+
+3.  Random values in various places -- use cxssGenerateKey() instead to get
+    true cryptographically secure random data:
+
+	smtp_internal_InitGlobals()
+	libmime_internal_MakeARandomFilename()
+
+4.  Core files to audit:
+
+    mime_encode.c
+    mime_util.c
+    mime_address.c
+    mime_attributes.c
+    mime_parse.c
+    objdrv_mime.c
+    objdrv_smtp.c
+
+5.  mime_encode.c
+
+    a.	Changed error messages from NHT to MIME (this code was evidently
+	copied from net_http)
+    b.	Changed the b64[] array to unsigned char
+    c.	Updated error messages
+    d.	Added error message to the Encode function
+    e.	Added null termination on the Decode function
+    f.	Misc other changes to Decode to simplify logic
+
+6.  mime_util.c
+
+    a.	Update StringLTrim to include the NUL in the memmove
+    b.	Fixed random filename generation as mentioned above
+    c.	B64Purify allowset size should be 66
+    d.	Update B64Purify to use strspn/strcspn
+    e.	TODO: use OSML content types db for ContentExtension()?
+    f.	Fix SaveTemporaryFile data copy routine for robustness
+
+7.  mime_address.c
+
+    a.	Convert buffer copy operations to strtcpy() where appropriate
+    b.	Various code simplifications
+    c.	Memory allocation return value checking
+
+8.  mime_attributes.c
+
+    a.	Only call libmime_GetMimeParam if param created successfully
+    b.	Some return value checking
+    c.	Fix allocation size logic when appending to a stringvec
+    d.	Fix copy/paste heap corruption bug in libmime_ClearParam
+
+9.  mime_parse.c
+
+    a.	Remove use of magic values for buffer sizes in the code
+    b.	Use snprintf instead of sprintf
+    c.	Check return value from libmime_DecodeBase64()
+    d.	Check return value of ReadFn()
+    e.	Rewrite the Base64 i/o functionality in ReadPart()
+
+10. objdrv_mime.c
+
+    a.	mimeRead() - return properly if underlying read fails
+    b.	setattr - temp filename not being constructed correctly
+    c.	fix file copy logic (several places)
+
+11. objdrv_smtp.c
+
+    a.	previously mentioned random generation issue
+    b.	convert some xsPrintf/fdWrite to just fdPrintf()
+    c.	Don't return -1 from smtpOpen!
+

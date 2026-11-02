@@ -1,0 +1,6 @@
+Attribute [name]:   string   "attachment1.txt" 
+Attribute [subject]:   string   "Has a subject" 
+Attribute [charset]:   string   "us-ascii" 
+Attribute [name]:   string   "attachment2.txt" 
+Attribute [subject]:   string  NULL
+Attribute [charset]:   string  NULL

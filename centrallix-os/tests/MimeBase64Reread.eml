@@ -1,0 +1,10 @@
+From: tester@example.com
+Subject: Base64 part read twice
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain
+Content-Transfer-Encoding: base64
+
+SGVsbG8sIHdvcmxkIQ==
+--b1--

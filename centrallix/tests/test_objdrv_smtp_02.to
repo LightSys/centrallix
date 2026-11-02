@@ -1,0 +1,4 @@
+##NAME Deferred recipient
+##UNDO /tests/spool/smtp
+
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/emails.smtp where :name = 'Deferred.eml'

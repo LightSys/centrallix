@@ -1,0 +1,28 @@
+$Version=2$
+"Restarted.eml" "system/structure"
+    {
+    envelope_from =  "devel@localhost" ;
+    status =  "Pending" ;
+    is_ready = 1;
+    try_count = 1;
+    last_try_status =  "TempFail" ;
+    last_try_msg =  "Sent to 1 of 2 recipients. c@defer.test: deferred: connect to mx.defer.test[192.0.2.3]:25: Connection timed out" ;
+    message_id =  "restarted@smtp.test" ;
+    queue_id =  "1A0000000009" ;
+    rcpt_count = 2;
+    expire_date =  "01 Jan 1900 00:00" ;
+    first_try_date =  "01 Jan 1900 00:00" ;
+    last_try_date =  "01 Jan 1900 00:00" ;
+    rcpt_1 "system/smtp-recipient"
+	{
+	address =  "a@sent.test" ;
+	status =  "sent" ;
+	reply =  "250 Mail accepted for delivery." ;
+	}
+    rcpt_2 "system/smtp-recipient"
+	{
+	address =  "c@defer.test" ;
+	status =  "deferred" ;
+	reply =  "connect to mx.defer.test[192.0.2.3]:25: Connection timed out" ;
+	}
+    }
