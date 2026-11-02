@@ -154,7 +154,7 @@ function cxjs_has_endorsement(e,ctx)
 function cxjs_min(v)
     {
     var lowest = undefined;
-    if (v instanceof Array)
+    if (Array.isArray(v))
 	{
 	for(var i=0; i<v.length; i++)
 	    {
@@ -162,7 +162,7 @@ function cxjs_min(v)
 		lowest = v[i];
 	    }
 	}
-    else if (v instanceof Object)
+    else if (typeof v === "object" && v !== null)
 	{
 	for(var i in v)
 	    {
@@ -179,7 +179,7 @@ function cxjs_min(v)
 function cxjs_max(v)
     {
     var highest = undefined;
-    if (v instanceof Array)
+    if (Array.isArray(v))
 	{
 	for(var i=0; i<v.length; i++)
 	    {
@@ -187,7 +187,7 @@ function cxjs_max(v)
 		highest = v[i];
 	    }
 	}
-    else if (v instanceof Object)
+    else if (typeof v === "object" && v !== null)
 	{
 	for(var i in v)
 	    {
@@ -205,7 +205,7 @@ function cxjs_sum(v)
     {
     var cnt = 0;
     var sum = 0;
-    if (v instanceof Array)
+    if (Array.isArray(v))
 	{
 	for(var i=0; i<v.length; i++)
 	    {
@@ -216,7 +216,7 @@ function cxjs_sum(v)
 		}
 	    }
 	}
-    else if (v instanceof Object)
+    else if (typeof v === "object" && v !== null)
 	{
 	for(var i in v)
 	    {
@@ -237,14 +237,14 @@ function cxjs_sum(v)
 function cxjs_count(v)
     {
     var cnt = 0;
-    if (v instanceof Array)
+    if (Array.isArray(v))
 	{
 	for(var i=0; i<v.length; i++)
 	    {
 	    if (v[i] != null && !isNaN(v[i])) cnt++;
 	    }
 	}
-    else if (v instanceof Object)
+    else if (typeof v === "object" && v !== null)
 	{
 	for(var i in v)
 	    {
