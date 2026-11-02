@@ -2025,14 +2025,14 @@ smtp_internal_SweepEmail(char* relPath, void* now_v)
 	expired = smtp_internal_IsExpired(structPath, now);
 	if (UNLIKELY(expired < 0))
 	    {
-	    mssWarnError("Failed to check whether email \"%s\" expired, skipping.", emailPath);
+	    mssWarnError("SMTP", "Failed to check whether email \"%s\" expired, skipping.", emailPath);
 	    goto end;
 	    }
 	if (expired != 1) goto end;
 
 	/** Delete the expired email. **/
 	if (UNLIKELY(smtp_internal_RemoveEmail(emailPath, structPath, resultPath) != 0))
-	    mssWarnError("Failed to delete expired email \"%s\", skipping.", emailPath);
+	    mssWarnError("SMTP", "Failed to delete expired email \"%s\", skipping.", emailPath);
 
     end:
 	if (LIKELY(emailPath != NULL)) nmFree(emailPath, PATH_MAX);
@@ -2092,7 +2092,7 @@ smtp_internal_SweepSpool(void)
 
 	/** Resolve sweep errors. **/
 	if (UNLIKELY(!successful))
-	    mssWarnError("Failed to sweep spool directory \"%s\"; continuing.", SMTP_INF.SpoolDir);
+	    mssWarnError("SMTP", "Failed to sweep spool directory \"%s\"; continuing.", SMTP_INF.SpoolDir);
     }
 
 
@@ -2427,7 +2427,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 
 	/** Update the struct with results from the Postfix logs. **/
 	if (UNLIKELY(readLog && smtp_internal_UpdateFromLog(true) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spool->Path);
+	    mssWarnError("SMTP", "Failed to update the emails in \"%s\" from the mail log.", spool->Path);
 
 	/** Reload a replaced struct. **/
 	if (UNLIKELY(smtp_internal_ReloadStruct(inf) != 0))
@@ -2454,7 +2454,7 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 		}
 	    }
 	if (UNLIKELY(found < 0))
-	    mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
+	    mssWarnError("SMTP", "Failed to update the send status of email \"%s\".", inf->Name);
 
 	/** Load the updated status. **/
 	if (found == 1 && changed && UNLIKELY(smtp_internal_ReloadStruct(inf) != 0))
@@ -2829,7 +2829,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	 *** discovered later and applied to this one after we've cleared it.
 	 ***/
 	if (UNLIKELY(smtp_internal_UpdateFromLog(false) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spool->Path);
+	    mssWarnError("SMTP", "Failed to update the emails in \"%s\" from the mail log.", spool->Path);
 
 	/** Refuse to send an email that is already Pending, even from another open. **/
 	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
@@ -3739,7 +3739,7 @@ smtp_internal_LoadEmail(char* relPath, void* spool_v)
 	    }
 	if (UNLIKELY(smtp_internal_SpoolPath(path, spool->Path, relPath, ".struct") != 0))
 	    {
-	    mssWarnError("Failed to track email \"%s\" in \"%s\", skipping.", relPath, spool->Path);
+	    mssWarnError("SMTP", "Failed to track email \"%s\" in \"%s\", skipping.", relPath, spool->Path);
 	    rval = 0;
 	    goto end;
 	    }
@@ -5306,7 +5306,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 
 	/** Record the results Postfix logged since the last read. **/
 	if (UNLIKELY(smtp_internal_UpdateFromLog(true) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spool->Path);
+	    mssWarnError("SMTP", "Failed to update the emails in \"%s\" from the mail log.", spool->Path);
 
 	/** Open the email structure file. **/
 	emailStructureFile = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
@@ -5344,7 +5344,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    if (UNLIKELY(smtp_internal_RefreshStatus(emailStructure, inf->ResultPath.String, false, &changed) != 0
 		|| (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, emailStructure) != 0)
 	    ))  {
-		mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
+		mssWarnError("SMTP", "Failed to update the send status of email \"%s\".", inf->Name);
 		}
 	    else if (changed && UNLIKELY(stat(inf->EmailStructPath.String, &inf->StructInfo) != 0))
 		{
@@ -6046,7 +6046,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Get the type of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -6156,7 +6156,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Get the value of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -6240,7 +6240,7 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	inf->CurAttr = 0;
 
@@ -6507,7 +6507,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Refuse to send an email that cannot be tracked. **/
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") == 0
@@ -6806,7 +6806,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
     return smtp_internal_AddAttr(inf_v, attrname, type, val, oxt);
     }
@@ -7054,7 +7054,7 @@ smtpPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Find the attribute. **/
 	for (i = 0; attrHints == NULL && commonHints[i].Name != NULL; i++)
