@@ -24,7 +24,7 @@ test(char** tname)
 
 	*tname = "mtlexer-15 comments // # ; -- /**/ long and short";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	iter = 6000;
 
