@@ -1,16 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +28,7 @@
 /* Description:								*/
 /************************************************************************/
 
+#include "wgtr.h"
 
 
 /*** wgtspaneVerify - allows the driver to check elsewhere in the tree
@@ -58,12 +51,13 @@ wgtspaneVerify(pWgtrVerifySession s)
 int
 wgtspaneNew(pWgtrNode node)
     {
-	node->Flags |= WGTR_F_CONTAINER;   
+	node->Flags |= WGTR_F_CONTAINER | WGTR_F_VISUAL_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 100;
 	if(node->fl_height < 0) node->fl_height = 100;
 
-	node->right=18;
-	
+	/** Declare an 18px right inset for the scrollbar. **/
+	wgtrSetInsets(node, 0, 0, 0, 18);
+
     return 0;
     }
 

@@ -14,14 +14,14 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>This widget is used to instantiate a custom component that has already been defined using a widget/component-decl widget, typically inside a ".cmp" file.  The instantiation can be either static or dynamic:  a static component is rendered along with the component or application that it resides inside, whereas a dynamic component is loaded as needed from the client.  Components may also allow multiple instantiation when dynamic, which is especially beneficial with components whose top-level widget happens to be a widget/childwindow.</p>
+			<p>This widget is used to instantiate a custom component that has already been defined using a widget/component-decl widget, typically inside a ".cmp" file.  The instantiation can be either static or dynamic: a static component is rendered along with the component or application that it resides inside, whereas a dynamic component is loaded as needed from the client.  Components may also allow multiple instantiation when dynamic, which is especially beneficial with components whose top-level widget happens to be a widget/childwindow.</p>
 
 		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
 			<p>A component can be either visual or non-visual, and can be placed at almost any point in the application.</p>
 
-			<p>At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However that capability is not available at present.</p>
+			<p>At the time of writing, only connectors may be placed inside a widget/component.  It is planned that it be possible to place widgets inside a widget/component which then appear inside specially designated containers within the component itself.  However, that capability is not available at present.</p>
 
 		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
@@ -38,7 +38,7 @@
 <tr>
 <td class="name">form</td>
 <td class="type">integer</td>
-<td class="description">Can specify another form to be a child of (if different than the implied form in which this control is nested).</td>
+<td class="description">Can specify another form to be a child of (if different from the implied form in which this control is nested).</td>
 </tr>
 <tr>
 <td class="name">height</td>
@@ -58,7 +58,7 @@
 <tr>
 <td class="name">path</td>
 <td class="type">string</td>
-<td class="description">The path, in the OSML, to the component's definition (.cmp) file. (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp).</td>
+<td class="description">The path, in the OSML, to the component's definition (.cmp) file.  (e.g. /sys/cmp/smart_field.cmp, /sys/cmp/form_controls.cmp, /samples/button.cmp).</td>
 </tr>
 <tr>
 <td class="name">toplevel</td>
@@ -102,7 +102,7 @@
 <tr>
 <td class="name">type</td>
 <td class="type">string</td>
-<td class="description">(e.g. readonly). Must have field be set in order to be "readonly".</td>
+<td class="description">(e.g. readonly).  Must have field be set in order to be "readonly".</td>
 </tr>
 <tr>
 <td class="name">value</td>
@@ -149,11 +149,11 @@
 </tr>
 <tr>
 <td class="name">Destroy</td>
-<td class="description">Destroys the component.  If multiple instances exist, then all instances are destroyed.</td>
+<td class="description">Destroys the component.  If the 'Name' or 'Namespace' parameter is given, only the instances matching it are destroyed; otherwise all instances are destroyed.</td>
 </tr>
 <tr>
 <td class="name">Instantiate</td>
-<td class="description">Instantiates the component.</td>
+<td class="description">Instantiates the component.  The optional 'Path' parameter is an absolute path to the component to load, which overrides the path property.  The optional 'Name' parameter names the new instance, so that Destroy can select it later.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>

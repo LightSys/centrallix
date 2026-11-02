@@ -2413,7 +2413,7 @@ thClearFlags(pThread thr, int flags)
 int
 thExcessiveRecursion()
     {
-    unsigned char stack_ptr[1];
+    const unsigned char stack_ptr[1];
     return UNLIKELY(MTASK.CurrentThread->Stack - stack_ptr > MT_STACK_HIGHWATER);
     }
 

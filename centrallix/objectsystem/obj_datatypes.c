@@ -2212,7 +2212,157 @@ objCopyData(pObjData src, pObjData dst, int type)
     }
 
 
-/*** objDebugDate() - prints date/time value on stdout in various 
+/*** objDeepCopyData() - copies from one POD to another, based on type,
+ *** allocating new memory for any pointed-to data.  Free the copy with
+ *** objFreeDeepCopy().  On failure, dst is unchanged.  Returns 0 on
+ *** success, or -1 on failure.
+ ***/
+int
+objDeepCopyData(pObjData src, pObjData dst, int type)
+    {
+    ObjData copy;
+    unsigned int i, n;
+    int rval = -1;
+
+	memset(&copy, 0, sizeof(copy));
+	switch(type)
+	    {
+	    case DATA_T_INTEGER:
+		copy.Integer = src->Integer;
+		break;
+	    case DATA_T_DOUBLE:
+		copy.Double = src->Double;
+		break;
+	    case DATA_T_STRING:
+		if (src->String == NULL) break;
+		copy.String = nmSysStrdup(src->String);
+		if (copy.String == NULL) goto end;
+		break;
+	    case DATA_T_MONEY:
+		if (src->Money == NULL) break;
+		copy.Money = (pMoneyType)nmMalloc(sizeof(MoneyType));
+		if (copy.Money == NULL) goto end;
+		memcpy(copy.Money, src->Money, sizeof(MoneyType));
+		break;
+	    case DATA_T_DATETIME:
+		if (src->DateTime == NULL) break;
+		copy.DateTime = (pDateTime)nmMalloc(sizeof(DateTime));
+		if (copy.DateTime == NULL) goto end;
+		memcpy(copy.DateTime, src->DateTime, sizeof(DateTime));
+		break;
+	    case DATA_T_BINARY:
+		copy.Binary.Size = src->Binary.Size;
+		if (src->Binary.Data == NULL) break;
+		copy.Binary.Data = (unsigned char*)nmSysMalloc(src->Binary.Size + 1);
+		if (copy.Binary.Data == NULL) goto end;
+		memcpy(copy.Binary.Data, src->Binary.Data, src->Binary.Size);
+		copy.Binary.Data[src->Binary.Size] = '\0';
+		break;
+	    case DATA_T_INTVEC:
+		if (src->IntVec == NULL) break;
+		copy.IntVec = (pIntVec)nmMalloc(sizeof(IntVec));
+		if (copy.IntVec == NULL) goto end;
+		memset(copy.IntVec, 0, sizeof(IntVec));
+		n = src->IntVec->nIntegers;
+		if (n == 0 || src->IntVec->Integers == NULL) break;
+		copy.IntVec->Integers = (int*)nmSysMalloc(n * sizeof(int));
+		if (copy.IntVec->Integers == NULL) goto end;
+		memcpy(copy.IntVec->Integers, src->IntVec->Integers, n * sizeof(int));
+		copy.IntVec->nIntegers = n;
+		break;
+	    case DATA_T_STRINGVEC:
+		if (src->StringVec == NULL) break;
+		copy.StringVec = (pStringVec)nmMalloc(sizeof(StringVec));
+		if (copy.StringVec == NULL) goto end;
+		memset(copy.StringVec, 0, sizeof(StringVec));
+		n = src->StringVec->nStrings;
+		if (n == 0 || src->StringVec->Strings == NULL) break;
+		copy.StringVec->Strings = (char**)nmSysMalloc(n * sizeof(char*));
+		if (copy.StringVec->Strings == NULL) goto end;
+		memset(copy.StringVec->Strings, 0, n * sizeof(char*));
+		copy.StringVec->nStrings = n;
+		for (i = 0; i < n; i++)
+		    {
+		    if (src->StringVec->Strings[i] == NULL) continue;
+		    copy.StringVec->Strings[i] = nmSysStrdup(src->StringVec->Strings[i]);
+		    if (copy.StringVec->Strings[i] == NULL) goto end;
+		    }
+		break;
+	    case DATA_T_CODE:
+		if (src->Generic == NULL) break;
+		copy.Generic = (void*)expDuplicateExpression((pExpression)src->Generic);
+		if (copy.Generic == NULL) goto end;
+		break;
+	    default:
+		goto end;
+	    }
+
+	/** Success. **/
+	memcpy(dst, &copy, sizeof(ObjData));
+	rval = 0;
+
+    end:
+	if (rval != 0)
+	    {
+	    mssError(1, "OBJ", "Failed to deep copy data of type %s.", objTypeToStr(type));
+	    objFreeDeepCopy(&copy, type);
+	    }
+
+    return rval;
+    }
+
+
+/*** objFreeDeepCopy() - frees the pointed-to data of a POD copied by
+ *** objDeepCopyData(), and clears the POD.
+ ***/
+void
+objFreeDeepCopy(pObjData data, int type)
+    {
+    unsigned int i;
+
+	switch(type)
+	    {
+	    case DATA_T_STRING:
+		if (data->String != NULL) nmSysFree(data->String);
+		break;
+	    case DATA_T_MONEY:
+		if (data->Money != NULL) nmFree(data->Money, sizeof(MoneyType));
+		break;
+	    case DATA_T_DATETIME:
+		if (data->DateTime != NULL) nmFree(data->DateTime, sizeof(DateTime));
+		break;
+	    case DATA_T_BINARY:
+		if (data->Binary.Data != NULL) nmSysFree(data->Binary.Data);
+		break;
+	    case DATA_T_INTVEC:
+		if (data->IntVec == NULL) break;
+		if (data->IntVec->Integers != NULL) nmSysFree(data->IntVec->Integers);
+		nmFree(data->IntVec, sizeof(IntVec));
+		break;
+	    case DATA_T_STRINGVEC:
+		if (data->StringVec == NULL) break;
+		if (data->StringVec->Strings != NULL)
+		    {
+		    for (i = 0; i < data->StringVec->nStrings; i++)
+			{
+			char* string = data->StringVec->Strings[i];
+			if (string != NULL) nmSysFree(string);
+			}
+		    nmSysFree(data->StringVec->Strings);
+		    }
+		nmFree(data->StringVec, sizeof(StringVec));
+		break;
+	    case DATA_T_CODE:
+		if (data->Generic != NULL) expFreeExpression((pExpression)data->Generic);
+		break;
+	    default:
+		break;
+	    }
+	memset(data, 0, sizeof(ObjData));
+    }
+
+
+/*** objDebugDate() - prints date/time value on stdout in various
  *** formats.
  ***/
 int

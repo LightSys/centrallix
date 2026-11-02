@@ -23,9 +23,11 @@
 
 			<p>Other visual and nonvisual widgets may be placed inside a component-decl, in addition to parameters and declarations of Events and Actions that the component generates and handles.</p>
 
+			<p>To declare a client-side property on the component's external interface, place a "widget/component-decl-cprop" inside the component at the top level.  When the external property is changed, a MODIFY event with the same property name is activated inside the component to update its property so that it will match.</p>
+
 			<p>To declare that a component generates an Event, place a "widget/component-decl-event" inside the component at the top level.  No parameters are needed for that Event.  To cause the component to generate the Event, trigger an Action with the same name on the component-decl from inside, and the event will be activated for the containing application or component.</p>
 
-			<p>Similarly, to declare that a component can receive an Action, place a "widget/component-decl-action" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.</p>
+			<p>To declare that a component can receive an Action, place a "widget/component-decl-action" inside the component at the top level.  Again, no parameters are needed.  The containing application or component can then trigger the Action, which will cause an event to occur inside the component.  The event occurs on the component-decl widget (top level of the component), and can be caught with a connector widget.</p>
 
 			<p>Components can take parameters just like applications can.  See the "widget/parameter" widget for details on how to declare parameters on applications and components.</p>
 
@@ -64,6 +66,46 @@
 <td class="description">Indicates if the component is seen (not = -1).</td>
 </tr>
 </table>
+<h3 class="childproperties">Child Properties:</h3>
+<p class="childname">(of component-decl-cprop child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">name</td>
+<td class="type">string</td>
+<td class="description">The name of the client-side property to expose.</td>
+</tr>
+</table>
+<p class="childname">(of component-decl-event child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">name</td>
+<td class="type">string</td>
+<td class="description">The name of the event to expose.</td>
+</tr>
+</table>
+<p class="childname">(of component-decl-action child widgets)</p>
+<table class="childproperties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">name</td>
+<td class="type">string</td>
+<td class="description">The name of the action to expose.</td>
+</tr>
+</table>
 <h3 class="actions">Actions:</h3>
 <table class="actions">
 <tr>
@@ -79,8 +121,12 @@
 <td class="description">Loads the widget.</td>
 </tr>
 <tr>
+<td class="name">ModifyProperty</td>
+<td class="description">Sets a client property that the component exposes, so that the change is visible outside the component.  The "PropertyName" parameter names the property and the "NewValue" parameter holds its new value.  The component's event for that property change fires unless the "TriggerEvent" parameter is set to a true value, which suppresses it.</td>
+</tr>
+<tr>
 <td class="name">TriggerEvent</td>
-<td class="description">Allows events to happen.</td>
+<td class="description">Fires the event named by the 'EventName' parameter inside the component, as though it had been invoked from outside the component.  The remaining parameters are passed along to that event.</td>
 </tr>
 </table>
 <h3 class="events">Events:</h3>
@@ -88,6 +134,22 @@
 <tr>
 <th class="name">Event</th>
 <th class="description">Description</th>
+</tr>
+<tr>
+<td class="name">BeforeKeyPress</td>
+<td class="description">This event occurs before the key press event is fired and can stop the key press event.  Passes the key's "Code" and "Name", and "Ctrl" which is 1 if the control key was held down.</td>
+</tr>
+<tr>
+<td class="name">KeyDown</td>
+<td class="description">This event occurs when the user presses any key down.  Passes the same values as BeforeKeyPress.</td>
+</tr>
+<tr>
+<td class="name">KeyPress</td>
+<td class="description">This event occurs when the user presses any key.  Passes the same values as BeforeKeyPress.</td>
+</tr>
+<tr>
+<td class="name">KeyUp</td>
+<td class="description">This event occurs when the user releases any key.  Passes the same values as BeforeKeyPress.</td>
 </tr>
 <tr>
 <td class="name">LoadComplete</td>

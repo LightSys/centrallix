@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2004-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -75,32 +75,7 @@ ptod_internal_FreeData(pTObjData ptod)
 
 	/** Managed? free data memory as well if so **/
 	if (!(ptod->Flags & DATA_TF_UNMANAGED) && !(ptod->Flags & DATA_TF_ATTACHED))
-	    {
-	    switch(ptod->DataType)
-		{
-		case DATA_T_STRING:
-		    if (ptod->Data.String) nmSysFree(ptod->Data.String);
-		    break;
-		case DATA_T_BINARY:
-		    if (ptod->Data.Binary.Data) nmSysFree(ptod->Data.Binary.Data);
-		    break;
-		case DATA_T_MONEY:
-		    if (ptod->Data.Money) nmFree(ptod->Data.Money, sizeof(MoneyType));
-		    break;
-		case DATA_T_DATETIME:
-		    if (ptod->Data.DateTime) nmFree(ptod->Data.DateTime, sizeof(DateTime));
-		    break;
-		case DATA_T_STRINGVEC:
-		    /** FIXME - how do we want to handle managed intvec/stringvec? **/
-		    if (ptod->Data.StringVec) nmFree(ptod->Data.StringVec, sizeof(StringVec));
-		    break;
-		case DATA_T_INTVEC:
-		    if (ptod->Data.IntVec) nmFree(ptod->Data.IntVec, sizeof(IntVec));
-		    break;
-		default:
-		    break;
-		}
-	    }
+	    objFreeDeepCopy(&ptod->Data, ptod->DataType);
 	ptod->Data.Generic = NULL;
 
     return 0;
@@ -206,31 +181,11 @@ ptodCopy(pTObjData src, pTObjData dst)
 	    else
 		{
 		/** Managed copy **/
-		switch(src->DataType)
+		if (objDeepCopyData(&src->Data, &dst->Data, src->DataType) != 0)
 		    {
-		    case DATA_T_INTEGER:
-		    case DATA_T_DOUBLE:
-			objCopyData(&src->Data, &dst->Data, src->DataType);
-			break;
-		    case DATA_T_STRING:
-			dst->Data.String = nmSysStrdup(src->Data.String);
-			break;
-		    case DATA_T_BINARY:
-			dst->Data.Binary.Data = nmSysMalloc(src->Data.Binary.Size+1);
-			dst->Data.Binary.Size = src->Data.Binary.Size;
-			memcpy(dst->Data.Binary.Data, src->Data.Binary.Data, src->Data.Binary.Size+1);
-			break;
-		    case DATA_T_MONEY:
-			dst->Data.Money = nmMalloc(sizeof(MoneyType));
-			memcpy(dst->Data.Money, src->Data.Money, sizeof(MoneyType));
-			break;
-		    case DATA_T_DATETIME:
-			dst->Data.DateTime = nmMalloc(sizeof(DateTime));
-			memcpy(dst->Data.DateTime, src->Data.DateTime, sizeof(DateTime));
-			break;
-		    default:
-			/** FIXME: how do we want to handle intvec/stringvec/binary/etc? **/
-			break;
+		    dst->Flags |= DATA_TF_NULL;
+		    mssError(0, "PTOD", "Failed to copy ptod of type %s.", objTypeToStr(src->DataType));
+		    return -1;
 		    }
 		}
 	    }
