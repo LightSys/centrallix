@@ -88,7 +88,7 @@ hthtmlRender(pHtSession s, pWgtrNode tree, int z)
 	    if (strtcpy(src, ptr, sizeof(src)) < 0)
 		{
 		/** Data truncated: Send warning. **/
-		fprintf(stderr, "Warning! Source path truncated.\n");
+		mssWarn("HTHTML", "Source path truncated.");
 		}
 	    }
 

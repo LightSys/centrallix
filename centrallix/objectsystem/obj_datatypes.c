@@ -913,7 +913,7 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 		break;
 	    
 	    default:
-		mssError(1,"OBJ","Warning: could not convert data type %d to integer", data_type);
+		mssWarn("OBJ", "could not convert data type %d to integer.", data_type);
 		return 0;
 	    }
 
@@ -2060,7 +2060,7 @@ objDataToWords(int data_type, void* data_ptr)
 	    m = (pMoneyType)data_ptr;
 	    if (UNLIKELY(m->FractionPart > 9999))
 	        {
-		mssError(1, "OBJ",
+		mssWarn("OBJ",
 		    "Attempted to convert malformed money value %d.%04u to "
 		    "words but fractional part exceeds 9999.",
 		    m->WholePart, m->FractionPart
@@ -2091,7 +2091,7 @@ objDataToWords(int data_type, void* data_ptr)
 	    }
 	else
 	    {
-	    mssError(1,"OBJ","Warning: can only 'convert to words' integer and money types");
+	    mssWarn("OBJ", "can only 'convert to words' integer and money types.");
 	    return "";
 	    }
 

@@ -623,7 +623,8 @@ rpt_internal_GetBool(pRptData inf, pStructInf config, char* attr, int def, int n
     int val;
     if (rpt_internal_GetValue(inf, config, attr, DATA_T_INTEGER, POD(&val), POD(&def), nval) < 0)
 	{
-	mssError(0,"RPT","Warning: invalid data for boolean '%s' on object '%s'; using default value.", attr, config->Name);
+	mssWarn("RPT", "invalid data for boolean '%s' on object '%s'; using default value.", attr, config->Name);
+	mssClearError();
 	val = def;
 	}
     return val;
