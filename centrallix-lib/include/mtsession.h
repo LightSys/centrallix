@@ -99,14 +99,14 @@ void mss_i_warn(char* module, char* file, int line, char* message, ...)
     __attribute__ ((format(printf, 4, 5)))
     #endif
 ;
-void mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
-    #ifdef __GNUC__
-    __attribute__ ((format(printf, 5, 6)))
-    #endif
-;
 void mss_i_warn_error(char* module, char* file, int line, char* message, ...)
     #ifdef __GNUC__
     __attribute__ ((format(printf, 4, 5)))
+    #endif
+;
+void mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
+    #ifdef __GNUC__
+    __attribute__ ((format(printf, 5, 6)))
     #endif
 ;
 
