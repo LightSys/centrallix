@@ -22,7 +22,7 @@
 #include <unistd.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
+#include "t_utils.h"
 #include "test_mtsession.h"
 #include "mtask.h"
 
