@@ -116,7 +116,7 @@ static bool doTest(void)
 	 *** stdout log method is where it ends up, conversions and errno text
 	 *** and all.  One capture covers the three of them.
 	 ***/
-	mssInitialize("altpasswd", auth_path, "stdout", 0, APPNAME);
+	mssInitialize("altpasswd", auth_path, "stdout", 0, APPNAME, MSS_WARN_HISTORY_DEFAULT);
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "no session here");
 	mssError(1, "MOD", "user %s, attempt %d", "testuser", 3);
@@ -142,7 +142,7 @@ static bool doTest(void)
 	/*** Being told to log everything logs the messages that a session
 	 *** would otherwise have kept to itself, and stacks them all the same.
 	 ***/
-	mssInitialize("altpasswd", auth_path, "stdout", 1, APPNAME);
+	mssInitialize("altpasswd", auth_path, "stdout", 1, APPNAME, MSS_WARN_HISTORY_DEFAULT);
 	if (!ASSERT_EQL(mssAuthenticate(USERNAME, PASSWORD, 0), 0, "%d")) return false;
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "logged as well");
@@ -156,7 +156,7 @@ static bool doTest(void)
 	success &= ASSERT_EQL(mssEndSession(NULL), 0, "%d");
 
 	/** With no program name to log under, the lines say "error". **/
-	mssInitialize("altpasswd", auth_path, "stdout", 0, "");
+	mssInitialize("altpasswd", auth_path, "stdout", 0, "", MSS_WARN_HISTORY_DEFAULT);
 	if (!captureStart()) return false;
 	mssError(1, "MOD", "nameless");
 	success &= ASSERT_STR_HAS_IN_ORDER(captureEnd(), "error: ", "MOD: nameless");

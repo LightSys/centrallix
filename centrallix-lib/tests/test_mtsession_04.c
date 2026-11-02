@@ -203,7 +203,7 @@ long long test(char** tname)
 	    tmpFileDeInit(auth_path);
 	    return -1;
 	    }
-	mssInitialize("altpasswd", auth_path, "", 0, "test_mtsession");
+	mssInitialize("altpasswd", auth_path, "", 0, "test_mtsession", MSS_WARN_HISTORY_DEFAULT);
 
 	result = loopTest(doTest) * 34ll;
 
