@@ -128,6 +128,87 @@ bool t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int 
 	"  > Expected %s ("sp") to be in the range %s ("sp") - %s ("sp") at %s:%d\n", \
 	#v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
     ); \
+    success; \
+    })
+
+/*** Assert a string to contain another string.
+ *** 
+ *** @param str The string to search.
+ *** @param sub The string to find within it.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define ASSERT_STR_HAS(str, sub) \
+    ({ \
+    char* _str = (str); \
+    char* _sub = (sub); \
+    int success = (_str != NULL && _sub != NULL && strstr(_str, _sub) != NULL); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s (\"%s\") to contain %s (\"%s\") at %s:%d\n", \
+	#str, _str, #sub, _sub, __FILE__, __LINE__ \
+    ); \
+    success; \
+    })
+
+/*** Assert a string to not contain another string.
+ *** 
+ *** @param str The string to search.
+ *** @param sub The string that must not appear within it.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define ASSERT_STR_LACKS(str, sub) \
+    ({ \
+    char* _str = (str); \
+    char* _sub = (sub); \
+    int success = (_str != NULL && _sub != NULL && strstr(_str, _sub) == NULL); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s (\"%s\") to not contain %s (\"%s\") at %s:%d\n", \
+	#str, _str, #sub, _sub, __FILE__, __LINE__ \
+    ); \
+    success; \
+    })
+
+/*** Find the first of the given texts that does not appear in the subject
+ *** after every text listed before it.
+ *** 
+ *** @param subject The text to search.
+ *** @param texts The texts to look for, in order, ending with a NULL.
+ *** @returns The first text that is missing or out of order, or NULL if they
+ ***	all appear in the order given.
+ ***/
+static inline char* strFindOutOfOrder(char* subject, char** texts)
+    {
+    char* pos = subject;
+    char* found;
+    int i;
+
+	if (subject == NULL) return texts[0];
+	for(i=0; texts[i]; i++)
+	    {
+	    found = strstr(pos, texts[i]);
+	    if (found == NULL) return texts[i];
+	    pos = found + strlen(texts[i]);
+	    }
+
+    return NULL;
+    }
+
+/*** Assert a string to contain each of the given strings, in the order given,
+ *** making no assumptions about what surrounds or separates them.
+ *** 
+ *** @param str The string to search.
+ *** @param ... The strings to find within it, in order.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define ASSERT_STR_HAS_IN_ORDER(str, ...) \
+    ({ \
+    char* _str = (str); \
+    char* _missing = strFindOutOfOrder(_str, (char*[]){__VA_ARGS__, NULL}); \
+    int success = (_missing == NULL); \
+    if (!success) fprintf(stderr, \
+	"  > Expected %s (\"%s\") to contain \"%s\" after the strings before it at %s:%d\n", \
+	#str, _str, _missing, __FILE__, __LINE__ \
+    ); \
+    success; \
     })
 
 /*** Copy n characters from src to dest, including null-terminators, which are
