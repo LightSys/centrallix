@@ -64,7 +64,7 @@ test(char** tname)
 
 	*tname = "mtlexer-07 all tokens, space/tab/noifs with eol";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	rval = loopTest(doTest);
 	if (rval > 0) rval *= (long long)n_tokens * n_iter;

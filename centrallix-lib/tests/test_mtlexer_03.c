@@ -82,7 +82,7 @@ test(char** tname)
 
 	*tname = "mtlexer-03 BID#156 - line length based failure";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	/** Seed the input and the expected first token at their full length. **/
 	memset(str, 'a', MAX_LEN+1);
