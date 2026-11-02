@@ -57,13 +57,15 @@ autom4te.cache
 .depend
 
 # Test Files
+/centrallix-doc/Widgets/doc-report/report.json
+/centrallix-doc/Widgets/doc-report/report.md
 /centrallix-lib/tests/*.bin
-/centrallix-ui-test/tests/__pycache__
 /centrallix-ui-test/tests/config.toml
 /centrallix/tests/*.bin
 /centrallix/tests/*.out
 /centrallix/tests/*.to.tmp
 /centrallix-temp
+__pycache__/
 
 # Debugging & Profiling Files
 *.gcda
