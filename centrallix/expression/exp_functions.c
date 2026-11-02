@@ -77,6 +77,7 @@
 #include "cxss/cxss.h"
 #include "double_metaphone.h"
 #include "expression.h"
+#include "expression_private.h"
 #include "obj.h"
 
 

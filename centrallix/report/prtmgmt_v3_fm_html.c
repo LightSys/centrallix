@@ -59,6 +59,7 @@
 #include "prtmgmt_v3/prtmgmt_v3_fm_html.h"
 #include "prtmgmt_v3/prtmgmt_v3_lm_text.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
+#include "prtmgmt_v3/prtmgmt_v3_private.h"
 #include "report.h"
 
 

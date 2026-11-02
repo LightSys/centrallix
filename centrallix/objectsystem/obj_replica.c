@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "obj.h"
+#include "obj_private.h"
 #include "centrallix.h"
 
 
