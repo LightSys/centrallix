@@ -169,11 +169,10 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 		}
 	    else
 		{
-		fprintf(stderr,
-		    "Warning: Skipping parameter \"%s\" of MIME header \"%s\" that could not be stored.\n",
+		mssWarnError("MIME",
+		    "Skipping parameter \"%s\" of MIME header \"%s\" that could not be stored.",
 		    paramName, name
 		);
-		mssClearError();
 		}
 	    }
 

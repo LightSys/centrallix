@@ -606,9 +606,9 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    thSleep(10);
 	if (UNLIKELY(wait_rval < 0 && errno == ECHILD))
 	    {
-	    fprintf(stderr,
-		"Warning: Sendmail launcher process (pid %d) was reaped elsewhere; "
-		"the sendmail result file reports the send.\n",
+	    mssWarn("SMTP",
+		"Sendmail launcher process (pid %d) was reaped elsewhere; "
+		"the sendmail result file reports the send.",
 		pid
 	    );
 	    wstatus = 0; /* Treat as a successful exit. */
@@ -661,8 +661,8 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 
 	if (resultFd >= 0) close(resultFd);
 	if (UNLIKELY(rval != 0 && tmpCreated && unlink(tmpPath) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to remove partial sendmail result file (%s): %s.\n",
+	    mssWarn("SMTP",
+		"Failed to remove partial sendmail result file (%s): %s.",
 		tmpPath, strerror(errno)
 	    );
 
@@ -967,8 +967,8 @@ smtp_internal_WriteStruct(char* path, pStructInf emailStruct)
     end:
 	if (UNLIKELY(structFile != NULL)) fdClose(structFile, 0);
 	if (UNLIKELY(tmpCreated && remove(tmpPath) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to remove partial email struct file (%s): %s.\n",
+	    mssWarn("SMTP",
+		"Failed to remove partial email struct file (%s): %s.",
 		tmpPath, strerror(errno)
 	    );
 
@@ -1387,8 +1387,8 @@ smtp_internal_LockSpool(void)
 		goto end;
 		}
 	    if ((st.st_mode & 0666) != 0666 && (st.st_uid == geteuid() || geteuid() == 0) && UNLIKELY(fchmod(spool->LockFd, 0666) != 0))
-		fprintf(stderr,
-		    "Warning: Failed to let every user open spool lock \"%s\" (mode %04o): %s.\n",
+		mssWarn("SMTP",
+		    "Failed to let every user open spool lock \"%s\" (mode %04o): %s.",
 		    path, (unsigned int)(st.st_mode & 07777), strerror(errno)
 		);
 	    }
@@ -1453,7 +1453,7 @@ smtp_internal_LockSpool(void)
 	    if (fileLocked)
 		smtp_internal_UnlockSpool(spool);
 	    else if (semHeld && UNLIKELY(syPostSem(spool->LockSem, 1, 0) != 0))
-		fprintf(stderr, "Warning: Failed to let other threads use spool directory \"%s\".\n", spool->Path);
+		mssWarn("SMTP", "Failed to let other threads use spool directory \"%s\".", spool->Path);
 	    }
 
 	return rval;
@@ -1480,15 +1480,15 @@ smtp_internal_UnlockSpool(pSmtpSpool spool)
 	lock.l_type = F_UNLCK;
 	lock.l_whence = SEEK_SET;
 	if (UNLIKELY(fcntl(spool->LockFd, F_SETLK, &lock) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to unlock spool directory \"%s/%s\": %s.\n",
+	    mssWarn("SMTP",
+		"Failed to unlock spool directory \"%s/%s\": %s.",
 		spool->Path, SMTP_LOCK_FILE, strerror(errno)
 	    );
 
 	/** Let other threads in. **/
 	spool->LockOwner = NULL;
 	if (UNLIKELY(syPostSem(spool->LockSem, 1, 0) != 0))
-	    fprintf(stderr, "Warning: Failed to let other threads use spool directory \"%s\".\n", spool->Path);
+	    mssWarn("SMTP", "Failed to let other threads use spool directory \"%s\".", spool->Path);
 
     return;
     }
@@ -1549,8 +1549,8 @@ smtp_internal_InitGlobals()
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
 	    {
 	    strtcpy(local_host_name, "localhost.localdomain", sizeof(local_host_name));
-	    fprintf(stderr,
-		"Warning: gethostname() failed (%s); using \"%s\".\n",
+	    mssWarn("SMTP",
+		"gethostname() failed (%s); using \"%s\".",
 		strerror(errno), local_host_name
 	    );
 	    }
@@ -1910,8 +1910,8 @@ smtp_internal_ForEachEmail(int (*fn)(char* relPath, void* arg), void* arg)
 		SMTP_INF.SpoolDir, subdirEntry->d_name
 	    ) >= PATH_MAX))
 		{
-		fprintf(stderr,
-		    "Warning: Path of \"%s\" in \"%s\" is too long to read, skipping.\n",
+		mssWarn("SMTP",
+		    "Path of \"%s\" in \"%s\" is too long to read, skipping.",
 		    subdirEntry->d_name, SMTP_INF.SpoolDir
 		);
 		continue;
@@ -1952,8 +1952,8 @@ smtp_internal_ForEachEmail(int (*fn)(char* relPath, void* arg), void* arg)
 		    subdirEntry->d_name, entry->d_name
 		) >= PATH_MAX))
 		    {
-		    fprintf(stderr,
-			"Warning: Path of email \"%s\" in \"%s\" is too long to read, skipping.\n",
+		    mssWarn("SMTP",
+			"Path of email \"%s\" in \"%s\" is too long to read, skipping.",
 			entry->d_name, path
 		    );
 		    continue;
@@ -2014,8 +2014,8 @@ smtp_internal_SweepEmail(char* relPath, void* now_v)
 	    || snprintf(structPath, PATH_MAX, "%s/%.*s.struct", SMTP_INF.SpoolDir, relPathLen, relPath) >= PATH_MAX
 	    || snprintf(resultPath, PATH_MAX, "%s/%.*s.result", SMTP_INF.SpoolDir, relPathLen, relPath) >= PATH_MAX
 	))  {
-	    fprintf(stderr,
-		"Warning: Path of email \"%s\" in \"%s\" is too long to sweep, skipping.\n",
+	    mssWarn("SMTP",
+		"Path of email \"%s\" in \"%s\" is too long to sweep, skipping.",
 		relPath, SMTP_INF.SpoolDir
 	    );
 	    goto end;
@@ -2647,9 +2647,9 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    has_headers = objDataToBoolean(attr->Type, value, 1);
 	    if (UNLIKELY(has_headers < 0))
 		{
-		fprintf(stderr,
-		    "Warning: Ignored unrecognized value '%s' for boolean attribute "
-		    "'content_has_headers' of \"%s\" (defaulting to 1).\n",
+		mssWarn("SMTP",
+		    "Ignored unrecognized value '%s' for boolean attribute "
+		    "'content_has_headers' of \"%s\" (defaulting to 1).",
 		    objDataToStringTmp(attr->Type, value, 0), inf->EmailPath.String
 		);
 		has_headers = 1;
@@ -2967,7 +2967,7 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    /** Report a failure to record it, then restore the send error it cleared. **/
 	    if (UNLIKELY(recordFailed))
 		{
-		fprintf(stderr, "Warning: Failed to record the failed try of \"%s\"; it may stay Pending.\n", inf->Name);
+		mssWarnError("SMTP", "Failed to record the failed try of \"%s\"; it may stay Pending.", inf->Name);
 		mssError(1, "SMTP", "Failed to send \"%s\": %s", inf->Name, tryMsgStr);
 		}
 	    }
@@ -3818,7 +3818,7 @@ smtp_internal_LoadSpool(pSmtpSpool spool)
 	    }
 	else if (fscanf(cursorFile, "%llu %llu %lld", &dev, &ino, &offset) != 3 || offset < 0)
 	    {
-	    fprintf(stderr, "Warning: Ignored invalid mail log cursor \"%s\"; reading the mail log from the start.\n", path);
+	    mssWarn("SMTP", "Ignored invalid mail log cursor \"%s\"; reading the mail log from the start.", path);
 	    }
 	else
 	    {
@@ -3907,8 +3907,8 @@ smtp_internal_SaveCursor(pSmtpSpool spool)
     end:
 	if (UNLIKELY(cursorFile != NULL)) fclose(cursorFile);
 	if (UNLIKELY(tmpCreated && remove(tmpPath) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to remove partial mail log cursor (%s): %s.\n",
+	    mssWarn("SMTP",
+		"Failed to remove partial mail log cursor (%s): %s.",
 		tmpPath, strerror(errno)
 	    );
 
@@ -4425,9 +4425,9 @@ smtp_internal_UpdateFromLog(bool throttle)
 		goto end;
 	    if (found == 0)
 		{
-		fprintf(stderr,
-		    "Warning: Failed to find the rotated mail log where \"%s\" stopped reading, "
-		    "so results Postfix logged there and in later rotated logs are missed.\n",
+		mssWarn("SMTP",
+		    "Failed to find the rotated mail log where \"%s\" stopped reading, "
+		    "so results Postfix logged there and in later rotated logs are missed.",
 		    spool->Path
 		);
 		}
@@ -4784,8 +4784,8 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
 	    {
 	    strtcpy(local_host_name, "localhost.localdomain", sizeof(local_host_name));
-	    fprintf(stderr,
-		"Warning: gethostname() failed (%s); using \"%s\".\n",
+	    mssWarn("SMTP",
+		"gethostname() failed (%s); using \"%s\".",
 		strerror(errno), local_host_name
 	    );
 	    }
@@ -4968,13 +4968,13 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (UNLIKELY(rval != 0))
 	    {
 	    if (emailCreated && remove(inf->EmailPath.String) != 0)
-		fprintf(stderr,
-		    "Warning: Failed to remove partial email file (%s): %s.\n",
+		mssWarn("SMTP",
+		    "Failed to remove partial email file (%s): %s.",
 		    inf->EmailPath.String, strerror(errno)
 		);
 	    if (structCreated && remove(inf->EmailStructPath.String) != 0)
-		fprintf(stderr,
-		    "Warning: Failed to remove partial email struct file (%s): %s.\n",
+		mssWarn("SMTP",
+		    "Failed to remove partial email struct file (%s): %s.",
 		    inf->EmailStructPath.String, strerror(errno)
 		);
 	    }
