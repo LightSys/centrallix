@@ -109,6 +109,27 @@ bool t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int 
 #define ASSERT_STR_EQL_N(str1, str2, len) \
     t_i_assertStrEqlN((str1), (str2), (size_t)(len), #str1, #str2, __FILE__, __LINE__)
 
+/*** Assert two cosine vectors from `clusters.c` to be equal.
+ *** 
+ *** @param v1 The first vector.
+ *** @param v2 The second vector.
+ *** @returns true if successful, false otherwise.
+ ***/
+#define ASSERT_VEC_EQL(v1, v2) \
+    ({ \
+	pVector _v1 = (v1); \
+	pVector _v2 = (v2); \
+	const bool success = caEql(_v1, _v2); \
+	if (!success) \
+	    { \
+	    printf("  > Expected %s (1.) to equal %s (2.) at %s:%d, but got:\n", #v1, #v2, __FILE__, __LINE__); \
+	    printf("  > 1. (%p) ", _v1); caPrintVector(_v1); printf("\n"); \
+	    printf("  > 2. (%p) ", _v2); caPrintVector(_v2); printf("\n"); \
+	    fflush(stdout); \
+	    } \
+	success; \
+    })
+
 /*** Assert a value to fall within a range.
  *** 
  *** @param v The value.

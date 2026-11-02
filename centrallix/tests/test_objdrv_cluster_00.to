@@ -1,0 +1,37 @@
+##NAME Cluster Driver
+
+# Test parameters, initialization, and default attribute lists.
+query select *, date_created=convert(datetime, "1970-01-01 00:00:00"), date_computed=convert(datetime, "1970-01-01 00:00:00") from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.9&sim=cosine ;
+query select *, date_created=convert(datetime, "1970-01-01 00:00:00"), date_computed=convert(datetime, "1970-01-01 00:00:00") from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.9&sim=cosine/cluster ;
+query select *, date_created=convert(datetime, "1970-01-01 00:00:00"), date_computed=convert(datetime, "1970-01-01 00:00:00") from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.9&sim=cosine/search ;
+
+# Test cluster.
+query select k1_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/cluster ;
+query select k2_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=cosine/cluster ;
+query select k3_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/cluster ;
+query select k4_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=cosine/cluster ;
+
+# Drop caches and retest clustering.
+exec /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/cluster "cache" "drop_all"
+query select k1_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/cluster ;
+query select k2_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=cosine/cluster ;
+query select k3_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/cluster ;
+query select k4_items=:items from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=cosine/cluster ;
+
+# Test searching.
+query select k1_key1 = :key1, k1_key2 = :key2, k1_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/search ;
+query select k2_key1 = :key1, k2_key2 = :key2, k2_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=cosine/search ;
+query select k3_key1 = :key1, k3_key2 = :key2, k3_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=cosine/search ;
+query select k4_key1 = :key1, k4_key2 = :key2, k4_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=cosine/search ;
+query select slide_key1 = :key1, slide_key2 = :key2, slide_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=sliding-window&k=4&threshold=0.75&sim=cosine/search ;
+
+# Test searching with Levenshtein.
+query select k1_key1 = :key1, k1_key2 = :key2, k1_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=levenshtein/search ;
+query select k2_key1 = :key1, k2_key2 = :key2, k2_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=2&threshold=0.75&sim=levenshtein/search ;
+query select k3_key1 = :key1, k3_key2 = :key2, k3_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=3&threshold=0.75&sim=levenshtein/search ;
+query select k4_key1 = :key1, k4_key2 = :key2, k4_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=k-means&k=4&threshold=0.75&sim=levenshtein/search ;
+query select slide_key1 = :key1, slide_key2 = :key2, slide_sim = :sim from /tests/test_objdrv_cluster_00.cluster?algorithm=sliding-window&k=4&threshold=0.75&sim=levenshtein/search ;
+
+# Test the default attribute list for clusters
+query select *, date_created=convert(datetime, "1970-01-01 00:00:00"), date_computed=convert(datetime, "1970-01-01 00:00:00") from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/cluster ;
+query select *, date_created=convert(datetime, "1970-01-01 00:00:00"), date_computed=convert(datetime, "1970-01-01 00:00:00") from /tests/test_objdrv_cluster_00.cluster?algorithm=none&k=1&threshold=0.75&sim=cosine/search ;
