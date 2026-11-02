@@ -35,7 +35,7 @@ test(char** tname)
 
 	*tname = "mtlexer-25 OFFSET test (LINEONLY + NODISCARD)";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	/** Open file for initial parsing. **/
 	fd = fdOpen("tests/test_mtlexer_25.txt", O_RDONLY, 0600);
