@@ -873,7 +873,7 @@ prtWriteTab(int handle_id)
     }
 
 
-/*** prtWriteFF - write a forms feed into the document, usually into a text
+/*** prtWriteFF - write a form feed into the document, usually into a text
  *** area of some sort.  This basically causes a page break operation to occur.
  ***/
 int

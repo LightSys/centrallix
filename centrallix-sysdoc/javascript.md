@@ -22,14 +22,14 @@ See `serverside_html_generation.md` for more information on how the server side 
   - [Widget Initializers](#widget-initializers)
 
 ## The Async Hack
-Note that centrallix was origionally made for NetscapeNavigator 4 which did not support AJAX using xmlhttprequest. Thus, a hack was devised and much of the system is now based upon it. The hack works as follows: on the client side, a new iframe (or 'layer' if NS4 is the navigator) is generated which sends a request to the server. The server looks at the request, generates requested information, and returns it as normal. Note that everything HTML-related will be a full-fledged HTML page, so the client then has to take the desired parts out of the iframe and insert it into the main page where required.
+Note that centrallix was originally made for NetscapeNavigator 4 which did not support AJAX using xmlhttprequest. Thus, a hack was devised and much of the system is now based upon it. The hack works as follows: on the client side, a new iframe (or 'layer' if NS4 is the navigator) is generated which sends a request to the server. The server looks at the request, generates requested information, and returns it as normal. Note that everything HTML-related will be a full-fledged HTML page, so the client then has to take the desired parts out of the iframe and insert it into the main page where required.
 
 **Note**: In NS4, a 'layer' element could serve the purposes of both a div and an iframe so the term 'layer' is seen a lot in the code. This documentation uses the terms iframe and layer interchangeably, even though the code will use layers for NS4 navigators and iframes elsewhere.
 
 Much of the async request management is defined in `htdrv_page.js`.
 
 ## Client Interface Model
-For example, say there is some javscript class C. One might expect the initializer for such a class to look something like the following:
+For example, say there is some javascript class C. One might expect the initializer for such a class to look something like the following:
 
 ```js
 function C_init(params)
@@ -46,7 +46,7 @@ function C_init(params)
 
 However, Centrallix uses an alternative method called the *Client Interface model*, which makes use of the ClientInterface constructor.
 
-Instead of ever directly accesing or using methods or members, Centrallix creates a "Client Interface" instance which contains wrappers to use said methods or members. All methods in class instances can be accessed indirectly via these client interfaces.
+Instead of ever directly accessing or using methods or members, Centrallix creates a "Client Interface" instance which contains wrappers to use said methods or members. All methods in class instances can be accessed indirectly via these client interfaces.
 
 The point of a Client Interface essentially seems to be to "bind" the methods to the object instance. "Binding" can be simply done by using [Prototype's 'bind' function](http://prototypejs.org/doc/latest/language/Function/prototype/bind) which binds a provided context to a given function. When the returned function is called, its context (aka. the `this` pointer) will be the provided context. Thus, the Client Interface model essentially "implements" the class methods so that each instance's methods apply only to the instance itself.
 
@@ -59,7 +59,7 @@ A Client Interface instance will contain the following:
 
 * a container of all "want-to-be-bounded" methods/members
 
-* a slew of wrapper functions wich interact with methods/members
+* a slew of wrapper functions which interact with methods/members
     inside the container (including wrappers which will first add
     methods/members individually to the container)
 
@@ -144,4 +144,4 @@ This is an example of an instance using the Client Interface approach:
 
 ## Widget Initializers
 
-All widget initializers are ment to be applied directly to the appropriate DOM element.
+All widget initializers are meant to be applied directly to the appropriate DOM element.

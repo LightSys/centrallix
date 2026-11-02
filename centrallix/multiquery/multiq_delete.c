@@ -199,7 +199,7 @@ mqd_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     }
 
 
-/*** mqdStart - for a delete query, much as for a insert query, we will
+/*** mqdStart - for a delete query, much as for an insert query, we will
  *** run the entire operation within mqdStart() and return no rows for
  *** mqdNextItem.
  ***/

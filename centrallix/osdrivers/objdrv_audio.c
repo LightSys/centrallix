@@ -86,7 +86,7 @@ struct
     AUD_INF;
 
 
-/*** audOpen - open a new report for report generation.
+/*** audOpen - open a new audio object for playback.
  ***/
 void*
 audOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* oxt)
@@ -196,8 +196,7 @@ audDelete(pObject obj, pObjTrxTree* oxt)
     }
 
 
-/*** audRead - Attempt to read from the report generator thread, and start
- *** that thread if it hasn't been started yet...
+/*** audRead - Reading from an audio object is not supported yet.  Fails.
  ***/
 int
 audRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -208,7 +207,7 @@ audRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     }
 
 
-/*** audWrite - This fails for reports.
+/*** audWrite - This fails for audio objects.
  ***/
 int
 audWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
@@ -389,7 +388,7 @@ audSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	        strcpy(strrchr(inf->Pathname,'/')+1,val->String);
 	        if (rename(inf->Obj->Pathname->Pathbuf, inf->Pathname) < 0) 
 		    {
-		    mssErrorErrno(1,"AUD","SetAttr 'name': could not rename report node object");
+		    mssErrorErrno(1,"AUD","SetAttr 'name': could not rename audio node object");
 		    return -1;
 		    }
 	        strcpy(inf->Obj->Pathname->Pathbuf, inf->Pathname);
@@ -452,7 +451,7 @@ audOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree *oxt)
     }
 
 
-/*** audGetFirstMethod -- no methods.  Fails.
+/*** audGetFirstMethod -- return the name of the first method, "Play".
  ***/
 char*
 audGetFirstMethod(void* inf_v, pObjTrxTree *oxt)
@@ -463,7 +462,7 @@ audGetFirstMethod(void* inf_v, pObjTrxTree *oxt)
     }
 
 
-/*** audGetNextMethod -- no methods here.  Fails.
+/*** audGetNextMethod -- only one method (Play), returns NULL to end the list.
  ***/
 char*
 audGetNextMethod(void* inf_v, pObjTrxTree *oxt)
@@ -662,4 +661,3 @@ audInitialize()
 
     return 0;
     }
-

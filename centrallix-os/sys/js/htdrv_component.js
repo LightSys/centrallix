@@ -21,7 +21,7 @@
   will then be moved out of the layer/iframe into the main page as its
   own tree so that the componentdecl widget is actually not ever
   nested in the main widget tree. This is done so that there is no
-  scope clobbering (ie, so that there are no overshadowing of widget
+  scope clobbering (ie, so that there is no overshadowing of widget
   names inside the main widget tree).
  */
 

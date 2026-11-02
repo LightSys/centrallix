@@ -1906,7 +1906,7 @@ dat_csv_GenerateText(pDatNode node, int colid, pObjData val, unsigned char* buf,
     }
 
 
-/*** dat_csv_UpdateRowBuf - update the RowBuf in the row's inf structure to reflect
+/*** dat_internal_UpdateRowBuf - update the RowBuf in the row's inf structure to reflect
  *** a modified property.
  ***/
 int
@@ -3573,7 +3573,7 @@ datAddAttr(void* inf_v, char* attrname, int type, pObjData *val, pObjTrxTree* ox
 
 
 /*** datOpenAttr - open an attribute as if it were an object with 
- *** content.  The Sybase database objects don't yet have attributes that are
+ *** content.  The datafile objects don't yet have attributes that are
  *** suitable for this.
  ***/
 void*
@@ -3610,7 +3610,7 @@ datExecuteMethod(void* inf_v, char* methodname, void* param, pObjTrxTree* oxt)
     }
 
 /*** datPresentationHints - return a presentation-hints structure
- *** dcontaining information about a particular attribute.
+ *** containing information about a particular attribute.
  ***
  *** LME-NOTE:  There must be a better way to do this than two
  ***            nested loops, but this was the only way I could
@@ -3755,13 +3755,13 @@ datInitialize()
     return 0;
     }
 
-/*** datFillTdata - Attemtps to fill in Tdata without  
+/*** dat_internal_FillTdata - Attempts to fill in Tdata without  
  *** a spec file to tell it how to do so
  ***/
 int
 dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
     {
-    /** Alloocate a new Table **/
+    /** Allocate a new Table **/
     if (!dn->TableInf)
 	{
 	dn->TableInf = (pDatTableInf)nmMalloc(sizeof(DatTableInf));
@@ -3770,7 +3770,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 	dn->HeaderCols.ColBuf = NULL;
 	}
 
-    /** Declarations - TableInf had to be initiallized first **/
+    /** Declarations - TableInf had to be initialized first **/
     pDatTableInf tdata = dn->TableInf;
     tdata->ColBufSize = 0;
     int success = 1;
@@ -3931,7 +3931,7 @@ dat_internal_FillTdata(pDatNode dn, pObject obj, char* filename)
 
     for (i = 0; i < 256; i++)
 	{
-	/** Just Blank out the annoation **/
+	/** Just Blank out the annotation **/
 	tdata->Annotation[i] = '\0';
 	}
 

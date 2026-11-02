@@ -72,12 +72,12 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	if (wgtrGetPropertyValue(oc_node,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(oc_node,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
-	    mssError(1,"HTOC","Pane widget must have a 'width' property");
+	    mssError(1,"HTOC","ObjCanvas widget must have a 'width' property");
 	    goto err;
 	    }
 	if (wgtrGetPropertyValue(oc_node,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
-	    mssError(1,"HTOC","Pane widget must have a 'height' property");
+	    mssError(1,"HTOC","ObjCanvas widget must have a 'height' property");
 	    goto err;
 	    }
 

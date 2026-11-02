@@ -116,7 +116,7 @@ typedef struct _HQ
     pSemaphore	ControlLock;	/* sync access to the hashqueue */
     pXHQElement	NextItem;	/* for getfirst/getnext */
     int		(*DiscardFn)();	/* function called on discard of element */
-    int		(*FullFn)();	/* function called on discard of element */
+    int		(*FullFn)();	/* function called when queue is full */
     }
     XHashQueue, *pXHashQueue;
 

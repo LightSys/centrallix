@@ -32,7 +32,7 @@
 #include "wgtr.h"
 
 
-/*** wgtformVerify - allows the driver to check elsewhere in the tree
+/*** wgtrptVerify - allows the driver to check elsewhere in the tree
  *** to make sure that the conditions it requires for proper functioning
  *** are present - checking for other widgets that might be necessary,
  *** checking interface versions on widgets to be interacted with, etc.
@@ -44,7 +44,7 @@ wgtrptVerify(pWgtrVerifySession s)
     }
 
 
-/*** wgtformNew - after a node has been filled out with initial values,
+/*** wgtrptNew - after a node has been filled out with initial values,
  *** the driver uses this function to take care of any other initialization
  *** that needs to be done on a per-node basis. By far the most important
  *** is declaring interfaces.

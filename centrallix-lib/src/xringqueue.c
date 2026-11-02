@@ -63,7 +63,7 @@ xrqDeInit(pXRingQueue this)
 
 
 /*** xrqEnqueue - adds an item to the end of an xringqueue structure's queue
- *** listing.  Returns the 0 on success, or -1 on failure.
+ *** listing.  Returns 0 on success, or -1 on failure.
  ***/
 int
 xrqEnqueue(pXRingQueue this, void* item)
@@ -83,7 +83,7 @@ xrqEnqueue(pXRingQueue this, void* item)
 		/** move the data up to its new location **/
 		memcpy(ptr+this->nAlloc,ptr,(this->nextIn)*sizeof(void*));
 
-		/** zero out it's old location to be safe **/
+		/** zero out its old location to be safe **/
 		cxsecShred(ptr,sizeof(void*)*this->nextIn);
 
 		/** update the location of nextIn **/
@@ -103,7 +103,8 @@ xrqEnqueue(pXRingQueue this, void* item)
     }
 
 
-/*** xrqGetItem - lookup an item by its index, and return the item itself
+/*** xrqDequeue - remove the oldest item from the queue, and return the item
+ *** itself.  Returns NULL if the queue is empty.
  ***/
 void* 
 xrqDequeue(pXRingQueue this)

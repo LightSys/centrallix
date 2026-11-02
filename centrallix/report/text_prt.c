@@ -57,7 +57,7 @@ typedef struct
     Session, *pSession;
 
 
-/*** txtOpen - open a new prpPrtSession ps, with the given FD as our 
+/*** txtOpen - open a new pPrtSession ps, with the given FD as our 
  *** output stream.  Output can be to file, to pipe, etc.  We can
  *** even output to a pipe that is being read as input by another
  *** thread, because of MTASK's i/o scheduling.
@@ -224,7 +224,7 @@ txtAlign(pPrtSession ps, double x)
     }
 
 
-/*** txtWriteText - write some text onto the output. 
+/*** txtWriteString - write some text onto the output. 
  ***/
 int
 txtWriteString(pPrtSession ps, char* text, int cnt)

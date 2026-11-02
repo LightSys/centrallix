@@ -563,7 +563,7 @@ wgtr_internal_GetTypeAndName(pObject obj, char* name, size_t name_len, char* typ
 
 
 /*** wgtr_internal_LoadAttrs - load in the attributes for the widget, and
- *** apply an templates that match the widget.
+ *** apply any templates that match the widget.
  ***/
 pWgtrNode
 wgtr_internal_LoadAttrs(pObject obj, char* name, char* type, pWgtrNode templates[], pWgtrNode root, int xoffset, int yoffset, pWgtrClientInfo client_info, pStruct client_params)
@@ -1729,7 +1729,7 @@ wgtr_internal_GetString(pWgtrNode wgt, char* attrname)
     }
 
 
-/** shamelessly copied from utulities/hints.c, with some modifications **/
+/** shamelessly copied from utility/hints.c, with some modifications **/
 
 extern int hnt_internal_SetStyleItem(pObjPresentationHints ph, char* style);
 
@@ -1785,7 +1785,7 @@ wgtrWgtToHints(pWgtrNode widget)
 		    xaAddItem(&(ph->EnumList), nmSysStrdup(od.String));
 		    break;
 		default:
-		    mssError(1, "WGTR", "Couldn't convert widget to Hitns structure: Invalid type for enumlist!");
+		    mssError(1, "WGTR", "Couldn't convert widget to Hints structure: Invalid type for enumlist!");
 		    objFreeHints(ph);
 		    return NULL;
 		}

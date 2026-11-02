@@ -53,6 +53,6 @@ doTest(void)
 long long
 test(char** tname)
     {
-    *tname = "util-01 convertion from strings to unsigned integers";
+    *tname = "util-01 conversion from strings to unsigned integers";
     return loopTest(doTest) * (2*RANGE+2);
     }

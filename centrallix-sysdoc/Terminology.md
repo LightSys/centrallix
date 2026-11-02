@@ -7,7 +7,7 @@ Date:      July 3rd, 2001
 License:   Copyright (C) 2001 LightSys Technology Services.  See LICENSE.txt.
 
 ## Overview
-Centrallix is a fairly innovative system, and as such it uses some fairly strange terminology.  This document seeks to explain some of that term- inology as well as some of Centrallix's internal conventions in order to introduce you to the system if you haven't programmed with (or for) it before.
+Centrallix is a fairly innovative system, and as such it uses some fairly strange terminology.  This document seeks to explain some of that terminology as well as some of Centrallix's internal conventions in order to introduce you to the system if you haven't programmed with (or for) it before.
 
 ## Table of Contents
 - [Centrallix System Terminology](#centrallix-system-terminology)
@@ -31,7 +31,7 @@ Centrallix is a fairly innovative system, and as such it uses some fairly strang
 ## Terms and Definitions
 
 ### "Centrallix"
-Represents the idea that the Centrallix application server, when deployed, operates in a very Central capacity in a web-based data management/processing environment.  It also is based on the self- similarity attribute of fractals, conceptually speaking, in reference to Centrallix's ability to embed objects within each other to the nth degree and retain those objects' meaning and detail.
+Represents the idea that the Centrallix application server, when deployed, operates in a very Central capacity in a web-based data management/processing environment.  It also is based on the self-similarity attribute of fractals, conceptually speaking, in reference to Centrallix's ability to embed objects within each other to the nth degree and retain those objects' meaning and detail.
 
 ### "Inner Type"
 An Object's inner type is its content type.  It describes what the object contains.  Some objects, such as filesystem directories, have a "system/void" content type, which means no content whatsoever.
@@ -44,7 +44,7 @@ The MultiQuery module is Centrallix's SQL query engine.  The OSML by itself only
 
 Thus, the MultiQuery module takes a SQL textual query and then uses the OSML to gather the data needed to generate the query results.  The returned results are returned through the normal OSML "fetch" routine, and their attributes obtained through "getattr".
 
-Currently, the MultiQuery module supports joins (and outer joins), group-by and aggregates, sorting, selection, constant and computed fields, and projection (using only certain attributes from the under- lying objects).  It can join objects of very different types, such as joining a UNIX directory with the UNIX /etc/passwd database in order to provide a meaningful directory listing with the owners' real names.
+Currently, the MultiQuery module supports joins (and outer joins), group-by and aggregates, sorting, selection, constant and computed fields, and projection (using only certain attributes from the underlying objects).  It can join objects of very different types, such as joining a UNIX directory with the UNIX /etc/passwd database in order to provide a meaningful directory listing with the owners' real names.
 
 ### "Node Object"
 A Node Object is an object whose content type is such that the content can be further analyzed and broken down into more meaningful objects by another ObjectSystem driver.  It is analogous to a mount point in the UN*X/Linux world.
@@ -66,12 +66,12 @@ A strange thing takes place at a node object: the object's original outer type d
 ```
 /					[ROOT rootnode pseudo-driver]
 /data/datareport.rpt			[UXD filesystem driver]
-        datareport.rpt			[DAT datafile driver]
+        datareport.rpt			[RPT report driver]
 ```
 
-In this case, the familiar-by-now rootnode is still there.  The UXD driver handles the path to get to the .rpt file.  Then, the RPT driver takes over - but it doesn't go any further in the path!  OSDs don't necessarily have to.  Instead, the "system/report" inner type then becomes an outer type according to the DAT driver, and the new inner type is normally "text/html", since the report writer by default generates HTML reports.
+In this case, the familiar-by-now rootnode is still there.  The UXD driver handles the path to get to the .rpt file.  Then, the RPT driver takes over - but it doesn't go any further in the path!  OSDs don't necessarily have to.  Instead, the "system/report" inner type then becomes an outer type according to the RPT driver, and the new inner type is normally "text/html", since the report writer by default generates HTML reports.
 
-Essentially, the ObjectSystem is three-dimensional instead of two- dimensional.  For a developer, it will take a little bit of getting used to.... :)  But, end-users will only need to know the location (i.e., the URL) to run an application or report!
+Essentially, the ObjectSystem is three-dimensional instead of two-dimensional.  For a developer, it will take a little bit of getting used to.... :)  But, end-users will only need to know the location (i.e., the URL) to run an application or report!
 
 ### "Object"
 A Centrallix object is an abstract entity consisting of several possible components:
@@ -111,7 +111,7 @@ The OSML also provides simple transaction services, via the OXT layer.
 An object's object type.  This is the type of the object as a "container" - that is, as opposed to what the object "contains".  Outer types include files, database rows, directories, POP3 mailboxes, and such, whereas inner types (content types) include HTML, CSV data, C language code, Text, and so forth.
 
 ### "OXT"
-OXT stands for "ObjectSystem Transaction Tree", and is a simple trans- action layer for the ObjectSystem.  Some commonplace ObjectSystem operations can simply not be performed outside of the context of a transaction.  For instance, the creation of a database row object requires 1) create the row, 2) set each of the attributes, and 3) close the row object.  These three-plus operations must be combined together in a form of a transaction.  Some OSD's, therefore, request OXT support from the OSML, and the OSML essentially allows the operations to be batched until the application commits the operation by closing the object.  The OSD then can take the create and various setattr operations and execute them, creating the database row object.
+OXT stands for "ObjectSystem Transaction Tree", and is a simple transaction layer for the ObjectSystem.  Some commonplace ObjectSystem operations can simply not be performed outside of the context of a transaction.  For instance, the creation of a database row object requires 1) create the row, 2) set each of the attributes, and 3) close the row object.  These three-plus operations must be combined together in a form of a transaction.  Some OSD's, therefore, request OXT support from the OSML, and the OSML essentially allows the operations to be batched until the application commits the operation by closing the object.  The OSD then can take the create and various setattr operations and execute them, creating the database row object.
 
 ### "Rootnode"
 The rootnode is a node object that bootstraps the Centrallix server and anchors the ObjectSystem's root.  The rootnode's configuration is somewhat special because it won't be found in the ObjectSystem itself like other node objects.  Instead, that configuration is in a predictable location (/usr/local/etc/rootnode).

@@ -75,7 +75,7 @@ htimgSetup(pHtSession s)
     }
 
 
-/*** htimgRender - generate the HTML code for the label widget.
+/*** htimgRender - generate the HTML code for the image widget.
  ***/
 int
 htimgRender(pHtSession s, pWgtrNode tree, int z)

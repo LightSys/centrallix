@@ -243,7 +243,7 @@ function map_refresh() {
     }
   });
 
-  //changes curose when it is on marker
+  //changes cursor when it is on marker
   this.map.on("pointermove", e => {
     // if (e.dragging) {
     //   $(element).popover("dispose");
@@ -285,7 +285,7 @@ function map_add_osrc_object(o, id) {
 
   oneMarker.unique_id = id;
 
-  // maker styling
+  // marker styling
   oneMarker.setStyle(
     new ol.style.Style({
       image: new ol.style.Icon({
@@ -300,13 +300,13 @@ function map_add_osrc_object(o, id) {
     features: [oneMarker]
   });
 
-  // adds vectore source containing marker to vector layer
+  // adds vector source containing marker to vector layer
   var oneMarkerVectorLayer = new ol.layer.Vector({
     source: vectorSource,
     name: "Marker"
   });
 
-  //adds maker to map layer and focuses view
+  //adds marker to map layer and focuses view
   this.map.addLayer(oneMarkerVectorLayer);
   this.map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
   this.map.getView().setZoom(4);

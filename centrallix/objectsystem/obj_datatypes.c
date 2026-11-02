@@ -44,13 +44,13 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	obj_datatype.c    					*/
+/* Module: 	obj_datatypes.c    					*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	April 29, 1999  					*/
 /* Description:	Implements the ObjectSystem part of the Centrallix.    */
 /*		The various obj_*.c files implement the various parts of*/
 /*		the ObjectSystem interface.				*/
-/*		==> obj_datatype.c implements a unified interface to	*/
+/*		==> obj_datatypes.c implements a unified interface to	*/
 /*		some commonly-needed datatype functions.		*/
 /************************************************************************/
 
@@ -2571,7 +2571,7 @@ obj_internal_BuildBinaryItem(char** item, int* itemlen, pExpression exp, pParamO
 		break;
 
 	    case DATA_T_DOUBLE:
-		/** IEEE double.  sign is most-sig, then 11 bit exponent, then 24 bit mantissa.
+		/** IEEE double.  sign is most-sig, then 11 bit exponent, then 52 bit mantissa.
 		 ** for negatives, we need to invert the whole thing to force sorting in the
 		 ** opposite direction.  Note - little endianness affects doubles too.
 		 **/

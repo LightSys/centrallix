@@ -25,15 +25,15 @@ please note, if a better model is proposed, use it instead.
 
 4) On server, when the URI is "/INTERNAL/cache/#" (where # is some number), then the cached value needs to be used
 
-    This is NOT implemented at time of writing. Right now, the issue is that a restructering of control flow needs to prevent the normal calls to OSML (since "/INTERNAL/cache" is not a real item), but still:
+    This is NOT implemented at time of writing. Right now, the issue is that a restructuring of control flow needs to prevent the normal calls to OSML (since "/INTERNAL/cache" is not a real item), but still:
 
     - go through nhtRenderApp (which DOES currently select the right cached app)
 
     - go through wgtrVerify (which has the apos unit)
 
-5) Right before entering the apos unit, the server must look at information encoded into cx__resize param and use that information to find the appropriate height/width paramaters and change them.
+5) Right before entering the apos unit, the server must look at information encoded into cx__resize param and use that information to find the appropriate height/width parameters and change them.
 
-    Right now, there is no poposed method of encoding the needed information.
+    Right now, there is no proposed method of encoding the needed information.
 
 6) htrRender must respond to the cx__onlyPositioning parameter by only running the logic which generates the CSS information.
 
@@ -41,4 +41,4 @@ please note, if a better model is proposed, use it instead.
 
 7) htrRender must respond to the cx__root parameter by starting the HTML generation at specified root.
 
-8)  When client recieves response, apply CSS.
+8)  When client receives response, apply CSS.

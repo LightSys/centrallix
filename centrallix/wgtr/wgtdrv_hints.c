@@ -59,7 +59,7 @@ wgthintNew(pWgtrNode node)
 int
 wgthintInitialize()
     {
-    char* name = "Presentatin Hints pseudo-widget Driver";
+    char* name = "Presentation Hints pseudo-widget Driver";
 
 	wgtrRegisterDriver(name, wgthintVerify, wgthintNew);
 	wgtrAddType(name, "hints");

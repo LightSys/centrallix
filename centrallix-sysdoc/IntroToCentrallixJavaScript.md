@@ -19,15 +19,15 @@ Date: August 2002
   - [V Centrallix Tools](#v-centrallix-tools)
     - [A. xstring](#a-xstring)
   - [VI Debugging Tips](#vi-debugging-tips)
-    - [A. alert("You message goes here");](#a-alertyou-message-goes-here)
+    - [A. alert("Your message goes here");](#a-alertyour-message-goes-here)
     - [B. javascript:](#b-javascript)
     - [C. TreeView in DOMViewer mode (only for debugging properties and such)](#c-treeview-in-domviewer-mode-only-for-debugging-properties-and-such)
 
 ## I Introduction
-This document is just a little documentation on basic javascript code & centrallix. This is just to give a newbie some hints and a little bit of direction. I'm still getting use to JavaScript and Centrallix myself... so if you see anything wrong, please correct it. And if you can think of anything that would be usefull or helpful in any way, please add it.
+This document is just a little documentation on basic javascript code & centrallix. This is just to give a newbie some hints and a little bit of direction. I'm still getting used to JavaScript and Centrallix myself... so if you see anything wrong, please correct it. And if you can think of anything that would be useful or helpful in any way, please add it.
 
 ## II Abbreviations
-Each module will have different and specific abbreviations to it's own module and needs.  Here is a list of some abbreviations to help get you started. Once you start to dive into the code, you will start to recognize what the letters stand for. One way to learn the abbreviations of a specific module is to look at that module's init function in the js files (sometimes the init function lists out common abbreviations to that module). This list is not all-inclusive, it's just to help get you started and get you into the centrallix widget mind frame.  Also, not all modules use the same abbreviations (sorry there are different developers and different needs working for each module). 
+Each module will have different and specific abbreviations to its own module and needs.  Here is a list of some abbreviations to help get you started. Once you start to dive into the code, you will start to recognize what the letters stand for. One way to learn the abbreviations of a specific module is to look at that module's init function in the js files (sometimes the init function lists out common abbreviations to that module). This list is not all-inclusive, it's just to help get you started and get you into the centrallix widget mind frame.  Also, not all modules use the same abbreviations (sorry there are different developers and different needs working for each module). 
 
 ### A. One letter abbreviations
 - a - area
@@ -158,11 +158,11 @@ Each module will have different and specific abbreviations to it's own module an
 ## III Common Layer Attributes
 In Netscape's implementation of Javascript, different objects are passed to the event handler in different ways.  The Event object in Javascript contains a property called "target" that is the target object that the current event was executed on.  For instance, if one were to do a MOUSEDOWN event on an image, Event.target (or more commonly referred to as e.target) would contain a reference to the Image object of that specific image. However, if a MOUSEDOWN event is triggered on a layer, e.target will contain a reference to the layer's document property (l.document).
 
-This is not what we want, because most properties and attributes for layers and objects are set on the base of that object.  It would not be good to stick all properties on l.document.  To solve this inconsistancy and to standardize the events a little bit, we have created three attributes that should be on all visible objects.
+This is not what we want, because most properties and attributes for layers and objects are set on the base of that object.  It would not be good to stick all properties on l.document.  To solve this inconsistency and to standardize the events a little bit, we have created three attributes that should be on all visible objects.
 
 | Attribute   | Description
 | ----------- | ------------
-| layer       | A reference to the containing layer of the current object. This is used to get access to all the attributes and the base object that an event occured on.
+| layer       | A reference to the containing layer of the current object. This is used to get access to all the attributes and the base object that an event occurred on.
 | mainlayer   | A reference to the base layer for a widget.  This is used so that we can reference a widget as a whole.  It is used in the page area functions to know what layer to draw the black box around.
 | kind        | This is a tag used in the event handlers to check if a specific event is targeted at a specific widget.  This is explained in greater detail below.
 
@@ -217,11 +217,11 @@ As you can see, ly is then what we will use to reference the layer that an objec
 
 ### A. xstring
 
-There is a good explanation about the XString module in the OSDriver_Authoring.txt document in the centrallix-sysdoc directory under CVS. This is very helpful for building argument lists in c code to create javascript function calls.
+There is a good explanation about the XString module in the OSDriver_Authoring.md document in the centrallix-sysdoc directory under CVS. This is very helpful for building argument lists in c code to create javascript function calls.
 
 ## VI Debugging Tips
 
-### A. alert("You message goes here");
+### A. alert("Your message goes here");
 The alert method pops up a dialog box to display the specified message. Remember that if you are using c to create javascript code that you have to escape the quotes:
 
 `    htrAddScript(s,alert(\"Your message goes here\");\n`

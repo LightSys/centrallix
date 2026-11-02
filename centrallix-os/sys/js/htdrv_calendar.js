@@ -284,7 +284,7 @@ function ca_cb_data_available()
 
 // This is called when objects we requested are actually now available from the
 // osrc - which basically means the object focus changed from one to another.
-// (request is ususally getfirst/getnext).
+// (request is usually getfirst/getnext).
 function ca_cb_object_available(obj)
     {
     if (!this.init) pg_addsched("Redraw()",this, 0);

@@ -106,7 +106,7 @@ function form_cb_getvalue(v)
     return dv;
     }
 
-/** A child 'control' has changed it's data **/
+/** A child 'control' has changed its data **/
 function form_cb_data_notify(control, user_modify)
     {
     control._form_IsChanged=true;
@@ -1117,7 +1117,7 @@ function form_enable_modify_all()
 	}
     }
 
-/** Enables all children (for modify) **/
+/** Enables all children (for new) **/
 function form_enable_new_all()
     {
     this.is_enabled = true;
@@ -1171,7 +1171,7 @@ function form_action_queryexec()
     {
     if(!htr_boolean(wgtrGetServerProperty(this,'allow_query',1))) {alert('Query not allowed');return 0;}
     if(!(this.mode=='Query')) {alert("You can't execute a query if you're not in Query mode.");return 0;}
-/** build an query object to give the osrc **/
+/** build a query object to give the osrc **/
     var query=new Array();
     query.oid=null;
     query.joinstring='AND';
@@ -1738,7 +1738,7 @@ function form_init(form,param)
     form.EscNotify = form_cb_esc_notify;
     form.RetNotify = form_cb_ret_notify;
     form.IsQueryMode = form_cb_is_query_mode;
-/** noone else should call these.... **/
+/** no one else should call these.... **/
     form.ClearAll = form_clear_all;
     form.DisableAll = form_disable_all;
     form.EnableModifyAll = form_enable_modify_all;

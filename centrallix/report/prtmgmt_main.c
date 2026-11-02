@@ -299,7 +299,7 @@ prt_internal_CopyStream(pPrtObjStream stream, pPrtObjStream new_parent, pPrtObjS
 
 
 /*** prt_internal_CopyStyle - copies style information from one element to
- *** another (usually becaue the latter is going to be appended onto the
+ *** another (usually because the latter is going to be appended onto the
  *** objstream), including setting the RelativeX and RelativeY.
  ***/
 int

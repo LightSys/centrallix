@@ -410,7 +410,7 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
     }
 
 
-/*** expGenerateText_js - converts an expression tree into JavaScript format
+/*** exp_internal_GenerateText_js - converts an expression tree into JavaScript format
  *** for eventual embedding in a DHTML page.
  ***
  *** Note that the following support functions are *required* for these expressions

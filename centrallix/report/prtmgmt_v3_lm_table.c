@@ -189,7 +189,7 @@ prt_tablm_Break(pPrtObjStream this, pPrtObjStream *new_this)
 		    }
 		if (cur_parent->LayoutMgr->ChildBreakReq(cur_parent, this, &new_parent) < 0)
 		    {
-		    /** Row won't break, so neither will the cell. **/
+		    /** Parent won't break, so neither will the table. **/
 		    prtUpdateHandleByPtr(new_obj, this);
 		    prt_internal_FreeTree(new_obj);
 		    return -1;
@@ -1513,7 +1513,7 @@ prt_tablm_Finalize(pPrtObjStream this)
     }
 
 
-/*** prt_tablm_Initialize() - initialize the textflow layout manager and
+/*** prt_tablm_Initialize() - initialize the tabular layout manager and
  *** register with the print management subsystem.
  ***/
 int

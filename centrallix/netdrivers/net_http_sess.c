@@ -617,7 +617,7 @@ nht_i_WTimeoutAppGroup(void* group_v)
     {
     pNhtAppGroup group = (pNhtAppGroup)group_v;
 
-	/** Free the App. **/
+	/** Free the app group. **/
 	nht_i_UnlinkAppGroup(group);
 
     return 0;
@@ -749,7 +749,7 @@ nht_i_AllocApp(char* path, pNhtAppGroup group)
     }
 
 
-/*** nht_i_LinkApp() - free and clean up an application structure
+/*** nht_i_LinkApp() - link to an application structure, increasing its link count
  ***/
 pNhtApp
 nht_i_LinkApp(pNhtApp app)
@@ -844,7 +844,8 @@ nht_i_AllocAppGroup(char* path, pNhtSessionData s)
     }
 
 
-/*** nht_i_LinkAppGroup() - free and clean up an application structure
+/*** nht_i_LinkAppGroup() - link to an application group structure,
+ *** increasing its link count
  ***/
 pNhtAppGroup
 nht_i_LinkAppGroup(pNhtAppGroup group)
@@ -856,7 +857,7 @@ nht_i_LinkAppGroup(pNhtAppGroup group)
     }
 
 
-/*** nht_i_UnlinkAppGroup() - free and clean up an application structure
+/*** nht_i_UnlinkAppGroup() - free and clean up an application group structure
  ***/
 int
 nht_i_UnlinkAppGroup(pNhtAppGroup group)

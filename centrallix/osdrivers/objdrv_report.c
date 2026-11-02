@@ -1014,7 +1014,7 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, pQueryC
 	    prtSetColumns(rs->PSession, oldcols, oldcolsep, 0);
 	    }
 
-	/** Reset columns? **/
+	/** Reset line spacing? **/
 	if (oldspacing != -1)
 	    {
 	    prtSetLineSpacing(rs->PSession, oldspacing);
@@ -2161,7 +2161,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
 	    {
 	    if (outer_mode)
 	        {
-		mssError(1,"RPT","relylimit can only be used on an non-outer form ('%s' is outer).", form->Name);
+		mssError(1,"RPT","relylimit can only be used on a non-outer form ('%s' is outer).", form->Name);
 		return -1;
 		}
 	    if (rulesep || ffsep)
@@ -2176,7 +2176,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs)
 	    {
 	    if (outer_mode)
 	        {
-		mssError(1,"RPT","reclimit can only be used on an non-outer form ('%s' is outer).", form->Name);
+		mssError(1,"RPT","reclimit can only be used on a non-outer form ('%s' is outer).", form->Name);
 		return -1;
 		}
 	    }
@@ -2982,7 +2982,7 @@ rpt_internal_Generator(void* v)
     }
 
 
-/*** rpt_internal_SpawnGenerator - this function opens up a socketpair, and
+/*** rpt_internal_StartGenerator - this function opens up a socketpair, and
  *** connects them to MTASK-enabled pFile's.  It then starts the report generator
  *** writing the report to the slave side of the socket pair, and whenever a
  *** read operation is done using objRead, the master side is read to obtain

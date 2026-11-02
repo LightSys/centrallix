@@ -527,7 +527,7 @@ qyDelete(pObject obj, pObjTrxTree* oxt)
     }
 
 
-/*** qyRead - Structure elements have no content.  Fails.
+/*** qyRead - read content from the underlying row object, if there is one.
  ***/
 int
 qyRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -537,7 +537,7 @@ qyRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree
     }
 
 
-/*** qyWrite - Again, no content.  This fails.
+/*** qyWrite - write content to the underlying row object, if there is one.
  ***/
 int
 qyWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
@@ -654,7 +654,7 @@ qyQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
-/*** qyGetAttrType - get the type (DATA_T_qy) of an attribute by name.
+/*** qyGetAttrType - get the type (DATA_T_xxx) of an attribute by name.
  ***/
 int
 qyGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)

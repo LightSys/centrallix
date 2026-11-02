@@ -48,7 +48,7 @@ static struct
     HTTERM;
 
 
-/*** httermRender - generate the HTML code for the form 'glue'
+/*** httermRender - generate the HTML code for the terminal widget
  ***/
 int
 httermRender(pHtSession s, pWgtrNode tree, int z)

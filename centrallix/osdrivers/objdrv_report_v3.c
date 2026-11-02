@@ -65,7 +65,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	objdrv_report.c         				*/
+/* Module: 	objdrv_report_v3.c      				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	March 12, 1999   					*/
 /* Description:	Report generator objectsystem driver.  This driver is	*/
@@ -650,7 +650,7 @@ rpt_internal_GetString(pRptData inf, pStructInf config, char* attr, char** val, 
     }
 
 
-/*** rpt_internal_GetInteger - get a string value.
+/*** rpt_internal_GetInteger - get an integer value.
  ***/
 int
 rpt_internal_GetInteger(pRptData inf, pStructInf config, char* attr, int* val, int def, int nval)
@@ -660,7 +660,7 @@ rpt_internal_GetInteger(pRptData inf, pStructInf config, char* attr, int* val, i
 	rval = rpt_internal_GetValue(inf, config, attr, DATA_T_INTEGER, POD(val), (def != RPT_INT_UNSPEC)?(POD(&def)):NULL, nval);
 	if (rval < 0 && def != RPT_INT_UNSPEC)
 	    {
-	    mssError(0,"RPT","Warning: invalid data for string '%s' on object '%s'; using default value.", attr, config->Name);
+	    mssError(0,"RPT","Warning: invalid data for integer '%s' on object '%s'; using default value.", attr, config->Name);
 	    *val = def;
 	    }
 
@@ -749,7 +749,7 @@ rpt_internal_EvalParam(pRptParam rptparam, pParamObjects objlist, pObjSession se
     }
 
 
-/*** rpt_internal_GetParamType - gets the value of a parameter
+/*** rpt_internal_GetParamType - gets the type of a parameter
  ***/
 int
 rpt_internal_GetParamType(pRptData inf, char* paramname, pParamObjects objlist, pObjSession sess)
@@ -760,7 +760,7 @@ rpt_internal_GetParamType(pRptData inf, char* paramname, pParamObjects objlist, 
 	if (!rptparam)
 	    return -1;
 
-	/** Evalute **/
+	/** Evaluate **/
 	rpt_internal_EvalParam(rptparam, objlist, sess);
 
     return paramGetType(rptparam->Param);
@@ -778,7 +778,7 @@ rpt_internal_GetParamValue(pRptData inf, char* paramname, int datatype, pObjData
 	if (!rptparam)
 	    return -1;
 
-	/** Evalute **/
+	/** Evaluate **/
 	rpt_internal_EvalParam(rptparam, objlist, sess);
 
     return paramGetValue(rptparam->Param, datatype, value);
@@ -2917,7 +2917,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	    {
 	    if (outer_mode)
 	        {
-		mssError(1,"RPT","relylimit can only be used on an non-outer form ('%s' is outer).", form->Name);
+		mssError(1,"RPT","relylimit can only be used on a non-outer form ('%s' is outer).", form->Name);
 		return -1;
 		}
 	    if (rulesep || ffsep)
@@ -2932,7 +2932,7 @@ rpt_internal_DoForm(pRptData inf, pStructInf form, pRptSession rs, int container
 	    {
 	    if (outer_mode)
 	        {
-		mssError(1,"RPT","reclimit can only be used on an non-outer form ('%s' is outer).", form->Name);
+		mssError(1,"RPT","reclimit can only be used on a non-outer form ('%s' is outer).", form->Name);
 		goto error;
 		}
 	    }
@@ -3344,7 +3344,7 @@ rpt_internal_GetValueStrings(pRptChartContext ctx, int startval, int n_vals, int
 	/** Format the label strings **/
 	for(i=startval; i<startval+n_vals; i++)
 	    {
-	    /** see if the serries is in the item. Skip if not. **/
+	    /** see if the series is in the item. Skip if not. **/
 	    indexSer = rpt_internal_FindSeries((pRptChartValues)ctx->values->Items[i], targetSer);
 	    if(indexSer == -1) continue; /* the series was missing from the value set */
 
@@ -4059,7 +4059,7 @@ rpt_internal_ReadAutoSeries(pRptChartContext ctx, pRptActiveQueries ac, pStructI
 	while(rval >= 0)
 	    {
 	    start = ptr;
-	    /** paletteBuf may contain a ',' seperated list of colors. Parse it **/
+	    /** paletteBuf may contain a ',' separated list of colors. Parse it **/
 	    while((end = strchr(start, ',')) != 0)
 		{
 		end[0] = '\0';
@@ -4464,7 +4464,7 @@ rpt_internal_DoChart(pRptData inf, pStructInf chart, pRptSession rs, int contain
 	    ctx->x_labels[i] = rpt_internal_ChartText(ctx, value->Label);
 	    if (!ctx->x_labels[i])
 		goto error;
-	    /* auto series can be sparsely pupolated and thus require initialization */
+	    /* auto series can be sparsely populated and thus require initialization */
 	    if(isAuto)
 		{
 		for(j=0; j < ctx->series->nItems; j++)
@@ -5150,7 +5150,7 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pRptSource th
 
 
 
-/*** rpt_internal_PreBuildExp - gets on individual expression during the pre-
+/*** rpt_internal_PreBuildExp - gets an individual expression during the pre-
  *** processing part of running a report.  Returns 0 on success and -1 on
  *** failure.  'obj' is the report attribute containing the expression, and
  *** is the object whose UserData part will be set up.  If the value of the
@@ -5801,7 +5801,7 @@ rpt_internal_Generator(void* v)
     }
 
 
-/*** rpt_internal_SpawnGenerator - this function opens up a socketpair, and
+/*** rpt_internal_StartGenerator - this function opens up a socketpair, and
  *** connects them to MTASK-enabled pFile's.  It then starts the report generator
  *** writing the report to the slave side of the socket pair, and whenever a
  *** read operation is done using objRead, the master side is read to obtain
@@ -5933,7 +5933,7 @@ rpt_internal_SetParamDefaults(pRptData inf)
 
 
 /*** rpt_internal_LoadParamsFromOpen - go through the OpenCtl params
- *** load them in.
+ *** and load them in.
  ***/
 int
 rpt_internal_LoadParamsFromOpen(pRptData inf, pStruct openctl)
@@ -6128,7 +6128,7 @@ rpt_internal_LoadParamsFromReport(pRptData inf)
 			rptparam->Flags |= (RPT_PARAM_F_IN | RPT_PARAM_F_OUT);
 		    else
 			{
-			mssError(1, "RPT", "Invalid direction '%s' for parameter '%s", dir, rptparam->Param->Name);
+			mssError(1, "RPT", "Invalid direction '%s' for parameter '%s'", dir, rptparam->Param->Name);
 			goto error;
 			}
 		    }

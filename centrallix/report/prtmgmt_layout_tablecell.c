@@ -59,8 +59,8 @@
  *** the table cell changes.  A cell is a direct container -- it can contain
  *** text directly.  
  ***
- *** Return = 0 if the height of the table row did NOT change, or
- ***          1 if the table row's height DID change.
+ *** Return = 0 if the height of the table cell did NOT change, or
+ ***          1 if the table cell's height DID change.
  ***/
 int
 prtTablecellContentChanged(pPrtSession s, pPrtObjStream os, pPrtObjStream changed)
@@ -82,7 +82,7 @@ prtTablecellContentChanged(pPrtSession s, pPrtObjStream os, pPrtObjStream change
     }
 
 
-/*** prtTablecellInit - driver API routine which initializes a table element
+/*** prtTablecellInit - driver API routine which initializes a table cell element
  ***/
 int
 prtTablecellInit(pPrtObjStream os)
@@ -92,8 +92,8 @@ prtTablecellInit(pPrtObjStream os)
     }
 
 
-/*** prtTablecellRelease - driver API routine which releases (oppposite of
- *** Init) a table element.  Doesn't actually free the element itself, that
+/*** prtTablecellRelease - driver API routine which releases (opposite of
+ *** Init) a table cell element.  Doesn't actually free the element itself, that
  *** is done by the print management module's routines.
  ***/
 int

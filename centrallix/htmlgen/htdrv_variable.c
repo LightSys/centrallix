@@ -70,7 +70,7 @@ htvblRender(pHtSession s, pWgtrNode tree, int z)
 	else
 	    form[0]='\0';
 
-	/** Value of label **/
+	/** Value of variable **/
 	int t = wgtrGetPropertyType(tree,"value");
 	if (t < 0 || t >= OBJ_TYPE_NAMES_CNT)
 	    {

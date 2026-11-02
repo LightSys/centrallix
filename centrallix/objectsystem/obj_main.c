@@ -494,7 +494,7 @@ objRegisterDriver(pObjDriver drv)
     }
 
 
-/*** objRegisterEventHandler - regsiter a new event handler routine.  This
+/*** objRegisterEventHandler - register a new event handler routine.  This
  *** associates the non-changeable EventClassCode with the changeable event
  *** handler function pointer.  Event handlers must register each time the
  *** system re-starts.

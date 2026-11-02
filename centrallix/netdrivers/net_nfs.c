@@ -178,13 +178,13 @@ int nnfs_internal_close_inode(fhandle fh, int flags);
 int nnfs_internal_close_all_inode(fhandle fh);
 fattr nnfs_internal_get_attributes(pObject, fhandle);
 
-/** typedef for the functions that impliment the individual RPC calls **/
+/** typedef for the functions that implement the individual RPC calls **/
 typedef void* (*rpc_func)(void*);
 
 /** structure to hold the parameter info for each function **/
 struct rpc_struct
     {
-    rpc_func func;	/** reference to the function that impliements this procedure **/
+    rpc_func func;	/** reference to the function that implements this procedure **/
     xdrproc_t ret;	/** the xdr_* function for the return value **/
     int ret_size;	/** the size of the return value (to be passed to nmMalloc()) **/
     xdrproc_t param;	/** the xdr_* function for the parameter **/
@@ -465,7 +465,7 @@ nnfs_internal_get_path(dirpath *path, const fhandle fh)
     }
 
 //'<,'>s/\(.*\)\* \(.*\)(\(.*\));/\1\* \2(\3 param)^M    {^M    \1\* retval = NULL;^M    retval = (\1\*)nmMalloc(sizeof(\1));^M\/** do work here **\/^M    ^M    return retval;^M    }^M
-/** the functions that impliement mount (made using the above vim command from the prototypes) **/
+/** the functions that implement mount (made using the above vim command from the prototypes) **/
 void* nnfs_internal_mountproc_null(void* param)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
@@ -489,7 +489,7 @@ fhstatus* nnfs_internal_mountproc_mnt(dirpath* param)
     memset(retval,0,sizeof(fhstatus));
 
     if(NNFS_DEBUG & NNFS_DEBUG_MOUNT)
-	printf("mount request recieved for: %s\n",*param);
+	printf("mount request received for: %s\n",*param);
     
     /** check the exportList **/
     for (i=0,f=0;i<xaCount(NNFS.exportList);i++)
@@ -602,7 +602,7 @@ exportlist* nnfs_internal_mountproc_export(void* param)
     return head;
     }
 
-/** the functions that impliment nfs **/
+/** the functions that implement nfs **/
 void* nnfs_internal_nfsproc_null(void* param)
     {
     CXSEC_ENTRY(NFS_FN_KEY);
@@ -1144,10 +1144,10 @@ readdirres* nnfs_internal_nfsproc_readdir(readdirargs* param)
     if(NNFS_DEBUG & NNFS_DEBUG_READDIR)
 	printf("got path: %s\n",currentPath);
 
-    /** partial directory listings not implimented **/
+    /** partial directory listings not implemented **/
     if(cookie!=0)
 	{
-	mssError(0,"NNFS","partial directory listings not implimented");
+	mssError(0,"NNFS","partial directory listings not implemented");
 	retval->status = NFSERR_NXIO;
 	CXSEC_EXIT(NFS_FN_KEY);
 	return retval;
@@ -1247,11 +1247,11 @@ statfsres* nnfs_internal_nfsproc_statfs(fhandle* param)
     /** return information on the file system referenced by the passed file handle **/
     /** since there's no real drive here, just return sensible fake values **/
     retval->status = NFS_OK;
-    retval->statfsres_u.info.tsize = 256; /* prefered transfer size */ /* small value for help with debugging */
+    retval->statfsres_u.info.tsize = 256; /* preferred transfer size */ /* small value for help with debugging */
     retval->statfsres_u.info.bsize = BLOCK_SIZE; /* block size */
     retval->statfsres_u.info.blocks = 1024; /* number of blocks on device */
     retval->statfsres_u.info.bfree = 1024; /* number of free blocks on device */
-    retval->statfsres_u.info.bavail = 1024; /* number of blocks available for non-priviledged users */
+    retval->statfsres_u.info.bavail = 1024; /* number of blocks available for non-privileged users */
 
     CXSEC_EXIT(NFS_FN_KEY);
     return retval;
@@ -1762,7 +1762,7 @@ nnfs_internal_nfs_listener(void* v)
 
 	    /** process packet **/
 	    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
-		printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
+		printf("%i bytes received from: %s:%i\n",i,remotehost,remoteport);
 	    if(NNFS_DEBUG & NNFS_DEBUG_RAW_DUMP)
 		nnfs_internal_dump_buffer(buf,i);
 	    xdrmem_create(&xdr_in,buf,i,XDR_DECODE);
@@ -1837,13 +1837,13 @@ nnfs_internal_nfs_listener(void* v)
 				    }
 				else
 				    {
-				    mssWarn("NNFS", "Bad mountd procedure requested: %lu.",(unsigned long)msg_in.rm_call.cb_proc);
+				    mssWarn("NNFS", "Bad NFS procedure requested: %lu.",(unsigned long)msg_in.rm_call.cb_proc);
 				    msg_out.rm_reply.rp_acpt.ar_stat = PROC_UNAVAIL;
 				    }
 				}
 			    else
 				{
-				mssWarn("NNFS", "Invalid mount version requested: %lu.",(unsigned long)msg_in.rm_call.cb_vers);
+				mssWarn("NNFS", "Invalid NFS version requested: %lu.",(unsigned long)msg_in.rm_call.cb_vers);
 				msg_out.rm_reply.rp_acpt.ar_stat = PROG_MISMATCH;
 				msg_out.rm_reply.rp_acpt.ar_vers.low = MOUNTVERS;
 				msg_out.rm_reply.rp_acpt.ar_vers.high = MOUNTVERS;
@@ -1867,7 +1867,7 @@ nnfs_internal_nfs_listener(void* v)
 		    {
 		    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
 			{
-			printf("recieved duplicate request: %i\n",entry->xid);
+			printf("received duplicate request: %i\n",entry->xid);
 			}
 		    }
 		if(wasError==1 && isDup==0)
@@ -1891,7 +1891,7 @@ nnfs_internal_nfs_listener(void* v)
 	    else if(msg_in.rm_direction==REPLY)
 		{
 		/** it's a reply message.... -- ignore it **/
-		mssWarn("NNFS", "reply message recieved, but we shouldn't get one.....");
+		mssWarn("NNFS", "reply message received, but we shouldn't get one.....");
 		}
 	    else
 		{
@@ -2032,7 +2032,7 @@ nnfs_internal_mount_listener(void* v)
 	    /** process packet **/
 
 	    if(NNFS_DEBUG & NNFS_DEBUG_LISTENER)
-		printf("%i bytes recieved from: %s:%i\n",i,remotehost,remoteport);
+		printf("%i bytes received from: %s:%i\n",i,remotehost,remoteport);
 	    xdrmem_create(&xdr_in,buf,i,XDR_DECODE);
 	    xdrmem_create(&xdr_out,outbuf,MAX_PACKET_SIZE,XDR_ENCODE);
 	    if(NNFS_DEBUG & NNFS_DEBUG_RAW_DUMP)
@@ -2116,7 +2116,7 @@ nnfs_internal_mount_listener(void* v)
 					    {
 					    int j;
 					    char *dir = *(char**)param;
-					    /** remove the all mount points from remotehost from the list **/
+					    /** remove all the mount points from remotehost from the list **/
 					    for (j=0;j<xaCount(NNFS.mountList);j++)
 						{
 						pMount mnt=(pMount)xaGetItem(NNFS.mountList,j);
@@ -2190,7 +2190,7 @@ nnfs_internal_mount_listener(void* v)
 	    else if(msg_in.rm_direction==REPLY)
 		{
 		/** it's a reply message.... -- ignore it **/
-		mssWarn("NNFS", "reply message recieved, but we shouldn't get one.....");
+		mssWarn("NNFS", "reply message received, but we shouldn't get one.....");
 		}
 	    else
 		{
@@ -2211,7 +2211,7 @@ nnfs_internal_mount_listener(void* v)
     thExit();
     }
 
-/*** nnfs_internal_monitor_objects - keep objects open for 30 seconds unless
+/*** nnfs_internal_monitor_objects - keep objects open for 5 seconds unless
  *** they are being used.
  ***/
 void nnfs_internal_monitor_objects()
@@ -2244,7 +2244,7 @@ void nnfs_internal_monitor_objects()
 		objClose(obj->obj);
 		xaRemoveItem(NNFS.openObjects,i);
 		nmFree(obj,sizeof(ObjectUse));
-		/** we just removed element i -- so what used to be i+1 is now I -- reprocess i **/
+		/** we just removed element i -- so what used to be i+1 is now i -- reprocess i **/
 		i--;
 		}
 	    }
@@ -2503,7 +2503,7 @@ nnfsShutdownHandler()
     }
 
 
-/*** nhtInitialize - initialize the HTTP network handler and start the 
+/*** nnfsInitialize - initialize the NFS network handler and start the 
  *** listener thread.
  ***/
 int

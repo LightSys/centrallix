@@ -13,13 +13,13 @@ Centrallix entity, and each entity has its own type of interface.
 All interfaces consist of a type, categories, members, and properties.
 *   A category is a type of functionality. For example, since widgets can have
     actions and events (actions and events are types of functionality that all
-    widgets can posess), there are 'action' and 'event' categories for widget
+    widgets can possess), there are 'action' and 'event' categories for widget
     interfaces. Each interface type has its own set of categories. 
 *   Members represent specific instances of functionality within a particular 
     category. All widget interfaces have an 'action' category, and 'Load' 
     might be a member of the 'foo' widget interface. Every widget that 
     implements the 'foo' interface, therefore, has a 'Load' action.
-*   Properties are additional pieces of information that are attatched to a
+*   Properties are additional pieces of information that are attached to a
     member. The amount and types of information included in the properties of
     a member vary depending on the context; more on that later.
 
@@ -29,7 +29,7 @@ that must be met by any contained component. In other words, interfaces are
 the glue that allow components to interact with the applications they get
 plugged into. Applications interact with components through the interfaces
 they implement, and components can be grouped together in terms of common
-functionality based on the interfaces those interfaces.
+functionality based on the interfaces those components implement.
 
 VERSIONS AND INTERFACES
 

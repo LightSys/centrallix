@@ -88,7 +88,7 @@ prtTableInit(pPrtObjStream os)
     }
 
 
-/*** prtTableRelease - driver API routine which releases (oppposite of
+/*** prtTableRelease - driver API routine which releases (opposite of
  *** Init) a table element.  Doesn't actually free the element itself, that
  *** is done by the print management module's routines.
  ***/

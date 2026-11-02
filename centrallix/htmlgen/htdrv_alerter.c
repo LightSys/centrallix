@@ -22,7 +22,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	htdrv_alert.c      					*/
+/* Module: 	htdrv_alerter.c    					*/
 /* Author:	Jonathan Rupp (JDR)		 			*/
 /* Creation:	February 23, 2002 					*/
 /* Description:	This is a very simple widget that will give the user  	*/

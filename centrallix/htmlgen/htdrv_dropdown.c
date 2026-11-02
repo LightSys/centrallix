@@ -250,7 +250,7 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     if (htrAddEventHandlerFunction(s, "document", "MOUSEUP",     "dd", "dd_mouseup")     != 0) goto end;
 
 
-    /** Get the mode (default to 1, dynamicpage) **/
+    /** Get the mode (default to 0, static) **/
     mode = HTDD_STATIC;
     if (wgtrGetPropertyValue(tree,"mode",DATA_T_STRING,POD(&ptr)) == 0)
 	{

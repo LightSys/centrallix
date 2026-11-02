@@ -21,7 +21,7 @@ def create_driver(test_url) -> webdriver.Chrome:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--lang=en')
     chrome_options.add_argument('--incognito')
-    # Skip Certificatgite/by pass it
+    # Skip certificate check/bypass it
     chrome_options.add_argument('--ignore-certificate-errors')
 
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -38,8 +38,8 @@ def create_driver(test_url) -> webdriver.Chrome:
 def test1(driver, table):
   reporter.add_test(1, "Table row click and click event behavior test")
   check1_1 = "selected row change"
-  check1_2 = "click event bahvior"
-  check1_3 = "double click event bahvior"
+  check1_2 = "click event behavior"
+  check1_3 = "double click event behavior"
   reporter.record_check(1,check1_1,True)
   reporter.record_check(1,check1_2,True)
   reporter.record_check(1,check1_3,True)

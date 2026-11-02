@@ -684,7 +684,7 @@ function dt_keyhandler(l,e,k) {
 	return true;
 }
 
-//offset is used because so that this will work with a date that starts somewhere in the middle of a regular expression
+//offset is used so that this will work with a date that starts somewhere in the middle of a regular expression
 //e.g. in query mode the user should enter date1-date2.  The first 5 captured values (1-5 since 0 is the whole match) will
 //pertain to the first date and the second 5 will pertain to the second date so we use an offset of 5.
 function dt_get_parsed_date(dt,origdate,vals,offset,now){

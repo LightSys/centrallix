@@ -331,7 +331,7 @@ obj_internal_FreeObj(pObject this)
     }
 
 
-/*** obj_internal_OpenCtlToXString - convert open ctl on an object back to URL
+/*** obj_internal_OpenCtlToString - convert open ctl on an object back to URL
  *** parameter string form.
  ***/
 void

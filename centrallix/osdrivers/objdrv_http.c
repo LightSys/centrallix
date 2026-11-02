@@ -136,7 +136,7 @@ typedef struct
     char*	RestrictContentType;	/* restriction on content type allowed in the response */
     char *	ContentCharset;		/* the charset provided by the remote http server */
     char *	ExpectedContentCharset; /* provide the ability to force an expected charset */
-    int		OverrideContentCharset;	/* when true, the actual charset withh be overwritten with the specifiied*/
+    int		OverrideContentCharset;	/* when true, the actual charset will be overwritten with the specified*/
     int		RetryCount;		/* actual number of retries */
     int		RetryLimit;		/* configured retry limit */
     double	RetryDelay;
@@ -629,7 +629,7 @@ http_internal_ParseDate(pDateTime dt, const char *str)
 	if(HTTP_OS_DEBUG)
 	    printf("Date Test: %s\n",str);
 
-	/** RFC1123 Data format? **/
+	/** RFC1123 Date format? **/
 	if(regexec(&rfc1123date,str,11,pmatch,0)==0)
 	    {
 	    if(HTTP_OS_DEBUG) printf("matched an rfc1123 date\n");
@@ -1251,7 +1251,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 		{
 		if (!(one_http_param->Parameter->Value->Flags & DATA_TF_NULL))
 		    {
-		    /** Encode one parameter into the post data **/
+		    /** Encode one parameter into the URL **/
 		    xsConcatenate(url_params, n_output?"&":"?", 1);
 		    xsConcatQPrintf(url_params, "%STR&URL=", one_http_param->Parameter->Name);
 		    if (one_http_param->Parameter->Value->DataType == DATA_T_STRING)
@@ -1406,7 +1406,7 @@ http_internal_GetPageStream(pHttpData inf)
     int toktype;
 #define BUF_SIZE 256
     char buf[BUF_SIZE];
-    char *fullpath = NULL; // the path to be send to the server
+    char *fullpath = NULL; // the path to be sent to the server
     char *ptr = NULL;
     char *ptr2 = NULL;
     int alloc = 0;

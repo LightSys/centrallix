@@ -1934,7 +1934,7 @@ function osrc_oldoid_cleanup()
 function osrc_oldoid_cleanup_cb()
     {
     /*this.pending=false;*/
-    //alert('cb recieved');
+    //alert('cb received');
     delete this.oldoids;
     this.oldoids = [];
     this.SetPending(false);
@@ -2493,7 +2493,7 @@ function osrc_scroll_to(startrec, endrec)
 		    }
 		else
 		    {
-		    /* need to increase replica size to accomodate? */
+		    /* need to increase replica size to accommodate? */
 		    this.DoFetch(this.scrollahead, false);
 		    }
 		}

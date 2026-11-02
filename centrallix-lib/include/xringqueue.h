@@ -13,7 +13,7 @@
 /* 									*/
 /* Module: 	xringqueue.c, xringqueue.h				*/
 /* Author:	Jonathan Rupp (JDR)					*/
-/* Creation:	Match 13, 2003	    					*/
+/* Creation:	March 13, 2003	    					*/
 /* Description:	Extensible ring queue system for Centrallix.  Provides	*/
 /*		for variable-length 32-bit value ring queues.  On Alpha */
 /*		systems, values are 64-bit, but can still store 32-bit	*/

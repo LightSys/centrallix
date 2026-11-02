@@ -148,7 +148,7 @@ typedef struct
     unsigned int	StartedStateMask;
 
     /** "Outer" status mask, 1=outer, 0=not outer.  Note that this is not
-     ** whether there source is outer or not, but rather whether the source
+     ** whether the source is outer or not, but rather whether the source
      ** had no rows but is being included due to outer joins
      **/
     unsigned int	OuterStateMask;
@@ -207,7 +207,7 @@ mqj_internal_DetermineJoinOrder(int n_joins, pMqjJoin joins[], int n_sources, pM
 		     ** 1.  It must not be an inner member of an outer join whose
 		     **     outer members have not yet been used.
 		     ** 2.  If there are joins that tie this source to used
-		     **     sources, at least one must covered entirely by this
+		     **     sources, at least one must be covered entirely by this
 		     **     source and already-used sources.
 		     ** 3.  Sources tied by joins to used sources must be tried
 		     **     before sources that have no joins to used sources.
@@ -240,7 +240,7 @@ mqj_internal_DetermineJoinOrder(int n_joins, pMqjJoin joins[], int n_sources, pM
 			    }
 			}
 
-		    /** Criteira #1 and #2 **/
+		    /** Criteria #1 and #2 **/
 		    if (dont_use || (tied && !covered))
 			continue;
 
@@ -1175,8 +1175,7 @@ mqjFinish(pQueryElement qe, pQueryStatement stmt)
 
 
 /*** mqjRelease - deallocate any private data structures that were used
- *** in the Analyze phase.  Just returns without doing anything for this
- *** function.
+ *** in the Analyze phase.
  ***/
 int
 mqjRelease(pQueryElement qe, pQueryStatement stmt)

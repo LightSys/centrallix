@@ -866,7 +866,7 @@ nht_i_RestPost(pNhtConn conn, pStruct url_inf, int size, char* content)
 		res_type = ResTypeElement;
 	    }
 
-	/** Only elements are allowed **/
+	/** Only collections are allowed **/
 	if (res_type != ResTypeCollection)
 	    {
 	    mssError(1,"NHT","REST POST must be to a collection");

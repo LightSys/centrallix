@@ -450,7 +450,7 @@ stLookup(pStructInf this, char* name)
 
 /*** stFind() - recursively search the struct tree for a given named
  *** subgroup.  Excludes matching against the struct inf passed in
- *** as 'inf'; just matches against children/descendents.
+ *** as 'this'; just matches against children/descendents.
  ***/
 pStructInf
 stFind(pStructInf this, char* name)
@@ -1129,7 +1129,7 @@ st_internal_IsDblClose(char* str)
 	/** Skip whitespace **/
 	while(*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n') str++;
 
-	/** Double open? **/
+	/** Double close? **/
 	if (str[0] != '}' || str[1] != '}') return 0;
 
 	/** Skip whitespace **/

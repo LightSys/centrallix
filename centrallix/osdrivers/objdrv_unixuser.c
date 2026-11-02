@@ -45,7 +45,7 @@
 /*		a new objectsystem driver.				*/
 /*									*/
 /*		To use, some global search/replace must be done.	*/
-/*		Replace all occurrenced of uxu, UXU, and Uxu with your	*/
+/*		Replace all occurrences of uxu, UXU, and Uxu with your	*/
 /*		driver's prefix in the same capitalization.  In vi,	*/
 /*									*/
 /*			:1,$s/Uxu/Pop/g					*/

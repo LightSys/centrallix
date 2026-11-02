@@ -26,7 +26,7 @@ def create_driver(test_url) -> webdriver.Chrome:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--lang=en')
     chrome_options.add_argument('--incognito')
-    # Skip Certificatgite/by pass it
+    # Skip Certificate/bypass it
     chrome_options.add_argument('--ignore-certificate-errors')
 
     driver = webdriver.Chrome(service=service, options=chrome_options)

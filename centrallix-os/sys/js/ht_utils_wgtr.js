@@ -499,7 +499,7 @@ function wgtrWatchProperty(node, prop_name, callback_obj, callback_fn)
 	// make sure the parameters are legitimate
 	if (!node || !node.__WgtrName) 
 	    { 
-	    pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; 
+	    pg_debug("wgtrWatchProperty - object passed as node was not a WgtrNode!\n"); return null; 
 	    }
 
 	// Indirect reference?
@@ -551,7 +551,7 @@ function wgtrGetParent(node)
 
 	if (!node || !node.__WgtrName)
 	    {
-	    pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); 
+	    pg_debug("wgtrGetParent - object passed as node was not a WgtrNode!\n"); 
 	    return null; 
 	    }
 
@@ -566,7 +566,7 @@ function wgtrGetParentAll(node)
 
 	if (!node || !node.__WgtrName)
 	    {
-	    pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); 
+	    pg_debug("wgtrGetParentAll - object passed as node was not a WgtrNode!\n"); 
 	    return null; 
 	    }
 
@@ -577,15 +577,15 @@ function wgtrGetParentAll(node)
     }
 
 
-// wgtrGetPropertyValue - sets a property of a given node.
+// wgtrSetProperty - sets a property of a given node.
 // if the property does not already exist, the function fails.
-// returns true on success, false on failuer
+// returns true on success, false on failure
 function wgtrSetProperty(node, prop_name, value)
     {
     var newnode;
 
 	// make sure the parameters are legitimate
-	if (!node || !node.__WgtrName) { pg_debug("wgtrGetProperty - object passed as node was not a WgtrNode!\n"); return null; }
+	if (!node || !node.__WgtrName) { pg_debug("wgtrSetProperty - object passed as node was not a WgtrNode!\n"); return null; }
 
 	// Indirect reference?
 	if (node.reference && (newnode = node.reference()))
@@ -878,7 +878,7 @@ function wgtrGetType(node)
     {
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
-	    { pg_debug("wgtrGetType - oldnode was not a WgtrNode!\n"); return false; }
+	    { pg_debug("wgtrGetType - node was not a WgtrNode!\n"); return false; }
 	return node.__WgtrType;
     }
 
@@ -890,7 +890,7 @@ function wgtrFindContainer(node,type)
     var t,p,n;
     // make sure this is actually a tree
     if (!node || !node.__WgtrName) 
-	{ pg_debug("wgtrFindContainer - oldnode was not a WgtrNode!\n"); return false; }
+	{ pg_debug("wgtrFindContainer - node was not a WgtrNode!\n"); return false; }
     while(1)
 	{
 	p = wgtrGetParent(node);
@@ -935,7 +935,7 @@ function wgtrGetNamespace(node)
     {
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
-	    { pg_debug("wgtrGetName - node was not a WgtrNode!\n"); return false; }
+	    { pg_debug("wgtrGetNamespace - node was not a WgtrNode!\n"); return false; }
 	return node.__WgtrNamespace.NamespaceID;
     }
 
@@ -1093,9 +1093,9 @@ function wgtrIsChild(node, subnode)
     {
 	// make sure this is actually a tree
 	if (!node || !node.__WgtrName) 
-	    { pg_debug("wgtrGetChild - node was not a WgtrNode!\n"); return false; }
+	    { pg_debug("wgtrIsChild - node was not a WgtrNode!\n"); return false; }
 	if (!subnode || !subnode.__WgtrName) 
-	    { pg_debug("wgtrGetChild - subnode was not a WgtrNode!\n"); return false; }
+	    { pg_debug("wgtrIsChild - subnode was not a WgtrNode!\n"); return false; }
 
 	while(subnode)
 	    {

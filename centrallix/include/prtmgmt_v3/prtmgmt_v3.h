@@ -25,7 +25,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	prtmgmt.c,prtmgmt.h                                     */
+/* Module:	prtmgmt_v3.h                                            */
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	December 12, 2001                                       */
 /*									*/
@@ -63,7 +63,7 @@ typedef struct _PLM
 						   child geom or overlays have changed, and child should
 						   reflow the layout, including LinkNext'd layout areas */
     int			(*Finalize)();		/* this is the layout manager's chance to make any last-
-						   milllisecond changes to the container before the page
+						   millisecond changes to the container before the page
 						   is generated.  The changes may NOT affect the container's
 						   geometry */
     }

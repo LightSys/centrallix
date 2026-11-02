@@ -637,15 +637,15 @@ checkbox_test "widget/page"
 
 			<event name="Load">This event is triggered the first time the window is opened.  If the window is visible by default, then this event is triggered when the application loads.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 			<event name="Open">This event is triggered each time the window is opened (becomes visible).</event>
 
@@ -748,7 +748,7 @@ MyWindow "widget/childwindow"
 
 			<property name="shadowy" type="integer">The vertical offset, in pixels, of the shadow.</property>
 
-			<property name="size" type="integer">The size, in points, clock's text.</property>
+			<property name="size" type="integer">The size, in points, of the clock's text.</property>
 
 			<property name="width" type="integer">The width of the clock, in pixels.</property>
 
@@ -825,7 +825,7 @@ MyWindow "widget/childwindow"
 
 				<childproperty name="type" type="string">(e.g. readonly).  Must have field be set in order to be "readonly".</childproperty>
 
-				<childproperty name="value" type="string">This is something which can accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
+				<childproperty name="value" type="string">This is something which can be accessed as :this_widget:value (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
 
 			</child>
 
@@ -839,7 +839,7 @@ MyWindow "widget/childwindow"
 
 			<child type="/apps/kardia/modules/base/editbox_tree.cmp">
 
-				<childproperty name="content" type="string">This is something which can accessed as :this_widget:content (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
+				<childproperty name="content" type="string">This is something which can be accessed as :this_widget:content (returns the value of text which can't be directly accessed?), but can not be set directly through this property -- see SetValue listed under the Action section.</childproperty>
 
 			</child>
 
@@ -1396,7 +1396,7 @@ myDropDown2 "widget/dropdown"
 
 			<property name="description_fgcolor" type="string">A color, RGB or named, editbox's value description.  The value description is displayed to the right of the value in the editbox, in parentheses, and in a different color.</property>
 
-			<property name="disabled" type="boolean">Specifies wither the edit box can be written in, default is true meaning the edit box cannot be written in.</property>
+			<property name="disabled" type="boolean">Specifies whether the edit box can be written in, default is true meaning the edit box cannot be written in.</property>
 
 			<property name="empty_description" type="string">The value description to display in the editbox when the editbox is empty.  For instance, "optional" or "required" or "type search and press ENTER" might be commonly used empty_description settings.</property>
 
@@ -1667,7 +1667,7 @@ mySoundPlayer "widget/execmethod"
 
 			<property name="enter_mode" type="string"><ni />Can be "save" (default), "nextfield", or "lastsave".  Controls what to do when the user presses ENTER while in a form element in this form.  "save" means to save the record immediately.  "nextfield" means to move to the next form field, as if TAB were pressed instead.  "lastsave" means to move to the next form field, but once ENTER is pressed on the very last field, to then save the record.  Most people prefer "save" for this, since that is consistent with how normal applications work, but people in finance or accounting work often prefer "lastsave" since it allows them to perform high-speed data entry using a numeric keypad.</property>
 
-			<property name="interlock_with" type="string">Stores wither this form can be grouped with other forms.</property>
+			<property name="interlock_with" type="string">Stores whether this form can be grouped with other forms.</property>
 
 			<property name="MultiEnter" type="integer"><ni />Enable MultiEnter.</property>
 
@@ -1743,7 +1743,7 @@ mySoundPlayer "widget/execmethod"
 
 			<event name="Query">This event occurs if and only if there was a mode change and the new mode is the 'Query' state (always occurs with both a statusChange event and a ModeChange Event.)</event>
 
-			<event name="StatusChange">The even occurs when the form changes modes or when a child control changes its data.</event>
+			<event name="StatusChange">The event occurs when the form changes modes or when a child control changes its data.</event>
 
 			<event name="View">This event occurs if and only if there was a mode change and the new mode is the 'View' state (always occurs with both a statusChange event and a ModeChange Event.</event>
 
@@ -1785,7 +1785,7 @@ mySoundPlayer "widget/execmethod"
 
 			<action name="Submit">Attempts to save data, if there is an error it returns false.  Specify the 'Target' parameter to set a target page other than the one containing the form widget.  Specify any truthy value for the 'NewPage' parameter to allow launching a new page.</action>
 
-			<action name="test3bconfirm">Debugging tool to test the 3bcomfirm method (only use if you know what this method is).</action>
+			<action name="test3bconfirm">Debugging tool to test the 3bconfirm method (only use if you know what this method is).</action>
 
 			<action name="View">Changes the form to view mode.</action>
 
@@ -2019,7 +2019,7 @@ BigFrameset "widget/frameset"
 
 			<property name="default" type="object">A string or integer that specifies the initial, default, starting value for the component which containing this widget/hints widget.</property>
 
-			<property name="enumlist" type="object">A list of string values that give all the possible values of th the parent.</property>
+			<property name="enumlist" type="object">A list of string values that give all the possible values of the parent.</property>
 
 			<property name="enumquery" type="string">A sql query that is used to get the required value list.</property>
 
@@ -2149,15 +2149,15 @@ f_trx_mod "widget/checkbox"
 
 		<events>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2252,15 +2252,15 @@ HTMLArea "widget/html"
 
 			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2370,15 +2370,15 @@ MyButton "widget/imagebutton"
 
 			<property name="text" type="string">The text that the label is to display.</property>
 
-			<property name="tooltip" type="string">The text displayed when the courser hovers over the widget.</property>
+			<property name="tooltip" type="string">The text displayed when the cursor hovers over the widget.</property>
 
 			<property name="valign" type="string">Describes how the text should align vertically within the label (e.g. top, middle, or bottom).</property>
 
 			<property name="width" type="integer">The width of the label.</property>
 
-			<property name="x" type="integer">X-coordinate of the upper left corner of the checkbox, default is 0.</property>
+			<property name="x" type="integer">X-coordinate of the upper left corner of the label, default is 0.</property>
 
-			<property name="y" type="integer">Y-coordinate of the upper left corner of the checkbox, default is 0.</property>
+			<property name="y" type="integer">Y-coordinate of the upper left corner of the label, default is 0.</property>
 
 		</properties>
 
@@ -2392,17 +2392,17 @@ MyButton "widget/imagebutton"
 
 			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="DataChange">This event occurs when the user has modified the data value of the checkbox (clicked or unclicked it).</event>
+			<event name="DataChange">This event occurs when the user has modified the data value of the widget (clicked or unclicked it).</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -2816,7 +2816,7 @@ myMenu "widget/menu"
 
 			<action name="Create"><ni/>Encapsulates data in an array and calls CreateObject.</action>
 
-			<action name="CreateObject">Creates an object though OSML</action>
+			<action name="CreateObject">Creates an object through OSML</action>
 
 			<action name="Delete"><ni/>Deletes an object through OSML.</action>
 
@@ -2978,7 +2978,7 @@ osrc1 "widget/osrc"
 
 			<event name="Load">This occurs when the page initializes.</event>
 
-			<event name="RightClick">This occurs when the uses right clicks on a mouse or mouse pad.</event>
+			<event name="RightClick">This occurs when the user right clicks on a mouse or mouse pad.</event>
 
 		</events>
 
@@ -3083,15 +3083,15 @@ MyPage "widget/page"
 
 			<event name="Click">This event occurs when the user clicks the mouse pointer (equivalent to a MouseDown followed immediately by a MouseUp on the same widget) while it is over this widget.</event>
 
-			<event name="MouseDown">This event occurs when the user presses the mouse button on the checkbox.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the checkbox for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
+			<event name="MouseDown">This event occurs when the user presses the mouse button on the widget.  This differs from the 'Click' event in that the user must actually press and release the mouse button on the widget for a Click event to fire, whereas simply pressing the mouse button down will cause the MouseDown event to fire.</event>
 
-			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the checkbox.  The event will repeatedly fire each time the pointer moves.</event>
+			<event name="MouseMove">This event occurs when the user moves the mouse pointer while it is over the widget.  The event will repeatedly fire each time the pointer moves.</event>
 
-			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the checkbox.</event>
+			<event name="MouseOut">This event occurs when the user moves the mouse pointer off of the widget.</event>
 
-			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the checkbox.  It will not occur again until the user moves the mouse off of the checkbox and then back over it again.</event>
+			<event name="MouseOver">This event occurs when the user first moves the mouse pointer over the widget.  It will not occur again until the user moves the mouse off of the widget and then back over it again.</event>
 
-			<event name="MouseUp">This event occurs when the user releases the mouse button on the checkbox.</event>
+			<event name="MouseUp">This event occurs when the user releases the mouse button on the widget.</event>
 
 		</events>
 
@@ -3883,7 +3883,7 @@ myTabControl "widget/tab"
 
 			<property name="overlap_scrollbar" type="integer">Acts as a boolean to allow the scroll bar to overlap with the table (allow is "1").</property>
 
-			<property name="reverse_order" type="integer">Acts as a boolean to reverse to order of the table elements (reverses if set to "1").</property>
+			<property name="reverse_order" type="integer">Acts as a boolean to reverse the order of the table elements (reverses if set to "1").</property>
 
 			<property name="row1_background" type="string">A background image for the table row cells.</property>
 

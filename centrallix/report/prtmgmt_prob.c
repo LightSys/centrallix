@@ -318,7 +318,7 @@ prtGenerateLine(pPrtSession this, pPrtCommand cmdstream, int line_num)
 		while(cmdheadptr->CmdType != PRT_CMD_DOTABLE) cmdheadptr = cmdheadptr->Prev;
 		}
 
-	    /** Is the a row, header, or separator line? **/
+	    /** Is this a row, header, or separator line? **/
 	    if (cmdstream->CurRelLine != line_num && (cmdstream->CmdType == PRT_CMD_DOCOLUMN || cmdstream->CmdType == PRT_CMD_DOCOLHDR))
 	        {
 		prtGenerateSepLine(this, cmdstream, line_num);
@@ -1118,7 +1118,7 @@ prtDoTable(pPrtSession this)
 
 
 /*** prtDoColHdr - write a column header item.  Send a prtWriteString
- *** command afterwards to print the the string itself.
+ *** command afterwards to print the string itself.
  ***/
 int
 prtDoColHdr(pPrtSession this, int start_row, int set_width)

@@ -987,7 +987,7 @@ qytRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     }
 
 
-/*** qytWrite - As above, attempt to read if we found an actual object.
+/*** qytWrite - As above, attempt to write if we found an actual object.
  ***/
 int
 qytWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
@@ -1016,7 +1016,7 @@ qytWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
  *** subitems will result in exactly one returned object for the query.
  *** Text= types cannot be modified/etc by the enduser.  The .qyt must be
  *** opened as a structure file (via objdrv_struct) to modify Text=items.
- *** modifications/addidions/deletions of query results from a Source=
+ *** modifications/additions/deletions of query results from a Source=
  *** item will be passed on to the source driver (such as objdrv_sybase).
  ***/
 int

@@ -771,7 +771,7 @@ prt_internal_WriteImageToPNG(int (*write_fn)(), void* write_arg, pPrtImage img, 
 
     return 0;
 #else
-    mssError(1,"PRT","PNG image support not available; cannot use prtWriteImageToPNG()");
+    mssError(1,"PRT","PNG image support not available; cannot use prt_internal_WriteImageToPNG()");
     return -1;
 #endif
     }

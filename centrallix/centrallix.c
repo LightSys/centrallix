@@ -589,7 +589,7 @@ cxHtInit()
 	htsbInitialize();			/* scrollbar module */
 	htimgInitialize();			/* image widget */
 	htocInitialize();			/* object canvas widget */
-	htmapInitialize();			/* object canvas widget */
+	htmapInitialize();			/* map widget */
 	htfuInitialize();			/* file upload widget */
 
 	htformInitialize();			/* forms module */

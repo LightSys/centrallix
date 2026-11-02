@@ -10,7 +10,7 @@
 #include "stparse.h"
 #include "st_node.h"
 #include "cxlib/mtsession.h"
-/** module definintions **/
+/** module definitions **/
 #include "centrallix.h"
 
 /************************************************************************/
@@ -45,7 +45,7 @@
 /*		a new objectsystem driver.				*/
 /*									*/
 /*		To use, some global search/replace must be done.	*/
-/*		Replace all occurrenced of xxx, XXX, and Xxx with your	*/
+/*		Replace all occurrences of xxx, XXX, and Xxx with your	*/
 /*		driver's prefix in the same capitalization.  In vi,	*/
 /*									*/
 /*			:1,$s/Xxx/Pop/g					*/

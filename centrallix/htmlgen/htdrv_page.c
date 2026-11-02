@@ -57,9 +57,9 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
     int watchdogtimer = 180;
     char bgstr[128];
     int show, i;
-    char kbfocus1[64];	/* kb focus = 3d raised */
+    char kbfocus1[64];	/* kb focus = black rectangle */
     char kbfocus2[64];
-    char msfocus1[64];	/* ms focus = black rectangle */
+    char msfocus1[64];	/* ms focus = 3d raised */
     char msfocus2[64];
     char dtfocus1[64];	/* dt focus = navyblue rectangle */
     char dtfocus2[64];

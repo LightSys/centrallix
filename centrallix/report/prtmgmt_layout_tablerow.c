@@ -55,7 +55,7 @@
 
 /*** prtTablerowContentChanged - this function is a driver API routine which
  *** is called by the print management layout module whenever the content
- *** of the table row is changed.  For tables rows, this is called when a
+ *** of the table row is changed.  For table rows, this is called when a
  *** cell's height changes - the row assumes the height of the tallest 
  *** cell.
  ***
@@ -82,7 +82,7 @@ prtTablerowContentChanged(pPrtSession s, pPrtObjStream os, pPrtObjStream changed
     }
 
 
-/*** prtTablerowInit - driver API routine which initializes a table element
+/*** prtTablerowInit - driver API routine which initializes a table row element
  ***/
 int
 prtTablerowInit(pPrtObjStream os)
@@ -92,8 +92,8 @@ prtTablerowInit(pPrtObjStream os)
     }
 
 
-/*** prtTablerowRelease - driver API routine which releases (oppposite of
- *** Init) a table element.  Doesn't actually free the element itself, that
+/*** prtTablerowRelease - driver API routine which releases (opposite of
+ *** Init) a table row element.  Doesn't actually free the element itself, that
  *** is done by the print management module's routines.
  ***/
 int

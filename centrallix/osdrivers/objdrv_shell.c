@@ -12,7 +12,7 @@
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
-/** module definintions **/
+/** module definitions **/
 #include "centrallix.h"
 
 #include <sys/types.h>
@@ -199,7 +199,7 @@ shl_internal_Launch(pShlData inf)
     pty=getpt();
     if(pty<0)
 	{
-	mssErrorErrno(0,"SHL","getpy() failed");
+	mssErrorErrno(0,"SHL","getpt() failed");
 	inf->shell_pid=0;
 	return -1;
 	}
@@ -291,10 +291,10 @@ shl_internal_Launch(pShlData inf)
 	setsid();
 	fd = open(tty_name,O_RDWR);
 	
-	/** switch to terminal as stdout **/
+	/** switch to terminal as stdin **/
 	dup2(fd,0);
 
-	/** switch to terminal as stdin **/
+	/** switch to terminal as stdout **/
 	dup2(fd,1);
 
 	/** switch to terminal as stderr **/
@@ -307,7 +307,7 @@ shl_internal_Launch(pShlData inf)
 	/** make the exec() call **/
 	execve(inf->program,(char**)(inf->argArray.Items),(char**)(inf->envArray.Items));
 
-	/** if exec() is successfull, this is never reached **/
+	/** if exec() is successful, this is never reached **/
 	warn("execve() failed");
 
 	    {
@@ -533,7 +533,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	    {
 	    if(changeStruct->Value->NodeType == EXPR_N_LIST)
 		{
-		/** 'arg' value is present and is a list -- parameters > 1 **/
+		/** 'changeable' value is present and is a list -- parameters > 1 **/
 		int i;
 		pXArray values;
 		pEnvVar pEV=NULL;
@@ -553,7 +553,7 @@ shlOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 		{
 		char *ptr;
 		pEnvVar pEV=NULL;
-		/** 'arg' value is present and is exactly one value -- 1 parameter **/
+		/** 'changeable' value is present and is exactly one value -- 1 parameter **/
 		if(stAttrValue(changeStruct,NULL,&ptr,0)<0)
 		    ptr=NULL;
 		if(ptr)
@@ -863,7 +863,7 @@ shlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree*
 	i=fdWrite(inf->shell_fd,buffer,cnt,0,flags & ~FD_U_SEEK);
 	if(i < 0)
 	    {
-	    /** user doesn;t want us to block **/
+	    /** user doesn't want us to block **/
 	    if(flags & FD_U_NOBLOCK)
 		return -1;
 

@@ -1168,7 +1168,7 @@ fp_internal_OpenNode(pFpData inf, pContentType systype)
 	    }
 	node->NodeSerial = snGetSerial(node->Node);
 
-	/** Lookup definition file and isam file paths **/
+	/** Lookup data directory and edits file paths **/
 	if (stGetAttrValue(stLookup(node->Node->Data, "data_directory"), DATA_T_STRING, POD(&ptr), 0) != 0)
 	    ptr = obj_internal_PathPart(inf->Obj->Pathname, 0, inf->Obj->SubPtr-1)+1;
 	strtcpy(node->DataPath, ptr, sizeof(node->DataPath));
@@ -1500,7 +1500,7 @@ fpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 
 #if 0
 /*** fp_internal_InsertRow - inserts a new row into the database, looking
- *** throught the OXT structures for the column values.  For text/image columns,
+ *** through the OXT structures for the column values.  For text/image columns,
  *** it automatically inserts "" for an unspecified column value when the column
  *** does not allow nulls.
  ***/
@@ -2463,7 +2463,7 @@ fpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrxT
 
 
 /*** fpAddAttr - add an attribute to an object.  This doesn't work for
- *** unix filesystem objects, so we just deny the request.
+ *** FilePro objects, so we just deny the request.
  ***/
 int
 fpAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
@@ -2473,7 +2473,7 @@ fpAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
 
 
 /*** fpOpenAttr - open an attribute as if it were an object with 
- *** content.  The Sybase database objects don't yet have attributes that are
+ *** content.  The FilePro objects don't yet have attributes that are
  *** suitable for this.
  ***/
 void*

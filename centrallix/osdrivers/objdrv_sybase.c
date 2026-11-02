@@ -371,7 +371,7 @@ sybd_internal_Exec(pSybdConn s, char* cmdtext)
 	if ((rval = ct_command(cmd, CS_LANG_CMD, cmdtext, CS_NULLTERM, CS_UNUSED)) != CS_SUCCEED)
 	    {
 	    ct_cmd_drop(cmd);
-	    mssError(1,"SYBD","ct_cmd_alloc() failed: %d", rval);
+	    mssError(1,"SYBD","ct_command() failed: %d", rval);
 	    return NULL;
 	    }
 
@@ -684,7 +684,7 @@ sybd_internal_ReleaseConn(pSybdNode db_node, pSybdConn conn)
 
 /*** sybd_internal_GetCxType - convert a sybase usertype to a centrallix datatype.
  *** Like GetDefaultHints, it might not be a bad idea to push this to a file somehow,
- *** to make the handling of types more flexable (and allow for user-defined types)
+ *** to make the handling of types more flexible (and allow for user-defined types)
  ***/
 int
 sybd_internal_GetCxType(int ut)
@@ -921,7 +921,7 @@ sybd_internal_GetDefaultHints(int usertype)
 		hints->StyleMask |= OBJ_PH_STYLE_NOTNULL;
 		hints->AllowChars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQQRSTUVWXYZ0123456789_$#@";
 		break;
-		/** constriaint expression to force alphabetic/_ as first char? **/
+		/** constraint expression to force alphabetic/_ as first char? **/
 	    case 19: /** text **/
 		break;
 	    case 20: /** image **/
@@ -960,7 +960,7 @@ sybd_internal_GetDefaultHints(int usertype)
     }
 
 
-/*** sybd_internal_MergTypeHints - look for hints that are relevent for the given type,
+/*** sybd_internal_MergeTypeHints - look for hints that are relevant for the given type,
  *** and add them into the existing hints structure, over-riding where necessary.
  ***/
 int
@@ -1260,7 +1260,7 @@ sybd_internal_OpenNode(char* path, int mode, pObject obj, int node_only, int mas
 			if ( (hints = sybd_internal_GetDefaultHints(*TypeNum)) != NULL)
 			    db_node->TypeHints[*TypeNum] = hints;
 
-			/** supliment that base entry a bit **/
+			/** supplement that base entry a bit **/
 			switch (sybd_internal_GetCxType(*TypeNum))
 			    {
 			    case DATA_T_INTEGER: hints->VisualLength = 13; break;
@@ -2022,7 +2022,7 @@ sybd_internal_TreeToClauseConstant(pExpression tree, int data_type, pSybdTableIn
 		else
 		    {
 		    /** Autoconvert string to int, double, or money if comparing with a
-		     ** field of tht type.
+		     ** field of that type.
 		     **/
 		    if (tree->Parent && tree->Parent->NodeType == EXPR_N_COMPARE)
 			{
@@ -2879,7 +2879,7 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 			{
 			while(ct_fetch(cmd,CS_UNUSED,CS_UNUSED,CS_UNUSED,(CS_INT*)&i) == CS_SUCCEED)
 			    {
-			    /** Get the table's annotation **/
+			    /** Get the next key value **/
 			    intval = 0;
 			    ct_get_data(cmd, 1, &intval, 255, (CS_INT*)&i);
 			    key_values[j] = nmSysMalloc(16);
@@ -2942,7 +2942,7 @@ sybd_internal_BuildAutoname(pSybdData inf, pSybdConn conn, pObjTrxTree oxt)
 
 
 /*** sybd_internal_InsertRow - inserts a new row into the database, looking
- *** throught the OXT structures for the column values.  For text/image columns,
+ *** through the OXT structures for the column values.  For text/image columns,
  *** it automatically inserts "" for an unspecified column value when the column
  *** does not allow nulls.
  ***/
@@ -4690,7 +4690,7 @@ sybdSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 
 /*** sybdAddAttr - add an attribute to an object.  This doesn't work for
- *** unix filesystem objects, so we just deny the request.
+ *** Sybase database objects, so we just deny the request.
  ***/
 int
 sybdAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
@@ -5011,8 +5011,8 @@ sybdInfo(void* inf_v, pObjectInfo info)
     }
 
 
-/*** datPresentationHints - return a presentation-hints structure
- *** dcontaining information about a particular attribute.
+/*** sybdPresentationHints - return a presentation-hints structure
+ *** containing information about a particular attribute.
  ***/
 pObjPresentationHints
 sybdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)

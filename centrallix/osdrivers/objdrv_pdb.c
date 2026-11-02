@@ -2955,7 +2955,7 @@ datAddAttr(void* inf_v, char* attrname, int type, pObjData *val, pObjTrxTree* ox
 
 
 /*** datOpenAttr - open an attribute as if it were an object with 
- *** content.  The Sybase database objects don't yet have attributes that are
+ *** content.  The PDB objects don't yet have attributes that are
  *** suitable for this.
  ***/
 void*

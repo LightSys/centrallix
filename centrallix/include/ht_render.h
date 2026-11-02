@@ -61,7 +61,7 @@ typedef struct
     HtDMPrivateData, *pHtDMPrivateData;
 
 
-/** Namespace / subtree structure.  Used to identify the heirarchy of
+/** Namespace / subtree structure.  Used to identify the hierarchy of
  ** namespaces/subtrees within the application.
  **/
 typedef struct _HTN
@@ -198,7 +198,7 @@ typedef struct
     unsigned int CSSBox:1; /* Puts border outside declared box width */
     unsigned int CSSClip:1; /* Clipping rectangle starts at border, not content */
     unsigned int HTML40:1; /* W3C HTML 4.0 */
-    unsigned int JS15:1; /* Javacript 1.5 */
+    unsigned int JS15:1; /* JavaScript 1.5 */
     unsigned int XMLHttpRequest:1; /* MSIE/Mozilla XMLHttpRequest method capability */
     }
     HtCapabilities, *pHtCapabilities;

@@ -170,7 +170,7 @@ Below are the basic events that occur with the objectsource widget that cause it
 
     All attached forms and tables then receive a 'Pending' status, and possibly a 'No Data' mode.
 
-    When a form widget, table widget, or other outside source issues a query through the objectsource widget, the objectsource widget then allocates a hidden layer (if needed) and sends the query to the server as a GET request on that hidden layer.  The objectsource widget sets the layer's onLoad event to one of its internal completion routines.  The query call then completes as far as the DHTML application is concerned and nothing happens until the layer finishes loading and the onLoad completion event hander is called.
+    When a form widget, table widget, or other outside source issues a query through the objectsource widget, the objectsource widget then allocates a hidden layer (if needed) and sends the query to the server as a GET request on that hidden layer.  The objectsource widget sets the layer's onLoad event to one of its internal completion routines.  The query call then completes as far as the DHTML application is concerned and nothing happens until the layer finishes loading and the onLoad completion event handler is called.
 
     Once onLoad is called, the objectsource then scans the loaded layer for data and loads the data into its internal object replica data structures.  It then notifies all attached forms/tables of the arrival of new data (or the lack of new data, if the query's result set was empty).  From that point, it is the responsibility of those tables/forms to set result set cursors and load data, as may be appropriate.
 

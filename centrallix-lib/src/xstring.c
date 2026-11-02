@@ -661,7 +661,7 @@ xsFind(pXString this,char* find,int findlen, int offset)
     return -1;
     }
 
-/*** xsFindReverse - searches an xString for a string from an offset (from the end) and returns the offset it was found at
+/*** xsFindRev - searches an xString for a string from an offset (from the end) and returns the offset it was found at
  ***   returns -1 if not found
  ***/
 int
@@ -703,7 +703,7 @@ xsFindRev(pXString this,char* find,int findlen, int offset)
 
 
 /*** xsSubst - substitutes a string in a given position in an xstring.  does not
- *** search for matches like xsreplace does - you have to tell it the position
+ *** search for matches like xsReplace does - you have to tell it the position
  *** and length to replace.  Length of -1 indicates length is unknown.
  ***/
 int

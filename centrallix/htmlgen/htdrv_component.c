@@ -277,7 +277,7 @@ htcmpRender(pHtSession s, pWgtrNode tree, int z)
 	allow_multi = htrGetBoolean(tree, "multiple_instantiation", 0);
 	if (allow_multi < 0) goto end_free;
 
-	/** multiple-instantiation? **/
+	/** auto-destroy? **/
 	auto_destroy = htrGetBoolean(tree, "auto_destroy", 1);
 	if (auto_destroy < 0) goto end_free;
 

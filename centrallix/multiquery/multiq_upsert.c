@@ -226,7 +226,7 @@ mqus_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     }
 
 
-/*** mqusStart - for an update query, much as for a insert query, we will
+/*** mqusStart - for an update query, much as for an insert query, we will
  *** run the entire operation within mqusStart() and return no rows for
  *** mqusNextItem.
  ***/
@@ -597,7 +597,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
     }
 
 
-/*** mqusRelease - does nothing for an update statement.
+/*** mqusRelease - release the private data allocated during Analyze.
  ***/
 int
 mqusRelease(pQueryElement qe, pQueryStatement stmt)

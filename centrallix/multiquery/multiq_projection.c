@@ -831,7 +831,7 @@ mqp_internal_WildcardMatch(char* pattern, int pattern_len, char* str, int str_le
 	/** Asterisk is at the end of the pattern? **/
 	if (leading_len + 1 == pattern_len) return 1;
 
-	/** Now deal with trailing pattern - look for occurences of 1st char after the asterisk, and go from there **/
+	/** Now deal with trailing pattern - look for occurrences of 1st char after the asterisk, and go from there **/
 	chptr = str + leading_len - 1;
 	while((chptr = memchr(chptr+1, astptr[1], str_len - (chptr+1 - str))) != NULL)
 	    {
@@ -1087,7 +1087,7 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 		mi->Flags &= ~MQP_MI_F_SOURCELIST;
 		}
 
-	    /** Evalute.  We swap the NULL object for the evaluation so the expression
+	    /** Evaluate.  We swap the NULL object for the evaluation so the expression
 	     ** can contain the :cx__page property for paginated sources.
 	     **/
 	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;

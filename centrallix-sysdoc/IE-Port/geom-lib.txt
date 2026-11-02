@@ -2,7 +2,7 @@ Centrallix Geometry Library
 Author: Jason Yip
 Date: 2/26/2004
 
-This geometry library is written to solve all the cross browser problems between Internet Explorer and Netscape. By using the APIs provided by this library and include the appropiate file (i.e. ht_gemo_dom0ie.js for Internet Explorer; ht_gemo_dom0ns.js for Netscape or Geko). Centrallix should be able to handle this for you, but it is always good to have this concept in mind.
+This geometry library is written to solve all the cross browser problems between Internet Explorer and Netscape. By using the APIs provided by this library and include the appropriate file (i.e. ht_geom_dom0ie.js for Internet Explorer; ht_geom_dom0ns.js for Netscape or Gecko). Centrallix should be able to handle this for you, but it is always good to have this concept in mind.
 
 The global function names are the same in the IE and NS library, so by using this library your javascript code can write once and use anywhere (assume that you have the right js file included).
 
@@ -115,7 +115,7 @@ NS Equivalence: l.clip.left = value
 int getClipRight(l);
 
 input: l - a layer reference
-output: _left - the clip right
+output: _right - the clip right
 
 This function takes a reference of a layer and returns the right boundary of the clipping layer in pixels.
 
@@ -164,9 +164,9 @@ NS Equivalence: l.pageY/e.pageY
 void setPageY(l, value);
 
 input: l - a layer reference
-input: value - the/event new x position
+input: value - the/event new y position
 
-This function takes a reference of a layer/event and a new value of the x-coordinate. It sets the y-coordinate of the layer/event to the new value.
+This function takes a reference of a layer/event and a new value of the y-coordinate. It sets the y-coordinate of the layer/event to the new value.
 
 NS Equivalence: l.pageY = value/e.pageY = value
 
@@ -187,14 +187,14 @@ NS Equivalence: window.innerWidth
 ****************************************************************************************************************
 int getpageXOffset();
 
-This function returns the current x-coordinate of a window's viewd page in pixels.
+This function returns the current x-coordinate of a window's viewed page in pixels.
 
 NS Equivalence: window.pageXOffset
 
 ****************************************************************************************************************
 int getpageYOffset();
 
-This function returns the current y-coordinate of a window's viewd page in pixels.
+This function returns the current y-coordinate of a window's viewed page in pixels.
 
 NS Equivalence: window.pageYOffset
 
@@ -222,7 +222,7 @@ void getRelativeY(l);
 
 input: l - a layer reference
 
-This function returns the vertical position of the layer's left edge relative to the origin of its parent layer in pixels.
+This function returns the vertical position of the layer's top edge relative to the origin of its parent layer in pixels.
 
 NS Equivalence: l.y
 
@@ -232,14 +232,14 @@ void setRelativeY(l, value);
 input: l - a layer reference
 input: value - the new value
 
-This function sets the vertical position of the layer's left edge relative to the origin of its parent layer to the new value in pixels.
+This function sets the vertical position of the layer's top edge relative to the origin of its parent layer to the new value in pixels.
 
 NS Equivalence: l.y = value
 
 ****************************************************************************************************************
 int getdocWidth();
 
-This functions returns the width of the current document.
+This function returns the width of the current document.
 
 NS Equivalence: document.width
 
@@ -257,7 +257,7 @@ input: l - a layer reference
 input: x - the new x-coordinate
 input: y - the new y-coordinate
 
-This function moves a layer to the new specified absolute co-orindate (x, y) relative to the page.
+This function moves a layer to the new specified absolute co-ordinate (x, y) relative to the page.
 
 NS Equivalence: l.moveToAbsolute(x,y)
 
@@ -268,7 +268,7 @@ input: l - a layer reference
 input: x - the new x-coordinate
 input: y - the new y-coordinate
 
-This function moves a layer to the new specified co-orindate (x, y) relative to the parent container.
+This function moves a layer to the new specified co-ordinate (x, y) relative to the parent container.
 
 NS Equivalence: l.move(x,y)
 
@@ -290,7 +290,7 @@ input: l - a layer reference
 input: w - the new width
 input: h - the new height
 
-This function resize the dimension of a layer to the new width w and the new height h.
+This function resizes the dimension of a layer to the new width w and the new height h.
 
 NS Equivalence: l.resizeTo(x,y)
 

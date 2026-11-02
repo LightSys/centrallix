@@ -83,7 +83,7 @@ typedef struct
     AgentCapabilities, *pAgentCapabilities;
 
 /**
- * Processes a single node (and it's children) of the tree of useragents
+ * Processes a single node (and its children) of the tree of useragents
  **/
 pAgentCapabilities
 htr_internal_ProcessUserAgent(const pStructInf node, const pHtCapabilities parentCap)
@@ -325,7 +325,7 @@ htrRegisterUserAgents()
  * This function finds the capabilities of the specified browser for the specified class
  * Both browser and class are required to not be null
  * A null return value indicates that no match was found for the browser
- * A non-null return value should not be freeed or modified in any way
+ * A non-null return value should not be freed or modified in any way
  **/
 pHtCapabilities
 htr_internal_GetBrowserCapabilities(char *browser, pHtClass class)
@@ -1179,7 +1179,7 @@ htrAddScriptWgtr(pHtSession s, char* wgtr_text)
     }
 
 
-/*** htrAddScriptCleanup -- adds some initialization text that runs outside of a
+/*** htrAddScriptCleanup -- adds some cleanup text that runs outside of a
  *** function context in the HTML JavaScript.
  ***/
 int
@@ -3546,7 +3546,7 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	strtcat(propname, style_prefix?"_":"", sizeof(propname));
 	if (strlen(propname) >= 48)
 	    {
-	    mssError(1,"HTR","htrFormatDiv() - style prefix too long");
+	    mssError(1,"HTR","htrFormatElement() - style prefix too long");
 	    return -1;
 	    }
 	propptr = propname + strlen(propname);

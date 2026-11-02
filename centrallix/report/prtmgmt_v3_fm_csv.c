@@ -73,7 +73,7 @@ typedef struct _PSFI
     PrtCSVfmInf, *pPrtCSVfmInf;
 
 
-/*** prt_csvfm_Output() - outputs a string of text into the HTML
+/*** prt_csvfm_Output() - outputs a string of text into the CSV
  *** document.
  ***/
 int
@@ -88,7 +88,7 @@ prt_csvfm_Output(pPrtCSVfmInf context, char* str, int len)
 
 
 /*** prt_csvfm_OutputPrintf() - outputs a string of text into the
- *** HTML document, using "printf" semantics.
+ *** CSV document, using "printf" semantics.
  ***/
 int
 prt_csvfm_OutputPrintf(pPrtCSVfmInf context, char* fmt, ...)
@@ -113,7 +113,7 @@ prt_csvfm_Probe(pPrtSession s, char* output_type)
     {
     pPrtCSVfmInf context;
 
-	/** Is it html? **/
+	/** Is it csv? **/
 	if (strcasecmp(output_type,"text/csv") != 0) return NULL;
 
 	/** Allocate our context inf structure **/

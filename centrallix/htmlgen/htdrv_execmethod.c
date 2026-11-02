@@ -40,7 +40,7 @@
 #include "wgtr.h"
 
 
-/*** htexRender - generate the HTML code for the timer nonvisual widget.
+/*** htexRender - generate the HTML code for the exec-method nonvisual widget.
  ***/
 int
 htexRender(pHtSession s, pWgtrNode tree, int z)

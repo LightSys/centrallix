@@ -45,7 +45,7 @@
 /*		a new objectsystem driver.				*/
 /*									*/
 /*		To use, some global search/replace must be done.	*/
-/*		Replace all occurrenced of pop, POP, and Pop with your	*/
+/*		Replace all occurrences of pop, POP, and Pop with your	*/
 /*		driver's prefix in the same capitalization.  In vi,	*/
 /*									*/
 /*			:1,$s/Pop/Pop/g					*/
@@ -203,7 +203,7 @@ popOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	if (!node)
 	    {
 	    nmFree(inf,sizeof(PopData));
-	    mssError(0,"POP","Could not node object");
+	    mssError(0,"POP","Could not open node object");
 	    return NULL;
 	    }
 
@@ -477,7 +477,7 @@ popQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
-/*** popGetAttrType - get the type (DATA_T_pop) of an attribute by name.
+/*** popGetAttrType - get the type (DATA_T_xxx) of an attribute by name.
  ***/
 int
 popGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)

@@ -56,6 +56,6 @@ doTest(void)
 long long
 test(char** tname)
     {
-    *tname = "util-00 convertion from strings to integers";
+    *tname = "util-00 conversion from strings to integers";
     return loopTest(doTest) * (2*RANGE+4);
     }

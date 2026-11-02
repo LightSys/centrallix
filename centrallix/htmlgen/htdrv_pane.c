@@ -22,10 +22,10 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	htdrv_tab.c             				*/
+/* Module: 	htdrv_pane.c            				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	October 28, 1998 					*/
-/* Description:	HTML Widget driver for a tab control.			*/
+/* Description:	HTML Widget driver for a pane.        			*/
 /************************************************************************/
 
 #include <string.h>
