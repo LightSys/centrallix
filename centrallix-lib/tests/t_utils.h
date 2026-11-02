@@ -149,7 +149,6 @@ bool t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int 
 	"  > Expected %s ("sp") to be in the range %s ("sp") - %s ("sp") at %s:%d\n", \
 	#v, _v, #min_v, _min, #max_v, _max, __FILE__, __LINE__ \
     ); \
-    success; \
     })
 
 /*** Assert a string to contain another string.
