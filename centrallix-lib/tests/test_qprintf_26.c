@@ -43,5 +43,9 @@ long long
 test(char** tname)
     {
     *tname = "qprintf-26 %STR&SYM in middle with illegal symbol";
+
+    /** The illegal symbol makes qpfPrintf() warn on stderr each time. **/
+    freopen("/dev/null", "w", stderr);
+
     return loopTest(doTest) * 4;
     }
