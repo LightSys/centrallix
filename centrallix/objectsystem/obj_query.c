@@ -748,8 +748,8 @@ objQueryClose(pObjQuery this)
 int
 objGetQueryCoverageMask(pObjQuery this)
     {
-    if (this->Obj->Driver->GetQueryCoverageMask)
-	return this->Obj->Driver->GetQueryCoverageMask(this->Data);
+    if (this->Drv && this->Drv->GetQueryCoverageMask)
+	return this->Drv->GetQueryCoverageMask(this->Data);
     else
 	return -1;
     }
