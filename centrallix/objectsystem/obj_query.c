@@ -404,8 +404,11 @@ objQueryDelete(pObjQuery this)
 	    {
 	    while((obj = objQueryFetch(this,O_WRONLY)))
 		{
-		objDelete(this->Obj->Session, this->Obj->Pathname->Pathbuf);
+		if (objDelete(obj->Session, objGetPathname(obj)) < 0)
+		    rval = -1;
 		objClose(obj);
+		if (rval < 0)
+		    break;
 		}
 	    }
 
