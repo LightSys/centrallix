@@ -40,6 +40,8 @@
 #include "obj.h"
 #include <sys/stat.h>
 
+#define SN_MAX_SIGNATURE_SIZE	1024
+
 
 /*** Structure for storing top-level node accesses ***/
 typedef struct
@@ -53,6 +55,7 @@ typedef struct
     DateTime	LastModification;
     int		OpenCnt;
     int		RevisionCnt;
+    char	Signature[SN_MAX_SIGNATURE_SIZE];
     }
     SnNode, *pSnNode;
 
