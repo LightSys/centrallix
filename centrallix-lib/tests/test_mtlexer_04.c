@@ -28,6 +28,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-04 open/close session";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest);
     }

@@ -24,7 +24,7 @@ Flat                          Non-reflective
                               White                    Purple
                               White                    Orange
                               White                    Violet
-            Name                                 Description
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
@@ -50,7 +50,7 @@ Flat                          Non-reflective
                               Charcoal                 Orange
                               Charcoal                 Violet
                               Green                    Black
-            Name                                 Description
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
@@ -76,7 +76,7 @@ Flat                          Non-reflective
                               Yellow                   Violet
                               Red                      Black
                               Red                      White
-            Name                                 Description
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
@@ -102,7 +102,7 @@ Flat                          Non-reflective
                               Purple                   Black
                               Purple                   White
                               Purple                   Grey
-            Name                                 Description
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
@@ -139,8 +139,7 @@ Flat                          Non-reflective
                               Violet                   Blue
                               Violet                   Purple
                               Violet                   Orange
-            Name                                 Description
-================================================================================
+
 Eggshell                      Slightly reflective
 
                                        Color1                   Color2
@@ -155,6 +154,11 @@ Eggshell                      Slightly reflective
                               Black                    Purple
                               Black                    Orange
                               Black                    Violet
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               White                    Black
                               White                    Grey
                               White                    Charcoal
@@ -165,11 +169,6 @@ Eggshell                      Slightly reflective
                               White                    Purple
                               White                    Orange
                               White                    Violet
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Grey                     Black
                               Grey                     White
                               Grey                     Charcoal
@@ -181,6 +180,11 @@ Eggshell                      Slightly reflective
                               Grey                     Orange
                               Grey                     Violet
                               Charcoal                 Black
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Charcoal                 White
                               Charcoal                 Grey
                               Charcoal                 Green
@@ -191,11 +195,6 @@ Eggshell                      Slightly reflective
                               Charcoal                 Orange
                               Charcoal                 Violet
                               Green                    Black
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Green                    White
                               Green                    Grey
                               Green                    Charcoal
@@ -207,6 +206,11 @@ Eggshell                      Slightly reflective
                               Green                    Violet
                               Yellow                   Black
                               Yellow                   White
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Yellow                   Grey
                               Yellow                   Charcoal
                               Yellow                   Green
@@ -217,11 +221,6 @@ Eggshell                      Slightly reflective
                               Yellow                   Violet
                               Red                      Black
                               Red                      White
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Red                      Grey
                               Red                      Charcoal
                               Red                      Green
@@ -233,6 +232,11 @@ Eggshell                      Slightly reflective
                               Blue                     Black
                               Blue                     White
                               Blue                     Grey
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Blue                     Charcoal
                               Blue                     Green
                               Blue                     Yellow
@@ -243,11 +247,6 @@ Eggshell                      Slightly reflective
                               Purple                   Black
                               Purple                   White
                               Purple                   Grey
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Purple                   Charcoal
                               Purple                   Green
                               Purple                   Yellow
@@ -259,6 +258,11 @@ Eggshell                      Slightly reflective
                               Orange                   White
                               Orange                   Grey
                               Orange                   Charcoal
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Orange                   Green
                               Orange                   Yellow
                               Orange                   Red
@@ -269,20 +273,16 @@ Eggshell                      Slightly reflective
                               Violet                   White
                               Violet                   Grey
                               Violet                   Charcoal
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Violet                   Green
                               Violet                   Yellow
                               Violet                   Red
                               Violet                   Blue
                               Violet                   Purple
                               Violet                   Orange
-            Name                                 Description
-================================================================================
+
 Satin                         Somewhat reflective
+            Name                                 Description
+================================================================================
 
                                        Color1                   Color2
                               ==================================================
@@ -306,12 +306,12 @@ Satin                         Somewhat reflective
                               White                    Purple
                               White                    Orange
                               White                    Violet
-            Name                                 Description
+                              Grey                     Black
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Grey                     Black
                               Grey                     White
                               Grey                     Charcoal
                               Grey                     Green
@@ -332,12 +332,12 @@ Satin                         Somewhat reflective
                               Charcoal                 Orange
                               Charcoal                 Violet
                               Green                    Black
-            Name                                 Description
+                              Green                    White
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Green                    White
                               Green                    Grey
                               Green                    Charcoal
                               Green                    Yellow
@@ -358,12 +358,12 @@ Satin                         Somewhat reflective
                               Yellow                   Violet
                               Red                      Black
                               Red                      White
-            Name                                 Description
+                              Red                      Grey
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Red                      Grey
                               Red                      Charcoal
                               Red                      Green
                               Red                      Yellow
@@ -384,12 +384,12 @@ Satin                         Somewhat reflective
                               Purple                   Black
                               Purple                   White
                               Purple                   Grey
-            Name                                 Description
+                              Purple                   Charcoal
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Purple                   Charcoal
                               Purple                   Green
                               Purple                   Yellow
                               Purple                   Red
@@ -410,19 +410,18 @@ Satin                         Somewhat reflective
                               Violet                   White
                               Violet                   Grey
                               Violet                   Charcoal
+                              Violet                   Green
             Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Violet                   Green
                               Violet                   Yellow
                               Violet                   Red
                               Violet                   Blue
                               Violet                   Purple
                               Violet                   Orange
-            Name                                 Description
-================================================================================
+
 Semi-Gloss                    Reflective
 
                                        Color1                   Color2
@@ -438,6 +437,11 @@ Semi-Gloss                    Reflective
                               Black                    Orange
                               Black                    Violet
                               White                    Black
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               White                    Grey
                               White                    Charcoal
                               White                    Green
@@ -447,11 +451,6 @@ Semi-Gloss                    Reflective
                               White                    Purple
                               White                    Orange
                               White                    Violet
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Grey                     Black
                               Grey                     White
                               Grey                     Charcoal
@@ -464,6 +463,11 @@ Semi-Gloss                    Reflective
                               Grey                     Violet
                               Charcoal                 Black
                               Charcoal                 White
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Charcoal                 Grey
                               Charcoal                 Green
                               Charcoal                 Yellow
@@ -473,11 +477,6 @@ Semi-Gloss                    Reflective
                               Charcoal                 Orange
                               Charcoal                 Violet
                               Green                    Black
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Green                    White
                               Green                    Grey
                               Green                    Charcoal
@@ -490,6 +489,11 @@ Semi-Gloss                    Reflective
                               Yellow                   Black
                               Yellow                   White
                               Yellow                   Grey
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Yellow                   Charcoal
                               Yellow                   Green
                               Yellow                   Red
@@ -499,11 +503,6 @@ Semi-Gloss                    Reflective
                               Yellow                   Violet
                               Red                      Black
                               Red                      White
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Red                      Grey
                               Red                      Charcoal
                               Red                      Green
@@ -516,6 +515,11 @@ Semi-Gloss                    Reflective
                               Blue                     White
                               Blue                     Grey
                               Blue                     Charcoal
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Blue                     Green
                               Blue                     Yellow
                               Blue                     Red
@@ -525,11 +529,6 @@ Semi-Gloss                    Reflective
                               Purple                   Black
                               Purple                   White
                               Purple                   Grey
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Purple                   Charcoal
                               Purple                   Green
                               Purple                   Yellow
@@ -542,6 +541,11 @@ Semi-Gloss                    Reflective
                               Orange                   Grey
                               Orange                   Charcoal
                               Orange                   Green
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Orange                   Yellow
                               Orange                   Red
                               Orange                   Blue
@@ -551,24 +555,23 @@ Semi-Gloss                    Reflective
                               Violet                   White
                               Violet                   Grey
                               Violet                   Charcoal
-            Name                                 Description
-================================================================================
-
-                                       Color1                   Color2
-                              ==================================================
                               Violet                   Green
                               Violet                   Yellow
                               Violet                   Red
                               Violet                   Blue
                               Violet                   Purple
                               Violet                   Orange
-            Name                                 Description
-================================================================================
+
 Gloss                         Very reflective
 
                                        Color1                   Color2
                               ==================================================
                               Black                    White
+            Name                                 Description
+================================================================================
+
+                                       Color1                   Color2
+                              ==================================================
                               Black                    Grey
                               Black                    Charcoal
                               Black                    Green
@@ -588,13 +591,13 @@ Gloss                         Very reflective
                               White                    Purple
                               White                    Orange
                               White                    Violet
-            Name                                 Description
+                              Grey                     Black
+                              Grey                     White
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Grey                     Black
-                              Grey                     White
                               Grey                     Charcoal
                               Grey                     Green
                               Grey                     Yellow
@@ -614,13 +617,13 @@ Gloss                         Very reflective
                               Charcoal                 Orange
                               Charcoal                 Violet
                               Green                    Black
-            Name                                 Description
+                              Green                    White
+                              Green                    Grey
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Green                    White
-                              Green                    Grey
                               Green                    Charcoal
                               Green                    Yellow
                               Green                    Red
@@ -640,13 +643,13 @@ Gloss                         Very reflective
                               Yellow                   Violet
                               Red                      Black
                               Red                      White
-            Name                                 Description
+                              Red                      Grey
+                              Red                      Charcoal
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Red                      Grey
-                              Red                      Charcoal
                               Red                      Green
                               Red                      Yellow
                               Red                      Blue
@@ -666,13 +669,13 @@ Gloss                         Very reflective
                               Purple                   Black
                               Purple                   White
                               Purple                   Grey
-            Name                                 Description
+                              Purple                   Charcoal
+                              Purple                   Green
+            Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Purple                   Charcoal
-                              Purple                   Green
                               Purple                   Yellow
                               Purple                   Red
                               Purple                   Blue
@@ -692,13 +695,13 @@ Gloss                         Very reflective
                               Violet                   White
                               Violet                   Grey
                               Violet                   Charcoal
+                              Violet                   Green
+                              Violet                   Yellow
             Name                                 Description
 ================================================================================
 
                                        Color1                   Color2
                               ==================================================
-                              Violet                   Green
-                              Violet                   Yellow
                               Violet                   Red
                               Violet                   Blue
                               Violet                   Purple

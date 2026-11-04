@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -36,6 +36,7 @@ int xrqInit(pXRingQueue this, int initSize);
 int xrqDeInit(pXRingQueue this);
 int xrqEnqueue(pXRingQueue this, void* item);
 void* xrqDequeue(pXRingQueue this);
+void* xrqGetItem(pXRingQueue this, int index);
 int xrqClear(pXRingQueue this);
 int xrqCount(pXRingQueue this);
 
