@@ -3201,7 +3201,7 @@ nht_i_CheckAccessLog()
 	    NHT.AccessLogFD = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 	    if (!NHT.AccessLogFD)
 		{
-		mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
+		mssWarn("NHT", "Could not open access_log file '%s' (%s).", NHT.AccessLogFile, strerror(errno));
 		}
 	    }
 	else
@@ -3213,7 +3213,7 @@ nht_i_CheckAccessLog()
 		test_fd = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 		if (!test_fd)
 		    {
-		    mssErrorErrno(1,"NHT","Could not reopen access_log file '%s'", NHT.AccessLogFile);
+		    mssWarn("NHT", "Could not reopen access_log file '%s' (%s).", NHT.AccessLogFile, strerror(errno));
 		    }
 		else
 		    {
@@ -3257,7 +3257,8 @@ nhtInitialize()
 		}
 	    else
 		{
-		mssError(1, "NHT", "Warning: Could not initialize nonce/hash keystream; X-Nonce headers will not be emitted");
+		mssWarn("NHT", "Could not initialize nonce/hash keystream; X-Nonce headers will not be emitted.");
+		mssClearError();
 		}
 	    }
 
@@ -3350,7 +3351,7 @@ nhtInitialize()
 		    else if (!strcasecmp(strval, "web-form"))
 			NHT.AuthMethods |= NHT_AUTH_WEBFORM;
 		    else
-			mssError(1, "NHT", "Warning: invalid auth method '%s'", strval);
+			mssWarn("NHT", "invalid auth method '%s'.", strval);
 		    }
 		else
 		    {
@@ -3387,7 +3388,7 @@ nhtInitialize()
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
 	    if (NHT.WatchdogTime <= 0 || NHT.WatchdogTime > 200000)
 		{
-		mssError(1, "NHT", "Warning: session_watchdog_timer (%d) must be > 0 and <= 200000, reverting to default (180).", NHT.WatchdogTime);
+		mssWarn("NHT", "session_watchdog_timer (%d) must be > 0 and <= 200000, reverting to default (180).", NHT.WatchdogTime);
 		NHT.WatchdogTime = 180;
 		}
 	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
@@ -3399,7 +3400,7 @@ nhtInitialize()
 		    i = 200000;
 		    NHT.WatchdogTime = 199999;
 		    }
-		mssError(1, "NHT", "Warning: session_inactivity_timer (%d) must be > watchdog (%d) and <= 200000, reverting to %d.", NHT.InactivityTime, NHT.WatchdogTime, i);
+		mssWarn("NHT", "session_inactivity_timer (%d) must be > watchdog (%d) and <= 200000, reverting to %d.", NHT.InactivityTime, NHT.WatchdogTime, i);
 		NHT.InactivityTime = i;
 		}
 
@@ -3407,7 +3408,7 @@ nhtInitialize()
 	    stAttrValue(stLookup(my_config, "user_session_limit"), &(NHT.UserSessionLimit), NULL, 0);
 	    if (NHT.UserSessionLimit > 1000 || NHT.UserSessionLimit < 1)
 		{
-		mssError(1, "NHT", "Warning: user_session_limit (%d) must be > 0 and <= 1000, reverting to default (100).", NHT.UserSessionLimit);
+		mssWarn("NHT", "user_session_limit (%d) must be > 0 and <= 1000, reverting to default (100).", NHT.UserSessionLimit);
 		NHT.UserSessionLimit = 100;
 		}
 

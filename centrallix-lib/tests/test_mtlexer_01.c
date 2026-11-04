@@ -55,6 +55,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-01 string token and eol/eof/error test";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * N_FLAGTYPE;
     }

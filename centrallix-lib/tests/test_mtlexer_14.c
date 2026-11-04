@@ -60,6 +60,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-14 normal/oversized double floating point";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest);
     }

@@ -66,6 +66,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-11 case (in)sensitive keywords and reserved words";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * N_FLAGTYPE * N_TOK;
     }

@@ -115,6 +115,31 @@ prt_htmlfm_IsMarkersOnly(pPrtObjStream scan, pPrtObjStream linetail)
     }
 
 
+/*** prt_htmlfm_Justification() - returns the justification for the run of
+ *** objects.  Uses the justification of the last non-empty object, or the
+ *** justification of last if the run is empty (aka. it's only style changes
+ *** and border decorations).
+ ***
+ *** @param first The first object in the run.
+ *** @param last The last object in the run.
+ *** @returns The run's justification.
+ ***/
+static int
+prt_htmlfm_Justification(pPrtObjStream first, pPrtObjStream last)
+    {
+
+	for (pPrtObjStream scan = last; ; scan = scan->Prev)
+	    {
+	    if (!(scan->Flags & PRT_OBJ_F_MARGINRELEASE)
+		&& (scan->ObjType->TypeID != PRT_OBJ_T_STRING || ((char*)scan->Content)[0] != '\0'))
+		return scan->Justification;
+	    if (scan == first) break;
+	    }
+
+    return last->Justification;
+    }
+
+
 /*** prt_htmlfm_ContentBottom() - finds the bottom of an area's rendered
  *** content, ignoring border decorations.
  ***
@@ -214,17 +239,9 @@ prt_htmlfm_IsBareArea(pPrtHTMLfmInf context, pPrtObjStream area, int* justificat
 	/** Check for empty space below the line. **/
 	if (prt_htmlfm_SpaceBelow(area) > 0.0) return false;
 
-	/** Find the first non-empty object, which sets the justification. **/
+	/** Find the line's justification. **/
 	if (justification != NULL)
-	    {
-	    pPrtObjStream justif_subscan = area->ContentHead;
-	    while(justif_subscan != linetail &&
-		justif_subscan->ObjType->TypeID == PRT_OBJ_T_STRING && ! (strlen((char*) justif_subscan->Content)))
-		{
-		justif_subscan = justif_subscan->Next;
-		}
-	    *justification = justif_subscan->Justification;
-	    }
+	    *justification = prt_htmlfm_Justification(area->ContentHead, linetail);
 
     return true;
     }
@@ -239,11 +256,12 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
     int n_xset;
     double xset[PRT_HTMLFM_MAX_TABSTOP];
     double widths[PRT_HTMLFM_MAX_TABSTOP];
-    pPrtObjStream scan, linetail, next_xset_obj, justif_subscan;
+    pPrtObjStream scan, linetail, next_xset_obj;
     int i,j,cur_xset,next_xset;
     double w, cur_x;
     double line_top, line_bottom, prev_bottom = -1.0;
     int last_needed_cols, cur_needs_cols, need_new_row, in_td, in_tr;
+    int line_justification, last_justification;
     PrtHTMLfmSavedStyle oldstyle;
     char* justifytypes[] = { "left", "right", "center", "justify" };
     pPrtTextLMData lm_inf = (pPrtTextLMData)(area->LMData);
@@ -349,6 +367,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	/** Walk the area's content **/
 	scan = area->ContentHead;
 	last_needed_cols = 0;
+	last_justification = PRT_JUST_T_LEFT;
 	in_tr = 0;
 	while(scan)
 	    {
@@ -362,7 +381,12 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 	    /** Leave a vertical gap (e.g. from ypos or lineheight) before this line? **/
 	    const double gap = (prev_bottom >= 0.0 && line_bottom >= 0.0) ? line_top - prev_bottom : 0.0;
 	    if (line_bottom >= 0.0) prev_bottom = line_bottom;
-	    need_new_row = (cur_needs_cols || last_needed_cols || scan->Justification != PRT_JUST_T_LEFT || gap >= 0.5);
+
+	    /** Only left-justified lines share a cell. **/
+	    line_justification = prt_htmlfm_Justification(scan, linetail);
+	    need_new_row = (cur_needs_cols || last_needed_cols || gap >= 0.5
+		|| line_justification != PRT_JUST_T_LEFT || last_justification != PRT_JUST_T_LEFT);
+	    last_justification = line_justification;
 	    if (need_new_row)
 		{
 		if (in_td)
@@ -462,14 +486,7 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		    }
 		if (!in_td)
 		    {
-		    /* find first non-empty or non-string justification */
-		    justif_subscan = scan;
-		    while(justif_subscan != linetail && 
-			justif_subscan->ObjType->TypeID == PRT_OBJ_T_STRING && ! (strlen((char*) justif_subscan->Content)))
-		    {
-			justif_subscan = justif_subscan->Next;
-		    }
-
+		    const int justification = prt_htmlfm_Justification(scan, (next_xset_obj != NULL) ? next_xset_obj->Prev : linetail);
 
 		    for(w=0.0,i=cur_xset;i<next_xset;i++) w += widths[i];
 		    /*** Write HTML, skipping defaults (align="left", colspan="1")
@@ -477,8 +494,8 @@ prt_htmlfm_GenerateArea(pPrtHTMLfmInf context, pPrtObjStream area)
 		     **/
 		    const int n_cols = next_xset - cur_xset;
 		    if (UNLIKELY(!bare && (prt_htmlfm_OutputStrLiteral(context, "<td") < 0
-			|| (justif_subscan->Justification != PRT_JUST_T_LEFT
-			    && prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justif_subscan->Justification]) < 0)
+			|| (justification != PRT_JUST_T_LEFT
+			    && prt_htmlfm_OutputPrintf(context, " align=\"%s\"", justifytypes[justification]) < 0)
 			|| (n_cols > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", n_cols) < 0)
 			|| prt_htmlfm_OutputPrintf(context,
 			    " width=\"%d\">",
