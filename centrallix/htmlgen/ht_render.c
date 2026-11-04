@@ -444,8 +444,15 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
     }
 
 
-/*** htrRenderWidget - generate a widget into the HtPage structure, given the
- *** widget's objectsystem descriptor...
+/*** Renders a widget into the page using a driver registered for its type.
+ *** Use htrRenderSubwidgets() to render all of a widget's children.
+ ***
+ *** @param session The render session.
+ *** @param widget The widget to render, usually from the caller's `Children`.
+ *** 	Its type should be "widget/xxx", where "xxx" names a registered driver.
+ *** @param z The z-index to render the widget at, usually one more than the
+ *** 	highest z-index used by the caller.
+ *** @returns 0 if successful, or a negative error code if an error occurs.
  ***/
 int
 htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
@@ -540,14 +547,14 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     }
 
 
-/*** Check to see if we are transitioning when we move from the parent's
- *** namespace to the child's namespace. If so, write code to switch the
- *** namespace context.
+/*** Switches to the child's namespace (if it's different from its parent).
+ *** Only needed for writing a child's content without htrRenderWidget().
+ *** Call htrCheckNSTransitionReturn() to return to your own namespace.
  ***
- *** @param s The current session.
- *** @param parent The parent we are moving away from.
- *** @param child The child of the parent we are moving to.
- *** @returns 0 if successful, and -1 if an error occurs.
+ *** @param s The render session.
+ *** @param parent The widget being rendered, or NULL to do nothing.
+ *** @param child A child of parent, or NULL to do nothing.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
@@ -570,14 +577,12 @@ htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
     }
 
 
-/*** Check to see if we are transitioning when we move from the child's
- *** namespace back up to the parent's namespace. If so, write code to
- *** switch the namespace context.
+/*** Switches back to the parent's namespace after htrCheckNSTransition().
  ***
- *** @param s The current session.
- *** @param parent The parent we are returning to.
- *** @param child The child we are moving away from.
- *** @returns 0 if successful, and -1 if an error occurs.
+ *** @param s The render session.
+ *** @param parent The parent passed to htrCheckNSTransition().
+ *** @param child The child passed to htrCheckNSTransition().
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
@@ -600,8 +605,12 @@ htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
     }
 
 
-/*** htrAddStylesheetItem -- copies stylesheet definitions into the
- *** buffers that will eventually be output as HTML.
+/*** Adds CSS to the `<style>` element in the page's `<head>`.
+ ***
+ *** @param s The render session.
+ *** @param html_text The CSS to add, copied by this function.  Start lines
+ *** 	with two tabs to match the page's indentation.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddStylesheetItem(pHtSession s, char* html_text)
@@ -616,8 +625,11 @@ htrAddStylesheetItem(pHtSession s, char* html_text)
     }
 
 
-/*** htrAddHeaderItem -- copies html text into the buffers that will
- *** eventually be output as the HTML header.
+/*** Adds HTML to the page's `<head>`, after the stylesheet.
+ ***
+ *** @param s The render session.
+ *** @param html_text The HTML to add, copied by this function.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddHeaderItem(pHtSession s, char* html_text)
@@ -632,8 +644,11 @@ htrAddHeaderItem(pHtSession s, char* html_text)
     }
 
 
-/*** htrAddBodyItem -- copies html text into the buffers that will
- *** eventually be output as the HTML body.
+/*** Adds HTML to the page's body.  Items appear in the order they are added.
+ ***
+ *** @param s The render session.
+ *** @param html_text The HTML to add, copied by this function.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddBodyItem(pHtSession s, char* html_text)
@@ -648,8 +663,12 @@ htrAddBodyItem(pHtSession s, char* html_text)
     }
 
 
-/*** htrAddExpressionItem -- copies html text into the buffers that will
- *** eventually be output as the HTML body.
+/*** Adds JavaScript that runs at the end of startup.  Most drivers should use
+ *** htrAddExpression() instead.
+ ***
+ *** @param s The render session.
+ *** @param html_text The JavaScript to add, copied by this function.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddExpressionItem(pHtSession s, char* html_text)
@@ -664,9 +683,13 @@ htrAddExpressionItem(pHtSession s, char* html_text)
     }
 
 
-/*** htrAddBodyParam -- copies html text into the buffers that will
- *** eventually be output as the HTML body.  These are simple html tag
- *** parameters (i.e., "BGCOLOR=white")
+/*** Adds an attribute to the page's `<body>` tag.  Ignored if the body is
+ *** disabled with htrDisableBody().
+ ***
+ *** @param s The render session.
+ *** @param html_param The attribute to add, copied by this function.  It must
+ *** 	start with a space, e.g. " bgcolor=white".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddBodyParam(pHtSession s, char* html_param)
@@ -853,8 +876,11 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
     }
 
 
-/*** htrAddBodyItem_va() - use a vararg list (like sprintf, etc) to add a
- *** formatted string to the body of the document.
+/*** Same as htrAddBodyItem(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. "<div>%STR&HTE</div>".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddBodyItem_va(pHtSession s, char* fmt, ... )
@@ -870,8 +896,11 @@ htrAddBodyItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddExpressionItem_va() - use a vararg list (like sprintf, etc) to add a
- *** formatted string to the body of the document.
+/*** Same as htrAddExpressionItem(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. "\tf('%STR&JSSTR');\n".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddExpressionItem_va(pHtSession s, char* fmt, ... )
@@ -887,8 +916,11 @@ htrAddExpressionItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddStylesheetItem_va() - use a vararg list (like sprintf, etc) to add a
- *** formatted string to the stylesheet definition of the document.
+/*** Same as htrAddStylesheetItem(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. "#%STR&SYM { ... }".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddStylesheetItem_va(pHtSession s, char* fmt, ... )
@@ -904,8 +936,11 @@ htrAddStylesheetItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddHeaderItem_va() - use a vararg list (like sprintf, etc) to add a
- *** formatted string to the header of the document.
+/*** Same as htrAddHeaderItem(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. "<title>%STR&HTE</title>".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddHeaderItem_va(pHtSession s, char* fmt, ... )
@@ -921,8 +956,11 @@ htrAddHeaderItem_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddBodyParam_va() - use a vararg list (like sprintf, etc) to add a
- *** formatted string to the body tag of the document.
+/*** Same as htrAddBodyParam(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. " text=\"%STR&HTE\"".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddBodyParam_va(pHtSession s, char* fmt, ... )
@@ -938,8 +976,11 @@ htrAddBodyParam_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddScriptWgtr_va() - use a vararg list to add a formatted string
- *** to build_wgtr_* function of the document
+/*** Same as htrAddScriptWgtr(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. "\tf('%STR&JSSTR');\n".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptWgtr_va(pHtSession s, char* fmt, ...)
@@ -956,8 +997,14 @@ htrAddScriptWgtr_va(pHtSession s, char* fmt, ...)
 
 
 
-/*** htrAddScriptInit_va() - use a vararg list (like sprintf, etc) to add a
- *** formatted string to startup function of the document.
+/*** Same as htrAddScriptInit(), but using a qpfPrintf() format.
+ ***
+ *** When the current namespace has changed since the last init, it first sets
+ *** the client-side `ns` variable to the current namespace.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. "\tf('%STR&JSSTR');\n".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptInit_va(pHtSession s, char* fmt, ... )
@@ -987,8 +1034,11 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
     }
 
 
-/*** htrAddScriptCleanup_va() - use a vararg list (like sprintf, etc) to add a
- *** formatted string to cleanup function of the document.
+/*** Same as htrAddScriptCleanup(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param fmt The qpfPrintf() format string, e.g. "\tf('%STR&JSSTR');\n".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptCleanup_va(pHtSession s, char* fmt, ... )
@@ -1005,8 +1055,16 @@ htrAddScriptCleanup_va(pHtSession s, char* fmt, ... )
 
 
 
-/*** htrAddScriptInclude -- adds a script src= type entry between the html
- *** header and html body.
+/*** Includes a JavaScript file in the page's `<head>`, in the order added.
+ *** Ignores files already included or loaded by the client.
+ ***
+ *** @param s The render session.
+ *** @param filename The file's ObjectSystem path, e.g. "/sys/js/htdrv_tab.js".
+ *** @param flags 0, or HTR_F_NAMEALLOC to have the page free filename with
+ *** 	nmFree() after rendering.  It must be allocated with
+ *** 	nmMalloc(strlen() + 1).  Otherwise, filename must stay valid until
+ *** 	rendering finishes.  For a duplicate, the caller keeps ownership.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptInclude(pHtSession s, char* filename, int flags)
@@ -1054,9 +1112,19 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
     }
 
 
-/*** htrAddScriptFunction -- adds a script function to the list of functions
- *** that will be output.  Note that duplicate functions won't be added, so
- *** the widget drivers need not keep track of this.
+/*** Adds a JavaScript function to the page.  Duplicate names are ignored, so
+ *** a driver can add its functions every time it renders a widget.
+ ***
+ *** @param s The render session.
+ *** @param fn_name The function's name, used to detect duplicates.
+ *** @param fn_text The full JavaScript source of the function, written to the
+ *** 	page verbatim.
+ *** @param flags 0, or HTR_F_NAMEALLOC and/or HTR_F_VALUEALLOC to have the
+ *** 	page free fn_name and/or fn_text with nmFree() after rendering.  These
+ *** 	must be allocated with nmMalloc(strlen() + 1).  Strings the page does
+ *** 	not free must stay valid until rendering finishes.  For a duplicate,
+ *** 	the caller keeps ownership of both strings.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
@@ -1098,8 +1166,19 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
     }
 
 
-/*** htrAddScriptGlobal -- adds a global variable to the list of variables
- *** to be output in the HTML JavaScript section.  Duplicates are suppressed.
+/*** Adds a global JavaScript variable to the page.  Duplicate names are
+ *** ignored.
+ ***
+ *** @param s The render session.
+ *** @param var_name The variable's name.
+ *** @param initialization A JavaScript expression assigned to the variable if
+ *** 	it is not already defined, or "" to declare it without a value.
+ *** @param flags 0, or HTR_F_NAMEALLOC and/or HTR_F_VALUEALLOC to have the
+ *** 	page free var_name and/or initialization with nmFree() after
+ *** 	rendering.  These must be allocated with nmMalloc(strlen() + 1).
+ *** 	Strings the page does not free must stay valid until rendering
+ *** 	finishes.  For a duplicate, the caller keeps ownership of both strings.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags)
@@ -1148,8 +1227,17 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
     }
 
 
-/*** htrAddScriptInit -- adds some initialization text that runs outside of a
- *** function context in the HTML JavaScript.
+/*** Adds JavaScript to the page's startup function, which runs after the page
+ *** loads and before event handlers are registered.  Code runs in the order
+ *** it is added, so a widget should add its init before rendering children.
+ ***
+ *** Use htrAddScriptInit_va() for a widget's first init so `ns` is set to the
+ *** widget's namespace.
+ ***
+ *** @param s The render session.
+ *** @param init_text The JavaScript to add, copied by this function.  Start
+ *** 	with a tab and end with a newline to match the page's indentation.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptInit(pHtSession s, char* init_text)
@@ -1164,7 +1252,13 @@ htrAddScriptInit(pHtSession s, char* init_text)
     }
 
 
-/*** htrAddScriptWgtr - adds some text to the wgtr function
+/*** Adds JavaScript to the function that builds the client widget tree at
+ *** startup.  Most drivers should use htrAddWgtrObjLinkage() and
+ *** htrAddWgtrCtrLinkage() instead.
+ ***
+ *** @param s The render session.
+ *** @param wgtr_text The JavaScript to add, copied by this function.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptWgtr(pHtSession s, char* wgtr_text)
@@ -1179,8 +1273,12 @@ htrAddScriptWgtr(pHtSession s, char* wgtr_text)
     }
 
 
-/*** htrAddScriptCleanup -- adds some initialization text that runs outside of a
- *** function context in the HTML JavaScript.
+/*** Adds JavaScript that runs when the page unloads, in the order added.
+ ***
+ *** @param s The render session.
+ *** @param init_text The JavaScript to add, copied by this function.  Start
+ *** 	with a tab and end with a newline to match the page's indentation.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddScriptCleanup(pHtSession s, char* init_text)
@@ -1195,11 +1293,18 @@ htrAddScriptCleanup(pHtSession s, char* init_text)
     }
 
 
-/*** htrAddEventHandlerFunction - adds an event handler script code segment for
- *** a given event on a given object (usually the 'document').
+/*** Registers a global JavaScript function to handle every DOM event of a
+ *** given type.  It returns EVENT_CONTINUE or EVENT_HALT, optionally ORed
+ *** with EVENT_PREVENT_DEFAULT_ACTION.  Ignores duplicate registrations.
  ***
- *** GRB note -- event_src is no longer used, should always be 'document'.
- ***          -- drvname is no longer used, just ignored.
+ *** @param s The render session.
+ *** @param event_src "document", used only in error messages.
+ *** @param event The DOM event name in uppercase, e.g. "MOUSEDOWN".
+ *** @param drv_name The driver's prefix, e.g. "gb", used only in error
+ *** 	messages.
+ *** @param function The handler's name, e.g. "gb_mousedown".  Must stay
+ *** 	valid until rendering finishes.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv_name, char* function)
@@ -1280,8 +1385,11 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
     }
 
 
-/*** htrDisableBody - disables the <BODY> </BODY> tags so that, for instance,
- *** a frameset item can be used.
+/*** Omits the page's `<body>` tags and their attributes, e.g. for a frameset.
+ *** Body items are still written.
+ ***
+ *** @param s The render session.
+ *** @returns 0, always.
  ***/
 int
 htrDisableBody(pHtSession s)
@@ -1291,9 +1399,21 @@ htrDisableBody(pHtSession s)
     }
 
 
-/*** htrAddBodyItemLayer_va - adds an entire "layer" to the document.  A layer
- *** in the traditional netscape-4 sense of a layer, which might be implemented
- *** in a number of different ways in the actual user agent itself.
+/*** Adds a layer element with content to the page's body, like
+ *** htrAddBodyItemLayerStart(), htrAddBodyItem_va(), then
+ *** htrAddBodyItemLayerEnd().
+ ***
+ *** @param s The render session.
+ *** @param flags HTR_LAYER_F_DEFAULT for a `<div>`, or HTR_LAYER_F_DYNAMIC for
+ *** 	an `<iframe>` loaded from the server later.
+ *** @param id A qpfPrintf() format for the element's id, given cnt, e.g.
+ *** 	"lbl%POS".  Must format to under 64 bytes.  Never let the end user
+ *** 	influence it.
+ *** @param cnt The number for id, usually the widget's id.
+ *** @param cls The element's CSS class, or NULL for none.
+ *** @param fmt The qpfPrintf() format string for the content, e.g.
+ *** 	"<p>%STR&HTE</p>".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, const char* fmt, ...)
@@ -1321,12 +1441,18 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, co
     }
 
 
-/*** htrAddBodyItemLayerStart - adds just the opening tag sequence
- *** but not some content for a layer.  Does not add the closing tag sequence
- *** for the layer.
+/*** Adds the opening tag of a layer element to the page's body.  Close it with
+ *** htrAddBodyItemLayerEnd(), passing the same flags.
  ***
- *** WARNING!!! DO NOT ALLOW THE END-USER TO INFLUENCE THE VALUE OF THE 'id'
- *** PARAMETER WHICH IS A FORMAT STRING FOR THE LAYER'S ID!!!
+ *** @param s The render session.
+ *** @param flags HTR_LAYER_F_DEFAULT for a `<div>`, or HTR_LAYER_F_DYNAMIC for
+ *** 	an `<iframe>` loaded from the server later.
+ *** @param id A qpfPrintf() format for the element's id, given cnt, e.g.
+ *** 	"lbl%POS".  Must format to under 64 bytes.  Never let the end user
+ *** 	influence it.
+ *** @param cnt The number for id, usually the widget's id.
+ *** @param class The element's CSS class, or NULL for none.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class)
@@ -1377,8 +1503,12 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
     }
 
 
-/*** htrAddBodyItemLayerEnd - adds the ending tag
- *** for a layer.  Does not emit the starting tag.
+/*** Adds the closing tag of a layer element started by
+ *** htrAddBodyItemLayerStart().
+ ***
+ *** @param s The render session.
+ *** @param flags The same flags passed to htrAddBodyItemLayerStart().
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddBodyItemLayerEnd(pHtSession s, int flags)
@@ -1399,8 +1529,12 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
     }
 
 
-/*** htrGetExpParams - retrieve the list of values used in an expression
- *** and put them in a javascript array.
+/*** Writes a JavaScript array literal listing the widget properties an
+ *** expression references, e.g. "[{obj:'form1',attr:'is_savable'}]".
+ ***
+ *** @param exp The expression to read.
+ *** @param xs An initialized XString to overwrite.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrGetExpParams(pExpression exp, pXString xs)
@@ -1479,12 +1613,15 @@ htrGetExpParams(pExpression exp, pXString xs)
     }
 
 
-/*** htrAddExpression - adds an expression to control a given property of
- *** an object.  When any object reference in the expression changes, the
- *** expression will be re-run to modify the object's property.  The
- *** object in question can then put a watchpoint on the property, causing
- *** actual actions to occur based on changes in the value of the expression
- *** during application operation.
+/*** Binds a client-side widget property to an expression, updating it at
+ *** startup and whenever a property the expression references changes.  The
+ *** widget's JavaScript can watch the property.
+ ***
+ *** @param s The render session.
+ *** @param objname The widget's name, in the current namespace.
+ *** @param property The property to set.
+ *** @param exp A client-runnable expression.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
@@ -1586,8 +1723,15 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
     }
 
 
-/*** htrCheckAddExpression - checks if an expression should be added for a
- *** given widget property, and deploys it to the client if so.
+/*** Calls htrAddExpression() for a widget property if its value is an
+ *** expression.
+ ***
+ *** @param s The render session.
+ *** @param tree The widget to read the property from.
+ *** @param w_name The widget's name.
+ *** @param property The property to check.
+ *** @returns 1 if an expression was added, 0 if the property is not an
+ *** 	expression, or -1 if an error occurs.
  ***/
 int
 htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property)
@@ -1616,11 +1760,13 @@ htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property
     }
 
 
-/*** htrRenderSubwidgets - generates the code for all subwidgets within
- *** the current widget.  This is  a generic function that does not
- *** necessarily apply to all widgets that contain other widgets, but
- *** is useful for your basic ordinary "container" type widget, such
- *** as panes and tab pages.
+/*** Renders each of a widget's children in order using htrRenderWidget().
+ ***
+ *** @param s The render session.
+ *** @param widget The widget whose children to render.
+ *** @param z_level The z-index to render each child at, usually one more than
+ *** 	the highest z-index used by the caller.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int z_level)
@@ -1968,6 +2114,14 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	return -1;
     }
 
+/*** Builds the client-side widget tree for a tree rendered in its own
+ *** namespace from htrAddNamespace().  Call after rendering the tree, before
+ *** htrLeaveNamespace().
+ ***
+ *** @param s The render session.
+ *** @param tree The tree's root.
+ *** @returns 0 if successful, or -1 if an error occurs.
+ ***/
 int
 htrBuildClientWgtr(pHtSession s, pWgtrNode tree)
     {
@@ -2257,14 +2411,19 @@ htrGetErrorHTML(char* title)
     }
 
 
-/*** htrRender - generate an HTML document given the app structure subtree
- *** as an open ObjectSystem object.
+/*** Renders a widget tree as an HTML page, or an error page if a widget fails
+ *** to render.  Usually called through wgtrRender() as the "DHTML" deployment
+ *** method.
+ ***
+ *** @param stream The stream to write to.
+ *** @param stream_write Writes to stream, taking the same parameters as
+ *** 	fdWrite().
+ *** @param obj_s The ObjectSystem session.
+ *** @param tree The verified widget tree.
+ *** @param params The request's parameters, read by htrParamValue().
+ *** @param c_info The client's info.
+ *** @returns 0 if a page was written, or -1 if an error occurs.
  ***/
-/** This is where all control for DHTML generation begins. The
-    infrastructure of this function: This function traverses through the 
-
-    understanding of returned infrastructure is needed first.
- **/
 int
 htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSession obj_s, pWgtrNode tree, pStruct params, pWgtrClientInfo c_info)
     {
@@ -2762,8 +2921,9 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
     }
 
 
-/*** htrAllocDriver - allocates a driver structure that can later be
- *** registered by using the next function below, htrRegisterDriver().
+/*** Allocates an empty widget driver.
+ ***
+ *** @returns The new driver, or NULL if an error occurs.
  ***/
 pHtDriver
 htrAllocDriver()
@@ -2800,9 +2960,12 @@ htrAllocDriver()
     }
 
 
-/*** htrAddSupport - adds support for a server-side class to a driver
- ***   (by telling the class) (see centrallix/htmlgen/README) note:
- ***   _must_ be called after the driver registers
+/*** Makes a driver render its widget type and pseudo-types for a class of
+ *** user agents.  Add any pseudo-types to the driver's PseudoTypes first.
+ ***
+ *** @param drv The driver, from htrAllocDriver().
+ *** @param className A class from the user agent config, usually "dhtml".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddSupport(pHtDriver drv, char* className)
@@ -2827,8 +2990,10 @@ htrAddSupport(pHtDriver drv, char* className)
     return 0;
     }
 
-/*** htrRegisterDriver - register a new driver with the rendering system
- *** and map the widget name to the driver's structure for later access.
+/*** Registers a driver with the renderer.
+ ***
+ *** @param drv The driver, from htrAllocDriver().
+ *** @returns 0, always.
  ***/
 int
 htrRegisterDriver(pHtDriver drv)
@@ -2841,7 +3006,11 @@ htrRegisterDriver(pHtDriver drv)
     return 0;
     }
 
-/*** htrLookupDriver - returns the proper driver for a given type.
+/*** Finds the driver that renders a widget type for the session's user agent.
+ ***
+ *** @param s The render session.
+ *** @param type_name The widget type, e.g. "widget/button".
+ *** @returns The driver, or NULL if none is found.
  ***/
 pHtDriver
 htrLookupDriver(pHtSession s, char* type_name)
@@ -2862,8 +3031,10 @@ htrLookupDriver(pHtSession s, char* type_name)
 	return (pHtDriver)xhLookup(widget_drivers, type_name+7);
     }
 
-/*** htrInitialize - initialize the system and the global variables and
- *** structures.
+/*** Initializes the renderer.  Call once at startup, before registering
+ *** drivers.
+ ***
+ *** @returns 0, always.
  ***/
 int
 htrInitialize()
@@ -2880,22 +3051,18 @@ htrInitialize()
     }
 
 
-/*** htrGetBackground - Gets the background color/image from the bgcolor
- *** or background attributes on the provided widget node, then writes a CSS
- *** rule or HTML attribute for the background into the provided buffer.
+/*** Writes a widget's background (image) or bgcolor property as CSS or an
+ *** HTML attribute, preferring background.
  ***
- *** @param tree     The widget node to query for attributes.
- *** @param prefix   The prefix, prepended with an underscore (`_`) to any
- ***                 attribute queried from the widget by this function.
- *** @param as_style If true, writes a CSS rule (recommended).  If false,
- ***                 writes an HTML attribute, which is usually deprecated in
- ***                 functionality in modern browsers.
- *** @param buf      The buffer where the written output should be stored.
- ***                 A value of `""` is always written to buf as long as at
- ***                 least one character of space was allocated.
- *** @param buflen   The allocated length of `buf`.
- *** @returns 0 if successful, 1 if no background attribute was provided, or
- ***         -1 if an error occurs (and calls `mssError()`).
+ *** @param tree The widget to read the properties from.
+ *** @param prefix A prefix for the property names, e.g. "row" reads
+ *** 	"row_bgcolor", or NULL for none.
+ *** @param as_style True for a CSS declaration, e.g. "background-color:red;",
+ *** 	or false for a deprecated HTML attribute, e.g. "bgColor='red'".
+ *** @param buf The buffer to write to.
+ *** @param buflen The size of buf.
+ *** @returns 0 if successful, 1 if neither property is set, or -1 if an error
+ *** 	occurs.
  ***/
 int
 htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int buflen)
@@ -3030,7 +3197,14 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
     }
 
 
-/*** htrGetBoolean() - Get a widget attribute as a boolean value.
+/*** Reads a widget property as a boolean.  Accepts integers (nonzero is true)
+ *** and the case-insensitive strings yes/no, true/false, y/n, and on/off.
+ *** Prints a warning for any other value.
+ ***
+ *** @param wgt The widget to read the property from.
+ *** @param attrname The property's name.
+ *** @param default_value Returned if the property is unset or unrecognized.
+ *** @returns 1, 0, or default_value.
  ***/
 int
 htrGetBoolean(pWgtrNode wgt, char* attrname, int default_value)
@@ -3164,9 +3338,13 @@ htr_internal_FreeDMPrivateData(pWgtrNode widget)
     }
 
 
-/*** htrAddWgtrObjLinkage() - specify what function/object to call to find out
- *** what the actual client-side object is that represents an object inside
- *** the widget tree.
+/*** Sets the DOM element that represents a widget on the client, which is
+ *** otherwise an empty object.
+ ***
+ *** @param s The render session.
+ *** @param widget The widget.
+ *** @param linkage The element's id, or "window".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
@@ -3205,7 +3383,13 @@ htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     }
 
 
-/*** htrAddWgtrObjLinkage_va() - varargs version of the above.
+/*** Same as htrAddWgtrObjLinkage(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param widget The widget.
+ *** @param fmt The qpfPrintf() format string, e.g. "pn%POSmain".  Must format
+ *** 	to under 256 bytes.
+ *** @returns 0 if successful, or a negative value if an error occurs.
  ***/
 int
 htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
@@ -3258,9 +3442,15 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     }
 
 
-/*** htrAddWgtrCtrLinkage() - specify what function/object to call to find out
- *** what the actual client-side object is that represents an object inside
- *** the widget tree.
+/*** Sets the client-side object containing a widget's children, which is
+ *** otherwise the widget's own object.
+ ***
+ *** @param s The render session.
+ *** @param widget The widget.
+ *** @param linkage A JavaScript expression that can use `_obj`, `_parentobj`,
+ *** 	and `_parentctr`, e.g.
+ *** 	"htr_subel(_parentobj, 'tc1pane1')".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
@@ -3299,7 +3489,14 @@ htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     }
 
 
-/*** htrAddWgtrCtrLinkage_va() - varargs version of the above.
+/*** Same as htrAddWgtrCtrLinkage(), but using a qpfPrintf() format.
+ ***
+ *** @param s The render session.
+ *** @param widget The widget.
+ *** @param fmt The qpfPrintf() format string, e.g.
+ *** 	"htr_subel(_parentobj, 'tc%POSpane%POS')".  Must format to under 256
+ *** 	bytes.
+ *** @returns 0 if successful, or a negative value if an error occurs.
  ***/
 int
 htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
@@ -3346,7 +3543,14 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
     }
 
 
-/*** htrAddWgtrInit() - sets the initialization function for the widget
+/*** Sets a widget's client-side init function.  The page never calls it, so
+ *** use htrAddScriptInit_va() instead.
+ ***
+ *** @param s The render session.
+ *** @param widget The widget.
+ *** @param func The function's name.
+ *** @param paramfmt A printf() format string for the function's parameters.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
@@ -3389,8 +3593,16 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
     }
 
 
-/*** htrAddNamespace() - adds a namespace context for expression evaluation
- *** et al.
+/*** Enters a child namespace for later script inits and expressions.
+ *** Leave it with htrLeaveNamespace().
+ ***
+ *** @param s The render session.
+ *** @param container The widget containing the namespace's widget tree,
+ *** 	ignored if is_subns.
+ *** @param nspace The namespace's name, from wgtrGetRootDName().
+ *** @param is_subns 1 if the namespace's widgets are in the current client
+ *** 	widget tree, or 0 if they get their own from htrBuildClientWgtr().
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
@@ -3446,8 +3658,10 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
     }
 
 
-/*** htrLeaveNamespace() - revert back to the parent namespace of the one
- *** currently in use.
+/*** Returns to the namespace from before htrAddNamespace().
+ ***
+ *** @param s The render session.
+ *** @returns 0, always.
  ***/
 int
 htrLeaveNamespace(pHtSession s)
@@ -3467,12 +3681,27 @@ htrLeaveNamespace(pHtSession s)
     }
 
 
-/*** htrFormatElement() - add a CSS line to format a DIV based on some basic
- *** style information.
+/*** Adds a CSS rule positioning an element and styling it from these widget
+ *** properties: textcolor, style, font, font_size, bgcolor, background,
+ *** padding, border_color, border_radius, border_style, align, wrap,
+ *** shadow_color, shadow_radius, shadow_offset, shadow_location, and
+ *** shadow_angle.
  ***
- *** Styled properties: textcolor, style, font_size, font, bgcolor, padding,
- ***     border_color, border_radius, border_style, align, wrap, shadow_color,
- ***     shadow_radius, shadow_offset, shadow_location, shadow_angle
+ *** @param s The render session.
+ *** @param node The widget to read the properties from.
+ *** @param id The rule's CSS selector, e.g. "#tx1base".
+ *** @param flags Unused.  Pass 0.
+ *** @param x The element's x position.
+ *** @param y The element's y position.
+ *** @param w The element's width, or 0 to omit.
+ *** @param h The element's height, or 0 to omit.
+ *** @param z The element's z-index, or 0 to omit.
+ *** @param style_prefix A prefix for the property names, e.g. "row" reads
+ *** 	"row_textcolor", or NULL for none.
+ *** @param defaults Name/value pairs for properties the widget does not set,
+ *** 	ending in NULL, e.g. {"border_style", "inset", NULL}, or NULL.
+ *** @param addl Extra CSS declarations, or NULL.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y, int w, int h, int z, char* style_prefix, char* defaults[], char* addl)
