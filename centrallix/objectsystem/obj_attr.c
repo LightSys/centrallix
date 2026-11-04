@@ -501,7 +501,8 @@ objGetNextAttr(pObject this)
  *** @param attrname The attribute's name.
  *** @param data_type The new value's type, usually from objGetAttrType().
  *** @param val The new value, e.g. POD(&my_int).  May be NULL.
- *** @returns 0 if successful, or -1 if an error occurs.
+ *** @returns 0 if successful, or -1 if an error occurs.  Setting
+ *** 	"objcontent" instead returns the number of bytes written.
  ***/
 int 
 objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
@@ -749,7 +750,8 @@ objFreeHints(pObjPresentationHints ph)
  *** @param this The object.
  *** @param objlist_v The objects to evaluate with (pParamObjects), or NULL to
  *** 	clear the context.  The caller keeps ownership, and this must remain
- *** 	valid until the context is changed or cleared.
+ *** 	valid until every object sharing it is closed or has its context
+ *** 	changed or cleared.
  *** @returns 0, always.
  ***/
 int
