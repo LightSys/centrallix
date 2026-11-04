@@ -1031,7 +1031,7 @@ int exp_fn_ascii(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     if ((i0->Flags & EXPR_F_NULL) || i0->String[0] == '\0')
 	tree->Flags |= EXPR_F_NULL;
     else
-	tree->Integer = i0->String[0];
+	tree->Integer = (unsigned char)i0->String[0];
     return 0;
     }
 
