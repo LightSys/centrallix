@@ -1336,7 +1336,7 @@ objClose(pObject this)
     }
 
 
-/*** Adds a link to an open object, so it stays open even if it's owner calls
+/*** Adds a link to an open object, so it stays open even if its owner calls
  *** objClose(), until another objClose() call "unlink"s it.
  ***
  *** @param this The object to link to.

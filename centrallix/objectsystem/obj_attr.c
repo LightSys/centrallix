@@ -105,7 +105,7 @@ objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(),
  *** @param attrname The attribute's name.
  *** @returns A DATA_T_* type from datatypes.h,
  *** 	or DATA_T_UNAVAILABLE if the attribute does not exist
- *** 	or -1 an error occurs.
+ *** 	or -1 if an error occurs.
  ***/
 int
 objGetAttrType(pObject this, char* attrname)
