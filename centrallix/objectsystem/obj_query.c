@@ -768,7 +768,7 @@ objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
     char* ptr;
 
 	/** Driver can handle this?  (i.e., MultiQuery module) **/
-	if (this->Drv->GetQueryIdentityPath)
+	if (this->Drv && this->Drv->GetQueryIdentityPath)
 	    return this->Drv->GetQueryIdentityPath(this->Data, pathbuf, maxlen);
 
 	/** Get the pathname **/
