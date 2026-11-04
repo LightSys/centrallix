@@ -1233,9 +1233,22 @@ obj_internal_RenamePath(pPathname path, int element_id, char* new_element)
     }
 
 
-/*** objOpen - open an object for access to its content, attributes, and
- *** methods.  Optionally create a new object.  Open 'mode' uses flags
- *** like the UNIX open() call.
+/*** Opens an object for access to its content, attributes, and methods.  Close
+ *** it with objClose().
+ ***
+ *** @param session The OSML session.
+ *** @param path The object's path, either absolute or relative to the
+ *** 	session's working directory.  Path elements can take parameters like
+ *** 	a URL, e.g. "/data/file.csv?ls__type=system%2fobject".
+ *** @param mode OBJ_O_RDONLY, OBJ_O_WRONLY, or OBJ_O_RDWR, optionally with
+ *** 	OBJ_O_CREAT, OBJ_O_TRUNC, and OBJ_O_EXCL, which work like the UNIX
+ *** 	open() flags.  To have the driver name a new object, add OBJ_O_CREAT
+ *** 	and OBJ_O_AUTONAME and end the path with "*".
+ *** @param permission_mask The UNIX permissions for a new object, e.g. 0600.
+ *** @param type The content type the caller wants, e.g. "system/file" for a
+ *** 	new file, or "text/html" to render a report as HTML.  Most drivers
+ *** 	ignore this when opening an existing object.
+ *** @returns The open object, or NULL if an error occurs.
  ***/
 pObject 
 objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type)
@@ -1261,9 +1274,12 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
     }
 
 
-/*** objClose - close an open object.  If this is an open attribute, then
- *** we close it but not the object it belongs to.  If the object has open
- *** attributes, we close them before closing the object.
+/*** Closes an object, and any attributes open on it from objOpenAttr().
+ *** If objLinkTo() added links to the object, it stays open until each
+ *** link is also closed.
+ ***
+ *** @param this The object to close.
+ *** @returns 0, or -1 if an error occurs.
  ***/
 int 
 objClose(pObject this)
@@ -1320,9 +1336,11 @@ objClose(pObject this)
     }
 
 
-/*** objLinkTo - link to an open object, which increments the object's link
- *** count.  The object must then be objClose()ed one more time before the
- *** close actually processes.
+/*** Adds a link to an open object, so it stays open even if it's owner calls
+ *** objClose(), until another objClose() call "unlink"s it.
+ ***
+ *** @param this The object to link to.
+ *** @returns this, for convenience.
  ***/
 pObject
 objLinkTo(pObject this)
@@ -1344,9 +1362,13 @@ objLinkTo(pObject this)
     }
 
 
-/*** objCreate - creates a new object without actually opening it.  All
- *** attributes are set to default values in accordance with the appropriate
- *** objectsystem driver.
+/*** Creates an object without opening it.  Fails if the object already exists.
+ ***
+ *** @param session The OSML session.
+ *** @param path The path of the object to create.  See objOpen().
+ *** @param permission_mask The UNIX permissions for the new object, e.g. 0600.
+ *** @param type The new object's content type, e.g. "system/file".
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int 
 objCreate(pObjSession session, char* path, int permission_mask, char* type)
@@ -1374,8 +1396,11 @@ objCreate(pObjSession session, char* path, int permission_mask, char* type)
     }
 
 
-/*** objDelete - deletes an object without having to perform a query and
- *** then a query delete.
+/*** Deletes the object at a path.  Use objDeleteObj() for an open object.
+ ***
+ *** @param session The OSML session.
+ *** @param path The path of the object to delete.  See objOpen().
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int 
 objDelete(pObjSession session, char* path)
@@ -1417,11 +1442,14 @@ objDelete(pObjSession session, char* path)
     }
 
 
-/*** objInfo - get additional information about an object.  The returned
- *** structure should be considered readonly, valid only while the object
- *** is still open, and need not be freed.  Its value will be overwritten
- *** on subsequent calls to objInfo for the same object.  Returns NULL on
- *** error.
+/*** Gets information about an object, such as whether it has content or
+ *** subobjects.
+ ***
+ *** @param this The object.
+ *** @returns Info owned by the object, valid until the object is closed or
+ *** 	objInfo() is called on it again, or NULL if an error occurs.  Its Flags
+ *** 	are OBJ_INFO_F_* values from obj.h.  Its nSubobjects is only set if
+ *** 	Flags includes OBJ_INFO_F_SUBOBJ_CNT_KNOWN.
  ***/
 pObjectInfo
 objInfo(pObject this)
@@ -1434,14 +1462,12 @@ objInfo(pObject this)
     }
 
 
-/*** objDeleteObj - delete an already open object.  This basically marks
- *** the object for deletion at the driver level, and then does a close
- *** operation.  That way, the object only actually gets deleted once 
- *** no one else has it open anymore.
+/*** Deletes an open object and closes it.  If objLinkTo() added links to the
+ *** object, it is marked and deleted once the last link is closed.
  ***
- *** If this was the last open (linked to object handle) for this object,
- *** the delete happens immediately.  In any event, the caller should
- *** not use the object handle after passing it to this routine.
+ *** @param this The object to delete.
+ *** @returns 0 if successful, or -1 if the object does not support deletion,
+ *** 	in which case it stays open.
  ***/
 int
 objDeleteObj(pObject this)
@@ -1460,7 +1486,12 @@ objDeleteObj(pObject this)
     }
 
 
-/*** objGetPathname - return the full pathname of an open object.
+/*** Gets an open object's full path, e.g. "/data/file.csv/rows/1".
+ ***
+ *** @param this The object.
+ *** @returns The path, which points into the object's path buffer.  Calls to
+ *** 	objGetPathname(), objFileName(), objFilePath(), or objResetPathname()
+ *** 	all use this buffer so copy out the string if needed.
  ***/
 char*
 objGetPathname(pObject this)
@@ -1470,8 +1501,12 @@ objGetPathname(pObject this)
     }
 
 
-/*** objFileName - return the file name of an open object, or "/" for
- *** the root.
+/*** Gets the name of the file that holds an open object, e.g. "file.csv" for
+ *** "/data/file.csv/rows/1".
+ ***
+ *** @param this The object.
+ *** @returns The file name, or "/" for the root.  The name points into the
+ *** 	object's path buffer.  See objGetPathname().
  ***/
 char*
 objFileName(pObject this)
@@ -1481,7 +1516,12 @@ objFileName(pObject this)
     }
 
 
-/*** objFilePath - return the file path to an open object.
+/*** Gets the path of the file that holds an open object, e.g.
+ *** "./data/file.csv" for "/data/file.csv/rows/1".
+ ***
+ *** @param this The object.
+ *** @returns The path, which points into the object's path buffer.  See
+ *** 	objGetPathname().
  ***/
 char*
 objFilePath(pObject this)
@@ -1491,8 +1531,12 @@ objFilePath(pObject this)
     }
 
 
-/*** objResetPathname - untruncate the whole pathname of an open object after
- *** a partial path lookup, and return it.
+/*** Restores an open object's full path after objFileName() or objFilePath()
+ *** truncated it, e.g. "./data/file.csv/rows/1".
+ ***
+ *** @param this The object.
+ *** @returns The path, which points into the object's path buffer.  See
+ *** 	objGetPathname().
  ***/
 char*
 objResetPathname(pObject this)
@@ -1624,9 +1668,12 @@ objImportFile(pObjSession sess, char* source_filename, char* dest_osml_dir, char
     }
 
 
-/*** objCommitObject - commit changes made during a transaction.  Only partly
- *** implemented at present, and only if supported by the underlying
- *** driver.
+/*** Applies an object's pending changes without closing it, e.g. inserting a
+ *** newly created database row.  Does nothing if the object's driver does not
+ *** support commits.
+ ***
+ *** @param this The object to commit.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 objCommitObject(pObject this)
@@ -1641,9 +1688,17 @@ objCommitObject(pObject this)
     }
 
 
-/*** objOpenChild - open a child object for access to its content, attributes, and
- *** methods.  Optionally create a new object.  Open 'mode' uses flags like the
- *** UNIX open() call.
+/*** Opens a child of an object by name.  Only some drivers support this.  Close
+ *** the child with objClose().
+ ***
+ *** @param parent The object to open a child of.
+ *** @param childname The child's name.
+ *** @param mode The open mode.  See objOpen().
+ *** @param permission_mask The UNIX permissions for a new child.  See
+ *** 	objOpen().
+ *** @param type The content type the caller wants.  See objOpen().
+ *** @returns The open child, or NULL if an error occurs or the driver does not
+ *** 	support this.
  ***/
 pObject 
 objOpenChild(pObject parent, char* childname, int mode, int permission_mask, char* type)
