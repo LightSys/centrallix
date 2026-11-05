@@ -147,8 +147,8 @@ expObjID(pExpression exp, pParamObjects objlist)
     if (exp->ObjID == EXPR_OBJID_CURRENT && objlist) id = objlist->CurrentID;
     else if (exp->ObjID == EXPR_OBJID_PARENT && objlist) id = objlist->ParentID;
     else id = exp->ObjID;
-    if (((!objlist || !objlist->CurControl) && (!exp->Control || !exp->Control->Remapped)) || id < 0) return id;
-    if (exp->Control && exp->Control->Remapped) 
+    if (((!objlist || !objlist->CurControl) && (!exp->Control || !exp->Control->Remapped)) || id < 0 || exp->ObjID < 0) return id;
+    if (exp->Control && exp->Control->Remapped)
         id = exp->Control->ObjMap[id];
     else if (objlist && objlist->CurControl && objlist->CurControl->Remapped)
         id = objlist->CurControl->ObjMap[id];

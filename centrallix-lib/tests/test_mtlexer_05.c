@@ -21,7 +21,7 @@ test(char** tname)
 
 	*tname = "mtlexer-05 integer data, one per line with eol/eof";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	iter = 10;
 

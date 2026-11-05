@@ -462,7 +462,7 @@ gzipRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    printf("inf->eof: %i\n",inf->eof);
 	    printf("inf->stream.next_in: %p\n",inf->stream.next_in);
 	    printf("inf->stream.avail_in: %i\n",inf->stream.avail_in);
-	    mssError(0,"GZIP","data error detected");
+	    mssWarn("GZIP", "data error detected.");
 	    break;
 	case Z_OK:
 	case Z_STREAM_END:
@@ -487,7 +487,7 @@ gzipRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
     rval=maxcnt-inf->stream.avail_out; 
     inf->offset+=rval;
     if(inflateEnd(&(inf->stream))==Z_STREAM_ERROR)
-	mssError(0,"GZIP",inf->stream.msg);
+	mssWarn("GZIP", "Inflate stream error: %s.",inf->stream.msg);
     inf->mode=GZIP_MODE_NONE;
     if(GZIP_DEBUG & GZIP_DEBUG_DECOMPRESSION)
 	{
@@ -769,4 +769,3 @@ MODULE_PREFIX("gzip");
 MODULE_DESC("GZIP ObjectSystem Driver");
 MODULE_VERSION(0,1,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
-

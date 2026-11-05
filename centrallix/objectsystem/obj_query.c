@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2025 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -158,7 +158,23 @@ obj_internal_ParseCriteria(pObjQuery this, char* query, pExpression tree)
     }
 
 
-/*** objOpenQuery - issue a query against just one object, with no joins.
+/*** Opens a query for fetching child objects with objQueryFetch().  Close it
+ *** with objQueryClose().  The caller may close obj while the query is open.
+ ***
+ *** @param obj The object to query for children.
+ *** @param query A WHERE expression to filter children, e.g. ":name = 'x'", or
+ *** 	NULL or "" to use tree.
+ *** @param order_by An ORDER BY list, e.g. ":last_name, :first_name desc", or
+ *** 	NULL or "" for no sorting.
+ *** @param tree A compiled WHERE expression (pExpression), or NULL for no
+ *** 	filter.  The caller keeps ownership, and it must stay valid until the
+ *** 	query is closed.
+ *** @param orderby_exp A NULL-terminated array of compiled ORDER BY
+ *** 	expressions (pExpression), or NULL to use order_by.  The caller keeps
+ *** 	ownership, and it must stay valid until the query is closed.
+ *** @param flags 0, or OBJ_QY_F_ONEROW if only the first result is needed.
+ *** @returns The open query, or NULL if the object does not support queries
+ *** 	or an error occurs.
  ***/
 pObjQuery 
 objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orderby_exp_v, int flags)
@@ -378,9 +394,10 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     }
 
 
-/*** objQueryDelete - delete all rows in the current query result set.
- *** if driver doesn't understand queries, we'll have to delete the
- *** dumb things one at a time.
+/*** Deletes every object in a query's results.
+ ***
+ *** @param this The query.
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int 
 objQueryDelete(pObjQuery this)
@@ -415,8 +432,14 @@ objQueryDelete(pObjQuery this)
     }
 
 
-/*** objQueryFetch - open the next object in the result set (or first
- *** object, if the query was just issued).
+/*** Opens the next child object result from a query.  Close each result with
+ *** objClose().
+ ***
+ *** @param this The query.
+ *** @param mode The open mode for the result, usually OBJ_O_RDONLY.  See
+ *** 	objOpen().
+ *** @returns The next result, or NULL if there are no more results or an error
+ *** 	occurs.
  ***/
 pObject 
 objQueryFetch(pObjQuery this, int mode)
@@ -585,8 +608,17 @@ objQueryFetch(pObjQuery this, int mode)
     }
 
 
-/*** objQueryCreate - creates a new object in the context of a running
- *** query.  Returns the newly open object.
+/*** Creates and opens a new object among a query's results, e.g. a new row in
+ *** a table.  Only some drivers support this.  Close it with objClose().
+ ***
+ *** @param this The query.
+ *** @param name The new object's name, or "*" with OBJ_O_AUTONAME to have the
+ *** 	driver name it.
+ *** @param mode The open mode.  See objOpen().  OBJ_O_CREAT is always added.
+ *** @param permission_mask The UNIX permissions for the new object, e.g. 0600.
+ *** @param type Ignored.
+ *** @returns The new object, or NULL if an error occurs or the driver does not
+ *** 	support this.
  ***/
 pObject
 objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* type)
@@ -678,8 +710,11 @@ objQueryCreate(pObjQuery this, char* name, int mode, int permission_mask, char* 
     }
 
 
-/*** objQueryClose - close an open query.  This does _not_ close any of
- *** the objects in the result set that may still be open.
+/*** Closes a query.  Results from objQueryFetch() stay open until each is
+ *** closed with objClose().
+ ***
+ *** @param this The query to close.
+ *** @returns 0, always.
  ***/
 int 
 objQueryClose(pObjQuery this)
@@ -742,27 +777,30 @@ objQueryClose(pObjQuery this)
     }
 
 
-/*** objGetQueryCoverageMask() - determine what external objects are in use
- *** by the given query.  This is only valid on multiqueries (query handles
- *** returned by objMultiQuery()), and only makes sense when an external
- *** ParamObject list is used with the multiquery.
+/*** Gets a bitmask of the objects that a multiquery uses from its external
+ *** object list.  No driver implements this.
+ ***
+ *** @param this The query.
+ *** @returns The bitmask, or -1 if the query's driver does not support this.
  ***/
 int
 objGetQueryCoverageMask(pObjQuery this)
     {
-    if (this->Obj->Driver->GetQueryCoverageMask)
-	return this->Obj->Driver->GetQueryCoverageMask(this->Data);
+    if (this->Drv && this->Drv->GetQueryCoverageMask)
+	return this->Drv->GetQueryCoverageMask(this->Data);
     else
 	return -1;
     }
 
 
-/*** objGetQueryIdentityPath() - get the pathname to the "identity" object
- *** underlying a given query.  If the query is a normal query (from the
- *** objOpenQuery() call), this returns the path to the object that was
- *** passed to objOpenQuery().  Otherwise, for a multiquery, this returns
- *** the path to the "identity" query source (or to the only source, if the
- *** query only has one source).
+/*** Gets the path of the source that objMultiQuery() returns objects from.
+ *** This is its IDENTITY FROM source, or its only FROM source.
+ ***
+ *** @param this The query.
+ *** @param pathbuf The buffer to store the path in.
+ *** @param maxlen The size of pathbuf.
+ *** @returns 0 if successful, or -1 if the query has no identity source or an
+ *** 	error occurs.
  ***/
 int
 objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
@@ -770,7 +808,7 @@ objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
     char* ptr;
 
 	/** Driver can handle this?  (i.e., MultiQuery module) **/
-	if (this->Drv->GetQueryIdentityPath)
+	if (this->Drv && this->Drv->GetQueryIdentityPath)
 	    return this->Drv->GetQueryIdentityPath(this->Data, pathbuf, maxlen);
 
 	/** Get the pathname **/
@@ -787,4 +825,3 @@ objGetQueryIdentityPath(pObjQuery this, char* pathbuf, int maxlen)
 
     return 0;
     }
-

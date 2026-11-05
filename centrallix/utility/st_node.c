@@ -71,6 +71,7 @@ snReadNode(pObject obj)
     char* path = obj_internal_PathPart(obj->Pathname, 0, obj->SubPtr + obj->SubCnt - 1);
     ObjData pod;
     char buf[1];
+    int rval, cnt;
 
     	/** Check in the node cache first. **/
 	node = (pSnNode)xhLookup(&(SN_INF.NodeCache),path);
@@ -133,6 +134,23 @@ snReadNode(pObject obj)
 	if (objGetAttrValue(obj,"outer_type",DATA_T_STRING,&pod) != 0) objGetAttrValue(obj,"content_type",DATA_T_STRING,&pod);
 	memccpy(node->OpenType, pod.String, 0, 63);
 	node->OpenType[63] = 0;
+
+	/** Read a (possible) signature at the tail end of the object.  The
+	 ** other side effect here is that the underlying driver may sense EOF
+	 ** in the process and choose not to keep the underlying data open,
+	 ** saving on resources.
+	 **/
+	cnt=0;
+	while((rval = objRead(obj, node->Signature + cnt, sizeof(node->Signature) - cnt - 1, 0, 0)) > 0)
+	    {
+	    cnt += rval;
+	    if (cnt >= sizeof(node->Signature) - 1)
+		{
+		cnt = sizeof(node->Signature) - 1;
+		break;
+		}
+	    }
+	node->Signature[cnt] = '\0';
 
 	/** Cache the node. **/
 	xhAdd(&(SN_INF.NodeCache),node->NodePath, (char*)node);
