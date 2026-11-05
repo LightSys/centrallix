@@ -391,6 +391,7 @@ obj_internal_QueryDeleteEach(pObjQuery this)
     pObject obj = NULL;
     XArray paths = {0};
     pXString path_xs = NULL;
+    pStruct last_ctl;
     char* path = NULL;
     pObjectInfo info;
 
@@ -423,6 +424,14 @@ obj_internal_QueryDeleteEach(pObjQuery this)
 	    if (UNLIKELY(xsCopy(path_xs, "", 0) < 0 || obj_internal_PathToText(obj->Pathname, obj->Pathname->nElements, path_xs) < 0))
 		{
 		mssError(1, "OSML", "Failed to build path for \"%s\".", objGetPathname(obj));
+		goto end_free;
+		}
+
+	    /** Open as system/object to stop at the fetched object's driver. **/
+	    last_ctl = obj->Pathname->OpenCtl[obj->Pathname->nElements - 1];
+	    if (UNLIKELY(xsConcatPrintf(path_xs, "%sls__type=system%%2fobject", (last_ctl != NULL && last_ctl->nSubInf > 0) ? "&" : "?") < 0))
+		{
+		mssError(1, "OSML", "Failed to add type to path \"%s\".", xsString(path_xs));
 		goto end_free;
 		}
 	    path = nmSysStrdup(xsString(path_xs));
