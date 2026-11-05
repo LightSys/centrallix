@@ -93,7 +93,7 @@ void* prt_psod_OpenPDF(pPrtSession);
 static PrtPsodFormat PsFormats[] =
     {
 	{ "png",	"image/png",		prt_psod_OpenPDF,	1,	"/usr/bin/gs -q -dSAFER -dNOPAUSE -dBATCH -dFirstPage=1 -dLastPage=1 -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- -" },
-	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"cat | /usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress /dev/stdin - | sed 's/^<<\\/Type \\/Catalog \\/Pages \\([0-9R ]*\\)$/<<\\/Type \\/Catalog \\/Pages \\1 \\/Type\\/Catalog\\/ViewerPreferences<<\\/PrintScaling\\/None>>/'" },
+	{ "pdf",	"application/pdf",	prt_psod_OpenPDF,	999999,	"cat | /usr/bin/ps2pdf -dCompatibilityLevel=1.4 -dPDFSETTINGS=/prepress /dev/stdin -" },
 	{ NULL,		NULL,			NULL,			0,	NULL }
     };
 
@@ -186,6 +186,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
 				"%%LanguageLevel: 2\n"
 				"%%EndComments\n"
 				"/pdfmark where {pop} {userdict /pdfmark /cleartomark load put} ifelse\n"
+				"[ {Catalog} << /ViewerPreferences << /PrintScaling /None >> >> /PUT pdfmark\n"
 				, -1);
 
     return 0;

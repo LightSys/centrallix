@@ -8,6 +8,8 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
+#include "cxlib/expect.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -20,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2003 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -50,6 +52,38 @@
 
 
 
+/*** prt_htmlfm_OutputBorder() - Writes a single CSS "border-<side>" declaration
+ *** with an integer pixel width.  Rounding widths up to whole pixels reduces
+ *** HTML bloat and improves rendering consistency (especially for some email
+ *** HTML).  Also, 0-width borders are skipped to reduce HTML bloat.
+ *** 
+ *** @param context The report formatter context in which to print.
+ *** @param side The side to print (one of top, right, bottom, left).
+ *** @param width_units The unrounded border width.
+ *** @param color The color of the border, -1 to not use color.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+prt_htmlfm_OutputBorder(pPrtHTMLfmInf context, const char* side, double width_units, int color)
+    {
+    int border_width;
+
+	if (width_units == 0.0) return 0;
+	border_width = PRT_HTMLFM_BORDER_PIXELS(width_units);
+	if (border_width < 1) border_width = 1;
+	const int rval = (color == -1)
+	    ? prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid;", side, border_width)
+	    : prt_htmlfm_OutputPrintf(context, " border-%s: %dpx solid #%6.6X;", side, border_width, color);
+	if (UNLIKELY(rval < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write %dpx %s border.", border_width, side);
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
 /*** prt_htmlfm_GenerateTable() - output a tabular data section,
  *** including its rows and cells, into html
  ***/
@@ -57,65 +91,219 @@ int
 prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
     {
     pPrtObjStream row, cell, subobj;
-    PrtTextStyle oldstyle;
+    PrtHTMLfmSavedStyle oldstyle;
+    int n_rows = 0, n_cols = 0, cur_row = 0, cur_col = 0;
     pPrtTabLMData lm_data = (pPrtTabLMData)(table->LMData);
 
 	/** Write the table prologue **/
-	prt_htmlfm_SaveStyle(context, &oldstyle);
-	prt_htmlfm_Output(context,"<table border=\"0\" cellspacing=\"0\" cellpadding=\"0\">\n", -1);
+	if (UNLIKELY(prt_htmlfm_SaveStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to save style.");
+	    goto err;
+	    }
+
+
+	/** Size the table as a share of its container's inner width. **/
+	int width_pct = 100;
+	if (table->Parent != NULL && prtInnerWidth(table->Parent) > 0.0)
+	    width_pct = min(100, (int)(table->Width / prtInnerWidth(table->Parent) * 100.0 + 0.5));
+
+	/** Hold the table's height only if it is taller than its rows, which size to their content. **/
+	double rows_bottom = 0.0;
+	for(row = table->ContentHead; row; row=row->Next)
+	    {
+	    if (row->Flags & PRT_OBJ_F_MARGINRELEASE) continue;
+	    rows_bottom = max(rows_bottom, row->Y + row->Height);
+	    }
+	const bool hold_height = (rows_bottom + 0.01 < prtInnerHeight(table));
+
+	/** Write the container HTML with borders. **/
+	if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<table width=\"%d%%\" cellpadding=\"0\" style=\"", width_pct) < 0
+	    || (hold_height && prt_htmlfm_OutputPrintf(context,
+		"height: %dpx;",
+		(int)(table->Height * PRT_HTMLFM_YPIXEL + 0.5)
+	    ) < 0)
+	    || prt_htmlfm_OutputBorder(context, "top", lm_data->TopBorder.Width[0], lm_data->TopBorder.Color[0]) < 0
+	    || prt_htmlfm_OutputBorder(context, "right", lm_data->RightBorder.Width[0], lm_data->RightBorder.Color[0]) < 0
+	    || prt_htmlfm_OutputBorder(context, "bottom", lm_data->BottomBorder.Width[0], lm_data->BottomBorder.Color[0]) < 0
+	    || prt_htmlfm_OutputBorder(context, "left", lm_data->LeftBorder.Width[0], lm_data->LeftBorder.Color[0]) < 0
+	    || (lm_data->Shadow.nLines > 0 && prt_htmlfm_OutputPrintf(context, " box-shadow: %dpx %dpx 0 #%6.6X;",
+		max(1, PRT_HTMLFM_BORDER_PIXELS(lm_data->ShadowWidth)),
+		max(1, PRT_HTMLFM_BORDER_PIXELS(lm_data->ShadowWidth)),
+		lm_data->Shadow.Color[0]) < 0)
+	    || prt_htmlfm_OutputStrLiteral(context, "\">") < 0
+	))  {
+	    mssError(0, "PRT", "Failed to write table opening tag.");
+	    goto err;
+	    }
+
+	/* Count rows for style purposes */
+	for(row = table->ContentHead; row; row=row->Next) {
+	    if (row->ObjType->TypeID == PRT_OBJ_T_TABLEROW)
+		n_rows++;
+	}
+	cur_row = 0;
 
 	/** Loop through the subobjects, generating the rows **/
 	for(row = table->ContentHead; row; row=row->Next)
 	    {
 	    if (row->ObjType->TypeID != PRT_OBJ_T_TABLEROW) continue;
 
+	    cur_row++;
+	    /*count cols for style purposes */
+	    n_cols = 0;
+	    for(cell = row->ContentHead; cell; cell=cell->Next) {
+		if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
+		    n_cols++;
+	    }
+	    cur_col = 0;
+
 	    /** Got a row.  Does it contain cells or otherwise? **/
 	    cell = row->ContentHead;
 	    if (cell && cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 		{
 		/** Got a cell.  Emit list of cells in the row **/
-		prt_htmlfm_Output(context, "<tr>", 4);
+		/* Arbitrarily specify a restricted height for table header if it has one */
+		const int tr_rval = (cur_row == 1 && lm_data->HeaderRow)
+		    ? prt_htmlfm_OutputStrLiteral(context, "<tr height=10>")
+		    : prt_htmlfm_OutputStrLiteral(context, "<tr>");
+		if (UNLIKELY(tr_rval < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write row #%d/%d opening tag.", cur_row, n_rows);
+		    goto err;
+		    }
 		while(cell)
 		    {
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
-			prt_htmlfm_OutputPrintf(context,"<td width=\"%d\" align=\"left\" valign=\"top\" bgcolor=\"#%6.6X\">",
-				(int)(cell->Width*PRT_HTMLFM_XPIXEL),
-				cell->BGColor);
-			prt_htmlfm_InitStyle(context, &(cell->TextStyle));
+			cur_col++;
+			const int colspan = ((pPrtTabLMData)(cell->LMData))->ColSpan;
+			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"",
+				(int)(cell->Width*PRT_HTMLFM_XPIXEL)) < 0
+			    || (colspan > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", colspan) < 0)))
+			    goto err_cell;
+			int saved_bg = prt_htmlfm_OutputBGColor(context, cell->BGColor);
+			if (UNLIKELY(saved_bg < 0)) goto err_cell;
+			/*** Split the column gap between neighbors, like the layout, so the outer
+			 *** cells have no side padding.  Pad above and below by the row and cell margins.
+			 ***/
+			const int half_sep = (int)(lm_data->ColSep * PRT_HTMLFM_XPIXEL / 2);
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, " style=\"") < 0
+			    || prt_htmlfm_OutputPaddingRule(context,
+				(int)((row->MarginTop + cell->MarginTop) * PRT_HTMLFM_YPIXEL + 0.5),
+				(cur_col == n_cols) ? 0 : half_sep,
+				(int)((row->MarginBottom + cell->MarginBottom) * PRT_HTMLFM_YPIXEL + 0.5),
+				(cur_col == 1) ? 0 : half_sep) < 0))
+			    goto err_cell;
+
+			/* top border */
+			if (cell->BorderTop != 0 || row->BorderTop != 0) {
+			    if (cell->BorderTop != 0) {
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", cell->BorderTop, -1) < 0)) goto err_cell;
+			    } else {
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", row->BorderTop, -1) < 0)) goto err_cell;
+			    }
+			}
+			/* bottom border */
+			if (cell->BorderBottom != 0 || row->BorderBottom != 0) {
+			    if (cell->BorderBottom != 0) {
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", cell->BorderBottom, -1) < 0)) goto err_cell;
+			    } else {
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", row->BorderBottom, -1) < 0)) goto err_cell;
+			    }
+			} 
+			/* left border */
+			if (cell->BorderLeft != 0) {
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", cell->BorderLeft, -1) < 0)) goto err_cell;
+			} else if(cur_col != 1) {
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]) < 0)) goto err_cell;
+			} else if (row->BorderLeft != 0) {
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", row->BorderLeft, -1) < 0)) goto err_cell;
+			}
+			/* right border */
+			if (cell->BorderRight != 0) {
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1) < 0)) goto err_cell;
+			} else if (cur_col == n_cols && row->BorderRight != 0) {
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", row->BorderRight, -1) < 0)) goto err_cell;
+			}
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "\"") < 0)) goto err_cell;
+
+			/** Align a bare area's content, since it has no cell of its own. **/
+			int justification = PRT_JUST_T_LEFT;
+			if (UNLIKELY(cell->ContentHead != NULL
+			    && prt_htmlfm_IsBareArea(context, cell->ContentHead, &justification)
+			    && justification != PRT_JUST_T_LEFT
+			    && prt_htmlfm_OutputPrintf(context, " align=\"%s\"", PRT_JUST_STR[justification]) < 0
+			))  goto err_cell;
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, ">") < 0)) goto err_cell;
+			if (UNLIKELY(prt_htmlfm_InitStyle(context, &(cell->TextStyle)) < 0)) goto err_cell;
+			prt_htmlfm_SetKeepSpaces(context);
 			for(subobj=cell->ContentHead;subobj;subobj=subobj->Next)
 			    {
-			    prt_htmlfm_Generate_r(context, subobj);
+			    if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err_cell;
 			    }
-			prt_htmlfm_EndStyle(context);
-			prt_htmlfm_Output(context,"</td>",5);
+			if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err_cell;
+			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td>") < 0)) goto err_cell;
+			context->BGColor = saved_bg;
 			}
 		    cell=cell->Next;
 		    }
-		prt_htmlfm_Output(context, "</tr>\n", 6);
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</tr>\n") < 0))
+		    {
+		    mssError(0, "PRT", "Failed to write row #%d/%d closing tag.", cur_row, n_rows);
+		    goto err;
+		    }
 		}
 	    else
 		{
-		/** Row containing arbitrary stuff.  Emit entire row **/
-		prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\" align=\"left\" valign=\"top\" colspan=\"%d\" bgcolor=\"#%6.6X\">", 
-			(int)(row->Width*PRT_HTMLFM_XPIXEL),
-			lm_data->nColumns,
-			row->BGColor);
-		prt_htmlfm_InitStyle(context, cell?(&(cell->TextStyle)):(&(row->TextStyle)));
+		/** Write row container opening tags. **/
+		if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<tr><td width=\"%d\"",
+		    (int)(row->Width*PRT_HTMLFM_XPIXEL)) < 0))
+		    goto err_row;
+		int saved_bg = prt_htmlfm_OutputBGColor(context, row->BGColor);
+		if (UNLIKELY(saved_bg < 0)) goto err_row;
+		if (UNLIKELY(lm_data->nColumns > 1
+		    && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", lm_data->nColumns) < 0))
+		    goto err_row;
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, ">") < 0)) goto err_row;
+		if (UNLIKELY(prt_htmlfm_InitStyle(context, cell?(&(cell->TextStyle)):(&(row->TextStyle))) < 0)) goto err_row;
+		
+		/** Write child content. **/
 		for(subobj=row->ContentHead;subobj;subobj=subobj->Next)
 		    {
-		    prt_htmlfm_Generate_r(context, subobj);
+		    if (UNLIKELY(prt_htmlfm_Generate_r(context, subobj) < 0)) goto err_row;
 		    }
-		prt_htmlfm_EndStyle(context);
-		prt_htmlfm_Output(context,"</td></tr>\n",11);
+		
+		/** Write row container closing tags. **/
+		if (UNLIKELY(prt_htmlfm_EndStyle(context) < 0)) goto err_row;
+		if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</td></tr>\n") < 0)) goto err_row;
+		context->BGColor = saved_bg; /* Restore background color. */
 		}
 	    }
 
 	/** Output the section epilogue **/
-	prt_htmlfm_Output(context,"</table>\n", 9);
-	prt_htmlfm_ResetStyle(context, &oldstyle);
+	if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "</table>\n") < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write table closing tag.");
+	    goto err;
+	    }
+	if (UNLIKELY(prt_htmlfm_ResetStyle(context, &oldstyle) < 0))
+	    {
+	    mssError(0, "PRT", "Failed to reset style.");
+	    goto err;
+	    }
 
-    return 0;
+	return 0;
+
+    err_cell:
+	mssError(0, "PRT", "Failed to write cell #%d/%d in row #%d/%d.", cur_col, n_cols, cur_row, n_rows);
+	goto err;
+
+    err_row:
+	mssError(0, "PRT", "Failed to write row #%d/%d.", cur_row, n_rows);
+	goto err;
+
+    err:
+	mssError(0, "PRT", "Failed to generate table.");
+	return -1;
     }
-
-

@@ -425,8 +425,8 @@ function mn_init(param)
 	{
 	if (imgs[i].name.substr(0,nmstr.length) == nmstr)
 	    {
-	    var x = $(imgs[i]).position().left;
-	    var y = $(imgs[i]).position().top;
+	    var x = getPosition(imgs[i]).left;
+	    var y = getPosition(imgs[i]).top;
 	    /*var x = getRelativeX(imgs[i]);
 	    if (isNaN(x))
 		for(x=0,search=imgs[i];search.nodeName != 'DIV'; search = search.offsetParent)

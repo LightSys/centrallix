@@ -686,20 +686,20 @@ function wn_domove()
     {
     if (wn_current != null)
         {
-        var ha=(document.height-window.innerHeight-2)>=0?15:0;
-        var va=(document.width-window.innerWidth-2)>=0?15:0;
+        var ha=(document.height-getInnerHeight()-2)>=0?15:0;
+        var va=(document.width-getInnerWidth()-2)>=0?15:0;
         var newx,newy;
         if (wn_newx < pg_attract && wn_newx > -pg_attract) newx = 0;
-        else if (wn_newx+getClipWidth(wn_current) > window.innerWidth-ha-pg_attract && wn_newx+ getClipWidth(wn_current) < window.innerWidth-ha+pg_attract)
-		newx = window.innerWidth-ha-pg_get_style(wn_current,'clip.width');
+        else if (wn_newx+getClipWidth(wn_current) > getInnerWidth()-ha-pg_attract && wn_newx+ getClipWidth(wn_current) < getInnerWidth()-ha+pg_attract)
+		newx = getInnerWidth()-ha-pg_get_style(wn_current,'clip.width');
         else if (wn_newx+getClipWidth(wn_current) < 25) newx = 25-pg_get_style(wn_current,'clip.width');
-        else if (wn_newx > window.innerWidth-35-ha) newx = window.innerWidth-35-ha;
+        else if (wn_newx > getInnerWidth()-35-ha) newx = getInnerWidth()-35-ha;
 	else newx = wn_newx;
         if (wn_newy<0) newy = 0;
-        else if (wn_newy > window.innerHeight-12-va) newy = window.innerHeight-12-va;
+        else if (wn_newy > getInnerHeight()-12-va) newy = getInnerHeight()-12-va;
         else if (wn_newy < pg_attract) newy = 0;
-        else if (wn_newy+getClipHeight(wn_current) > window.innerHeight-va-pg_attract && wn_newy+getClipHeight(wn_current) < window.innerHeight-va+pg_attract)
-		newy = window.innerHeight-va-pg_get_style(wn_current,'clip.height');
+        else if (wn_newy+getClipHeight(wn_current) > getInnerHeight()-va-pg_attract && wn_newy+getClipHeight(wn_current) < getInnerHeight()-va+pg_attract)
+		newy = getInnerHeight()-va-pg_get_style(wn_current,'clip.height');
         else newy = wn_newy;
         moveToAbsolute(wn_current,newx,newy);
     	wn_current.clicked = 0;

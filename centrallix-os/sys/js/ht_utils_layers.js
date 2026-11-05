@@ -114,8 +114,8 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	"border-style": "solid",
 	"box-sizing": "border-box",
 	"content": "",
-	"top": (top + $(wthis).offset().top) + "px",
-	"left": (left + $(wthis).offset().left) + "px",
+	"top": (top + getPageRect(wthis).top) + "px",
+	"left": (left + getPageRect(wthis).left) + "px",
 	"border-color": c1,
 	"visibility": "inherit",
 	"z-index": htr_getzindex(wthis) + 1
@@ -129,8 +129,8 @@ function htutil_point(wthis, x, y, at, bc, fc, p1, p2)
 	"border-style": "solid",
 	"box-sizing": "border-box",
 	"content": "",
-	"top": (top + doffs.y + $(wthis).offset().top) + "px",
-	"left": (left + doffs.x + $(wthis).offset().left) + "px",
+	"top": (top + doffs.y + getPageRect(wthis).top) + "px",
+	"left": (left + doffs.x + getPageRect(wthis).left) + "px",
 	"border-color": c2,
 	"visibility": "inherit",
 	"z-index": htr_getzindex(wthis) + 2
