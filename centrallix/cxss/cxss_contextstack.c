@@ -14,7 +14,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -269,7 +269,6 @@ int
 cxssPopContext()
     {
     pCxssCtxStack sptr, del;
-    void* ret_addr;
 
 	/** Get auth stack pointer **/
 	sptr = (pCxssCtxStack)thGetSecParam(NULL);
@@ -284,7 +283,7 @@ cxssPopContext()
 	    {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wframe-address"
-	    ret_addr = __builtin_return_address(1);
+	    void* ret_addr = __builtin_return_address(1);
 #pragma GCC diagnostic pop
 	    if (sptr->CallerReturnAddr != ret_addr)
 		printf("WARNING - unbalanced cxssPopContext / cxssPushContext\n");
@@ -584,4 +583,3 @@ cxssGetVariable(char* vblname, char** value, char* default_value)
 
     return 0;
     }
-

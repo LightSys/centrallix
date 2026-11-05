@@ -3,7 +3,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -39,6 +39,7 @@
 #include "iface_private.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
+#include "cxlib/strtcpy.h"
 #include "stparse.h"
 #include "obj.h"
 #include "centrallix.h"
@@ -97,7 +98,8 @@ int ifc_internal_ObjToJS(pXString str, pObject obj)
 	    type = objGetAttrType(obj, name);
 	    if (objGetAttrValue(obj, name, type, &val) < 0)
 		{
-		mssError(0, "IFC", "ifc_internal_ObjToJS - couldn't get value for property %s", name);
+		mssWarn("IFC", "ifc_internal_ObjToJS - couldn't get value for property %s.", name);
+		mssClearError();
 		name = objGetNextAttr(obj);
 		continue;
 		}
@@ -122,7 +124,7 @@ int ifc_internal_ObjToJS(pXString str, pObject obj)
 		    break;
 		/** TODO: Support for other datatypes should probably be added **/
 		default:
-		    mssError(1, "IFC", "Can't convert properties of type %d in ObjToJS - FIXME!", type);
+		    mssWarn("IFC", "Can't convert properties of type %d in ObjToJS - FIXME!", type);
 		    break;
 		}
 	    name = objGetNextAttr(obj);
@@ -165,7 +167,7 @@ ifcToHtml(pFile file, pObjSession s, char* def_str)
     XString js_obj;
 
 	/** make sure we get an absolute path **/
-	if (def_str[0] == '/') strncpy(path, def_str, 512);
+	if (def_str[0] == '/') strtcpy(path, def_str, 512);
 	else snprintf(path, 512, "%s/%s", IFC.IfaceDir, def_str);
 	    
 	/** see if we can look up the definition **/
@@ -177,7 +179,7 @@ ifcToHtml(pFile file, pObjSession s, char* def_str)
 		mssError(0, "IFC", "Couldn't parse interface definition '%s'", def_str);
 		return -1;
 		}
-	    if (xhAdd(&(IFC.Definitions), def->Path, (void*)def) < 0) mssError(0, "IFC", "Couldn't cache");
+	    if (xhAdd(&(IFC.Definitions), def->Path, (void*)def) < 0) mssWarn("IFC", "Couldn't cache.");
 	    }
 	
 	/** we've got an interface definition, one way or another. Time to translate**/

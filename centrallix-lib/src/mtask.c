@@ -26,6 +26,7 @@
 #include <grp.h>
 #include <stdarg.h>
 #include <sys/stat.h>
+#include <poll.h>
 #include "qprintf.h"
 #include "util.h"
 
@@ -72,6 +73,10 @@ int mtRunStartFn(pThread new_thr, int idx);
 int r_mtRunStartFn();
 int mtSched();
 
+#ifdef MTASK_USEPTHREADS
+static void* mt_internal_ThreadTrampoline(void* arg);
+#endif
+
 #define MT_MAX_THREADS		256
 #define MT_MAX_EVENTS		(MT_MAX_THREADS * 4)
 #define MT_MAX_STACK		(31 * 2048)
@@ -80,6 +85,10 @@ int mtSched();
 #define MT_STACK_HIGHWATER	(24 * 1024)*/
 #define MT_TASKSEP		256
 #define MT_TICK_MAX		1
+
+#ifdef MTASK_USEPTHREADS
+#define MT_PTHREAD_STACKSIZE	(512 * 1024)	/* per-thread stack; replaces the carved MT_MAX_STACK regions (tunable) */
+#endif
 
 //#define dbg_write(x,y,z) write(x,y,z)
 #define dbg_write(x,y,z)
@@ -106,6 +115,11 @@ typedef struct _MTS
     unsigned int DebugLevel;
     XRingQueue	PendingSignals;
     XHashTable	SignalHandlers;
+#ifdef MTASK_USEPTHREADS
+    pthread_mutex_t GIL;	/* the "big lock": only its holder may run MTASK code */
+    pThread	RunningThread;	/* MTASK thread that currently holds the GIL */
+    int		WakeupPipe[2];	/* self-pipe to interrupt select() in the scheduler */
+#endif
     }
     MTSystem, *pMTSystem;
 
@@ -213,54 +227,67 @@ evFile(int ev_type, void* obj)
     {
     pFile fd = (pFile)obj;
     int code = 0;
-    fd_set readfds,writefds,exceptfds;
-    struct timeval tmout;
+    struct pollfd pfd;
     int arg;
     socklen_t len;
 
     	if (fd->Status == FD_S_CLOSING) return -1;
 
-	tmout.tv_sec = 0;
-	tmout.tv_usec = 0;
-	FD_ZERO(&readfds);
-	FD_ZERO(&writefds);
-	FD_ZERO(&exceptfds);
+	pfd.fd = fd->FD;
+	pfd.revents = 0;
 
         switch(ev_type)
             {
             case EV_T_FD_READ:
                 if (!(fd->Flags & FD_F_RD)) break;
-                FD_SET(fd->FD,&readfds);
-                FD_SET(fd->FD,&exceptfds);
-                select(fd->FD+1,&readfds,&writefds,&exceptfds,&tmout);
-                if (FD_ISSET(fd->FD,&readfds)) code=1;
-                if (FD_ISSET(fd->FD,&exceptfds)) code=-1;
+		pfd.events = POLLIN;
+		if (poll(&pfd, 1, 0) < 0) pfd.revents = 0;	/* EINTR etc: treat as not ready */
+		if (pfd.revents & POLLNVAL)
+		    code = -1;
+		else if (pfd.revents & (POLLIN | POLLHUP | POLLERR))
+		    code = 1;	/* let read() report data, EOF, or the error */
                 if (code == 0) fd->Flags |= FD_F_RDBLK;
                 if (code == 1) fd->Flags &= ~(FD_F_RDBLK | FD_F_RDERR);
                 if (code == -1) fd->Flags |= (FD_F_RDERR | FD_F_RDEOF);
                 break;
 
             case EV_T_FD_OPEN:
+		if (fd->Status == FD_S_ERROR) { code = -1; break; }
                 code=(fd->Status == FD_S_OPEN)?1:0;
                 if (code==1) break;
                 /** fallthrough and check for writability as check for open **/
 
             case EV_T_FD_WRITE:
                 if (!(fd->Flags & FD_F_WR)) break;
-                FD_SET(fd->FD,&writefds);
-                FD_SET(fd->FD,&exceptfds);
-                select(fd->FD+1,&readfds,&writefds,&exceptfds,&tmout);
-                if (FD_ISSET(fd->FD,&writefds)) code=1;
-		if (fd->Status == FD_S_OPENING && getsockopt(fd->FD, SOL_SOCKET, SO_ERROR, (void*)&arg, &len) >= 0) 
+		pfd.events = POLLOUT;
+		if (poll(&pfd, 1, 0) < 0) pfd.revents = 0;
+		if (pfd.revents & POLLNVAL)
 		    {
-		    if (arg == EINPROGRESS)
-			code = 0;
-		    else if (arg == 0)
-			code = 1;
-		    else
-			code = -1;
+		    code = -1;
 		    }
-                if (FD_ISSET(fd->FD,&exceptfds)) code=-1;
+		else if (pfd.revents & (POLLOUT | POLLHUP | POLLERR))
+		    {
+		    code = 1;
+		    if (fd->Status == FD_S_OPENING)
+			{
+			/** Connect finished; check the result.  getsockopt()
+			 ** failure means not a socket, which we treat as
+			 ** success, same as mtSched().
+			 **/
+			len = sizeof(arg);
+			if (getsockopt(fd->FD, SOL_SOCKET, SO_ERROR, (void*)&arg, &len) >= 0 && arg != 0)
+			    {
+			    fd->Status = FD_S_ERROR;
+			    fd->ErrCode = arg;
+			    errno = arg;
+			    code = -1;
+			    }
+			else
+			    {
+			    fd->Status = FD_S_OPEN;
+			    }
+			}
+		    }
                 if (code == 0) fd->Flags |= FD_F_WRBLK;
                 if (code == 1) fd->Flags &= ~(FD_F_WRBLK | FD_F_WRERR);
                 if (code == -1) fd->Flags |= FD_F_WRERR;
@@ -296,7 +323,7 @@ evRemoveIdx(int idx)
 	    MTASK.EventWaitTable[i] = MTASK.EventWaitTable[i+1];
 	    MTASK.EventWaitTable[i]->TableIdx = i;
 	    }
-	MTASK.EventWaitTable[MTASK.nEvents+1] = NULL;
+	MTASK.EventWaitTable[MTASK.nEvents] = NULL;
 
     return event;
     }
@@ -318,10 +345,10 @@ evRemove(pEventReq event)
 	        MTASK.EventWaitTable[j] = MTASK.EventWaitTable[j+1];
 	        MTASK.EventWaitTable[j]->TableIdx = j;
 		}
+	    MTASK.EventWaitTable[MTASK.nEvents] = NULL;
 	    k = i;
 	    break;
 	    }
-	MTASK.EventWaitTable[MTASK.nEvents+1] = NULL;
 
     return k;
     }
@@ -536,14 +563,19 @@ pThread
 mtInitialize(int flags, void (*start_fn)())
     {
     register int i;
+#ifndef MTASK_USEPTHREADS
     struct rlimit stacklimit;
     int room_for_threads;
+#endif
 
 	memset(&MTASK, 0, sizeof(MTASK));
 
     	/** Initialize the thread table. **/
 	MTASK.nThreads = 0;
 	MTASK.MaxThreads = MT_MAX_THREADS;
+
+#ifndef MTASK_USEPTHREADS
+	/** Verify how many threads we can handle in the given stack size **/
 	if (getrlimit(RLIMIT_STACK, &stacklimit) == 0 && stacklimit.rlim_cur > 0)
 	    {
 	    room_for_threads = stacklimit.rlim_cur / (MT_MAX_STACK + MT_TASKSEP) - 1;
@@ -560,6 +592,8 @@ mtInitialize(int flags, void (*start_fn)())
 		MTASK.MaxThreads = room_for_threads;
 		}
 	    }
+#endif
+
 	for(i=0;i<MTASK.MaxThreads;i++) MTASK.ThreadTable[i] = NULL;
 
 	/** Initialize the system-event-wait table **/
@@ -571,6 +605,29 @@ mtInitialize(int flags, void (*start_fn)())
 	
 	/** initialize the hash table for signal handlers **/
 	xhInit(&MTASK.SignalHandlers,16,4);
+
+#ifdef MTASK_USEPTHREADS
+	/** Initialize the global lock ("GIL") and the scheduler wakeup
+	 ** self-pipe.  In this phase these are set up but not yet used; the
+	 ** setjmp/longjmp scheduler below remains the active context-switch
+	 ** mechanism.
+	 **/
+	pthread_mutex_init(&MTASK.GIL, NULL);
+	if (pipe(MTASK.WakeupPipe) == 0)
+	    {
+	    int arg = 1;
+	    if (ioctl(MTASK.WakeupPipe[0], FIONBIO, &arg) < 0 || ioctl(MTASK.WakeupPipe[1], FIONBIO, &arg) < 0)
+		{
+		close(MTASK.WakeupPipe[0]);
+		close(MTASK.WakeupPipe[1]);
+		MTASK.WakeupPipe[0] = MTASK.WakeupPipe[1] = -1;
+		}
+	    }
+	else
+	    {
+	    MTASK.WakeupPipe[0] = MTASK.WakeupPipe[1] = -1;
+	    }
+#endif
 
 	/** If we are running as root, clear the supplementary groups
 	 ** list.  This isn't optimal, but solves the security issue for
@@ -613,6 +670,12 @@ mtInitialize(int flags, void (*start_fn)())
 #ifdef USING_VALGRIND
 	MTASK.CurrentThread->ValgrindStackID = 0;
 #endif
+#ifdef MTASK_USEPTHREADS
+	/** The initial thread runs on the calling (main) OS thread. **/
+	MTASK.CurrentThread->PThread = pthread_self();
+	pthread_cond_init(&MTASK.CurrentThread->CondGo, NULL);
+	MTASK.RunningThread = MTASK.CurrentThread;
+#endif
 	MTASK.StartUserID = geteuid();
 	MTASK.CurUserID = geteuid();
 	MTASK.CurGroupID = getegid();
@@ -645,9 +708,25 @@ mtInitialize(int flags, void (*start_fn)())
 	signal(SIGSEGV, mtSigSegv);
 
 	/** Now start the real start function. **/
+#ifdef MTASK_USEPTHREADS
+	/** The initial thread runs on this (the main) OS thread.  Acquire the
+	 ** GIL, become the running thread, and invoke the start function
+	 ** directly.  Control returns here only if start_fn returns, in which
+	 ** case thExit() tears this thread down (and exits the process if it
+	 ** is the last thread).
+	 **/
+	MTASK.LockedThread = NULL;
+	pthread_mutex_lock(&MTASK.GIL);
+	MTASK.RunningThread = MTASK.CurrentThread;
+	MTASK.CurrentThread->Flags &= ~THR_F_STARTING;
+	MTASK.CurrentThread->Status = THR_S_EXECUTING;
+	MTASK.CurrentThread->StartFn(MTASK.CurrentThread->StartParam);
+	thExit();
+#else
 	MTASK.CurrentThread = NULL;
 	MTASK.LockedThread = NULL;
 	mtSched();
+#endif
 
     return OK;
     }
@@ -829,6 +908,15 @@ mt_internal_SwitchToContext(pMTSecContext context)
     }
 
 
+/** poll() working set for mtSched().  These are static rather than local
+ ** because, in the setjmp scheduler, mtSched() runs on the calling MTASK
+ ** thread's small stack.  Only one scheduler pass uses them at a time; a
+ ** nested pass (via signal-handler thread creation) abandons the outer one.
+ **/
+static struct pollfd mt_internal_PollFds[MT_MAX_EVENTS];
+static pEventReq mt_internal_PollEvents[MT_MAX_EVENTS];
+
+
 /*** MTSCHED is the main thread scheduling and blocking i/o processing
  *** piece of the MTASK system.  This routine is internal-only and not
  *** exposed to the "outside world".
@@ -836,12 +924,7 @@ mt_internal_SwitchToContext(pMTSecContext context)
 int
 mtSched()
     {
-    int num_fds;
-    int max_fd;
     int t,tx,tx2;
-    fd_set readfds;
-    fd_set writefds;
-    fd_set exceptfds;
     struct timeval tmout;
     register int cnt,i;
     int rval;
@@ -850,16 +933,27 @@ mtSched()
     pThread lowest_run_thr;
     int ticks_used;
     pEventReq event;
+    pEventReq other;
     int k = 0;
     int arg;
     socklen_t len;
     int x[1];
+    int n_pfds;
+    int timeout_ms;
+    int j, re, eno;
+    pFile fdp;
+#ifdef MTASK_USEPTHREADS
+    pThread caller;
+#endif
 
     	dbg_write(0,"x",1);
 
     	/** If the current thread is valid, do processing for it **/
 	ticks_used = (t=mtTicks()) - MTASK.TickCnt;
 	tx=mtRealTicks();
+#ifdef MTASK_USEPTHREADS
+	caller = MTASK.CurrentThread;
+#endif
 	if (MTASK.CurrentThread != NULL)
 	    {
 	    MTASK.CurrentThread->StackBottom = (unsigned char*)x;
@@ -879,78 +973,90 @@ mtSched()
 		MTASK.CurrentThread->CntDown += ticks_used*(MTASK.CurrentThread->CurPrio)/MT_TICK_MAX;
 		}
 
+#ifndef MTASK_USEPTHREADS
 	    /** Do a setjmp() so we can return to caller after scheduling. **/
 	    if (setjmp(MTASK.CurrentThread->SavedEnv) != 0) 
 	        {
 		dbg_write(0,"s",1);
 		return 1;
 		}
+#endif
+
 	    if (MTASK.CurrentThread->Status == THR_S_EXECUTING) MTASK.CurrentThread->Status = THR_S_RUNNABLE;
 	    MTASK.CurrentThread = NULL;
 	    }
 
-	/** Build select() criteria based on system event wait table **/
-	/** Also look for EV_T_MT_TIMER events and start building the select() timeout **/
+	/** Build the poll() set from the system event wait table **/
+	/** Also look for EV_T_MT_TIMER events and start building the timeout **/
     RETRY_SELECT:
-	FD_ZERO(&readfds);
-	FD_ZERO(&writefds);
-	FD_ZERO(&exceptfds);
-	max_fd = 1;
-	num_fds = 0;
+	n_pfds = 0;
 	highest_cntdn = 0x80000000;
 	n_runnable = 0;
 	n_timerblock = 0;
 	for(i=cnt=0; cnt<MTASK.nEvents; i++)
 	    {
-	    if (MTASK.EventWaitTable[i])
-	        {
-	        cnt++;
-		if (MTASK.LockedThread && MTASK.LockedThread != MTASK.EventWaitTable[i]->Thr) continue;
-	        if (MTASK.EventWaitTable[i]->ObjType == OBJ_T_FD && MTASK.EventWaitTable[i]->Status == EV_S_INPROC)
-	            {
-		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FINISH &&
-		        !(FD_ISSET(((pFile)(MTASK.EventWaitTable[i]->Object))->FD,&exceptfds)))
-			{
-			MTASK.EventWaitTable[i]->Status = EV_S_COMPLETE;
-			MTASK.EventWaitTable[i]->Thr->Status = THR_S_RUNNABLE;
-			continue;
-			}
-		    max_fd = mtFdMax(max_fd, ((pFile)(MTASK.EventWaitTable[i]->Object))->FD);
-		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FD_READ)
-		        {
-		        FD_SET(((pFile)(MTASK.EventWaitTable[i]->Object))->FD,&readfds);
-#ifdef MTASK_DEBUG
-			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_READ_SELECTABLE)
-			    printf("Added %i to readable FDSET\n",((pFile)(MTASK.EventWaitTable[i]->Object))->FD);
-#endif
-		        }
-		    if (MTASK.EventWaitTable[i]->EventType == EV_T_FD_WRITE || MTASK.EventWaitTable[i]->EventType == EV_T_FD_OPEN)
-		        {
-		        FD_SET(((pFile)(MTASK.EventWaitTable[i]->Object))->FD,&writefds);
-#ifdef MTASK_DEBUG
-			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_WRITE_SELECTABLE)
-			    printf("Added %i to writeable FDSET\n",((pFile)(MTASK.EventWaitTable[i]->Object))->FD);
-#endif
-		        }
-		    FD_SET(((pFile)(MTASK.EventWaitTable[i]->Object))->FD,&exceptfds);
-#ifdef MTASK_DEBUG
-		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_ERROR_SELECTABLE)
-			printf("Added %i to exception FDSET\n",((pFile)(MTASK.EventWaitTable[i]->Object))->FD);
-#endif
-		    num_fds++;
-		    }
-		else if (MTASK.EventWaitTable[i]->EventType == EV_T_MT_TIMER)
+	    event = MTASK.EventWaitTable[i];
+	    if (!event) continue;
+	    cnt++;
+	    if (MTASK.LockedThread && MTASK.LockedThread != event->Thr) continue;
+	    if (event->ObjType == OBJ_T_FD && event->Status == EV_S_INPROC)
+		{
+		if (event->EventType == EV_T_FINISH)
 		    {
-		    k = MTASK.EventWaitTable[i]->TargetTickCnt - tx;
-		    if (k < 0) k = 0;
-		    k = -(k*64);
-		    if (k > highest_cntdn) highest_cntdn = k;
-		    if (MTASK.EventWaitTable[i]->Thr->Status == THR_S_BLOCKED) n_timerblock++;
-#ifdef MTASK_DEBUG
-		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTABLE)
-			printf("%s is blocked on a timer (k=%i) (cnt=%lu)\n",MTASK.EventWaitTable[i]->Thr->Name,k, MTASK.EventWaitTable[i]->TargetTickCnt);
-#endif
+		    /** fdClose() is waiting for other users of this pFile.  Any
+		     ** other event still in the table counts, regardless of
+		     ** status: a completed-but-not-yet-resumed waiter will
+		     ** still touch the pFile (and its FD) when it runs.
+		     **/
+		    for(j=0;j<MTASK.nEvents;j++)
+			{
+			other = MTASK.EventWaitTable[j];
+			if (!other || other == event) continue;
+			if (other->Object != event->Object || other->EventType == EV_T_FINISH) continue;
+			if (MTASK.LockedThread && MTASK.LockedThread != other->Thr) continue;
+			break;
+			}
+		    if (j >= MTASK.nEvents)
+			{
+			event->Status = EV_S_COMPLETE;
+			event->Thr->Status = THR_S_RUNNABLE;
+			}
+		    continue;
 		    }
+		if (event->EventType != EV_T_FD_READ &&
+		    event->EventType != EV_T_FD_WRITE &&
+		    event->EventType != EV_T_FD_OPEN)
+		    continue;
+		if (((pFile)(event->Object))->FD < 0)
+		    {
+		    /** poll() would silently ignore this entry forever **/
+		    printf("MTASK: negative fd in wait table (thread %s); failing its wait\n", event->Thr->Name);
+		    event->Status = EV_S_ERROR;
+		    event->Thr->Status = THR_S_RUNNABLE;
+		    continue;
+		    }
+		mt_internal_PollFds[n_pfds].fd = ((pFile)(event->Object))->FD;
+		mt_internal_PollFds[n_pfds].events = (event->EventType == EV_T_FD_READ)?POLLIN:POLLOUT;
+		mt_internal_PollFds[n_pfds].revents = 0;
+		mt_internal_PollEvents[n_pfds] = event;
+#ifdef MTASK_DEBUG
+		if (MTASK.DebugLevel & (MTASK_DEBUG_SHOW_READ_SELECTABLE | MTASK_DEBUG_SHOW_WRITE_SELECTABLE))
+		    printf("Added %i to poll set (%s)\n", mt_internal_PollFds[n_pfds].fd,
+			    (event->EventType == EV_T_FD_READ)?"read":"write");
+#endif
+		n_pfds++;
+		}
+	    else if (event->EventType == EV_T_MT_TIMER)
+		{
+		k = event->TargetTickCnt - tx;
+		if (k < 0) k = 0;
+		k = -(k*64);
+		if (k > highest_cntdn) highest_cntdn = k;
+		if (event->Thr->Status == THR_S_BLOCKED) n_timerblock++;
+#ifdef MTASK_DEBUG
+		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTABLE)
+		    printf("%s is blocked on a timer (k=%i) (cnt=%lu)\n",event->Thr->Name,k, event->TargetTickCnt);
+#endif
 		}
 	    }
 
@@ -969,77 +1075,71 @@ mtSched()
 		}
 	    }
 
-	/** Issue the select.  If threads are runnable, delay is 0.  If none runnable (all **/
-	/** normally runnable are blocked on i/o or otherwise), delay is either infinite or **/
-	/** the correct value to sleep() based on previous thSleep calls made by threads. **/
+	/** Compute the poll() timeout.  If threads are runnable, delay is 0.
+	 ** If none are runnable and no timers are pending, wait indefinitely.
+	 ** Otherwise sleep until the nearest timer, rounded up to a whole tick.
+	 **/
 	if (n_runnable == 0 && n_timerblock == 0)
 	    {
-          REISSUE_SELECT:
-	    if(mtProcessSignals()>0)
-		{
-		return mtSched();
-		}
-#ifdef MTASK_DEBUG
-	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
-		printf("IO select (no timeout)\n");
-#endif
-
-	    /** We can wait indefinitely (NULL timeout) because there are no sleep timers
-	     ** and there are no runnable threads.
-	     **/
-	    rval = select(max_fd, &readfds, &writefds, &exceptfds, NULL);
-#ifdef MTASK_DEBUG
-	    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_IO_SELECT)
-		printf("IO select done (no timeout) rval=%i errno=%i\n",rval,errno);
-#endif
-	    if (rval == -1)
-		{
-		if (errno == EINTR || errno == EAGAIN) goto REISSUE_SELECT;
-		perror("MTASK: non-timeout select() failed");
-		}
+	    timeout_ms = -1;
 	    }
 	else
 	    {
 	    int ticklen=(1000000/MTASK.TicksPerSec); /** length of a tick in usecs **/
 	    if (highest_cntdn == 0x80000000) highest_cntdn = 0;
 	    highest_cntdn = -highest_cntdn;
-	    /*if (num_fds > 0)*/
-	        {
-	      REISSUE_SELECT2:
-		if(mtProcessSignals()>0)
-		    {
-		    return mtSched();
-		    }
-	        tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
-	        tmout.tv_usec = ((long long) (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)) * 1000000/(64*MTASK.TicksPerSec);
-#ifdef MTASK_DEBUG
-		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
-		    {
-		    printf("highest_cntdn: %i\n", highest_cntdn);
-		    printf("MTASK.TicksPerSec: %i\n", MTASK.TicksPerSec);
-		    }
+	    tmout.tv_sec = highest_cntdn/(64*MTASK.TicksPerSec);
+	    tmout.tv_usec = ((long long) (highest_cntdn - tmout.tv_sec*64*MTASK.TicksPerSec)) * 1000000/(64*MTASK.TicksPerSec);
+	    /** if we need 4.5 ticks, wait for at least 5 so we don't get 4 and 'deadlock' **/
+	    tmout.tv_usec= ((tmout.tv_usec+(ticklen-1))/ticklen)*ticklen;
+	    if(tmout.tv_usec>=1000000)
+		{
+		tmout.tv_usec-=1000000;
+		tmout.tv_sec+=1;
+		}
+	    timeout_ms = tmout.tv_sec*1000 + (tmout.tv_usec + 999)/1000;
+	    }
+
+      REISSUE_SELECT:
+	if(mtProcessSignals()>0)
+	    {
+#ifdef MTASK_USEPTHREADS
+	    goto RETRY_SELECT;
+#else
+	    return mtSched();
 #endif
-		/** if we need 4.5 ticks, we need to select for at least 5 to make sure we don't get 4 and 'deadlock' **/
-		tmout.tv_usec= ((tmout.tv_usec+(ticklen-1))/ticklen)*ticklen;
-		if(tmout.tv_usec>=1000000)
-		    {
-		    tmout.tv_usec-=1000000;
-		    tmout.tv_sec+=1;
-		    }
+	    }
 #ifdef MTASK_DEBUG
-		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
-		    printf("non-IO select (%i,%i)\n",(int)tmout.tv_sec,(int)tmout.tv_usec);
+	if(MTASK.DebugLevel & (MTASK_DEBUG_SHOW_IO_SELECT | MTASK_DEBUG_SHOW_NON_IO_SELECT))
+	    printf("poll (%i fds, timeout %i ms)\n", n_pfds, timeout_ms);
 #endif
-	        rval = select(max_fd, &readfds, &writefds, &exceptfds, &tmout);
+	rval = poll(mt_internal_PollFds, (nfds_t)n_pfds, timeout_ms);
+	eno = errno;
 #ifdef MTASK_DEBUG
-		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_NON_IO_SELECT)
-		    printf("non-IO select done (%i,%i) rval=%i errno=%i\n",(int)tmout.tv_sec,(int)tmout.tv_usec,rval,errno);
+	if(MTASK.DebugLevel & (MTASK_DEBUG_SHOW_IO_SELECT | MTASK_DEBUG_SHOW_NON_IO_SELECT))
+	    printf("poll done rval=%i errno=%i\n", rval, eno);
 #endif
-	        if (rval == -1)
-		    {
-		    if (errno == EINTR || errno == EAGAIN) goto REISSUE_SELECT2;
-		    perror("MTASK: timeout select() failed");
-		    }
+	if (rval == -1)
+	    {
+	    if (eno == EINTR || eno == EAGAIN) goto REISSUE_SELECT;
+	    errno = eno;
+	    perror("MTASK: poll() failed");
+	    if (eno == ENOMEM)
+		{
+		usleep(10000);
+		goto RETRY_SELECT;
+		}
+
+	    /** Unexpected failure: revents are undefined.  Wake waiters as if
+	     ** ready so each retries its own syscall and gets the real result.
+	     ** In-progress connects can't be verified this way, so skip them.
+	     **/
+	    for(j=0;j<n_pfds;j++)
+		{
+		if (((pFile)(mt_internal_PollEvents[j]->Object))->Status == FD_S_OPENING)
+		    mt_internal_PollFds[j].revents = 0;
+		else
+		    mt_internal_PollFds[j].revents = POLLERR;
 		}
 	    }
 
@@ -1058,104 +1158,94 @@ mtSched()
 	MTASK.TickCnt = t;
 
 	/** Did any file descriptors "complete"?  If so, pull the event(s) **/
-	for(i=cnt=0; cnt<MTASK.nEvents; i++)
+	for(j=0;j<n_pfds;j++)
 	    {
-	    if (MTASK.EventWaitTable[i])
-	        {
-		event = MTASK.EventWaitTable[i];
-	        cnt++;
-		if (MTASK.LockedThread && MTASK.LockedThread != event->Thr) continue;
-	        if (event->ObjType == OBJ_T_FD)
-	            {
-		    /** File descriptor become readable? **/
-		    if (event->EventType == EV_T_FD_READ)
-		        {
-		        if (FD_ISSET(((pFile)(event->Object))->FD,&readfds))
-			    {
+	    re = mt_internal_PollFds[j].revents;
+	    if (!re) continue;
+	    event = mt_internal_PollEvents[j];
+	    fdp = (pFile)(event->Object);
+
+	    /** Descriptor not open: fail only this wait, not everyone's. **/
+	    if (re & POLLNVAL)
+		{
+		printf("MTASK: fd %d in wait table is not open (thread %s); failing its wait\n",
+			mt_internal_PollFds[j].fd, event->Thr->Name);
+		event->Thr->Status = THR_S_RUNNABLE;
+		event->Status = EV_S_ERROR;
+		continue;
+		}
+
+	    if (event->EventType == EV_T_FD_READ)
+		{
+		/** Readable, hangup, or error: let read() report the outcome. **/
+		if (re & (POLLIN | POLLHUP | POLLERR))
+		    {
 #ifdef MTASK_DEBUG
-			    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_READ_SELECTED)
-				printf("Found %i in readable FDSET\n",((pFile)(event->Object))->FD);
+		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_READ_SELECTED)
+			printf("fd %i ready for read (revents 0x%x)\n", mt_internal_PollFds[j].fd, re);
 #endif
-			    FD_CLR(((pFile)(event->Object))->FD,&readfds);
-			    dbg_write(0,"r",1);
-			    event->Thr->Status = THR_S_RUNNABLE;
-			    ((pFile)(event->Object))->Flags &= ~FD_F_RDBLK;
+		    dbg_write(0,"r",1);
+		    event->Thr->Status = THR_S_RUNNABLE;
+		    fdp->Flags &= ~FD_F_RDBLK;
+		    event->Status = EV_S_COMPLETE;
+		    }
+		}
+	    else
+		{
+		/** EV_T_FD_WRITE or EV_T_FD_OPEN **/
+		if (re & (POLLOUT | POLLHUP | POLLERR))
+		    {
+#ifdef MTASK_DEBUG
+		    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_WRITE_SELECTED)
+			printf("fd %i ready for write (revents 0x%x)\n", mt_internal_PollFds[j].fd, re);
+#endif
+		    dbg_write(0,"w",1);
+		    event->Thr->Status = THR_S_RUNNABLE;
+		    fdp->Flags &= ~FD_F_WRBLK;
+		    if (fdp->Status == FD_S_OPENING)
+			{
+			/** Check getsockopt() to see if the connect succeeded.
+			 ** getsockopt() failure means not a socket: success.
+			 **/
+			len = sizeof(arg);
+			if (getsockopt(fdp->FD, SOL_SOCKET, SO_ERROR, (void*)&arg, &len) < 0 || arg == 0)
+			    {
+			    fdp->Status = FD_S_OPEN;
 			    event->Status = EV_S_COMPLETE;
 			    }
-		        }
-		
-		    /** File descriptor become writable? **/
-		    if (event->EventType == EV_T_FD_WRITE || event->EventType == EV_T_FD_OPEN)
-		        {
-		        if (FD_ISSET(((pFile)(event->Object))->FD,&writefds))
+			else
 			    {
-#ifdef MTASK_DEBUG
-			    if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_WRITE_SELECTED)
-				printf("Found %i in writeable FDSET\n",((pFile)(event->Object))->FD);
-#endif
-			    FD_CLR(((pFile)(event->Object))->FD,&writefds);
-			    dbg_write(0,"w",1);
-			    event->Thr->Status = THR_S_RUNNABLE;
-			    ((pFile)(event->Object))->Flags &= ~FD_F_WRBLK;
-			    if (((pFile)(event->Object))->Status == FD_S_OPENING) 
-			        {
-				/** Check getsockopt() to see if successful.
-				 ** We interpret getsockopt() error as a success,
-				 ** as if the fd is not a socket.  If a socket,
-				 ** we check the SO_ERROR value itself.
-				 **/
-				len = sizeof(arg);
-				if (getsockopt(((pFile)(event->Object))->FD, SOL_SOCKET, SO_ERROR, (void*)&arg, &len) < 0 || arg == 0)
-				    {
-				    ((pFile)(event->Object))->Status = FD_S_OPEN;
-				    event->Status = EV_S_COMPLETE;
-				    }
-				else
-				    {
-				    ((pFile)(event->Object))->Status = FD_S_ERROR;
-				    event->Status = EV_S_ERROR;
-
-				    /** Probably we shouldn't be directly setting
-				     ** the errno like this, but I'm gonna go and
-				     ** do it anyhow.  This may get us in trouble
-				     ** if we use native threads, but (duh!) this
-				     ** scheduler won't even be used then!!!
-				     **/
-				    errno = arg;
-				    }
-				}
-			    else
-				{
-				event->Status = EV_S_COMPLETE;
-				}
+			    fdp->Status = FD_S_ERROR;
+			    fdp->ErrCode = arg;
+			    event->Status = EV_S_ERROR;
+			    errno = arg;
 			    }
-		        }
-
-		    /** Or, did the descriptor get an exception/error? **/
-		    if (FD_ISSET(((pFile)(event->Object))->FD,&exceptfds))
-			{
-#ifdef MTASK_DEBUG
-			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_ERROR_SELECTED)
-			    printf("Found %i in exception FDSET\n",((pFile)(event->Object))->FD);
-#endif
-			dbg_write(0,"e",1);
-			event->Thr->Status = THR_S_RUNNABLE;
-			event->Status = EV_S_ERROR;
 			}
-		    }
-		else if (event->EventType == EV_T_MT_TIMER)
-		    {
-		    if (((unsigned int)tx2 - event->TargetTickCnt) < (unsigned int)0x80000000)
-		        {
-#ifdef MTASK_DEBUG
-			if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTED)
-			    printf("Timer completed for %s\n",event->Thr->Name);
-#endif
-			n_timerblock--;
-			event->Thr->Status = THR_S_RUNNABLE;
+		    else
+			{
 			event->Status = EV_S_COMPLETE;
 			}
 		    }
+		}
+	    }
+
+	/** Did any timers expire? **/
+	for(i=cnt=0; cnt<MTASK.nEvents; i++)
+	    {
+	    event = MTASK.EventWaitTable[i];
+	    if (!event) continue;
+	    cnt++;
+	    if (MTASK.LockedThread && MTASK.LockedThread != event->Thr) continue;
+	    if (event->EventType == EV_T_MT_TIMER &&
+		((unsigned int)tx2 - event->TargetTickCnt) < (unsigned int)0x80000000)
+		{
+#ifdef MTASK_DEBUG
+		if(MTASK.DebugLevel & MTASK_DEBUG_SHOW_TIMER_SELECTED)
+		    printf("Timer completed for %s\n",event->Thr->Name);
+#endif
+		n_timerblock--;
+		event->Thr->Status = THR_S_RUNNABLE;
+		event->Status = EV_S_COMPLETE;
 		}
 	    }
 
@@ -1251,6 +1341,28 @@ mtSched()
 	/** Switch to that thread's UID if different from current. **/
 	mt_internal_SwitchToContext(&(lowest_run_thr->SecContext));
 
+#ifdef MTASK_USEPTHREADS
+	/** A "starting" thread is already parked in its trampoline waiting for
+	 ** its first turn, so starting and resuming are the same hand-off. **/
+	lowest_run_thr->Flags &= ~THR_F_STARTING;
+
+	/** If we picked ourselves, just keep running; we still hold the GIL. **/
+	if (lowest_run_thr == caller)
+	    return 1;
+
+	/** Hand the GIL to the chosen thread. **/
+	MTASK.RunningThread = lowest_run_thr;
+	pthread_cond_signal(&lowest_run_thr->CondGo);
+
+	/** A living caller blocks until handed the GIL again, then resumes.
+	 ** A NULL caller is an exiting thread (thExit), which must not park.
+	 **/
+	if (caller)
+	    {
+	    while (MTASK.RunningThread != caller)
+		pthread_cond_wait(&caller->CondGo, &MTASK.GIL);
+	    }
+#else
 	/** Jump into the thread... **/
 	if (lowest_run_thr->Flags & THR_F_STARTING)
 	    {
@@ -1263,9 +1375,39 @@ mtSched()
 	    dbg_write(0,"l",1);
 	    longjmp(lowest_run_thr->SavedEnv,1);
 	    }
+#endif
 
     return 1;
     }
+
+
+#ifdef MTASK_USEPTHREADS
+/*** MT_INTERNAL_THREADTRAMPOLINE is the entry point for the OS thread that
+ *** backs an MTASK thread created via thCreate().  It waits until the
+ *** scheduler hands it the GIL for the first time, runs the thread's start
+ *** function, and then exits the thread.
+ ***/
+static void*
+mt_internal_ThreadTrampoline(void* arg)
+    {
+    pThread self = (pThread)arg;
+
+	/** Block until the scheduler selects us and hands over the GIL. **/
+	pthread_mutex_lock(&MTASK.GIL);
+	while (MTASK.RunningThread != self)
+	    pthread_cond_wait(&self->CondGo, &MTASK.GIL);
+
+	/** We now hold the GIL and are the current/running thread; the
+	 ** scheduler set CurrentThread, our status, and credentials before
+	 ** signaling us.  Run the start function.
+	 **/
+	self->StartFn(self->StartParam);
+
+	/** Start function returned normally; exit the thread. **/
+	thExit();
+	return NULL; /* not reached (thExit() does not return) */
+    }
+#endif
 
 
 /*** THCREATE creates a new thread and starts it on a given start function with
@@ -1306,6 +1448,10 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	thr->StackBottom = NULL;
 #ifdef USING_VALGRIND
 	thr->ValgrindStackID = 0;
+#endif
+#ifdef MTASK_USEPTHREADS
+	memset(&thr->PThread, 0, sizeof(thr->PThread));
+	pthread_cond_init(&thr->CondGo, NULL);
 #endif
 	/** copy the thread param from the current thread, if there is one
 	      this allows the signal handler, which will sometimes get called while
@@ -1355,8 +1501,42 @@ thCreate(void (*start_fn)(), int priority, void* start_param)
 	    }
 	MTASK.nThreads++;
 
+#ifdef MTASK_USEPTHREADS
+	/** Spawn the detached backing OS thread.  It blocks in its trampoline
+	 ** until the scheduler hands it the GIL.
+	 **/
+	pthread_attr_t attr;
+	int cr;
+
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	pthread_attr_setstacksize(&attr, MT_PTHREAD_STACKSIZE);
+	cr = pthread_create(&thr->PThread, &attr, mt_internal_ThreadTrampoline, thr);
+	pthread_attr_destroy(&attr);
+	if (cr != 0)
+	    {
+	    for(i=0;i<MTASK.MaxThreads;i++) if (MTASK.ThreadTable[i] == thr)
+		{
+		MTASK.ThreadTable[i] = NULL;
+		MTASK.nThreads--;
+		break;
+		}
+	    pthread_cond_destroy(&thr->CondGo);
+	    nmFree(thr, sizeof(Thread));
+	    return NULL;
+	    }
+
+	/** Start the thread via the scheduler.  When called from signal
+	 ** processing there is no current thread; in that case the in-progress
+	 ** scheduler round will pick up the new (runnable) thread, so we must
+	 ** not re-enter the scheduler here.
+	 **/
+	if (MTASK.CurrentThread)
+	    mtSched();
+#else
 	/** Call the scheduler to start the thread. **/
 	mtSched();
+#endif
 
     return thr;
     }
@@ -1429,6 +1609,9 @@ thExit()
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(MTASK.CurrentThread->ValgrindStackID);
 #endif
+#ifdef MTASK_USEPTHREADS
+	pthread_cond_destroy(&MTASK.CurrentThread->CondGo);
+#endif
 
 	/** Destroy the thread's descriptor **/
 	nmFree(MTASK.CurrentThread,sizeof(Thread));
@@ -1452,8 +1635,19 @@ thExit()
 	    exit(0);
 	    }
 
+#ifdef MTASK_USEPTHREADS
+	/** Hand the GIL to the next runnable thread, then terminate this OS
+	 ** thread.  CurrentThread is NULL here, so mtSched() activates the
+	 ** next thread and returns without parking us; we then release the
+	 ** GIL so that thread can run.
+	 **/
+	mtSched();
+	pthread_mutex_unlock(&MTASK.GIL);
+	pthread_exit(NULL);
+#else
 	/** Call scheduler - scheduler will never return. **/
 	mtSched();
+#endif
 
     abort(); /* this suppresses the 'noreturn function does return' warning */
     }
@@ -1514,6 +1708,9 @@ thKill(pThread thr)
 
 #ifdef USING_VALGRIND
 	VALGRIND_STACK_DEREGISTER(thr->ValgrindStackID);
+#endif
+#ifdef MTASK_USEPTHREADS
+	pthread_cond_destroy(&thr->CondGo);
 #endif
 
 	/** Free the structure. **/
@@ -1758,6 +1955,12 @@ thMultiWait(int event_cnt, pEventReq event_req[])
 		    event_req[i]->TableIdx = evAdd(event_req[i]);
 		    if (event_req[i]->TableIdx == -1)
 		        {
+			/** Back out the events already added; callers such as
+			 ** thWaitTimed() and thSleep() pass stack-allocated
+			 ** EventReqs that must not be left in the table.
+			 **/
+			while(--i >= 0)
+			    evRemoveIdx(event_req[i]->TableIdx);
 		        return -1;
 		        }
 		    }
@@ -2792,7 +2995,7 @@ fdWrite(pFile filedesc, const char* buffer, int length, int offset, int flags)
 	    }
 
     	/** If filedesc not listed as blocked, try writing now. **/
-    	if (!(filedesc->Flags & FD_F_RDBLK) && !(filedesc->Flags & FD_UF_BLOCKINGIO))
+    	if (!(filedesc->Flags & FD_F_WRBLK) && !(filedesc->Flags & FD_UF_BLOCKINGIO))
     	    {
     	    if (flags & FD_U_SEEK)
 		{
@@ -3013,6 +3216,11 @@ fdClose(pFile filedesc, int flags)
     register int i,were_entries;
     pEventReq event = NULL;
 
+	/** Already closing?  Check this before flushing the write cache, so
+	 ** a duplicate close doesn't touch the cache (or gzip state) again.
+	 **/
+	if (filedesc->Status == FD_S_CLOSING) return -1;
+
 #ifdef MTASK_DEBUG
 	if(MTASK.DebugLevel & MTASK_DEBUG_FDCLOSE)
 	    printf("fdClose called on %p(%i)\n",filedesc,filedesc->FD);
@@ -3108,6 +3316,12 @@ fdClose(pFile filedesc, int flags)
 		}
 #endif
 	    close(filedesc->FD);
+	    /** Leave the structure marked closed with no FD, so a stale
+	     ** pointer used before this memory is reused fails cleanly rather
+	     ** than acting on whatever connection gets this FD number next.
+	     **/
+	    filedesc->Status = FD_S_CLOSING;
+	    filedesc->FD = -1;
 	    if (filedesc->WrCacheBuf) nmFree(filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	    if (filedesc->RdCacheBuf) nmFree(filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
 	    if (filedesc->PrintfBuf) nmSysFree(filedesc->PrintfBuf);
@@ -3597,6 +3811,17 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 	    printf("Closing FD %i\n",net_filedesc->FD);
 #endif
 
+	/** Already being closed, e.g. by another thread still in the linger
+	 ** loop below?  Then this is a duplicate close: don't shut down,
+	 ** close, or free the descriptor again.  A second close() could hit
+	 ** an unrelated connection that has since reused the FD number.
+	 **/
+	if (net_filedesc->Status == FD_S_CLOSING)
+	    {
+	    printf("netCloseTCP: fd %d is already being closed; ignoring duplicate close\n", net_filedesc->FD);
+	    return -1;
+	    }
+
     	/** Close the file descriptor normally first.  This does not actually
 	 ** call close() since we specify FD_XU_NODST (no destroy), but instead
 	 ** just cleans up event structures associated with the file
@@ -3695,6 +3920,12 @@ netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
 #endif
 
 	/** Now we destroy the structure. **/
+	/** Leave the structure marked closed with no FD, so a stale pointer
+	 ** used before this memory is reused fails cleanly rather than acting
+	 ** on whatever connection gets this FD number next.
+	 **/
+	net_filedesc->Status = FD_S_CLOSING;
+	net_filedesc->FD = -1;
 	if (net_filedesc->WrCacheBuf) nmFree(net_filedesc->WrCacheBuf, MT_FD_CACHE_SIZE);
 	if (net_filedesc->RdCacheBuf) nmFree(net_filedesc->RdCacheBuf, MT_FD_CACHE_SIZE);
 	if (net_filedesc->PrintfBuf) nmSysFree(net_filedesc->PrintfBuf);

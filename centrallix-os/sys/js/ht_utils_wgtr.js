@@ -1127,7 +1127,7 @@ function wgtrGetGeom(node)
     else
 	{
 	//return {x:getPageX(node),y:getPageY(node),width:getClipWidth(node),height:getClipHeight(node)};
-	return {x:$(node).offset().left,y:$(node).offset().top,width:getClipWidth(node),height:getClipHeight(node)};
+	return {x:getPageRect(node).left,y:getPageRect(node).top,width:getClipWidth(node),height:getClipHeight(node)};
 	}
     }
 

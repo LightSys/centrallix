@@ -1,0 +1,18 @@
+$Version=2$
+applist "system/query"
+    {
+    sql = " select
+		    app_path = '/apps/' + :st:cx__pathpart2 + '/',
+		    app_id = isnull(isnull(:qy:app_id, :st:app_id), :st:cx__pathpart2),
+		    app_revision_id = isnull(isnull(:qy:app_revision_id, :st:app_revision_id), 0),
+		    app_name = isnull(:qy:app_name, :st:app_name),
+		    app_version = isnull(:qy:app_version, :st:app_version),
+		    app_release = isnull(:qy:app_release, :st:app_release),
+		    app_info = isnull(:qy:app_info, :st:app_info),
+		    app_default = isnull(isnull(:qy:app_default, :st:app_default), 0),
+		    app_enable = isnull(isnull(:qy:app_enable, :st:app_enable), 1)
+	    from
+		    identity object wildcard '/apps/*/app_info.struct' st,
+		    expression ('/apps/' + :st:cx__pathpart2 + '/app_info.qy') qy
+	    ";
+    }
