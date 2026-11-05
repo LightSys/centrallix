@@ -60,7 +60,6 @@ print_result(char * result, bool succeeded)
     if (use_curses) {
         int color = succeeded ? COLOR_GREEN : COLOR_RED;
         tputs(tparm(tigetstr("setaf"), color), 1, putchar); //set stdout text color
-        tputs(tparm(tigetstr("bold")), 1, putchar); //set stdout text to bold
     }
     #endif
 

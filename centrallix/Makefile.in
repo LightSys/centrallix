@@ -551,7 +551,6 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		CBLUE=$$(/usr/bin/tput setaf 4); \
 		CRED=$$(/usr/bin/tput setaf 1); \
 		CGREEN=$$(/usr/bin/tput setaf 2); \
-		CBOLD=$$(/usr/bin/tput bold); \
 		CNORM=$$(/usr/bin/tput sgr0); \
 	    if [ "$${TOFILE%.to}" != "$${TOFILE}" ]; then \
 		TOBASE="$${TOFILE%.to}"; \
@@ -566,16 +565,16 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		RET="$${PIPESTATUS[0]}"; \
 		[ -f "$$CXOS/$$TOUNDOBAK" ] && /bin/mv -f "$$CXOS/$$TOUNDOBAK" "$$CXOS/$$TOUNDO"; \
             if [ "$$RET" -eq 142 ]; then \
-                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}LOCKUP$$CNORM"; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CRED}LOCKUP$$CNORM"; \
             elif [ "$$RET" -gt 120 ]; then \
-                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}CRASH$$CNORM"; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CRED}CRASH$$CNORM"; \
             elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CGREEN$${CBOLD}Pass$$CNORM"; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CGREEN}Pass$$CNORM"; \
                 /bin/rm -f "$$PWD/$$TOBASE.out"; \
             else \
                 echo -n "$$CRED"; \
                 diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed 's/^/    /'; \
-                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$$CRED$${CBOLD}FAIL$$CNORM"; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CRED}FAIL$$CNORM"; \
             fi; \
 		else \
 		    TOBASE="$${TOFILE%.bin}"; \
