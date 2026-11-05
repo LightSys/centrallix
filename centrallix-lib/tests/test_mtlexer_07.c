@@ -15,7 +15,6 @@ test(char** tname)
     int j;
     int k;
     int t;
-    int n;
     int iter;
     int flags;
     pLxSession lxs;
@@ -27,7 +26,7 @@ test(char** tname)
 
 	*tname = "mtlexer-07 all tokens, space/tab/noifs with eol";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	iter = 10000;
 
@@ -63,4 +62,3 @@ test(char** tname)
 
     return iter * n_tokens * n_iter;
     }
-

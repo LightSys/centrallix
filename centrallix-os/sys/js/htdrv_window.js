@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -686,20 +686,20 @@ function wn_domove()
     {
     if (wn_current != null)
         {
-        var ha=(document.height-window.innerHeight-2)>=0?15:0;
-        var va=(document.width-window.innerWidth-2)>=0?15:0;
+        var ha=(document.height-getInnerHeight()-2)>=0?15:0;
+        var va=(document.width-getInnerWidth()-2)>=0?15:0;
         var newx,newy;
         if (wn_newx < pg_attract && wn_newx > -pg_attract) newx = 0;
-        else if (wn_newx+getClipWidth(wn_current) > window.innerWidth-ha-pg_attract && wn_newx+ getClipWidth(wn_current) < window.innerWidth-ha+pg_attract)
-		newx = window.innerWidth-ha-pg_get_style(wn_current,'clip.width');
+        else if (wn_newx+getClipWidth(wn_current) > getInnerWidth()-ha-pg_attract && wn_newx+ getClipWidth(wn_current) < getInnerWidth()-ha+pg_attract)
+		newx = getInnerWidth()-ha-pg_get_style(wn_current,'clip.width');
         else if (wn_newx+getClipWidth(wn_current) < 25) newx = 25-pg_get_style(wn_current,'clip.width');
-        else if (wn_newx > window.innerWidth-35-ha) newx = window.innerWidth-35-ha;
+        else if (wn_newx > getInnerWidth()-35-ha) newx = getInnerWidth()-35-ha;
 	else newx = wn_newx;
         if (wn_newy<0) newy = 0;
-        else if (wn_newy > window.innerHeight-12-va) newy = window.innerHeight-12-va;
+        else if (wn_newy > getInnerHeight()-12-va) newy = getInnerHeight()-12-va;
         else if (wn_newy < pg_attract) newy = 0;
-        else if (wn_newy+getClipHeight(wn_current) > window.innerHeight-va-pg_attract && wn_newy+getClipHeight(wn_current) < window.innerHeight-va+pg_attract)
-		newy = window.innerHeight-va-pg_get_style(wn_current,'clip.height');
+        else if (wn_newy+getClipHeight(wn_current) > getInnerHeight()-va-pg_attract && wn_newy+getClipHeight(wn_current) < getInnerHeight()-va+pg_attract)
+		newy = getInnerHeight()-va-pg_get_style(wn_current,'clip.height');
         else newy = wn_newy;
         moveToAbsolute(wn_current,newx,newy);
     	wn_current.clicked = 0;
@@ -749,9 +749,10 @@ function wn_mousedown(e)
         {
         if (e.target.name == 'close')
             pg_set(e.target,'src','/sys/images/02bigclose.gif');
-        else if ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
-                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' ))
+        else if (e.which == 1 && ((e.mainlayer.has_titlebar && cx__capabilities.Dom0NS && e.pageY < e.mainlayer.pageY + 24) ||
+                (cx__capabilities.Dom1HTML && e.layer.subkind == 'titlebar' )))
             {
+	    // Start a drag.
             wn_current = e.mainlayer;
             wn_msx = e.pageX;
             wn_msy = e.pageY;
@@ -789,37 +790,55 @@ function wn_mouseup(e)
         {
         pg_set(pg_images(e.layer)[6],'src','/sys/images/01bigclose.gif');
         }
-    if (wn_current != null)
-        {
-        if (wn_moved == 0) wn_bring_top(wn_current);
-        }
+    if (wn_current != null) wn_drag_end();
     if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseUp');
-    wn_current = null;
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
+    }
+
+// Track a window drag.  The page widget's modal guard should call this to
+// handle drags that leave the modal window without leaking events to every
+// widget on the page.
+function wn_drag_watch(e)
+    {
+    if (!wn_current) return; // No active window drag.
+
+    // A drag is not a click, and it cancels any pending windowshade.
+    wn_current.clicked = 0;
+    if (wn_current.tid) clearTimeout(wn_current.tid);
+    wn_current.tid = null;
+
+    // Accumulate the cursor movement into the pending window position.
+    if (wn_newx == null)
+	{
+	wn_newx = getPageX(wn_current) + e.pageX-wn_msx;
+	wn_newy = getPageY(wn_current) + e.pageY-wn_msy;
+	}
+    else
+	{
+	wn_newx += (e.pageX - wn_msx);
+	wn_newy += (e.pageY - wn_msy);
+	}
+
+    // Move the window on a delay, so moves are batched.
+    setTimeout(wn_domove,60);
+    wn_moved = 1;
+    wn_msx = e.pageX;
+    wn_msy = e.pageY;
+    }
+
+// End an in-progress window drag.
+function wn_drag_end()
+    {
+    if (wn_moved == 0) wn_bring_top(wn_current);
+    wn_current = null;
     }
 
 function wn_mousemove(e)
     {
     if (e.kind == 'wn') cn_activate(e.mainlayer, 'MouseMove');
     if (wn_current != null)
-        {
-        wn_current.clicked = 0;
-	if (wn_current.tid) clearTimeout(wn_current.tid);
-	wn_current.tid = null;
-        if (wn_newx == null)
-            {
-            wn_newx = getPageX(wn_current) + e.pageX-wn_msx;
-            wn_newy = getPageY(wn_current) + e.pageY-wn_msy;
-            }
-        else
-            {
-            wn_newx += (e.pageX - wn_msx);
-            wn_newy += (e.pageY - wn_msy);
-            }
-        setTimeout(wn_domove,60);
-        wn_moved = 1;
-        wn_msx = e.pageX;
-        wn_msy = e.pageY;
+	{
+	wn_drag_watch(e);
         return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
         }
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;

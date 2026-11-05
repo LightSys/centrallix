@@ -1,5 +1,11 @@
 /* include/cxlibconfig.h.in.  Generated from configure.ac by autoheader.  */
 
+/*** cxlibconfig-h.in lists defines that should be availabe to anyone
+ *** using centrallix-lib. For example, a define used in an external .h 
+ *** file should be written here so that the .h file can include it even
+ *** if it is used in another project.
+ ***/
+
 /* Define to 1 if you have the `endservent' function. */
 #undef HAVE_ENDSERVENT
 
@@ -32,6 +38,9 @@
 
 /* Define to 1 if you have the <stdlib.h> header file. */
 #undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the `__builtin_expect' function. */
+#undef HAVE_BUILTIN_EXPECT
 
 /* Define to 1 if you have the `strdup' function. */
 #undef HAVE_STRDUP

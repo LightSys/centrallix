@@ -148,7 +148,7 @@ function eb_inputwidth()
     $(span).css($(this.ContentLayer).css(["font-family","font-size","text-decoration","font-weight"]));
     $(span).css({'white-space':'pre'});
     this.appendChild(span);
-    var w = span.getBoundingClientRect().width;
+    var w = getPageRect(span).width;
     this.removeChild(span);
     return w;
     }
@@ -543,7 +543,7 @@ function eb_deselect(p)
 
 function eb_mselect(x,y,l,c,n,a)
     {
-    var offs = $(this).offset();
+    var offs = getPageRect(this);
     if (this.ContentLayer.scrollWidth > this.ContentLayer.clientWidth)
 	this.tipid = pg_tooltip(this.tooltip?this.tooltip:this.content, offs.left + x, offs.top + y);
     else if (this.tooltip)

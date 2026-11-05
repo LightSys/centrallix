@@ -32,7 +32,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -1233,7 +1233,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 			}
 		    else
 			{
-			mssError(1, "HTTP", "Unsupported data type for '%s' header", one_http_param->Parameter->Name);
+			mssWarn("HTTP", "Unsupported data type for '%s' header.", one_http_param->Parameter->Name);
 			}
 		    }
 		}
@@ -1406,8 +1406,8 @@ http_internal_GetPageStream(pHttpData inf)
 #define BUF_SIZE 256
     char buf[BUF_SIZE];
     char *fullpath = NULL; // the path to be send to the server
-    char *ptr;
-    char *ptr2;
+    char *ptr = NULL;
+    char *ptr2 = NULL;
     int alloc = 0;
     char *p1;
     pStructInf attr;
@@ -1800,7 +1800,7 @@ http_internal_GetPageStream(pHttpData inf)
 		    {
 		    if (inf->ForceSecureRedirects)
 			{
-			mssError(1, "HTTP", "Warning: Server '%s' tried to redirect to insecure URL '%s', using HTTPS instead", inf->Server, hdr_val);
+			mssWarn("HTTP", "Server '%s' tried to redirect to insecure URL '%s', using HTTPS instead.", inf->Server, hdr_val);
 			nmSysFree(inf->Protocol);
 			inf->Protocol = nmSysStrdup("https");
 			if (!inf->Protocol)
@@ -2582,7 +2582,7 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	/** Warn if http_4xx retry type is provided while allowing subdirs **/
 	if (inf->RetryLimit > 0 && inf->AllowSubDirs && (inf->RetryFor & HTTP_RETRY_F_HTTP4XX))
 	    {
-	    mssError(1, "HTTP", "Warning: both retry_for http_4xx and allowsubdirs are enabled; retry on 404 Not Found is disabled.");
+	    mssWarn("HTTP", "both retry_for http_4xx and allowsubdirs are enabled; retry on 404 Not Found is disabled.");
 	    }
 
 	/** Ensure all required config items are given **/
@@ -3178,7 +3178,10 @@ httpInitialize()
 	/** Set up header nonce **/
 	HTTP_INF.NonceData = cxssKeystreamNew(NULL, 0);
 	if (!HTTP_INF.NonceData)
-	    mssError(1, "HTTP", "Warning: X-Nonce headers will not be emitted");
+	    {
+	    mssWarn("HTTP", "X-Nonce headers will not be emitted.");
+	    mssClearError();
+	    }
 
 	/** Setup the structure **/
 	strcpy(drv->Name,"HTTP - HTTP/HTTPS Protocol for objectsystem");
@@ -3225,4 +3228,3 @@ MODULE_PREFIX("http");
 MODULE_DESC("HTTP/HTTPS ObjectSystem Driver");
 MODULE_VERSION(0,1,0);
 MODULE_IFACE(CX_CURRENT_IFACE);
-

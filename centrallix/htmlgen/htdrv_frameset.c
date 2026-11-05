@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -50,7 +50,7 @@ int
 htsetRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
-    pWgtrNode sub_tree;
+    pWgtrNode sub_tree = NULL;
     char geom_str[64] = "";
     int t,n,bdr=0,direc=0, i;
     char nbuf[16];
@@ -110,6 +110,7 @@ htsetRender(pHtSession s, pWgtrNode tree, int z)
 	/** Check for more sub-widgets within the page. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
+	    sub_tree = xaGetItem(&(tree->Children), i);
 	    wgtrGetPropertyValue(sub_tree,"name",DATA_T_STRING,POD(&ptr));
 	    if (wgtrGetPropertyValue(sub_tree,"marginwidth",DATA_T_INTEGER,POD(&n)) != 0)
 		htrAddBodyItem_va(s,"    <FRAME SRC=\"./%STR&HTE\">\n",ptr);

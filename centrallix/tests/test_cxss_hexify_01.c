@@ -26,7 +26,7 @@ test_hexify(char* str, char* cmp, int dstlen, int cmprval)
     buf1[len+2+2] = 0;
     memset(buf2, 127, sizeof(buf2));
 
-    rval = cxss_i_Hexify(buf1+2, len, buf2+2, dstlen);
+    rval = cxss_i_Hexify((unsigned char*)buf1+2, len, buf2+2, dstlen);
 
     assert(rval == cmprval);
     assert(buf1[0] == 0);

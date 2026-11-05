@@ -48,14 +48,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTCMPD;
-
-
 /** structure defining a param to the component **/
 typedef struct
     {
@@ -79,7 +71,6 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
     char expose_actions_for[64] = "";
     char expose_props_for[64] = "";
     char apply_hints_to[64] = "";
-    int id;
     /*char* nptr;*/
 //    pObject subobj = NULL;
     pWgtrNode sub_tree = NULL;
@@ -101,9 +92,6 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTCMPD","Either Netscape DOM or W3C DOM1 HTML and W3C CSS support required");
 	    return -1;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTCMPD.idcnt++);
 
 	/** Is this a visual component? **/
 	if ((is_visual = htrGetBoolean(tree, "visual", 1)) < 0)
@@ -423,8 +411,5 @@ htcmpdInitialize()
 	/** Declare support for DHTML user interface class **/
 	htrAddSupport(drv, "dhtml");
 
-	HTCMPD.idcnt = 0;
-
     return 0;
     }
-

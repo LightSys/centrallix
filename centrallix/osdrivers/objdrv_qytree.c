@@ -735,7 +735,6 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
     {
     pQytData inf;
     pSnNode node = NULL;
-    char buf[1];
     char* endorsement_name;
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
@@ -752,7 +751,6 @@ qytOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	/** Otherwise, try to open it first. **/
 	if (!node)
 	    {
-	    objRead(obj->Prev, buf, 0, 0, OBJ_U_SEEK);
 	    node = snReadNode(obj->Prev);
 	    }
 
@@ -1325,8 +1323,6 @@ qytQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     pQytQuery qy = ((pQytQuery)(qy_v));
     pQytData inf;
     pObject llobj = NULL;
-    pStructInf find_inf;
-    char* ptr;
     char* objname = NULL;
     int cur_id = -1;
 
@@ -1883,4 +1879,3 @@ qytInitialize()
 
     return 0;
     }
-

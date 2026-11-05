@@ -27,7 +27,7 @@ static bool CSPRNG_Initialized = false;
 void
 cxssCryptoInit(void)
 {
-    char seed[256];
+    unsigned char seed[256];
 
     /* Generate seed and init OpenSSL RNG */
     cxss_internal_GetBytes(seed, 256); 

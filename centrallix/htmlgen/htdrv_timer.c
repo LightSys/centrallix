@@ -43,15 +43,6 @@
 /************************************************************************/
 
 
-/** globals **/
-static struct 
-    {
-    int		idcnt;
-    }
-    HTTM;
-
-
-
 /*** httmRender - generate the HTML code for the timer nonvisual widget.
  ***/
 int
@@ -59,7 +50,6 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
     {
     char* ptr;
     char name[64];
-    int id;
     int msec;
     int auto_reset = 0;
     int auto_start = 1;
@@ -69,9 +59,6 @@ httmRender(pHtSession s, pWgtrNode tree, int z)
 	    mssError(1,"HTTM","Netscape 4.x or W3C DOM support required");
 	    return -1;
 	    }
-
-    	/** Get an id for this. **/
-	id = (HTTM.idcnt++);
 
 	/** Get msec for timer countdown **/
 	if (wgtrGetPropertyValue(tree,"msec",DATA_T_INTEGER,POD(&msec)) != 0)
@@ -131,8 +118,6 @@ httmInitialize()
 	htrRegisterDriver(drv);
 
 	htrAddSupport(drv, "dhtml");
-
-	HTTM.idcnt = 0;
 
     return 0;
     }

@@ -50,7 +50,7 @@ print_result(char * result, bool succeeded)
     #ifdef HAVE_NCURSES
     if (use_curses) {
         // Clear blue color from stderr
-        tputs(tparm(tigetstr("sgr0")), 1, puterr);
+        tputs(tparm(tigetstr("sgr0")), 1, (int(*)(int))puterr);
     }
     #endif
 
@@ -110,7 +110,7 @@ start(void* v)
 
     if (use_curses) {
         // Set any error output to be blue
-        tputs(tparm(tigetstr("setaf"), COLOR_BLUE), 1, puterr);
+        tputs(tparm(tigetstr("setaf"), COLOR_BLUE), 1, (int(*)(int))puterr);
     }
     #endif
 
@@ -132,4 +132,3 @@ main(int argc, char* argv[])
     mtInitialize(0, start);
     return 0;
     }
-

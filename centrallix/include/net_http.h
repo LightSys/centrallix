@@ -45,7 +45,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -141,7 +141,6 @@ typedef struct _NCM
 typedef struct
     {
     char		Username[32];
-    int			SessionCnt;
     DateTime		FirstActivity;
     DateTime		LastActivity;
     XArray		Sessions;
@@ -341,6 +340,8 @@ typedef struct
     pSemaphore	TimerDataMutex;
     XArray	Timers;
     HandleContext TimerHctx;
+    int		AppWatchdogTime;
+    int		APIWatchdogTime;
     int		WatchdogTime;
     int		InactivityTime;
     regex_t*	reNet47;
@@ -385,6 +386,8 @@ extern NHT_t NHT;
 #define NHT_AUTH_HTTPBEARER	4	/* HTTP Bearer token auth (future) */
 #define NHT_AUTH_WEBFORM	8	/* Web form based auth (future) */
 
+#define NHT_ZOOM_MIN		0.4	/* smallest zoom a page shrinks to at load */
+
 typedef struct
     {
     int Key;
@@ -400,15 +403,18 @@ handle_t nht_i_AddWatchdog(int timer_msec, int (*expire_fn)(), void* expire_arg)
 int nht_i_RemoveWatchdog(handle_t th);
 void nht_i_Watchdog(void* v);
 int nht_i_WatchdogTime(handle_t th);
+int nht_i_WatchdogConfigTime(handle_t th);
 int nht_i_UnlinkSess(pNhtSessionData sess);
+int nht_i_DelistSess(pNhtSessionData sess);
+int nht_i_RetireSess(pNhtSessionData sess);
 int nht_i_LogoutUser(char* username);
 
 int nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
 
-pNhtApp nht_i_AllocApp(char* path, pNhtAppGroup g);
+pNhtApp nht_i_AllocApp(char* path, pNhtAppGroup g, int watchdog_time);
 pNhtApp nht_i_LinkApp(pNhtApp app);
 int nht_i_UnlinkApp(pNhtApp app);
-pNhtAppGroup nht_i_AllocAppGroup(char* path, pNhtSessionData s);
+pNhtAppGroup nht_i_AllocAppGroup(char* path, pNhtSessionData s, int watchdog_time);
 pNhtAppGroup nht_i_LinkAppGroup(pNhtAppGroup group);
 int nht_i_UnlinkAppGroup(pNhtAppGroup group);
 

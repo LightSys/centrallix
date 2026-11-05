@@ -19,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -146,8 +146,8 @@ expObjID(pExpression exp, pParamObjects objlist)
     if (exp->ObjID == EXPR_OBJID_CURRENT && objlist) id = objlist->CurrentID;
     else if (exp->ObjID == EXPR_OBJID_PARENT && objlist) id = objlist->ParentID;
     else id = exp->ObjID;
-    if (((!objlist || !objlist->CurControl) && (!exp->Control || !exp->Control->Remapped)) || id < 0) return id;
-    if (exp->Control && exp->Control->Remapped) 
+    if (((!objlist || !objlist->CurControl) && (!exp->Control || !exp->Control->Remapped)) || id < 0 || exp->ObjID < 0) return id;
+    if (exp->Control && exp->Control->Remapped)
         id = exp->Control->ObjMap[id];
     else if (objlist && objlist->CurControl && objlist->CurControl->Remapped)
         id = objlist->CurControl->ObjMap[id];
@@ -928,7 +928,7 @@ expCompareExpressions(pExpression exp1, pExpression exp2)
 	    {
 	    if (exp1->ObjID != exp2->ObjID)
 		return 0;
-	    if (exp1->ObjID >= 0 && exp1->Name && exp2->Name && strcmp(exp1->Name, exp2->Name) != 0)
+	    if (exp1->Name && exp2->Name && strcmp(exp1->Name, exp2->Name) != 0)
 		return 0;
 	    }
 	if ((exp1->Flags & EXPR_F_DESC) + (exp2->Flags & EXPR_F_DESC) == EXPR_F_DESC)

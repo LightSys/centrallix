@@ -25,11 +25,11 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    qpfPrintf(NULL, buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    qpfPrintf(NULL, buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    qpfPrintf(NULL, buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    rval = qpfPrintf(NULL, buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
-	    assert(!strcmp(buf+4, "Conditional: yes=yes!YES! no=."));
+	    qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	    qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	    qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 31, "Conditional: yes=%[yes%STR%] no=%[no%STR%]%STR", 1, "!YES!", 0, "!NO!", ".");
+	    assert(!strcmp((char*)buf+4, "Conditional: yes=yes!YES! no=."));
 	    assert(rval == 30);
 	    assert(buf[38] == '\n');
 	    assert(buf[37] == '\0');
@@ -43,4 +43,3 @@ test(char** tname)
 
     return iter*4;
     }
-

@@ -53,10 +53,10 @@ jutilIsDateTimeObject(struct json_object* jobj)
     int has_year = 0;
     int has_month = 0;
     int has_day = 0;
-    int has_hour = 0;
-    int has_minute = 0;
-    int has_second = 0;
-    int has_tz = 0;
+    // int has_hour = 0;
+    // int has_minute = 0;
+    // int has_second = 0;
+    // int has_tz = 0;
     int has_other = 0;
 
 	/** Must be an 'object' **/
@@ -71,10 +71,10 @@ jutilIsDateTimeObject(struct json_object* jobj)
 		if (!strcmp(iter.key, "year")) has_year = 1;
 		else if (!strcmp(iter.key, "month")) has_month = 1;
 		else if (!strcmp(iter.key, "day")) has_day = 1;
-		else if (!strcmp(iter.key, "hour")) has_hour = 1;
-		else if (!strcmp(iter.key, "minute")) has_minute = 1;
-		else if (!strcmp(iter.key, "second")) has_second = 1;
-		else if (!strcmp(iter.key, "tzoffset")) has_tz = 1;
+		else if (!strcmp(iter.key, "hour")); // has_hour = 1;
+		else if (!strcmp(iter.key, "minute")); // has_minute = 1;
+		else if (!strcmp(iter.key, "second")); // has_second = 1;
+		else if (!strcmp(iter.key, "tzoffset")); // has_tz = 1;
 		else has_other = 1;
 		}
 	    else    
@@ -101,10 +101,10 @@ jutilGetDateTimeObject(struct json_object* jobj, pDateTime dt)
     int has_year = 0;
     int has_month = 0;
     int has_day = 0;
-    int has_hour = 0;
-    int has_minute = 0;
-    int has_second = 0;
-    int has_tz = 0;
+    // int has_hour = 0;
+    // int has_minute = 0;
+    // int has_second = 0;
+    // int has_tz = 0;
     int has_other = 0;
 
 	/** Must be an 'object' **/
@@ -134,22 +134,22 @@ jutilGetDateTimeObject(struct json_object* jobj, pDateTime dt)
 		    }
 		else if (!strcmp(iter.key, "hour"))
 		    {
-		    has_hour = 1;
+		    // has_hour = 1;
 		    dt->Part.Hour = json_object_get_int(iter.val);
 		    }
 		else if (!strcmp(iter.key, "minute"))
 		    {
-		    has_minute = 1;
+		    // has_minute = 1;
 		    dt->Part.Minute = json_object_get_int(iter.val);
 		    }
 		else if (!strcmp(iter.key, "second"))
 		    {
-		    has_second = 1;
+		    // has_second = 1;
 		    dt->Part.Second = json_object_get_int(iter.val);
 		    }
 		else if (!strcmp(iter.key, "tzoffset"))
 		    {
-		    has_tz = 1;
+		    // has_tz = 1;
 		    }
 		else
 		    {
@@ -257,5 +257,3 @@ jutilGetMoneyObject(struct json_object* jobj, pMoneyType m)
 
     return -1;
     }
-
-

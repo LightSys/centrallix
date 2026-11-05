@@ -618,7 +618,6 @@ mqjAnalyze(pQueryStatement stmt)
 		if (!source)
 		    {
 		    mssError(1,"MQJ","Bark!  Could not locate join source component!");
-		    nmFree(qe->PrivateData, sizeof(MqjJoinData));
 		    mq_internal_FreeQE(qe);
 		    goto error;
 		    }
@@ -948,7 +947,7 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
     pMqjJoinExec src, nextsrc, checksrc;
     int rval = 1;
     unsigned int null_dep_mask;
-    bool can_be_outer = false, is_outer = false;
+    bool can_be_outer = false; //, is_outer = false;
     pMqjJoinData md = (pMqjJoinData)(qe->PrivateData);
     int j;
 
@@ -960,8 +959,8 @@ mqj_internal_NextItem_r(pQueryElement qe, pQueryStatement stmt, int source_id)
 	null_dep_mask = (~md->StartedStateMask) & src->DependencyMask;
 
 	/** Is this source outer joined? **/
-	if (src->OuterMask || (src->DependencyMask != 0 && (src->DependencyMask & md->OuterStateMask) == src->DependencyMask))
-	    is_outer = true;
+	// if (src->OuterMask || (src->DependencyMask != 0 && (src->DependencyMask & md->OuterStateMask) == src->DependencyMask))
+	//     is_outer = true;
 	can_be_outer = (md->CanBeOuterMask & src->CoverageMask)?true:false;
 
 	/** Already done with this source? **/

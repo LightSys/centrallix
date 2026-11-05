@@ -25,9 +25,9 @@ test(char** tname)
 	    buf[2] = '\0';
 	    buf[1] = 0xff;
 	    buf[0] = '\0';
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "414243444546");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "414243444546");
 	    assert(rval == 6);
-	    rval = qpfPrintf(NULL, buf+4, 36, "%STR&DHEX", "4142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F60616263646566676869");
+	    rval = qpfPrintf(NULL, (char*)buf+4, 36, "%STR&DHEX", "4142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F60616263646566676869");
 	    assert(rval < 0);
 	    assert(buf[43] == '\n');
 	    assert(buf[42] == '\0');
@@ -41,4 +41,3 @@ test(char** tname)
 
     return iter*2;
     }
-

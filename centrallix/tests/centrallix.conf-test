@@ -44,6 +44,9 @@ centrallix "system/config"
 	condense_js = 1; // true
 	dir_index = "index.app","index.html","index.htm","index.rpt";
 	access_log = "/var/log/cx_access_log";
+
+	// Test-only link signing key; never reuse outside of tests.
+	link_signing_key = "9c6bb6dc466bcd444f39fb7f4bf87ad71feda12386d3614f0bc4e3fc337db2cd";
 	}
 
     // The BDQS network interface module.
@@ -88,7 +91,7 @@ centrallix "system/config"
 	mysd "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_mysql.so"; type="osdriver"; }
 	sybd "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_sybase.so"; type="osdriver"; }
 	http "system/config-module" { enable_module=yes; path="/usr/local/lib/centrallix/objdrv_http.so"; type="osdriver"; }
-	xml "system/config-module" { enable_module=yes; path="/usr/local/lib/centrallix/objdrv_xml.so"; type="osdriver"; }
+	xml "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_xml.so"; type="osdriver"; }
 	mime "system/config-module" { enable_module=yes; path="/usr/local/lib/centrallix/objdrv_mime.so"; type="osdriver"; }
 	gzip "system/config-module" { enable_module=yes; path="/usr/local/lib/centrallix/objdrv_gzip.so"; type="osdriver"; }
 	dbl "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_dbl.so"; type="osdriver"; }
@@ -99,4 +102,3 @@ centrallix "system/config"
 	pop3 "system/config-module" { enable_module=no; path="/usr/local/lib/centrallix/objdrv_pop3_v3.so"; type="osdriver"; }
 	}
     }
-
