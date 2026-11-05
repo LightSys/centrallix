@@ -38,11 +38,11 @@ void timerFree(pTimer timer);
  *** numbers and is generally bad style.
  ***/
 #define timerBenchmark(timer, c_code) \
-    { \
+    do { \
     pTimer _timer = (timer); \
     timerStart(_timer); \
     { c_code }; \
     timerStop(_timer); \
-    }
+    } while (0)
 
 #endif /* TIMER_H */

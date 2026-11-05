@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 static char* teststr = "0 -1 1 -255 -256 255 256 -127 -128 127 128 32767 32768 -32767 -32768 65535 65536 -65535 -65536 16777216 -16777216 2147483647 -2147483648\n"
 		    ".0 .1 .10 .01 0.0 0.1 0.10 0.01 1.0 1.1 1.10 1.01 10.0 10.1 10.10 10.01 -.0 -.1 -.10 -.01 -0.0 -0.1 -0.10 -0.01 -1.0 -1.1 -1.10 -1.01 -10.0 -10.1 -10.10 -10.01";
@@ -50,6 +50,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-10 integer and double parsing";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * (N_INTEGERS + N_DOUBLES);
     }

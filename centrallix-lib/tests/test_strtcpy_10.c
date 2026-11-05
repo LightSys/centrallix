@@ -6,7 +6,7 @@
 #include "strtcpy.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 static bool
 doTest(void)

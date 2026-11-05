@@ -1470,8 +1470,8 @@ expEvalProperty(pExpression tree, pParamObjects objlist)
 		break;
 
 	    /*** FIX: Shallow copy violates contract, but objdrv_cluster.c is
-	     *** the only one location that StringVec is used and I think it
-	     *** won't cause issues.
+	     *** the only location that StringVec is used and I think it won't
+	     *** cause issues.
 	     ***/
 	    case DATA_T_STRINGVEC:
 		v = getfn(obj, tree->Name, DATA_T_STRINGVEC, &vptr);

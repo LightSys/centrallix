@@ -48,6 +48,7 @@
   - [xsDeInit()](#xsdeinit)
   - [xsCheckAlloc()](#xscheckalloc)
   - [xsConcatenate()](#xsconcatenate)
+  - [xsConcatenateLiteral()](#xsconcatenateliteral)
   - [xsCopy()](#xscopy)
   - [xsStringEnd()](#xsstringend)
   - [xsConcatPrintf()](#xsconcatprintf)
@@ -65,6 +66,7 @@
   - [xsGenPrintf()](#xsgenprintf)
   - [xsString()](#xsstring)
   - [xsLength()](#xslength)
+  - [xsCharAt()](#xscharat)
   - [xsQPrintf_va(), xsQPrintf(), & xsConcatQPrintf()](#xsqprintf_va-xsqprintf--xsconcatqprintf)
 
 
@@ -73,14 +75,14 @@ The xstring (xs) module is used for managing growable strings.  It is based on a
 
 - 📖 **Note**: The contents of the XString can be easily referenced with the `xstring->String` field in the xstring struct.
 
-- ⚠️ **Warning**: Do not mix calls to [`xsNew()`](#xsnew)/[`xsFree()`](#xsfree) with calls to [`xsInit()`](#xsinit)/[`xsDeInit()`](#xsdeinit).  Every struct allocated using new must be freed, and ever struct allocated using init must be deinitted.  Mixing these calls can lead to memory leaks, bad frees, and crashes.
+- ⚠️ **Warning**: Do not mix calls to [`xsNew()`](#xsnew)/[`xsFree()`](#xsfree) with calls to [`xsInit()`](#xsinit)/[`xsDeInit()`](#xsdeinit).  Every struct allocated using new must be freed, and every struct allocated using init must be deinitted.  Mixing these calls can lead to memory leaks, bad frees, and crashes.
 
 
 ## xsNew()
 ```c
-pXString xsNew()
+pXString xsNew();
 ```
-This function allocates a new XString structure to contain a new, empty string.  It uses [`nmMalloc()`](newmalloc.md#nmmalloc) because the XString struct is always a consistent size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
+This function allocates a new XString structure to contain a new, empty string, initializing it with [`xsInit()`](#xsinit) before returning.  It uses [`nmMalloc()`](newmalloc.md#nmmalloc) because the XString struct is always a consistent size.  This function returns a pointer to the new string if successful, or `NULL` if an error occurs.
 
 
 ## xsFree()
@@ -121,51 +123,56 @@ This function concatenates the `text` string onto the end of the XString's value
     
     For example, **DO NOT**:
     ```c
-    XString xs;
-    if (xsInit(&xs) != 0) goto handle_error;
+    XString xs; xsInit(&xs);
     
-    if (xsConcatenate(&xs, "This is the first sentence. ", -1) != 0) goto handle_error;
+    xsConcatenate(&xs, "This is the first sentence. ", -1);
     char* ptr = xsStringEnd(&xs); /* Stores string pointer! */
-    if (xsConcatenate(&xs, "This is the second sentence.", -1) != 0) goto handle_error;
+    xsConcatenate(&xs, "This is the second sentence.", -1);
     
     /** Print will probably read invalid memory. **/
     printf("A pointer to the second sentence is '%s'\n", ptr);
-    
-    ...
-    
-    if (xsDeInit(&xs) != 0) goto handle_error;
     ```
     
-    Instead, use indexes and pointer arithmetic like this:
+    Instead, use indexes and pointer arithmetic, like this:
     ```c
-    XString xs;
-    if (xsInit(&xs) != 0) goto handle_error;
+    XString xs; xsInit(&xs);
     
-    if (xsConcatenate(&xs, "This is the first sentence. ", -1) != 0) goto handle_error;
-    int offset = xsStringEnd(&xs) - xs->String; /* Stores index offset. */
-    if (xsConcatenate(&xs, "This is the second sentence.", -1) != 0) goto handle_error;
+    xsConcatenate(&xs, "This is the first sentence. ", -1);
+    int offset = xsStringEnd(&xs) - xs.String; /* Stores index offset. */
+    xsConcatenate(&xs, "This is the second sentence.", -1);
     
     /** Print will probably work fine. **/
-    printf("A pointer to the second sentence is '%s'\n", xs->String + offset);
-    
-    ...
-    
-    if (xsDeInit(&xs) != 0) goto handle_error;
+    printf("A pointer to the second sentence is '%s'\n", xs.String + offset);
     ```
+
+
+## xsConcatenateLiteral()
+```c
+#define xsConcatenateLiteral(this, lit) /* ... */
+```
+This macro wraps [`xsConcatenate()`](#xsconcatenate) for the common case of adding a string literal.  It takes the length from `sizeof(lit)` at compile time, so the literal is not measured with `strlen()` on every call.
+
+```c
+xsConcatenateLiteral(&xs, "SELECT * FROM ");   /* Instead of passing -1. */
+```
+
+The argument must be a string literal.  Passing a pointer is a compile error, because `sizeof()` on a pointer would give the size of the pointer rather than the length of the text.  A macro that expands to a literal is fine, as are adjacent literals (`"a" "b"`).
+
+Because the length comes from `sizeof()`, it covers the whole literal.  An embedded null (`'\0'`) is therefore concatenated like any other character, where `xsConcatenate()` with `len` of -1 would stop at it.
 
 
 ## xsCopy()
 ```c
 int xsCopy(pXString this, char* text, int len);
 ```
-This function copies the string `text` into the XString, overwriting any previous contents.  This function returns 0 if successful, or -1 if an error occurs.
+This function copies the string `text` into the XString, overwriting any previous contents.  The `len` param here is the same as in [`xsConcatenate()`](#xsconcatenate).  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsStringEnd()
 ```c
 char* xsStringEnd(pXString this);
 ```
-This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some string may contain nulls, using `strlen()` may produce an incorrect result.
+This function returns a pointer to the end of the string.  This function is more efficient than searching for a null-terminator using `strlen()` because the xs module already knows the string length.  Furthermore, since some strings may contain nulls, using `strlen()` may produce an incorrect result.  It is equivalent to `this->String + xsLength(this)`, but it is shorter to type and keeps the internal workings of the xstring abstracted away from the caller.
 
 
 ## xsConcatPrintf()
@@ -175,8 +182,9 @@ int xsConcatPrintf(pXString this, char* fmt, ...);
 This function prints additional data onto the end of the string.  It is similar to printf, however, only the following features are supported:
 - `%s`: Add a string (`char*`).
 - `%d`: Add a number (`int`).
-- `%X`: Add something?
+- `%X`: Add a number in uppercase hexadecimal (`int`, or `long long` with `%llX`).
 - `%%`: Add a `'%'` character.
+
 Attempting to use other features of printf (such as `%lf`, `%c`, `%u`, etc.) will cause unexpected results.
 
 This function returns 0 if successful, or -1 if an error occurs.
@@ -200,42 +208,42 @@ This function writes data into the xstring, similar to using the standard fdWrit
 ```c
 int xsRTrim(pXString this);
 ```
-This function trims whitespace characters (spaces, tabs, newlines, and line feeds) from the right side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
+This function trims whitespace characters (spaces, tabs, newlines, and carriage returns) from the right side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsLTrim()
 ```c
 int xsLTrim(pXString this);
 ```
-This function trims whitespace characters (spaces, tabs, newlines, and line feeds) from the left side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
+This function trims whitespace characters (spaces, tabs, newlines, and carriage returns) from the left side of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsTrim()
 ```c
 int xsTrim(pXString this);
 ```
-This function trims whitespace characters (spaces, tabs, newlines, and line feeds) from both sides of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
+This function trims whitespace characters (spaces, tabs, newlines, and carriage returns) from both sides of the xstring.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsFind()
 ```c
-int xsFind(pXString this, char* find, int findlen, int offset)
+int xsFind(pXString this, char* find, int findlen, int offset);
 ```
 This function searches for a specific string (`find`) in the xstring, starting at the provided `offset`.  `findlen` is the length of the provided string, allowing it to include null characters (pass -1 to have the length calculated using `strlen(find)`).  This function returns the index where the string was found if successful, or -1 if an error occurs (including the string not being found).
 
 
 ## xsFindRev()
 ```c
-int xsFindRev(pXString this, char* find, int findlen, int offset)
+int xsFindRev(pXString this, char* find, int findlen, int offset);
 ```
 This function works the same as [`xsFind()`](#xsfind) except that it searches from the end of the string, resulting in better performance if the value is closer to the end of the string.  This function returns the index where the string was found if successful, or -1 if an error occurs (including the string not being found).
 
 
 ## xsSubst()
 ```c
-int xsSubst(pXString this, int offset, int len, char* rep, int replen)
+int xsSubst(pXString this, int offset, int len, char* rep, int replen);
 ```
-This function substitutes a string into a given position in an xstring.  This does not search for matches as with [`xsReplace()`](#xsreplace), instead the position (`offset`) and length (`len`) must be specified.  Additionally, the length of the replacement string (`replen`) can be specified handle null characters.  Both `len` and `replen` can be left blank to generate them using `strlen()`.  This function returns 0 if successful, or -1 if an error occurs.
+This function substitutes a string into a given position in an xstring.  This does not search for matches as with [`xsReplace()`](#xsreplace), instead the position (`offset`) and length (`len`) must be specified.  Additionally, the length of the replacement string (`replen`) can be specified in order to handle null characters.  Pass -1 for `len` or `replen` to generate them using `strlen()`.  This function returns 0 if successful, or -1 if an error occurs.
 
 
 ## xsReplace()
@@ -280,11 +288,16 @@ This function returns the stored string after checking for various errors, or re
 
 ## xsLength()
 ```c
-xsLength(pXString this);
+int xsLength(pXString this);
 ```
-This function returns the length of the string in constant time (since this value is stored in `this->Length`) checking for various errors, or returns `NULL` if an error occurs.
+This function returns the length of the string in constant time (since this value is stored in `this->Length`) checking for various errors, or returns `-1` if an error occurs.
 
-<!-- TODO: Greg - So why do we need xsStringEnd() again when `this->String + this->Length` or `this->String + xsLength()` appears to also solve all the same problems? Is it just to support legacy code? -->
+
+## xsCharAt()
+```c
+char xsCharAt(pXString this, int pos);
+```
+This function returns the character at `pos`, or `'\0'` if `pos` falls outside the string.  Use it instead of indexing the buffer from [`xsString()`](#xsstring), which is not bounds checked.  Note that a position past the end and a negative position both read as `'\0'`, so a caller walking off either end of the string gets the same result as they would from reading the null-terminator.
 
 
 ## xsQPrintf_va(), xsQPrintf(), & xsConcatQPrintf()
@@ -293,4 +306,4 @@ int xsQPrintf_va(pXString this, char* fmt, va_list va);
 int xsQPrintf(pXString this, char* fmt, ...);
 int xsConcatQPrintf(pXString this, char* fmt, ...);
 ```
-These functions use the `QPrintf` to add data to an xstring.  They return 0 on success, or some other value on failure.
+These functions are similar to [`xsPrintf()`](#xsprintf) and [`xsConcatPrintf()`](#xsconcatprintf).  However, they use [`QPrintf`](../QPrintf.md) to process the provided format instead of an internal `printf()`-like parser before adding the results to the xstring.  They return 0 on success, or some other value on failure.

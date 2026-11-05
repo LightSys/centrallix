@@ -19,13 +19,12 @@
 #include <string.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
-#include "check.h"
+#include "t_utils.h"
 
 /** Tested module. **/
 #include "xhash.h"
 
-/*** These are internal functions, so we use forward forward declarations to
+/*** These are internal functions, so we use forward declarations to
  *** make them available for testing.
  ***/
 int xhInitialize();
@@ -48,47 +47,52 @@ static bool doTest(void)
     {
     bool success = true;
 
-	/*** The hash never leaves the rows it was given, and survives
-	 *** xhInitialize(), which once rebuilt the table the hash reads from.
+	/*** The hash never leaves the rows it was given, and xhInitialize()
+	 *** does not change it.
 	 ***/
 	for (int r = 0; r < ROW_COUNT; r++)
 	    {
 	    int hash = xh_internal_ComputeHash(key, KEY_LEN, rows[r]);
-	    success &= EXPECT_RANGE(hash, 0, rows[r] - 1, "%d");
-	    success &= EXPECT_EQL(check(xhInitialize()), 0, "%d");
-	    success &= EXPECT_EQL(xh_internal_ComputeHash(key, KEY_LEN, rows[r]), hash, "%d");
+	    success &= ASSERT_RANGE(hash, 0, rows[r] - 1, "%d");
+	    success &= ASSERT_EQL(xhInitialize(), 0, "%d");
+	    success &= ASSERT_EQL(xh_internal_ComputeHash(key, KEY_LEN, rows[r]), hash, "%d");
 
 	    /** An empty key hashes to the first row of any table. **/
-	    success &= EXPECT_EQL(xh_internal_ComputeHash(key, 0, rows[r]), 0, "%d");
+	    success &= ASSERT_EQL(xh_internal_ComputeHash(key, 0, rows[r]), 0, "%d");
 	    }
 
 	/*** The hash is in memory only, so it may be changed, but only on
-	 *** purpose: update this value when the hash or the key above changes.
+	 *** purpose: update these values when the hash or the key above changes.
 	 ***/
-	success &= EXPECT_EQL(xh_internal_ComputeHash(key, KEY_LEN, WIDE_ROWS), 609235, "%d");
-
-	/** Where a byte sits matters, not just which bytes are present. **/
-	success &= EXPECT_EQL(xh_internal_ComputeHash("ab", 2, WIDE_ROWS)
+	success &= ASSERT_EQL(xh_internal_ComputeHash(key, KEY_LEN, WIDE_ROWS), 609235, "%d");
+	/* Where a byte sits matters, not just which bytes are present. */
+	success &= ASSERT_EQL(xh_internal_ComputeHash("ab", 2, WIDE_ROWS)
 	    != xh_internal_ComputeHash("ba", 2, WIDE_ROWS), true, "%d");
 
 	/** Only the first keylen bytes of the key are hashed. **/
 	char altered[KEY_LEN];
 	memcpy(altered, key, KEY_LEN);
 	altered[KEY_LEN - 1] ^= 0x5A;
-	success &= EXPECT_EQL(
+	success &= ASSERT_EQL(
 	    xh_internal_ComputeHash(altered, KEY_LEN - 1, WIDE_ROWS),
 	    xh_internal_ComputeHash(key, KEY_LEN - 1, WIDE_ROWS), "%d");
 
-	/** Every byte of the key changes the hash. **/
+	/*** Every byte of the key affects the hash.  One change can collide by
+	 *** chance, so a byte fails only when several changes don't move the hash.
+	 ***/
+	static const unsigned char flips[] = {0x01, 0x5A, 0xFF};
 	const int base = xh_internal_ComputeHash(key, KEY_LEN, WIDE_ROWS);
 	for (int i = 0; i < KEY_LEN; i++)
 	    {
-	    memcpy(altered, key, KEY_LEN);
-	    altered[i] ^= 0x5A;
-	    bool differs = EXPECT_EQL(
-		xh_internal_ComputeHash(altered, KEY_LEN, WIDE_ROWS) != base, true, "%d");
+	    bool differs = false;
+	    for (size_t f = 0; f < sizeof(flips) && !differs; f++)
+		{
+		memcpy(altered, key, KEY_LEN);
+		altered[i] ^= flips[f];
+		differs = (xh_internal_ComputeHash(altered, KEY_LEN, WIDE_ROWS) != base);
+		}
 	    if (!differs) fprintf(stderr, "  > Byte %d of the key did not affect the hash.\n", i);
-	    success &= differs;
+	    success &= ASSERT_TRUE(differs);
 	    }
 
     return success;

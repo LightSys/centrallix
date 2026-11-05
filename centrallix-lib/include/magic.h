@@ -84,7 +84,7 @@ typedef struct
     Magic_t	Magic;
     }
     MagicHdr, *pMagicHdr;
-    
+
 #define	MGK_FILE	0x12340001	/* mtask.h::File */
 #define MGK_OBJECT	0x12340102	/* obj.h::Object */
 #define MGK_OBJQUERY	0x1234015a	/* obj.h::ObjQuery */

@@ -8,9 +8,9 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
-/** Integers in the data file, and so the ops performed by one pass. **/
+/** Integers in the data file. **/
 #define N_INTS		12
 
 static int flagtypes[5] = { MLX_F_CPPCOMM, MLX_F_POUNDCOMM, MLX_F_SEMICOMM, MLX_F_DASHCOMM, MLX_F_CCOMM };
@@ -55,6 +55,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-15 comments // # ; -- /**/ long and short";
-    mssInitialize("system", "", "", 0, "test");
-    return loopTest(doTest) * 10;
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
+    return loopTest(doTest) * N_INTS;
     }

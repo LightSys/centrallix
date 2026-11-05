@@ -70,7 +70,7 @@ Initialize the random number table for hash computation, returning 0 on success 
 ```c
 int xhInit(pXHashTable this, int rows, int keylen);
 ```
-This function initializes a hash table, setting the number of rows and the key length.  Specify a `keylen` of 0 for for variable length keys (aka. null-terminated strings).  The `rows` should be an odd number, preferably prime (although that isn't required).  `rows` **SHOULD NOT** be a power of 2.  Providing this value allows the caller to optimize it based on how much data they expect to be stored in the hash table.  If this value is set to 1, the hash search degenerates to a linear array search with extra overhead.  Thus, the value should be large enough to comfortably accommodate the elements with minimal collisions.  Typical values include 31, 251, or 255 (though 255 is not prime).
+This function initializes a hash table, setting the number of rows and the key length.  Specify a `keylen` of 0 for variable length keys (aka. null-terminated strings).  The `rows` should be an odd number, preferably prime (although that isn't required).  `rows` **SHOULD NOT** be a power of 2.  Providing this value allows the caller to optimize it based on how much data they expect to be stored in the hash table.  If this value is set to 1, the hash search degenerates to a linear array search with extra overhead.  Thus, the value should be large enough to comfortably accommodate the elements with minimal collisions.  Typical values include 31, 251, or 255 (though 255 is not prime).
 
 
 ## xhDeInit()
@@ -84,7 +84,7 @@ This function deinitializes a hash table struct, freeing all rows.  Note that th
 ```c
 int xhAdd(pXHashTable this, char* key, char* data);
 ```
-Adds an item to the hash table, with a given key value and data pointer.  Both data and key pointers must have a lifetime that exceeds the time that they item is hashed, as they are assumed to be the responsibility of the caller.  This function returns 0 on success, or -1 if an error occurs.
+Adds an item to the hash table, with a given key value and data pointer.  Both data and key pointers must have a lifetime that exceeds the time that the item is hashed, as they are assumed to be the responsibility of the caller.  This function returns 0 on success, or -1 if an error occurs.
 
 
 ## xhRemove()
@@ -110,9 +110,9 @@ Clears all items from a hash table.  If a `free_fn()` is provided, it will be in
 
 ## xhForEach()
 ```c
-int xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, void*), void* each_arg);
+int xhForEach(pXHashTable this, int (*callback_fn)(pXHashEntry, va_list), ...);
 ```
-This function executes an operation on each entry of the hash table entry.  The provided callback function will be called with each entry (in an arbitrary order).  This function is provided 2 parameters: the current hash table entry, and a `void*` argument specified using `each_arg`.  If any invocation of the callback function returns a value other than 0, the `xhForEach()` will immediately fail, returning that value as the error code.
+This function executes an operation on each entry of the hash table.  The provided callback function will be called with each entry (in an arbitrary order).  This function is provided 2 parameters: the current hash table entry, and a `va_list` of any additional arguments passed to `xhForEach()`.  Each invocation receives the full list, so the callback may consume the arguments freely.  If any invocation of the callback function returns a value other than 0, the `xhForEach()` will immediately fail, returning that value as the error code.
 
 This function returns 0 if the function executes successfully, 1 if the callback function is `NULL`, or n (where n != 0) if the callback function returns n.  It does not return any error code other than 1 or any error codes returned by `callback_fn()`.
 

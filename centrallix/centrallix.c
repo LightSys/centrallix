@@ -95,7 +95,7 @@ cx_internal_LoadModules(char* type)
 	modules_inf = stLookup(CxGlobals.ParsedConfig, "modules");
 	if (!modules_inf) 
 	    {
-	    mssError(1,"CX","Warning - no modules section in config file");
+	    mssWarn("CX", "no modules section in config file.");
 	    return 0;
 	    }
 
@@ -111,7 +111,7 @@ cx_internal_LoadModules(char* type)
 	    if (!modpath || !modtype)
 		{
 		if (!CxGlobals.QuietInit) printf("mod: driver %s failed\n", one_module->Name);
-		mssError(1,"CX","Module '%s' must have path and type settings; load failed",one_module->Name);
+		mssWarn("CX", "Module '%s' must have path and type settings; load failed.",one_module->Name);
 		continue;
 		}
 
@@ -138,8 +138,8 @@ cx_internal_LoadModules(char* type)
 		{
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' could not be loaded",modpath);
-		mssError(1,"CX","ERROR: %s",dlerror());
+		mssWarn("CX", "Module '%s' could not be loaded.",modpath);
+		mssWarn("CX", "%s",dlerror());
 		continue;
 		}
 
@@ -150,7 +150,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' has no Init function declared: %s",modpath, dlerror());
+		mssWarn("CX", "Module '%s' has no Init function declared: %s.",modpath, dlerror());
 		continue;
 		}
 	    moduledata->DeinitFn = dlsym(moduledata->dlhandle, "moduleDeInitialize");
@@ -163,7 +163,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' has no Interface Version declared: %s",modpath,dlerror());
+		mssWarn("CX", "Module '%s' has no Interface Version declared: %s.",modpath,dlerror());
 		continue;
 		}
 
@@ -181,7 +181,7 @@ cx_internal_LoadModules(char* type)
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
-		mssError(1,"CX","Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?)",
+		mssWarn("CX", "Module '%s' has unsupported interface version %d (do you need to recompile/reinstall modules?).",
 		    modpath, *(moduledata->InterfaceVer));
 		continue;
 		}
@@ -191,7 +191,8 @@ cx_internal_LoadModules(char* type)
 		{
 		dlclose(moduledata->dlhandle);
 		nmFree(moduledata, sizeof(CxModule));
-		mssError(0,"CX","Module '%s' load failed",modpath);
+		mssWarn("CX", "Module '%s' load failed.",modpath);
+		mssClearError();
 		if (!CxGlobals.QuietInit) printf("mod: %s %s failed\n", modtype, one_module->Name);
 		continue;
 		}
@@ -312,11 +313,13 @@ cxInitialize(void* v)
     {
     pFile cxconf;
     pStructInf mss_conf;
+    pStructInf http_conf;
     char* authmethod;
     char* authmethodfile;
     char* logmethod;
     char* logprog;
     int log_all_errors;
+    int warn_history;
     char* ptr;
     int n;
     int fd;
@@ -396,7 +399,8 @@ cxInitialize(void* v)
 	if (stAttrValue(stLookup(mss_conf,"log_progname"),NULL,&logprog,0) < 0) logprog = "centrallix";
 	log_all_errors = 0;
 	if (stAttrValue(stLookup(mss_conf,"log_all_errors"),NULL,&ptr,0) < 0 || !strcmp(ptr,"yes")) log_all_errors = 1;
-	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog);
+	if (stAttrValue(stLookup(mss_conf,"warn_history"),&warn_history,NULL,0) < 0) warn_history = MSS_WARN_HISTORY_DEFAULT;
+	mssInitialize(authmethod, authmethodfile, logmethod, log_all_errors, logprog, warn_history);
 
 	/** Initialize the various parts **/
 	expInitialize();			/* expression processor/compiler */
@@ -430,6 +434,17 @@ cxInitialize(void* v)
 	RAND_add(&pid, 4, (double)0.25);
 	tm = time(NULL);
 	RAND_add(&tm, 4, (double)0.125);
+
+	/** Init link signing capabilities.  This is primarily a feature
+	 ** of net_http, but the signing mechanism is used outside of
+	 ** the running server as well, so we do that init here.
+	 **/
+	http_conf = stLookup(CxGlobals.ParsedConfig, "net_http");
+	if (http_conf)
+	    {
+	    /** Link signing key **/
+	    cxLinkSigningSetup(http_conf);
+	    }
 
     return 0;
     }
@@ -761,12 +776,12 @@ cxLinkSigningSetup(pStructInf my_config)
 	    {
 	    if (cxssGenerateHexKey((char*)key, 32) < 0)
 		{
-		mssError(1, "CX", "Warning: no link_signing_key provided and temporal key generation failed, disabling link signing");
+		mssWarn("CX", "no link_signing_key provided and temporal key generation failed, disabling link signing.");
 		strtcpy(key, "", sizeof(key));
 		}
 	    else
 		{
-		mssError(1, "CX", "Warning: no link_signing_key provided, signing links with temporal key only");
+		mssWarn("CX", "no link_signing_key provided, signing links with temporal key only.");
 		}
 	    }
 
@@ -779,7 +794,8 @@ cxLinkSigningSetup(pStructInf my_config)
 	    {
 	    if (cxssLinkInitialize((unsigned char*)key, strlen(key), sites) < 0)
 		{
-		mssError(1, "CX", "Warning: Link signing initialization failed, disabling link signing");
+		mssWarn("CX", "Link signing initialization failed, disabling link signing.");
+		mssClearError();
 		}
 	    }
 

@@ -3,7 +3,7 @@
 
 /************************************************************************/
 /* Text-DoubleMetaphone							*/
-/* Centrallix Base Library						*/
+/* Centrallix Core							*/
 /* 									*/
 /* Copyright 2000, Maurice Aubrey <maurice@hevanet.com>.		*/
 /* All rights reserved.							*/
@@ -23,7 +23,7 @@
 /* has been included below for the convenience of the reader. This	*/
 /* information was collected and saved on September 5th, 2025 and may	*/
 /* differ from current information. For the most up to date copy of	*/
-/* this information, please use  the link provided above.		*/
+/* this information, please use the link provided above.		*/
 /* 									*/
 /*    Perl5 is Copyright © 1993 and later, by Larry Wall and others.	*/
 /* 									*/
@@ -37,7 +37,7 @@
 /*    b) the "Artistic License" (5).					*/
 /* 									*/
 /* Citations:								*/
-/*    1: https://github.com/gitpan/Text-meta_double_metaphone		*/
+/*    1: https://github.com/gitpan/Text-DoubleMetaphone			*/
 /*    2: https://dev.perl.org/licenses/gpl1.html			*/
 /*    3: http://www.fsf.org						*/
 /*    4: http://www.fsf.org/licenses/licenses.html#GNUGPL		*/
@@ -71,13 +71,16 @@
 /* 		Lawrence Philips which he published in the June, 2000	*/
 /* 		issue of C/C++ Users Journal. Double Metaphone is an	*/
 /* 		improved version of the original Metaphone algorithm	*/
-/* 		written by Philips'. This implementation was written by	*/
+/* 		written by Philips. This implementation was written by	*/
 /* 		Maurice Aubrey for C/C++ with bug fixes provided by	*/
 /* 		Kevin Atkinson. It was revised by Israel Fuller to	*/
 /* 		better align with the Centrallix coding style and	*/
 /* 		standards so that it could be included here.		*/
 /************************************************************************/
 
-int meta_double_metaphone(const char* str, char** primary_code, char** secondary_code);
+/*** Computes double metaphone.  On success the caller owns both strings and
+ *** must release them with nmSysFree().  See double_metaphone.c for details.
+ ***/
+int metaDoubleMetaphone(const char* str, char** primary_code, char** secondary_code);
 
 #endif /* End of .h file. */

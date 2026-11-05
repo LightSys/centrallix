@@ -7,7 +7,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 #define N_TOK	16
 
@@ -52,6 +52,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-19 enabling/disabling LINEONLY/IFSONLY during parsing";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * 9;
     }

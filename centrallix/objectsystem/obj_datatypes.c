@@ -129,15 +129,15 @@ char* obj_default_null_fmt = "NULL";
 
 
 /** Should maybe replace current type parsing in the presentation hints. **/
-/*** Parse the given string into a datatype. The case of the first character
- *** is ignored, but all other characters must be capitalized correctly.
+/*** Parse the given string into a datatype, ignoring case.
+ *** Names returned by objTypeToStr() are also accepted.
  *** 
- *** @attention - This function is optimized to prevent performance hits
+ *** @attention - This function is optimized to prevent performance hits in
  *** 	situations where it may need to be called many thousands of times.
  *** 
  *** @param str The string to be parsed to a datatype.
- *** @returns The datatype.
- *** 
+ *** @returns The datatype, or -1 if the string is not a valid type.
+ ***
  *** LINK ../../centrallix-lib/include/datatypes.h:72
  ***/
 int
@@ -147,48 +147,24 @@ objTypeFromStr(const char* str)
 	if (str == NULL || str[0] == '\0' || str[1] == '\0') return -1;
 	
 	/** Check type. **/
-	switch (str[0])
-	    {
-	    case 'A': case 'a':
-		if (strcmp(str+1, "Array"+1) == 0) return DATA_T_ARRAY;
-		if (strcmp(str+1, "Any"+1) == 0) return DATA_T_ANY;
-		break;
-	    
-	    case 'B': case 'b':
-		if (strcmp(str+1, "Binary"+1) == 0) return DATA_T_BINARY;
-		break;
-	    
-	    case 'C': case 'c':
-		if (strcmp(str+1, "Code"+1) == 0) return DATA_T_CODE;
-		break;
-	    
-	    case 'D': case 'd':
-		if (strcmp(str+1, "Double"+1) == 0) return DATA_T_DOUBLE;
-		if (strcmp(str+1, "DateTime"+1) == 0) return DATA_T_DATETIME;
-		break;
-	    
-	    case 'I': case 'i':
-		if (strcmp(str+1, "Integer"+1) == 0) return DATA_T_INTEGER;
-		if (strcmp(str+1, "IntVector"+1) == 0) return DATA_T_INTVEC;
-		break;
-	    
-	    case 'M': case 'm':
-		if (strcmp(str+1, "Money"+1) == 0) return DATA_T_MONEY;
-		break;
-	    
-	    case 'S': case 's':
-		if (strcmp(str+1, "String"+1) == 0) return DATA_T_STRING;
-		if (strcmp(str+1, "StringVector"+1) == 0) return DATA_T_STRINGVEC;
-		break;
-	    
-	    case 'U': case 'u':
-		if (strcmp(str+1, "Unknown"+1) == 0) return DATA_T_UNAVAILABLE;
-		if (strcmp(str+1, "Unavailable"+1) == 0)  return DATA_T_UNAVAILABLE;
-		break;
-	    }
-    
-    /** Invalid type. **/
-    return -1;
+	if (strcasecmp(str, obj_type_names[DATA_T_INTEGER]) == 0) return DATA_T_INTEGER;
+	if (strcasecmp(str, obj_type_names[DATA_T_STRING]) == 0) return DATA_T_STRING;
+	if (strcasecmp(str, obj_type_names[DATA_T_DOUBLE]) == 0) return DATA_T_DOUBLE;
+	if (strcasecmp(str, obj_type_names[DATA_T_DATETIME]) == 0) return DATA_T_DATETIME;
+	if (strcasecmp(str, obj_type_names[DATA_T_INTVEC]) == 0) return DATA_T_INTVEC;
+	if (strcasecmp(str, obj_type_names[DATA_T_STRINGVEC]) == 0) return DATA_T_STRINGVEC;
+	if (strcasecmp(str, obj_type_names[DATA_T_MONEY]) == 0) return DATA_T_MONEY;
+	if (strcasecmp(str, obj_type_names[DATA_T_ARRAY]) == 0) return DATA_T_ARRAY;
+	if (strcasecmp(str, obj_type_names[DATA_T_CODE]) == 0) return DATA_T_CODE;
+	if (strcasecmp(str, obj_type_names[DATA_T_BINARY]) == 0) return DATA_T_BINARY;
+	
+	/** Unavailable types. **/
+	if (strcasecmp(str, obj_type_names[DATA_T_UNAVAILABLE]) == 0) return DATA_T_UNAVAILABLE;
+	if (strcasecmp(str, "Any") == 0) return DATA_T_ANY;
+	if (strcasecmp(str, "Unknown") == 0) return DATA_T_UNAVAILABLE;
+	
+	/** Invalid type. **/
+	return -1;
     }
 
 
@@ -937,7 +913,7 @@ objDataToInteger(int data_type, void* data_ptr, char* format)
 		break;
 	    
 	    default:
-		mssError(1,"OBJ","Warning: could not convert data type %d to integer", data_type);
+		mssWarn("OBJ", "could not convert data type %d to integer.", data_type);
 		return 0;
 	    }
 
@@ -964,6 +940,52 @@ objDataToDouble(int data_type, void* data_ptr)
 	    }
 
     return v;
+    }
+
+
+/*** objDataToBoolean - convert data to a boolean.  Any nonzero integer is
+ *** true, and the strings "yes", "true", "y", "on", "1", "no", "false", "n",
+ *** "off", and "0" are recognized in any case.
+ *** Returns 1 or 0, default_value if data_ptr is NULL, or -1 if the value is
+ *** not a recognized boolean.
+ ***/
+int
+objDataToBoolean(int data_type, void* data_ptr, int default_value)
+    {
+    char* str;
+    int rval = -1;
+
+	/** NULL? use the default. **/
+	if (data_ptr == NULL) return default_value;
+
+	switch (data_type)
+	    {
+	    case DATA_T_INTEGER:
+		rval = (*(int*)data_ptr != 0);
+		break;
+
+	    case DATA_T_STRING:
+		str = (char*)data_ptr;
+		if (strcasecmp(str, "true") == 0
+		    || strcasecmp(str, "1") == 0
+		    || strcasecmp(str, "yes") == 0
+		    || strcasecmp(str, "y") == 0
+		    || strcasecmp(str, "on") == 0
+		)   {
+		    rval = 1;
+		    }
+		else if (strcasecmp(str, "false") == 0
+		    || strcasecmp(str, "0") == 0
+		    || strcasecmp(str, "no") == 0
+		    || strcasecmp(str, "n") == 0
+		    || strcasecmp(str, "off") == 0
+		)   {
+		    rval = 0;
+		    }
+		break;
+	    }
+
+    return rval;
     }
 
 
@@ -2038,7 +2060,7 @@ objDataToWords(int data_type, void* data_ptr)
 	    m = (pMoneyType)data_ptr;
 	    if (UNLIKELY(m->FractionPart > 9999))
 	        {
-		mssError(1, "OBJ",
+		mssWarn("OBJ",
 		    "Attempted to convert malformed money value %d.%04u to "
 		    "words but fractional part exceeds 9999.",
 		    m->WholePart, m->FractionPart
@@ -2069,7 +2091,7 @@ objDataToWords(int data_type, void* data_ptr)
 	    }
 	else
 	    {
-	    mssError(1,"OBJ","Warning: can only 'convert to words' integer and money types");
+	    mssWarn("OBJ", "can only 'convert to words' integer and money types.");
 	    return "";
 	    }
 

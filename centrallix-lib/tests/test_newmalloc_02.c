@@ -20,8 +20,7 @@
 #include <unistd.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
-#include "check.h"
+#include "t_utils.h"
 
 /** Tested module. **/
 #include "newmalloc.h"
@@ -29,6 +28,7 @@
 #define BLOCK_COUNT	64lu
 #define BLOCK_SIZE	128
 
+#ifdef GLOBAL_BLK_COUNTING
 static bool doTest(void)
     {
     bool success = true;
@@ -36,7 +36,7 @@ static bool doTest(void)
 	/** Give the allocator some activity to report on. **/
 	void* blocks[BLOCK_COUNT];
 	for (size_t i = 0lu; i < BLOCK_COUNT; i++)
-	    success &= EXPECT_NOT_NULL(blocks[i] = nmMalloc(BLOCK_SIZE));
+	    success &= ASSERT_NOT_NULL(blocks[i] = nmMalloc(BLOCK_SIZE));
 	for (size_t i = 0lu; i < BLOCK_COUNT; i++)
 	    nmFree(blocks[i], BLOCK_SIZE);
 
@@ -48,7 +48,7 @@ static bool doTest(void)
 	 ***/
 	char stats_buf[2048];
 	int stats_pipe[2];
-	success &= EXPECT_EQL(pipe(stats_pipe), 0, "%d");
+	if (!ASSERT_EQL(pipe(stats_pipe), 0, "%d")) return false;
 	fflush(stdout);
 	int saved_stdout = dup(STDOUT_FILENO);
 	dup2(stats_pipe[1], STDOUT_FILENO);
@@ -65,22 +65,31 @@ static bool doTest(void)
 	 *** tracked when the library is built with NMMALLOC_PROFILING, so
 	 *** their values aren't checked here.
 	 ***/
-	success &= EXPECT_RANGE(strlen(stats_buf), (size_t)32, sizeof(stats_buf) - 1lu, "%zu");
-	success &= EXPECT_NOT_NULL(strstr(stats_buf, "NewMalloc subsystem statistics:"));
-	success &= EXPECT_NOT_NULL(strstr(stats_buf, "nmMalloc:"));
-	success &= EXPECT_NOT_NULL(strstr(stats_buf, "nmFree:"));
-	success &= EXPECT_NOT_NULL(strstr(stats_buf, "bigblks:"));
+	success &= ASSERT_RANGE(strlen(stats_buf), (size_t)32, sizeof(stats_buf) - 1lu, "%zu");
+	success &= ASSERT_NOT_NULL(strstr(stats_buf, "NewMalloc subsystem statistics:"));
+	success &= ASSERT_NOT_NULL(strstr(stats_buf, "nmMalloc:"));
+	success &= ASSERT_NOT_NULL(strstr(stats_buf, "nmFree:"));
+	success &= ASSERT_NOT_NULL(strstr(stats_buf, "bigblks:"));
 
 	/** Clear cache. **/
 	nmClear();
 
     return success;
     }
+#endif
 
 long long test(char** tname)
     {
     *tname = "newmalloc-02 nmStats()";
+#ifdef GLOBAL_BLK_COUNTING
     return loopTest(doTest);
+#else
+    /*** No stats are being collected and nmStats() is disabled, so we can't
+     *** test it. To test it, please rebuild with --enable-debugging.
+     ***/
+    return 0;
+#endif
+
     }
 
 /** Scope cleanup. **/

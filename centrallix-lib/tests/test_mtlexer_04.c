@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 static char str[65536] = "";
 
@@ -28,6 +28,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-04 open/close session";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest);
     }

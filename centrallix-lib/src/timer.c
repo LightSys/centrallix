@@ -16,9 +16,9 @@
 /************************************************************************/
 
 #include <math.h>
+#include <stdio.h>
 #include <time.h>
 
-#include "check.h"
 #include "expect.h"
 #include "newmalloc.h"
 
@@ -29,14 +29,17 @@
  *** @returns The current monotonic time as a fractional number of seconds.
  ***/
 static double
-getTime(void)
+timer_i_getTime(void)
     {
     struct timespec ts;
     
-	if (check(clock_gettime(CLOCK_MONOTONIC, &ts)) != 0)
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+	    {
+	    fprintf(stderr, "Warning: Failed to get clock time.\n");
 	    return NAN;
+	    }
     
-    return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9f;
+    return (double)ts.tv_sec + (double)ts.tv_nsec / 1.0e9;
     }
 
 /*** Initialize a timer struct.  The initial timer is not yet started and has
@@ -63,7 +66,7 @@ timerInit(pTimer timer)
 pTimer
 timerNew(void)
     {
-    return timerInit(checkPtr(nmMalloc(sizeof(Timer))));
+    return timerInit(nmMalloc(sizeof(Timer)));
     }
 
 /*** Start timing.  If the timer was already timing, does nothing.
@@ -75,7 +78,7 @@ pTimer
 timerStart(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NULL;
-	if (isnan(timer->start)) timer->start = getTime();
+	if (isnan(timer->start)) timer->start = timer_i_getTime();
     
     return timer;
     }
@@ -92,8 +95,8 @@ timerStop(pTimer timer)
 	if (UNLIKELY(timer == NULL)) return NULL;
 	if (isnan(timer->start)) return timer;
 
-	/** Keep the timer running rather than poisoning the total with NAN. **/
-	const double stop_time = getTime();
+	/** Keep the timer running if the clock can't be read. **/
+	const double stop_time = timer_i_getTime();
 	if (isnan(stop_time)) return timer;
 
 	timer->total += stop_time - timer->start;
@@ -112,7 +115,7 @@ timerGet(pTimer timer)
     {
 	if (UNLIKELY(timer == NULL)) return NAN;
 
-	const double current_time = (isnan(timer->start)) ? 0.0 : (getTime() - timer->start);
+	const double current_time = (isnan(timer->start)) ? 0.0 : (timer_i_getTime() - timer->start);
     
     return current_time + timer->total;
     }
@@ -129,7 +132,7 @@ timerReset(pTimer timer)
     return timerInit(timer);
     }
 
-/*** De-initialize a timer allocated by timerInit().
+/*** De-initialize a timer initialized by timerInit().
  *** 
  *** @param timer The timer to de-initialize.
  ***/

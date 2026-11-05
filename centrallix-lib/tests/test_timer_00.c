@@ -11,7 +11,7 @@
 /* Module:	test_timer_00.c						*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 24th, 2025					*/
-/* Description:	Test the util.h timer1 functionality.			*/
+/* Description:	Test the timer.h functionality.				*/
 /************************************************************************/
 
 #include <math.h>
@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Tested module. **/
 #include "timer.h"
@@ -72,12 +72,12 @@ long long test(char** tname)
 	double t2_val = timerGet(timer2);
 	
 	/** Check for incorrect values. **/
-	if (!EXPECT_RANGE(t1_inter, ELAPSED_MIN(1), ELAPSED_MAX(1), "%g")) goto fail;
-	if (!EXPECT_RANGE(t2_inter, ELAPSED_MIN(1), ELAPSED_MAX(1), "%g")) goto fail;
-	if (!EXPECT_RANGE(fabs(t1_inter - t2_inter), 0.0, SKEW, "%g")) goto fail;
-	if (!EXPECT_RANGE(t1_val, ELAPSED_MIN(2), ELAPSED_MAX(2), "%g")) goto fail;
-	if (!EXPECT_RANGE(t2_val, ELAPSED_MIN(2), ELAPSED_MAX(2), "%g")) goto fail;
-	if (!EXPECT_RANGE(fabs(t1_val - t2_val), 0.0, SKEW, "%g")) goto fail;
+	if (!ASSERT_RANGE(t1_inter, ELAPSED_MIN(1), ELAPSED_MAX(1), "%g")) goto fail;
+	if (!ASSERT_RANGE(t2_inter, ELAPSED_MIN(1), ELAPSED_MAX(1), "%g")) goto fail;
+	if (!ASSERT_RANGE(fabs(t1_inter - t2_inter), 0.0, SKEW, "%g")) goto fail;
+	if (!ASSERT_RANGE(t1_val, ELAPSED_MIN(2), ELAPSED_MAX(2), "%g")) goto fail;
+	if (!ASSERT_RANGE(t2_val, ELAPSED_MIN(2), ELAPSED_MAX(2), "%g")) goto fail;
+	if (!ASSERT_RANGE(fabs(t1_val - t2_val), 0.0, SKEW, "%g")) goto fail;
 	
 	/** Test that timer can resume properly. **/
 	timerStart(timer1);
@@ -93,12 +93,12 @@ long long test(char** tname)
 	double t2_val2 = timerGet(timer2);
 	
 	/** Check for incorrect values. **/
-	if (!EXPECT_RANGE(t1_inter2, ELAPSED_MIN(3), ELAPSED_MAX(3), "%g")) goto fail;
-	if (!EXPECT_RANGE(t2_inter2, ELAPSED_MIN(3), ELAPSED_MAX(3), "%g")) goto fail;
-	if (!EXPECT_RANGE(fabs(t1_inter2 - t2_inter2), 0.0, SKEW, "%g")) goto fail;
-	if (!EXPECT_RANGE(t1_val2, ELAPSED_MIN(4), ELAPSED_MAX(4), "%g")) goto fail;
-	if (!EXPECT_RANGE(t2_val2, ELAPSED_MIN(4), ELAPSED_MAX(4), "%g")) goto fail;
-	if (!EXPECT_RANGE(fabs(t1_val2 - t2_val2), 0.0, SKEW, "%g")) goto fail;
+	if (!ASSERT_RANGE(t1_inter2, ELAPSED_MIN(3), ELAPSED_MAX(3), "%g")) goto fail;
+	if (!ASSERT_RANGE(t2_inter2, ELAPSED_MIN(3), ELAPSED_MAX(3), "%g")) goto fail;
+	if (!ASSERT_RANGE(fabs(t1_inter2 - t2_inter2), 0.0, SKEW, "%g")) goto fail;
+	if (!ASSERT_RANGE(t1_val2, ELAPSED_MIN(4), ELAPSED_MAX(4), "%g")) goto fail;
+	if (!ASSERT_RANGE(t2_val2, ELAPSED_MIN(4), ELAPSED_MAX(4), "%g")) goto fail;
+	if (!ASSERT_RANGE(fabs(t1_val2 - t2_val2), 0.0, SKEW, "%g")) goto fail;
 	
 	/** Clean up. **/
 	timerDeInit(timer1);
@@ -116,5 +116,7 @@ long long test(char** tname)
 	
 	/** Return failure. **/
 	fail:
+	timerDeInit(timer1);
+	timerFree(timer2);
 	return -1;
     }
