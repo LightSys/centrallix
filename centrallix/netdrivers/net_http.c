@@ -1338,7 +1338,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    }
 	if (!allowed)
 	    {
-	    mssError(1,"NHT","Uploaded file extension not allowed on this server");
+	    mssError(1,"NHT","Uploaded file extension '%s' not allowed on this server", payload->extension+1);
 	    payload->status = -1;
 	    return payload;
 	    }
@@ -1402,7 +1402,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
     rval = objIsRelatedType(payload->mime_type, "application/octet-stream");
     if (rval == OBJSYS_NOT_RELATED)
 	{
-	mssError(1,"NHT","Disallowed file MIME type for upload POST request");
+	mssError(1,"NHT","Disallowed file MIME type '%s' for upload POST request", payload->mime_type);
 	payload->status = -1;
 	return payload;
 	}
@@ -1676,6 +1676,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	find_inf = stLookup_ne(url_inf,"target");
 	if(!find_inf)
 	    {
+	    mssError(1, "NHT", "Upload: 'target' directory not specified in the request");
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
 	    goto error;
 	    }
@@ -1692,6 +1693,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	    }
 	if (!allowed)
 	    {
+	    mssError(1, "NHT", "Upload: requested target directory '%s' not allowed on this server", find_inf->StrVal);
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
 	    goto error;
 	    }
@@ -1751,6 +1753,7 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	/** Error if POST with no files **/
 	if (n_uploaded_files == 0)
 	    {
+	    mssError(1, "NHT", "Upload: no files provided in the request");
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
 	    goto error;
 	    }
