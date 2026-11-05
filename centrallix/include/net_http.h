@@ -341,6 +341,7 @@ typedef struct
     XArray	Timers;
     HandleContext TimerHctx;
     int		AppWatchdogTime;
+    int		APIWatchdogTime;
     int		WatchdogTime;
     int		InactivityTime;
     regex_t*	reNet47;
@@ -409,10 +410,10 @@ int nht_i_LogoutUser(char* username);
 
 int nht_i_VerifyAKey(char* client_key, pNhtSessionData sess, pNhtAppGroup *group, pNhtApp *app);
 
-pNhtApp nht_i_AllocApp(char* path, pNhtAppGroup g);
+pNhtApp nht_i_AllocApp(char* path, pNhtAppGroup g, int watchdog_time);
 pNhtApp nht_i_LinkApp(pNhtApp app);
 int nht_i_UnlinkApp(pNhtApp app);
-pNhtAppGroup nht_i_AllocAppGroup(char* path, pNhtSessionData s);
+pNhtAppGroup nht_i_AllocAppGroup(char* path, pNhtSessionData s, int watchdog_time);
 pNhtAppGroup nht_i_LinkAppGroup(pNhtAppGroup group);
 int nht_i_UnlinkAppGroup(pNhtAppGroup group);
 

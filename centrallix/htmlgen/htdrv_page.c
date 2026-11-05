@@ -401,7 +401,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 
-	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
+	watchdogtimer = s->ClientInfo->AppWatchdogTime;
 	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/
