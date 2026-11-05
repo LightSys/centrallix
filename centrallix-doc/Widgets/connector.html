@@ -14,7 +14,7 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-			<p>Each widget can have events and actions associated with it. The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.</p>
+			<p>Each widget can have events and actions associated with it.  The events occur when certain things occur via the user interface, via timers, or even as a result of data being loaded from the server.  Actions cause certain things to happen to or within a certain widget, for example causing an HTML layer to reload with a new page, or causing a scrollable area to scroll up or down.</p>
 
 			<p>The connector widget allows an event to be linked with an action without actually writing any JavaScript code to do so -- the connector object is created, and given an event to trigger it and an action to perform when it is triggered.</p>
 
@@ -49,22 +49,22 @@
 <tr>
 <td class="name">source</td>
 <td class="type">string</td>
-<td class="description">The name of the widget generating the event (defaults to the widget the connector is placed inside of).</td>
+<td class="description">The name of the widget generating the event (default: the connector's parent widget).</td>
 </tr>
 <tr>
 <td class="name">target</td>
 <td class="type">string</td>
-<td class="description">The name of another widget on the page whose action will be called by this connector (if unspecified, defaults to the widget the connector is placed inside of).</td>
+<td class="description">The name of another widget on the page whose action will be called by this connector (default: the connector's parent widget).</td>
 </tr>
 </table>
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
-// Here's our connector. Imagine that this is embedded within a treeview
+// Here's our connector.  Imagine that this is embedded within a treeview
 
 // and references an 'html' control called 'ht1' somewhere else on the page.
 
@@ -90,7 +90,7 @@ cn1 "widget/connector"
 
 	}
 
-		
+			
 
 		</pre>
 </body>

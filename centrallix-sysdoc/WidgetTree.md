@@ -217,7 +217,7 @@ The 'New' function is called any time a new widget node of a type associated wit
 A widget driver can declare that a node implements an interface by calling wgtrImplementsInterface(), and passing in the node and a string referencing the interface.
 
 #### 'Verify' function
-The 'Verify' function takes the current verification context as a parameter, and is the place for deployment-independent code that checks to make sure a given widget tree is valid, and does automatic tweaking of nodes in the widget tree. For example, auto-positioning would be done here, and checks for all required parameters would also be done here (this is currently done in the HT drivers, if it's done at all, but should be moved here). For a good example, see the formbar widget. During the verification step, the formbar actually creates an entire child sub-tree, along with appropriate connectors.
+The 'Verify' function takes the current verification context as a parameter, and is the place for deployment-independent code that checks to make sure a given widget tree is valid, and does automatic tweaking of nodes in the widget tree. For example, auto-positioning would be done here, and checks for all required parameters would also be done here (this is currently done in the HT drivers, if it's done at all, but should be moved here).
 
 ### The Verification Process
 The Verification process is a pre-processing step that is performed on a widget tree prior to rendering that tree. Widgets can be tweaked based on their positions in the tree, new widgets can be added, and problems can be detected. The wgtrVerify() performs the verification process on a widget tree.

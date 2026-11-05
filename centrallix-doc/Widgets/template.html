@@ -12,20 +12,31 @@
 <p class="widgettype">container: <span class="widgettypevalue">no</span></p>
 <p class="widgettype">form element: <span class="widgettypevalue">no</span></p>
 <h3 class="overview">Overview:</h3>
-<span class="overview">
-
-		</span><h3 class="usage">Usage:</h3>
+<span class="overview"> </span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-		  <p>A widget/template must be a root widget of a file (which normally is given a .tpl extension). </p>
+			<p>A widget/template must be a root widget of a file (which normally is given a .tpl extension).  </p>
 
-		  <p>Each child in a widget/template is a "rule". Each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and "rule")) and 2) match the widget type of the child (eg "widget/imagebutton").</p>
+			<p>Each child in a widget/template is a "rule".  Each rule applies to widgets that both 1) have the same 'widget_class' property value (there can be only one widget_class per widget (and "rule")) and 2) match the widget type of the child (eg "widget/imagebutton").</p>
 
-		  <p>Every other property of the "rule" are default values.</p>
+			<p>Every other property of the "rule" are default values.</p>
 
-		  <p>All children of the "rule" are automatically inserted into the matched widgets.</p>
+			<p>All children of the "rule" are automatically inserted into the matched widgets.</p>
 
-		</span><h3 class="childproperties">Child Properties:</h3>
+		</span><h3 class="properties">Properties:</h3>
+<table class="properties">
+<tr>
+<th class="name">Property</th>
+<th class="type">Type</th>
+<th class="description">Description</th>
+</tr>
+<tr>
+<td class="name"></td>
+<td class="type"></td>
+<td class="description"></td>
+</tr>
+</table>
+<h3 class="childproperties">Child Properties:</h3>
 <p class="childname">(of any child widgets)</p>
 <table class="childproperties">
 <tr>
@@ -42,13 +53,13 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 objcanvas_test "widget/template"
 
-    {
+		{
 
-    btnFirst "widget/imagebutton"
+		btnFirst "widget/imagebutton"
 
 	{
 
@@ -74,9 +85,9 @@ objcanvas_test "widget/template"
 
 	}
 
-    }
+		}
 
-		
+			
 
 		</pre>
 </body>

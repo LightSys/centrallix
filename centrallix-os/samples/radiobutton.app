@@ -2,15 +2,16 @@
 $Version=2$
 
 // Main page widget is at top-level.
-editbox_test "widget/page" {
+radiobutton_test "widget/page" {
     background="/sys/images/slate2.gif";
-    x=0; y=0; width=200; height=130;
+    x=0; y=0; width=200; height=120;
     
     testradio "widget/radiobuttonpanel" {
 	x=20;
 	y=20;
 	width=150;
 	height=80;
+	spacing=10;
 	title="test";
 	bgcolor="#e0e0e0";
 	outline_bgcolor="black";
@@ -21,6 +22,12 @@ editbox_test "widget/page" {
 	}
 	label2 "widget/radiobutton" {
 	    label="is fun";
+	}
+	label3 "widget/radiobutton" {
+	    label="and stuff";
+	}
+	label4 "widget/radiobutton" {
+	    label="yeah!";
 	}
     }
 }

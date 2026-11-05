@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -69,7 +69,10 @@ function ht_showtext(aparam)
     htr_write_content(this, newtxt);
     setClipHeight(this, getdocHeight(this));
     setClipWidth(this, getdocWidth(this));
-    resizeTo(this, getdocWidth(this), getdocHeight(this));
+
+    /** The stylesheet owns the responsive width; only the height follows the content. **/
+    setRelativeH(this, getdocHeight(this));
+
     pg_resize(this.mainlayer.parentLayer);
     }
 
@@ -147,7 +150,7 @@ function ht_reloaded(e)
 	}
     htr_watch(this.mainlayer, 'source', 'ht_sourcechanged');
     setClipHeight(this.mainlayer.curLayer, getdocHeight(this.mainlayer.curLayer));
-    resizeTo(this.mainlayer.curLayer, getdocWidth(this.mainlayer.curLayer), getdocHeight(this.mainlayer.curLayer));
+    setRelativeH(this.mainlayer.curLayer, getdocHeight(this.mainlayer.curLayer));
     moveAbove(this.mainlayer.faderLayer, this.mainlayer.curLayer);
     htr_setvisibility(this.mainlayer.curLayer, 'inherit');
     if (htutil_url_cmp(this.mainlayer.source, document.location.href))
@@ -240,7 +243,6 @@ function ht_init(param)
 	{
 	setClipHeight(l, getdocHeight(l));
 	}
-    pg_set_style(l, 'height', getdocHeight(l));
     if (param.width != -1)
 	{
 	setClipWidth(l, param.width);
@@ -250,7 +252,11 @@ function ht_init(param)
 	{
 	setClipWidth(l, getdocWidth(l));
 	}
-    pg_set_style(l, 'width', getdocWidth(l));
+
+    /** Clipping breaks responsive pages and is not required in modern browsers. **/
+    disableClippingCSS(l);
+    disableClippingCSS(l2);
+
     if (source.substr(0,5) == 'http:')
 	{
 	//pg_serialized_load(l, source, ht_reloaded);
@@ -289,6 +295,8 @@ function ht_init(param)
     
     //l.watch('source', ht_sourcechanged);
     pg_resize(l.parentLayer);
+    disableClippingCSS(l.parentLayer);
+    
     return l;
     }    
 

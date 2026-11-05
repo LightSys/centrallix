@@ -156,14 +156,12 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_dropdown.o \
 	wgtdrv_editbox.o \
 	wgtdrv_execmethod.o \
-	wgtdrv_formbar.o \
 	wgtdrv_form.o \
 	wgtdrv_formstatus.o \
 	wgtdrv_frameset.o \
 	wgtdrv_fileupload.o \
 	wgtdrv_hints.o \
 	wgtdrv_html.o \
-	wgtdrv_imagebutton.o \
 	wgtdrv_image.o \
 	wgtdrv_label.o \
 	wgtdrv_map.o \
@@ -185,7 +183,6 @@ XWGTRDRIVERS=wgtdrv_alerter.o \
 	wgtdrv_template.o \
 	wgtdrv_terminal.o \
 	wgtdrv_textarea.o \
-	wgtdrv_textbutton.o \
 	wgtdrv_timer.o \
 	wgtdrv_treeview.o \
 	wgtdrv_variable.o \
@@ -203,8 +200,6 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_html.o \
 	   htdrv_connector.o \
 	   htdrv_button.o \
-	   htdrv_imagebutton.o \
-	   htdrv_textbutton.o \
 	   htdrv_menu.o \
 	   htdrv_frameset.o \
 	   ht_render.o \
@@ -238,7 +233,6 @@ XHTDRIVERS=htdrv_page.o \
 	   htdrv_component.o \
 	   htdrv_image.o \
 	   htdrv_hints.o \
-	   htdrv_formbar.o \
 	   htdrv_objcanvas.o \
 	   htdrv_map.o \
 	   htdrv_parameter.o \

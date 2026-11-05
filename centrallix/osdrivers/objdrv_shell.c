@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include "obj.h"
 #include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
 #include "stparse.h"

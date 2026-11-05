@@ -85,7 +85,7 @@ Each module will have different and specific abbreviations to it's own module an
 - fg - foreground
 - fn - fieldname
 - fs - fontsize
-- hl - hilight
+- hl - highlight
 - ll - left layer
 - ly - layer
 - ml - mainlayer
@@ -186,7 +186,7 @@ Notice the difference between the two.  In the Layer object, the ".layer" attrib
 
 NOTE:  Strictly speaking, on the image example above, the .mainlayer and .kind properties that are set on the Image are not necessary.  Since the .layer property points back to "l", the .mainlayer and .kind properties from "l" will be used under standard event handling. However, we still recommend setting them, as they can be useful in other circumstances other than event handling.
 
-The ".kind" attribute is used in a widget to check whether an event that has occurred belongs to that specific widget.  We have to do this because the event functions in Centrallix put all events of a certain kind together in one function.  For example, when you register some code with the MOUSEDOWN event (using htrAddEventHandler()), that chunk of code gets stuck into the function that handles all the MOUSEDOWN events including the MOUSEDOWN events for all other widgets.  Thus, a distinction must be made on which widget should get the event.  We will normally wrap all the event code inside a conditional that uses the ".kind" attribute.  Here is an example (note: the "ly" variable is explained in the next paragraph):
+The ".kind" attribute is used in a widget to check whether an event that has occurred belongs to that specific widget.  We have to do this because Centrallix ignores the typical HTML system with bubble-up events.  Instead, any event is sent to every registering widget, regardless of where on the page the event occurs.  Thus, a distinction must be made on which widget should get the event.  We will normally wrap all the event code inside a conditional that uses the ".kind" attribute.  Here is an example (note: the "ly" variable is explained in the next paragraph):
 
     if (ly.kind == "cb") 
         {
