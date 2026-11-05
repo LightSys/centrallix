@@ -11,7 +11,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -43,8 +43,11 @@
 
 
 
-/*** objGetFirstMethod - get the name of the first method associated with
- *** the object.  If the object has no methods, this function returns NULL.
+/*** Gets the name of an object's first method.  Use objGetNextMethod() to get
+ *** the rest.
+ ***
+ *** @param this The object.
+ *** @returns The method's name, or NULL if the object has no methods.
  ***/
 char* 
 objGetFirstMethod(pObject this)
@@ -53,10 +56,11 @@ objGetFirstMethod(pObject this)
     }
 
 
-/*** objGetNextMethod - gets the name of the next method associated with
- *** an object.  Call this after a successful call to GetFirstMethod to
- *** repeatedly enumerate methods.  Returns NULL if the last method was
- *** already returned earlier or if the object has no methods.
+/*** Gets the name of an object's next method, after calling
+ *** objGetFirstMethod().
+ ***
+ *** @param this The object.
+ *** @returns The method's name, or NULL after the last method.
  ***/
 char* 
 objGetNextMethod(pObject this)
@@ -65,13 +69,16 @@ objGetNextMethod(pObject this)
     }
 
 
-/*** objExecuteMethod - executes a given method with a method- and object-
- *** dependent parameter.
+/*** Runs a method on an object.  Methods are driver-specific actions, such as
+ *** clearing a cache.
+ ***
+ *** @param this The object.
+ *** @param methodname The method's name.
+ *** @param param The method's string parameter, e.g. POD(&str).
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int 
 objExecuteMethod(pObject this, char* methodname, pObjData param)
     {
     return this->Driver->ExecuteMethod(this->Data, methodname, param, &(this->Session->Trx));
     }
-
-

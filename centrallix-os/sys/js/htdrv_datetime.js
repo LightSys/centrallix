@@ -966,12 +966,12 @@ function dt_create_pane(ml,bg,w,h,h2,name) {
 function dt_expand(l) {
 	dt_prepare(l);
 	pg_stackpopup(l.PaneLayer, l);
-	pg_positionpopup(l.PaneLayer, $(l).offset().left, $(l).offset().top, l.h, l.w);
+	pg_positionpopup(l.PaneLayer, getPageRect(l).left, getPageRect(l).top, l.h, l.w);
 	//pg_positionpopup(l.PaneLayer, getPageX(l), getPageY(l), l.h, l.w);
 	htr_setvisibility(l.PaneLayer, 'inherit');
 	if(l.form && l.form.mode == 'Query' && l.sbr){
 	    pg_stackpopup(l.PaneLayer2, l);
-	    pg_positionpopup(l.PaneLayer2, $(l).offset().left + getClipWidth(l.PaneLayer) + 5, $(l).offset().top, l.h, l.w);
+	    pg_positionpopup(l.PaneLayer2, getPageRect(l).left + getClipWidth(l.PaneLayer) + 5, getPageRect(l).top, l.h, l.w);
 	    //pg_positionpopup(l.PaneLayer2, getPageX(l)+getClipWidth(l.PaneLayer)+5, getPageY(l), l.h, l.w);
 	    htr_setvisibility(l.PaneLayer2, 'inherit');
 	}
