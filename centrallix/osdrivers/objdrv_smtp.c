@@ -1588,6 +1588,7 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "last_try_msg",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "queue_id",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "rcpt_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
+	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "headers_applied",	DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 
 	/** Get the mail log path. **/
 	if (stAttrValue(stLookup(config, "mail_log"), NULL, &logPath, 0) != 0)
@@ -1678,6 +1679,7 @@ smtp_internal_IsReadOnly(char* attrname)
 	"message_id",
 	"queue_id",
 	"rcpt_count",
+	"headers_applied",
 	};
     const int n_readOnly = sizeof(readOnly) / sizeof(readOnly[0]);
     int i;
@@ -2509,6 +2511,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     int i, cnt, name_len, line, line_end, newline;
     void* value;
     int has_headers;
+    ObjData pod;
     int rval = -1;
 
 	/** Edge cases. **/
@@ -2656,6 +2659,12 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 		}
 	    }
 
+	/** Content keeps the headers an earlier send added. **/
+	attr = SMTP_ATTR(xhLookup(inf->Attributes, "headers_applied"));
+	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
+	if (attr != NULL && attr->Type == DATA_T_INTEGER && attr->Value.Integer != 0)
+	    has_headers = 1;
+
 	/** Add the blank line before the body. **/
 	if (!has_headers && UNLIKELY(xsConcatenate(new_headers, "\n", 1) < 0))
 	    {
@@ -2715,6 +2724,14 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 		new_headers->Length, cnt
 	    );
 	    goto end;
+	    }
+
+	/** Record that the content now starts with headers. **/
+	if (!has_headers)
+	    {
+	    pod.Integer = 1;
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "headers_applied", DATA_T_INTEGER, &pod, NULL) != 0))
+		goto end;
 	    }
 
 	/** Success. **/
@@ -5741,6 +5758,7 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
     {
     pSmtpData inf = SMTP(inf_v);
     pSmtpSpool spool;
+    ObjData pod;
     int pending;
     int rval = -1;
 
@@ -5789,6 +5807,16 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 		"Failed to write %d bytes at offset %d to email file (%s).",
 		cnt, offset, inf->EmailPath.String
 	    );
+
+	/*** If content is rewritten from the start, it does not have the
+	 *** headers applied by sending it.
+	 ***/
+	if (rval >= 0 && (flags & FD_U_SEEK) && offset == 0)
+	    {
+	    pod.Integer = 0;
+	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "headers_applied", DATA_T_INTEGER, &pod, NULL) != 0))
+		rval = -1;
+	    }
 	smtp_internal_UnlockSpool(spool);
 
 	return rval;
@@ -7018,6 +7046,7 @@ smtpPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	{ "message_id",                   "Message-ID",               64 },
 	{ "queue_id",                     "Queue ID",                 16, .Length = SMTP_QUEUE_ID_SIZE - 1 },
 	{ "rcpt_count",                   "Recipient Count",           6, .MinValue = "0" },
+	{ "headers_applied",              "Headers Applied",           2, .MinValue = "0", .MaxValue = "1" },
 	{ "expire_date",                  "Expire Date",              20 },
 	{ NULL }
 	};

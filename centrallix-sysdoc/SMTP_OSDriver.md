@@ -199,6 +199,7 @@ While many attributes were specified in the [Email_OSDriver.md](Email_OSDriver.m
 | last_try_status              | The result of the most recent attempt to send this email: None (not tried, or no failures), TempFail (a temporary failure, which Postfix retries while the email is Pending), or Fail (a permanent failure, set as soon as any recipient fails, even while the email is Pending).  Read-only.
 | queue_id                     | The Postfix queue ID of the most recent attempt, recorded from the mail log once Postfix queues the email.  Read-only.
 | rcpt_count                   | The number of recipients Postfix queued the most recent attempt for.  Read-only.
+| headers_applied              | 1 once sending has added headers to content that had none (`content_has_headers` = 0), so later sends replace those headers.  Writing content at offset 0 resets it to 0.  Read-only.
 | last_try_msg                 | The failure details of the most recent attempt to send this email: sendmail's output, or how many recipients were sent the email followed by the latest result (bounced, deferred, or expired) and server reply of each recipient that was not, such as `Sent to 1 of 2 recipients. b@example.com: bounced: 550 5.1.1 User unknown`.  Updated as Postfix reports results.  Empty if there are no failures.  Read-only.
 
 When the email is sent, `message_id` and each non-empty `header_*` attribute are written as headers, replacing any header of the same name in the content.
