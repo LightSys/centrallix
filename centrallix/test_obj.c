@@ -579,7 +579,7 @@ testobj_show_info(pObject obj)
 	const pObjectInfo info = objInfo(obj);
 	if (UNLIKELY(info == NULL))
 	    {
-	    mssWarnError("Failed to get info for \"%s\".", objGetPathname(obj));
+	    mssWarnError("TESTOBJ", "Failed to get info for \"%s\".", objGetPathname(obj));
 	    return 0;
 	    }
 	if (info->Flags == 0) return 0;
@@ -650,7 +650,7 @@ testobj_show_attrs(pObject obj)
 	    {
 	    if (UNLIKELY(testobj_show_attr(obj, common_attrs[i]) < 0))
 		{
-		mssWarnError(
+		mssWarnError("TESTOBJ",
 		    "Failed to show attribute \"%s\" of \"%s\".",
 		    common_attrs[i], objGetPathname(obj)
 		);
@@ -660,7 +660,7 @@ testobj_show_attrs(pObject obj)
 	    {
 	    if (UNLIKELY(testobj_show_attr(obj, attrname) < 0))
 		{
-		mssWarnError(
+		mssWarnError("TESTOBJ",
 		    "Failed to show attribute \"%s\" of \"%s\".",
 		    attrname, objGetPathname(obj)
 		);
@@ -731,7 +731,7 @@ testobj_show_content(pObject obj)
 	    }
 	if (UNLIKELY(cnt < 0))
 	    {
-	    mssWarnError(
+	    mssWarnError("TESTOBJ",
 		"Failed to read the content of \"%s\".",
 		objGetPathname(obj)
 	    );
@@ -1037,7 +1037,7 @@ handle_tab(int unused_1, int unused_2)
 	    bool has_children = false;
 	    if (UNLIKELY(testobj_i_hasChildren(xsString(child_path), &has_children) < 0))
 		{
-		mssWarnError("Failed to check \"%s\" for children.", xsString(child_path));
+		mssWarnError("TESTOBJ", "Failed to check \"%s\" for children.", xsString(child_path));
 		rl_on_new_line();
 		}
 	    else if (has_children) rl_insert_text("/");
@@ -1048,7 +1048,7 @@ handle_tab(int unused_1, int unused_2)
     end:
 	if (UNLIKELY(!successful))
 	    {
-	    mssWarnError("Failed to complete \"%s\".", word);
+	    mssWarnError("TESTOBJ", "Failed to complete \"%s\".", word);
 	    rl_on_new_line();
 	    }
 
@@ -1305,7 +1305,7 @@ testobj_i_printCsvField(pObject row, char* attrname, bool present, bool first)
 		mssError(0, "TESTOBJ", "Failed to read csv field \"%s\".", attrname);
 		return -1;
 		}
-	    mssWarnError(
+	    mssWarnError("TESTOBJ",
 		"Failed to read csv field \"%s\", leaving it empty.",
 		attrname
 	    );
@@ -1642,7 +1642,7 @@ testobj_i_printQueryAttr(pObject row, char* attrname)
 		mssError(0, "TESTOBJ", "Failed to read attribute \"%s\".", attrname);
 		return -1;
 		}
-	    mssWarnError("Failed to read attribute \"%s\", skipping it.", attrname);
+	    mssWarnError("TESTOBJ", "Failed to read attribute \"%s\", skipping it.", attrname);
 	    return 0;
 	    }
 	if (text_result == 2) return 0;
@@ -1949,7 +1949,7 @@ testobj_i_printListRow(pObject obj, char* dir_path, int indent)
 	if (type != NULL) annotation = testobj_i_copyStringAttr(obj, "annotation");
 	if (UNLIKELY(annotation == NULL))
 	    {
-	    mssWarnError("Failed to read a child of \"%s\", skipping it.", dir_path);
+	    mssWarnError("TESTOBJ", "Failed to read a child of \"%s\", skipping it.", dir_path);
 	    rval = 0;
 	    goto end;
 	    }
@@ -2596,7 +2596,7 @@ testobj_i_cmdCreate(pObjSession s, char* path)
 	    const int name_rval = objGetAttrValue(obj, "name", DATA_T_STRING, POD(&name));
 	    if (UNLIKELY(name_rval < 0))
 		{
-		mssWarnError("Failed to get the name of new object \"%s\".", path);
+		mssWarnError("TESTOBJ", "Failed to get the name of new object \"%s\".", path);
 		}
 	    else if (name_rval == 1)
 		{
@@ -2618,7 +2618,7 @@ testobj_i_cmdCreate(pObjSession s, char* path)
 	    if (line == NULL || line[0] == '\0') break;
 	    if (UNLIKELY(testobj_i_setAttrFromLine(obj, line) < 0))
 		{
-		mssWarnError("Failed to set an attribute from \"%s\", skipping it.", line);
+		mssWarnError("TESTOBJ", "Failed to set an attribute from \"%s\", skipping it.", line);
 		}
 	    free(line);
 	    line = NULL;
@@ -2630,7 +2630,7 @@ testobj_i_cmdCreate(pObjSession s, char* path)
 	    const int name_rval = objGetAttrValue(obj, "name", DATA_T_STRING, POD(&name));
 	    if (UNLIKELY(name_rval < 0))
 		{
-		mssWarnError("Failed to get the name of new object \"%s\".", path);
+		mssWarnError("TESTOBJ", "Failed to get the name of new object \"%s\".", path);
 		}
 	    else if (name_rval == 1)
 		{
@@ -2794,7 +2794,7 @@ testobj_i_cmdHints(pObjSession s, char* path, pLxSession ls)
 		{
 		if (UNLIKELY(testobj_show_hints(obj, name) < 0))
 		    {
-		    mssWarnError(
+		    mssWarnError("TESTOBJ",
 			"Failed to print the hints for \"%s\" on \"%s\", skipping them.",
 			name, obj_path
 		    );
@@ -3380,7 +3380,7 @@ testobj_i_runFile(pObjSession s, char* filename)
 		}
 	    else if (UNLIKELY(cmd_rval < 0))
 		{
-		mssWarnError(
+		mssWarnError("TESTOBJ",
 		    "Failed to run command \"%.*s\".",
 		    (int)strcspn(line, "\r\n"), line
 		);
@@ -3480,7 +3480,7 @@ testobj_i_openHistory(void)
 	/** Appending after a partial read could corrupt the file. **/
 	if (UNLIKELY(!successful))
 	    {
-	    mssWarnError("Failed to load the command history.");
+	    mssWarnError("TESTOBJ", "Failed to load the command history.");
 	    if (histfile != NULL) warnNeg(fdClose(histfile, 0));
 	    histfile = NULL;
 	    }
@@ -3624,7 +3624,7 @@ start(void* unused)
 	    }
 	if (UNLIKELY(TESTOBJ.PasswordFile[0] != '\0' && testobj_i_readPassword() < 0))
 	    {
-	    mssWarnError("Failed to use password file \"%s\".", TESTOBJ.PasswordFile);
+	    mssWarnError("TESTOBJ", "Failed to use password file \"%s\".", TESTOBJ.PasswordFile);
 	    }
 	char* pwd = TESTOBJ.Password;
 	char* typed_pwd = NULL;
@@ -3638,7 +3638,7 @@ start(void* unused)
 	if (typed_pwd != NULL) cxssShred(typed_pwd, strlen(typed_pwd));
 	if (UNLIKELY(!authenticated))
 	    {
-	    mssWarnError(
+	    mssWarnError("TESTOBJ",
 		"Failed to authenticate user \"%s\", so running outside a session context.",
 		user
 	    );
@@ -3735,7 +3735,7 @@ start(void* unused)
 		    mssError(0, "TESTOBJ", "Failed to run command \"%s\".", TESTOBJ.Command);
 		    goto end;
 		    }
-		mssWarnError("Failed to run command \"%s\".", TESTOBJ.Command);
+		mssWarnError("TESTOBJ", "Failed to run command \"%s\".", TESTOBJ.Command);
 		}
 	    }
 
@@ -3784,7 +3784,7 @@ start(void* unused)
 		    }
 
 		const int cmd_rval = testobj_do_cmd(s, inbuf, 0, NULL);
-		if (UNLIKELY(cmd_rval < 0)) mssWarnError("Failed to run command \"%s\".", inbuf);
+		if (UNLIKELY(cmd_rval < 0)) mssWarnError("TESTOBJ", "Failed to run command \"%s\".", inbuf);
 		free(inbuf);
 		inbuf = NULL;
 		if (cmd_rval == 1) break;
@@ -3794,7 +3794,7 @@ start(void* unused)
 	successful = true;
 
     end:
-	if (UNLIKELY(!successful)) mssWarnError("Failed to run test_obj, so exiting.");
+	if (UNLIKELY(!successful)) mssWarnError("TESTOBJ", "Failed to run test_obj, so exiting.");
 
 	/** Clean up. **/
 	cxssShred(TESTOBJ.Password, sizeof(TESTOBJ.Password));
