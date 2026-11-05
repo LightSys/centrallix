@@ -3778,9 +3778,10 @@ function osrc_action_cancel_clients(aparam)
     {
     if (!this.is_client_discardable) return;
 
-    // Do this in two steps - discard our immediate clients first, then pass the word
-    // on to clients of clients.  This minimizes the chance of failures due to
-    // relational integrity constraints.
+    // Do this in two steps - pass the word on to our clients of clients first, then
+    // handle the discard for our clients.  This minimizes the chance of failures due to
+    // relational integrity constraints resulting in warnings from client forms when their
+    // parent objectsources discard.
     for (var c in this.child)
 	{
 	var cld = this.child[c];
