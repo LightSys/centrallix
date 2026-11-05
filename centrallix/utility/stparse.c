@@ -287,6 +287,7 @@ stAddAttr(pStructInf inf, char* name)
 	memccpy(newinf->Name, name,0,ST_NAME_STRLEN-1);
 	newinf->Name[ST_NAME_STRLEN-1] = '\0';
 	newinf->Flags |= ST_F_ATTRIB;
+	if (inf->Flags & ST_F_VERSION2) newinf->Flags |= ST_F_VERSION2;
 	if (stAddInf(inf, newinf) < 0)
 	    {
 	    stFreeInf(newinf);
@@ -313,6 +314,7 @@ stAddGroup(pStructInf inf, char* name, char* type)
 	memccpy(newinf->UsrType, type,0,ST_USRTYPE_STRLEN-1);
 	newinf->Name[ST_USRTYPE_STRLEN-1] = '\0';
 	newinf->Flags |= ST_F_GROUP;
+	if (inf->Flags & ST_F_VERSION2) newinf->Flags |= ST_F_VERSION2;
 	if (stAddInf(inf, newinf) < 0)
 	    {
 	    stFreeInf(newinf);
@@ -1244,7 +1246,7 @@ stParseMsg(pFile inp_fd, int flags)
     pLxSession s;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxOpenSession(inp_fd, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	s = mlxOpenSession(inp_fd, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES | MLX_F_NODISCARD);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
@@ -1271,7 +1273,7 @@ stParseMsgGeneric(void* src, int (*read_fn)(), int flags)
     pLxSession s;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxGenericSession(src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	s = mlxGenericSession(src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES | MLX_F_NODISCARD);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");

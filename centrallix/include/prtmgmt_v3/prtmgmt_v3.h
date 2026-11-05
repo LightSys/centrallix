@@ -232,6 +232,10 @@ typedef struct _PE
     PrtEvent, *pPrtEvent;
 
 
+/*** Session flags ***/
+#define PRT_SESSION_F_ERROR	    2		/* generation failed; the output is incomplete (1 is PRT_SESS_F_NOZ) */
+
+
 /*** Print Session structure ***/
 typedef struct _PS
     {
@@ -420,6 +424,9 @@ extern PrtGlobals PRTMGMT;
 #define PRT_JUST_T_CENTER	    2
 #define PRT_JUST_T_FULL		    3
 
+/** CSS justification values, indexed by PRT_JUST_T_xxx. **/
+#define PRT_JUST_STR ((const char*[]){ "left", "right", "center", "justify" })
+
 #define PRT_EVENT_T_REFLOW	    0		/* reflow the contents of a container */
 
 #define PRT_DRV_F_NOZ		    1		/* driver does not support Z-layering */
@@ -492,6 +499,7 @@ int prt_internal_FreeTree(pPrtObjStream obj);
 int prt_internal_GeneratePage(pPrtSession s, pPrtObjStream page);
 pPrtObjStream prt_internal_GetPage(pPrtObjStream obj);
 pPrtObjStream prt_internal_AddEmptyObj(pPrtObjStream container);
+pPrtObjStream prt_internal_GetStyleObj(pPrtObjStream container);
 pPrtObjStream prt_internal_CreateEmptyObj(pPrtObjStream container);
 int prt_internal_Dump(pPrtObjStream obj);
 pPrtObjStream prt_internal_Duplicate(pPrtObjStream obj, int with_content);
@@ -564,6 +572,7 @@ int prtSetURL(int handle_id, char* url);
 int prtWriteImage(int handle_id, pPrtImage imgdata, double x, double y, double width, double height, int flags);
 int prtWriteString(int handle_id, char* str);
 int prtWriteNL(int handle_id);
+int prtWriteTab(int handle_id);
 int prtWriteFF(int handle_id);
 
 /*** Print object creation functions ***/
@@ -573,4 +582,3 @@ int prtEndObject(int handle_id);
 
 
 #endif /* defined _PRTMGMT_V3_H */
-
