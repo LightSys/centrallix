@@ -50,6 +50,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-10 integer and double parsing";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * (N_INTEGERS + N_DOUBLES);
     }

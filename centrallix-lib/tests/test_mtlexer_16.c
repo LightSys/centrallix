@@ -55,6 +55,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-16 comments // # ; -- /**/ short only";
-    mssInitialize("system", "", "none", 0, "test");
+    mssInitialize("system", "", "none", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * N_INTS;
     }

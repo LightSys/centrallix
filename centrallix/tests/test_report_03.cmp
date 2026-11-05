@@ -126,6 +126,7 @@ Test               Group              Color              Sheen
 1 MultiNested      Color              Violet             Semi-Gloss
 1 MultiNested      Color              Violet             Gloss
 -------- Inner/Outer Iteration --------
+
 Test               Group              Color              Sheen
 ================================================================================
 2 Inner/Outer      Monochrome         Black              Flat
@@ -148,6 +149,7 @@ Test               Group              Color              Sheen
 2 Inner/Outer      Monochrome         Grey               Semi-Gloss
 2 Inner/Outer      Monochrome         Grey               Gloss
 -------- Inner/Outer Iteration --------
+
 Test               Group              Color              Sheen
 ================================================================================
 2 Inner/Outer      Monochrome         Charcoal           Flat
@@ -156,6 +158,7 @@ Test               Group              Color              Sheen
 2 Inner/Outer      Monochrome         Charcoal           Semi-Gloss
 2 Inner/Outer      Monochrome         Charcoal           Gloss
 -------- Inner/Outer Iteration --------
+
 Test               Group              Color              Sheen
 ================================================================================
 3 Inner/Outer      Monochrome         Black              Flat
@@ -196,6 +199,7 @@ Test               Group              Color              Sheen
 3 Inner/Outer      Color              Orange             Satin
 3 Inner/Outer      Color              Violet             Satin
 -------- Inner/Outer Iteration --------
+
 Test               Group              Color              Sheen
 ================================================================================
 3 Inner/Outer      Monochrome         Black              Semi-Gloss

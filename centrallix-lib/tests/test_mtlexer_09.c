@@ -89,7 +89,7 @@ test(char** tname)
 
 	*tname = "mtlexer-09 strings spanning multiple lines";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	/** A quoted run of 'a', and the expected token it should lex to. **/
 	memset(str, 'a', MAX_LEN+3);
