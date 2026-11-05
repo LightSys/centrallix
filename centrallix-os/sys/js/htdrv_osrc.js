@@ -3784,14 +3784,14 @@ function osrc_action_cancel_clients(aparam)
     for (var c in this.child)
 	{
 	var cld = this.child[c];
-	if (typeof cld.is_discardable != 'undefined' && cld.is_discardable)
-	    cld.ifcProbe(ifAction).Invoke('Discard', {});
+	if (typeof cld.is_client_discardable != 'undefined' && cld.is_client_discardable)
+	    cld.ifcProbe(ifAction).Invoke('DiscardClients', {});
 	}
     for (var c in this.child)
 	{
 	var cld = this.child[c];
-	if (typeof cld.is_client_discardable != 'undefined' && cld.is_client_discardable)
-	    cld.ifcProbe(ifAction).Invoke('DiscardClients', {});
+	if (typeof cld.is_discardable != 'undefined' && cld.is_discardable)
+	    cld.ifcProbe(ifAction).Invoke('Discard', {});
 	}
     }
 
