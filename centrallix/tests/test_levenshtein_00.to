@@ -1,8 +1,25 @@
-##NAME Levenshtein String Comparison
+##NAME Levenshtein Basic Comparisons
 
-query select sw1 = levenshtein('hello', 'hello!')
-query select sw1 = levenshtein('kitten', 'mitten')
-query select sw1 = levenshtein('kitten', 'smitten')
-query select sw1 = levenshtein('lawn', 'flown')
-query select sw1 = levenshtein('kitten', 'itten')
-query select sw1 = levenshtein('kitten', 'skitten')
+# Kitten tests.
+query select case1  = levenshtein('kitten', 'kitten')  -- 0 edits
+query select case2  = levenshtein('kitten', 'skitten') -- 1 insert
+query select case3  = levenshtein('kitten', 'itten')   -- 1 delete
+query select case4  = levenshtein('kitten', 'mitten')  -- 1 replace
+query select case5  = levenshtein('kitten', 'smitten') -- 1 insert and 1 replace
+query select case6  = levenshtein('kitten', 'iktten')  -- 1 transpose
+query select case7  = levenshtein('kitten', 'kittens') -- 1 insert (end)
+query select case8  = levenshtein('kitten', 'kitte')   -- 1 delete (end)
+query select case9  = levenshtein('kitten', 'kittem')  -- 1 replace (end)
+query select case10 = levenshtein('kitten', 'kittne')  -- 1 transpose (end)
+
+# Alternate words.
+query select case11 = levenshtein('lawn',   'flown')   -- 1 insert and 1 replace
+query select case12 = levenshtein('hello',  'hello!')  -- 1 insert (end)
+query select case13 = levenshtein('zert',   'zerf')    -- 1 replace (end)
+query select case14 = levenshtein('llearr', 'lear')    -- 2 deletes (start & end)
+
+# Edge cases.
+query select case15 = levenshtein('', '') -- 0 edits
+query select case16 = levenshtein('This is a very long string!! I do not expect this function to need to process a string longer than this, because this string is a full 254 characters. That is pretty long. The object system limits strings to this size so we cannot make a longer string...', 'This is a very long string!! I do not expect this function to need to process a string longer than this, because this string is a full 254 characters. That is pretty long. The object system limits strings to this size so we cannot make a longer string...') -- 0 edits.
+query select case17 = levenshtein('This is a very long string!! I do not expect this function to need to process a string longer than this, because this string is a full 254 characters. That is pretty long. The object system limits strings to this size so we cannot make a longer string...', 'This is quite a lengthy string. I do not expect the function to compute any longer string since this one is a full 254 characters. That is plenty, even if someone adds many contact details to their record!! Thus, this test should cover most cases we see.') -- 133 edits.
+query select case18 = levenshtein('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB') -- 254 replaces.
