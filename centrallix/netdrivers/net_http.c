@@ -2353,7 +2353,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		{
 		grp_config_time = nht_i_WatchdogConfigTime(group->WatchdogTimer);
 		if (grp_config_time < 0)
-		    grp_config_time = NHT.APIWatchdogTime;
+		    grp_config_time = NHT.APIWatchdogTime * 1000;
 
 		find_inf = stLookup_ne(url_inf, "cx__appname");
 		if (!find_inf || find_inf->StrVal[0] == '/')
@@ -2362,7 +2362,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    kname = find_inf->StrVal;
 
 		/** Set up a new active app **/
-		conn->App = app = nht_i_AllocApp(kname, group, grp_config_time);
+		conn->App = app = nht_i_AllocApp(kname, group, grp_config_time / 1000);
 		if (app)
 		    {
 		    /** We want to give the api client information about our
