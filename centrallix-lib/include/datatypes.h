@@ -84,12 +84,12 @@ typedef struct _BN
 #define DATA_T_BINARY		10
 
 /** Supported Encodings **/
-#define ENCODING_INVALID	-1
-#define ENCODING_ASCII		 0
-#define ENCODING_LATIN_1	 1
-#define ENCODING_UTF_8		 2
-#define ENCODING_CP_1252	 3
-#define ENCODING_VANCO_UTF8	 4	/* treats Windows-1252 characters as UTF-8 code points */
+#define ENCODING_INVALID        0u
+#define ENCODING_ASCII          1u
+#define ENCODING_LATIN_1        2u
+#define ENCODING_UTF_8          3u
+#define ENCODING_CP_1252        4u
+#define ENCODING_VANCO_UTF8     5u      /* treats Windows-1252 characters as UTF-8 code points */
 
 
 /** structure used to handle data pointers (GetAttrValue, etc) **/
