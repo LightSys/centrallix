@@ -20,7 +20,7 @@ test(char** tname)
 
 	*tname = "mtlexer-12 normal/oversized keywords";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	iter = 20000;
 	for(i=0;i<iter;i++)

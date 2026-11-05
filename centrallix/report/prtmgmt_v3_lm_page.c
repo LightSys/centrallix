@@ -7,6 +7,7 @@
 #include "report.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
+#include "cxlib/range.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "prtmgmt_v3/prtmgmt_v3.h"
@@ -17,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2001-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -89,17 +90,18 @@ prt_pagelm_Break(pPrtObjStream this, pPrtObjStream *new_container)
 	    next_page = this->Next;
 	    }
 
-	/** Can we emit the previous page? **/
+	/** Can we emit the previous page?  A failure is flagged on the session,
+	 ** so the page is done with either way.
+	 **/
 	if (this->nOpens == 0)
 	    {
-	    if (prt_internal_GeneratePage(PRTSESSION(this), this) >= 0)
-		{
-		/** Bump the handle **/
-		prtUpdateHandleByPtr((void*)this, (void*)next_page);
+	    prt_internal_GeneratePage(PRTSESSION(this), this);
 
-		/** Free the page data **/
-		prt_internal_FreeTree(this);
-		}
+	    /** Bump the handle **/
+	    prtUpdateHandleByPtr((void*)this, (void*)next_page);
+
+	    /** Free the page data **/
+	    prt_internal_FreeTree(this);
 	    }
 
 	/** Set the new container to the next page **/
@@ -196,10 +198,10 @@ prt_pagelm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    }
 	if (!(new_child_obj->Flags & PRT_OBJ_F_YSET))
 	    {
-	    if (!this->ContentTail)
-		new_child_obj->Y = 0;
-	    else
-		new_child_obj->Y = this->ContentTail->Y + this->ContentTail->Height;
+	    /** Place it below the lowest object on the page. **/
+	    new_child_obj->Y = 0;
+	    for (pPrtObjStream child = this->ContentHead; child != NULL; child = child->Next)
+		new_child_obj->Y = max(new_child_obj->Y, child->Y + child->Height);
 	    }
 
 	/** Break required? **/

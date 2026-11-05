@@ -19,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -118,7 +118,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	/** Initialize the html-related interface stuff **/
 	if (ifcHtmlInit(s, tree) < 0)
 	    {
-	    mssError(0, "HTR", "Error Initializing Html Interface code...continuing, but things might not work for client");
+	    mssWarn("HTR", "Error Initializing Html Interface code...continuing, but things might not work for client.");
+	    mssClearError();
 	    }
 	
 	/** Auto-call startup and cleanup **/
@@ -284,6 +285,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Page init **/
 	htrAddScriptInit(s,    "    if(typeof(pg_status_init)=='function')pg_status_init();\n");
+	if (s->ClientInfo->Zoom > 0.0)
+	    htrAddScriptInit_va(s, "    pg_init_zoom(%DBL);\n", s->ClientInfo->Zoom);
 	htrAddScriptInit_va(s, "    pg_init(wgtrGetNodeRef(ns,'%STR&SYM'),%INT);\n", name, attract);
 	htrAddScriptInit_va(s, "    pg_username = '%STR&JSSTR';\n", mssUserName());
 	htrAddScriptInit_va(s, "    pg_width = %INT;\n", w);
@@ -369,6 +372,8 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	htrAddStylesheetItem_va(s, "\thtml { overflow:hidden; }\n");
+	if (s->ClientInfo->Zoom > 0.0)
+	    htrAddStylesheetItem_va(s, "\thtml { zoom:%DBL; }\n", s->ClientInfo->Zoom);
 	htrAddStylesheetItem_va(s, "\tbody { overflow:hidden; %[font-size:%POSpx; %]%[font-family:%STR&CSSVAL; %]}\n",
 		font_size > 0, font_size, *font_name, font_name);
 	htrAddStylesheetItem(s, "\tpre { font-size:90%; }\n");
@@ -397,7 +402,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	htrAddBodyItemLayerEnd(s,HTR_LAYER_F_DYNAMIC);
 	htrAddBodyItem(s, "\n");
 
-	stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"),"session_watchdog_timer"),&watchdogtimer,NULL,0);
+	watchdogtimer = s->ClientInfo->AppWatchdogTime;
 	htrAddScriptInit_va(s,"    pg_ping_init(htr_subel(wgtrGetNodeRef(ns,\"%STR&SYM\"),\"pgping\"),%INT);\n",name,watchdogtimer/2*1000);
 
 	/** Add event code to handle mouse in/out of the area.... **/

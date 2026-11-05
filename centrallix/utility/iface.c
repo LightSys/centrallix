@@ -601,7 +601,7 @@ ifcGetHandle(pObjSession s, char* ref)
 		mssError(0, "IFC", "Couldn't parse interface definition '%s'", path);
 		return NULL;
 		}
-	    if (xhAdd(&(IFC.Definitions), def->Path, (char*)def) < 0) mssError(0, "IFC", "Couldn't cache");
+	    if (xhAdd(&(IFC.Definitions), def->Path, (char*)def) < 0) mssWarn("IFC", "Couldn't cache.");
 	    }
 	/** we have the interface definition. Now let's build a handle from it **/
 	if ( (handle = ifc_internal_BuildHandle(def, major, minor)) == NULL)
@@ -671,7 +671,7 @@ ifcInitialize()
 	/** Pull the base interface directory from the config file **/
 	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "iface_dir"), NULL, &IFC.IfaceDir, 0) < 0)
 	    {
-	    mssError(0, "IFC", "iface_dir not set in centrallix.conf, defaulting to /etc/iface");
+	    mssWarn("IFC", "iface_dir not set in centrallix.conf, defaulting to /etc/iface.");
 	    IFC.IfaceDir = "/ifc";
 	    }
 //	fprintf(stderr, "IfaceDir = %s\n", IFC.IfaceDir);
@@ -690,8 +690,8 @@ ifcContains(IfcHandle h, int category, char* member)
 	/** make sure that's a legit category for the given type **/
 	if (category < 0 || category >= IFC.NumCategories[h->Type])
 	    {
-	    mssError(1, "IFC", "illegal category number '%d' for category '%s' of handle '%s'",
-		category, IFC.CategoryNames[h->Type], h->DefPath);
+	    mssError(1, "IFC", "illegal category number '%d' for handle '%s' (type %d has %d categories)",
+		category, h->DefPath, h->Type, IFC.NumCategories[h->Type]);
 	    return -1;
 	    }
 	
@@ -715,8 +715,8 @@ ifcGetProperties(IfcHandle h, int category, char* member)
 	/** make sure that's a legit category for the given type **/
 	if (category < 0 || category >= IFC.NumCategories[h->Type])
 	    {
-	    mssError(1, "IFC", "illegal category number '%d' for category '%s' of handle '%s'",
-		category, IFC.CategoryNames[h->Type], h->DefPath);
+	    mssError(1, "IFC", "illegal category number '%d' for handle '%s' (type %d has %d categories)",
+		category, h->DefPath, h->Type, IFC.NumCategories[h->Type]);
 	    return NULL;
 	    }
 	
@@ -728,7 +728,7 @@ ifcGetProperties(IfcHandle h, int category, char* member)
 	if (count == i)
 	    {
 	    mssError(1, "IFC", "'%s' is not a member of category '%s' of handle '%s v%d.%d'", member,
-		IFC.CategoryNames[h->Type], h->DefPath, h->MajorVersion, h->MinorVersion);
+		IFC.CategoryNames[h->Type][category], h->DefPath, h->MajorVersion, h->MinorVersion);
 	    return NULL;
 	    }
 	return objOpen(h->ObjSession, xaGetItem(&(h->Properties[category]), i), O_RDONLY, 0600, "system/structure");
