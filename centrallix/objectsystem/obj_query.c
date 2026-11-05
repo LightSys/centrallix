@@ -10,6 +10,8 @@
 #include "expression.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/expect.h"
+#include "cxlib/warn.h"
 #include "mergesort.h"
 
 /************************************************************************/
@@ -376,18 +378,85 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     }
 
 
+/*** obj_internal_QueryDeleteEach - delete each object in a query's result
+ *** set, one at a time, for drivers that can't delete a whole query.
+ ***
+ *** @param this The query whose results to delete.
+ *** @returns 0 on success, or -1 on failure (some results may be deleted).
+ ***/
+static int
+obj_internal_QueryDeleteEach(pObjQuery this)
+    {
+    int rval = -1;
+    pObject obj = NULL;
+    XArray paths = {0};
+    char* path = NULL;
+
+	/** Collect paths first: deleting mid-query can shift the driver's cursor. **/
+	if (xaInit(&paths, 16) != 0)
+	    {
+	    mssError(1, "OSML", "Failed to allocate an XArray of %d paths.", 16);
+	    goto end_free;
+	    }
+	while ((obj = objQueryFetch(this, O_WRONLY)) != NULL)
+	    {
+	    path = nmSysStrdup(objGetPathname(obj));
+	    if (UNLIKELY(path == NULL))
+		{
+		mssError(1, "OSML", "nmSysStrdup(\"%s\") failed.", objGetPathname(obj));
+		goto end_free;
+		}
+	    if (UNLIKELY(xaAddItem(&paths, (void*)path) < 0))
+		{
+		mssError(1, "OSML", "Failed to add path \"%s\" to XArray.", path);
+		goto end_free;
+		}
+	    path = NULL;
+	    warnFail(objClose(obj));
+	    obj = NULL;
+	    }
+
+	/** Delete each result, stopping at the first failure. **/
+	for (int i = 0; i < paths.nItems; i++)
+	    {
+	    if (objDelete(this->Obj->Session, (char*)paths.Items[i]) < 0)
+		{
+		mssError(0, "OSML",
+		    "Failed to delete \"%s\", result #%d/%d.",
+		    (char*)paths.Items[i], i + 1, paths.nItems
+		);
+		goto end_free;
+		}
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end_free:
+	if (UNLIKELY(rval != 0))
+	    mssError(0, "OSML", "Failed to delete query results in \"%s\".", objGetPathname(this->Obj));
+
+	/** Clean up owned memory and objects. **/
+	if (UNLIKELY(path != NULL)) nmSysFree(path);
+	if (UNLIKELY(obj != NULL)) warnFail(objClose(obj));
+	if (LIKELY(paths.Items != NULL))
+	    {
+	    for (int i = 0; i < paths.nItems; i++) nmSysFree(paths.Items[i]);
+	    warnFail(xaDeInit(&paths));
+	    }
+
+    return rval;
+    }
+
+
 /*** objQueryDelete - delete all rows in the current query result set.
  *** if driver doesn't understand queries, we'll have to delete the
  *** dumb things one at a time.
  ***/
-int 
+int
 objQueryDelete(pObjQuery this)
     {
     int rval = 0;
-    pObject obj;
-    XArray paths;
-    char* path;
-    int i;
 
 	ASSERTMAGIC(this, MGK_OBJQUERY);
 
@@ -405,35 +474,7 @@ objQueryDelete(pObjQuery this)
 	    }
 	else
 	    {
-	    /** Collect paths first: deleting mid-query can shift the driver's cursor. **/
-	    if (xaInit(&paths, 16) < 0)
-		{
-		mssError(1,"OSML","Failed to allocate list of objects to delete");
-		return -1;
-		}
-	    while((obj = objQueryFetch(this,O_WRONLY)))
-		{
-		path = nmSysStrdup(objGetPathname(obj));
-		if (!path || xaAddItem(&paths, path) < 0)
-		    {
-		    mssError(1,"OSML","Failed to save path '%s' for deletion", objGetPathname(obj));
-		    if (path) nmSysFree(path);
-		    objClose(obj);
-		    rval = -1;
-		    break;
-		    }
-		objClose(obj);
-		}
-
-	    /** Delete each result, stopping at the first failure **/
-	    for(i=0; i<paths.nItems; i++)
-		{
-		path = (char*)xaGetItem(&paths, i);
-		if (rval == 0 && objDelete(this->Obj->Session, path) < 0)
-		    rval = -1;
-		nmSysFree(path);
-		}
-	    xaDeInit(&paths);
+	    rval = obj_internal_QueryDeleteEach(this);
 	    }
 
     return rval;
