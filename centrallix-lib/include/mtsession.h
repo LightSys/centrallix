@@ -99,6 +99,11 @@ void mss_i_warn(char* module, char* file, int line, char* message, ...)
     __attribute__ ((format(printf, 4, 5)))
     #endif
 ;
+void mss_i_warn_error(char* module, char* file, int line, char* message, ...)
+    #ifdef __GNUC__
+    __attribute__ ((format(printf, 4, 5)))
+    #endif
+;
 void mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
     #ifdef __GNUC__
     __attribute__ ((format(printf, 5, 6)))
@@ -107,17 +112,14 @@ void mss_i_error(int clr, char* module, char* file, int line, char* message, ...
 
 #define mssWarn(module, message, ...) \
     mss_i_warn(module, __FILE__, __LINE__, message, ##__VA_ARGS__)
+#define mssWarnError(module, message, ...) \
+    mss_i_warn_error(module, __FILE__, __LINE__, message, ##__VA_ARGS__)
 #define mssError(clear, module, message, ...) \
     mss_i_error(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
 #define mssErrorErrno(clear, module, message, ...) \
     mss_i_error(clear, module, __FILE__, __LINE__, message " (%s)", ##__VA_ARGS__, strerror(errno))
 void mssClearError();
 int mssPrintError(pFile fd);
-void mssWarnError(char* message, ...)
-    #ifdef __GNUC__
-    __attribute__ ((format(printf, 1, 2)))
-    #endif
-;
 int mssStringError(pXString str);
 int mssUserError(pXString str);
 

@@ -68,6 +68,7 @@
 #define SMTP_DEFAULT_SWEEP_INTERVAL	(60 * 60)
 
 /** Define file names. **/
+#define SMTP_SPOOL_SUBDIR       "smtp"             /* The driver's directory in the top-level spool_dir. */
 #define SMTP_CURSOR_FILE        ".mail_log_cursor" /* Stores a spool dir's mail log position. */
 #define SMTP_LOCK_FILE          ".spool_lock"      /* Locks a spool dir and alerts when pending emails update. */
 
@@ -77,6 +78,7 @@
 #define SMTP_QUEUE_ID_SIZE	 32                /* Bytes for a Postfix queue ID (including the NUL-terminator). */
 #define SMTP_LOG_READ_SIZE	(64 * 1024)        /* Bytes of the mail log to read before yielding. */
 #define SMTP_SERIAL_LEN		 21                /* Bytes of the serial count in the lock file, including the newline. */
+#define SMTP_SUBDIR_HASH_LEN	 8                 /* Bytes of the node path hash that name its emails directory. */
 
 /** Define timeouts & intervals. **/
 #define SMTP_LOCK_POLL_INTERVAL	 50                /* Milliseconds between tries to get a spool dir lock. */
@@ -132,6 +134,7 @@ typedef struct
     pXArray		AttributeNames; /* XArray of char*. */
     pXHashTable		Attributes; /* Hash of attribute name to SmtpAttribute. */
     int			CurAttr;
+    char		SpoolSubdir[SMTP_SUBDIR_HASH_LEN * 2 + 1]; /* The node's emails directory in the spool directory: a hash of the node's path. */
 
     /** Root node specific attributes. **/
 
@@ -202,8 +205,8 @@ typedef struct
 typedef struct
     {
     Magic_t	Magic;
-    char*	Key;	/* The Message-ID or queue ID. */
-    char*	Name;	/* The email file name. */
+    char*	Key;		/* The Message-ID or queue ID. */
+    char*	RelPath;	/* The email's path in the spool directory, such as "<subdir>/x.eml". */
     }
     SmtpIndexEntry, *pSmtpIndexEntry;
 
@@ -212,7 +215,7 @@ typedef struct
 typedef struct
     {
     Magic_t	Magic;
-    char*	Name;		/* The email file name. */
+    char*	RelPath;	/* The email's path in the spool directory. */
     pStructInf	Struct;		/* The parsed struct file. */
     bool	Changed;	/* A mail log line updated the struct. */
     bool	Expired;	/* Postfix gave up and returned the email. */
@@ -225,7 +228,7 @@ typedef struct
     {
     XArray	Lines;		/* XArray of copies of the lines about Pending emails. */
     XHashTable	QueueIDs;	/* Hash of queue ID to its copy, for queue IDs claimed by those lines. */
-    XHashTable	ByName;		/* Hash of email file name to pSmtpLogEmail. */
+    XHashTable	ByRelPath;	/* Hash of email path in the spool directory to pSmtpLogEmail. */
     XArray	Emails;		/* XArray of pSmtpLogEmail, in the order they were read. */
     }
     SmtpLogBatch, *pSmtpLogBatch;
@@ -263,18 +266,22 @@ struct
     {
     XArray		DefaultRootAttributes;		/* XArray of pSmtpAttribute */
     XArray		DefaultEmailAttributes;		/* XArray of pSmtpAttribute */
-    XHashTable		Spools;				/* Hash of spool_dir to pSmtpSpool */
+    pSmtpSpool		Spool;				/* The spool directory, or NULL until first use */
+    char		SpoolDir[PATH_MAX];		/* Path of the spool directory */
     char		LogPath[PATH_MAX];		/* Path of the mail log */
+    int			ExpireTime;			/* Seconds to keep a Sent or Error email, or negative to keep it forever */
+    int			LogReadInterval;		/* Minimum seconds between throttled reads of the mail log */
+    int			SweepInterval;			/* Minimum seconds between sweeps of the spool directory */
     }
     SMTP_INF;
 
 
 /** Forward declarations for functions that need them. **/
 int smtp_internal_Close(pSmtpData inf);
-int smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool throttle);
+int smtp_internal_UpdateFromLog(bool throttle);
 void smtp_internal_UnloadSpool(pSmtpSpool spool);
 void smtp_internal_UnlockSpool(pSmtpSpool spool);
-int smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed);
+int smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, bool* changed);
 int smtp_internal_ReadResult(char* resultPath, char* header, pXString output);
 int smtpQueryClose(void* qy_v, pObjTrxTree* oxt);
 int smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt);
@@ -599,9 +606,9 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 	    thSleep(10);
 	if (UNLIKELY(wait_rval < 0 && errno == ECHILD))
 	    {
-	    fprintf(stderr,
-		"Warning: Sendmail launcher process (pid %d) was reaped elsewhere; "
-		"the sendmail result file reports the send.\n",
+	    mssWarn("SMTP",
+		"Sendmail launcher process (pid %d) was reaped elsewhere; "
+		"the sendmail result file reports the send.",
 		pid
 	    );
 	    wstatus = 0; /* Treat as a successful exit. */
@@ -654,8 +661,8 @@ smtp_internal_SpawnSendmail(char* emailPath, char* resultPath, pSmtpAttribute en
 
 	if (resultFd >= 0) close(resultFd);
 	if (UNLIKELY(rval != 0 && tmpCreated && unlink(tmpPath) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to remove partial sendmail result file (%s): %s.\n",
+	    mssWarn("SMTP",
+		"Failed to remove partial sendmail result file (%s): %s.",
 		tmpPath, strerror(errno)
 	    );
 
@@ -842,18 +849,18 @@ smtp_internal_AddDefault(pXArray defaults, char* name, int type, int intVal, cha
  ***
  *** @param path Set to the path.  Must hold PATH_MAX bytes.
  *** @param spoolDir The spool directory.
- *** @param name The email file name, such as "x.eml".
+ *** @param relPath The email's path in spoolDir, such as "<subdir>/x.eml".
  *** @param ext The extension of the file, such as ".struct".
  *** @returns 0 on success, or -1 if the path is too long.
  ***/
 int
-smtp_internal_SpoolPath(char* path, char* spoolDir, char* name, char* ext)
+smtp_internal_SpoolPath(char* path, char* spoolDir, char* relPath, char* ext)
     {
-    int nameLen = strlen(name) - 4; /* Without ".eml" or ".msg". */
+    int relPathLen = strlen(relPath) - 4; /* Without ".eml" or ".msg". */
 
-	if (UNLIKELY(nameLen < 0 || snprintf(path, PATH_MAX, "%s/%.*s%s", spoolDir, nameLen, name, ext) >= PATH_MAX))
+	if (UNLIKELY(relPathLen < 0 || snprintf(path, PATH_MAX, "%s/%.*s%s", spoolDir, relPathLen, relPath, ext) >= PATH_MAX))
 	    {
-	    mssError(1, "SMTP", "Failed to build the %s path of email \"%s\" in \"%s\".", ext, name, spoolDir);
+	    mssError(1, "SMTP", "Failed to build the %s path of email \"%s\" in \"%s\".", ext, relPath, spoolDir);
 	    return -1;
 	    }
 
@@ -960,8 +967,8 @@ smtp_internal_WriteStruct(char* path, pStructInf emailStruct)
     end:
 	if (UNLIKELY(structFile != NULL)) fdClose(structFile, 0);
 	if (UNLIKELY(tmpCreated && remove(tmpPath) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to remove partial email struct file (%s): %s.\n",
+	    mssWarn("SMTP",
+		"Failed to remove partial email struct file (%s): %s.",
 		tmpPath, strerror(errno)
 	    );
 
@@ -1167,7 +1174,7 @@ smtp_internal_FreeIndexEntry(char* entry_c, void* unused)
 
 	ASSERTMAGIC(entry, MGK_SMTP_INDEX_ENTRY);
 	if (entry->Key != NULL) nmSysFree(entry->Key);
-	if (entry->Name != NULL) nmSysFree(entry->Name);
+	if (entry->RelPath != NULL) nmSysFree(entry->RelPath);
 	nmFree(entry, sizeof(SmtpIndexEntry));
 
     return 0;
@@ -1179,11 +1186,11 @@ smtp_internal_FreeIndexEntry(char* entry_c, void* unused)
  ***
  *** @param index The index (ByMessageID or ByQueueID).
  *** @param key The Message-ID or queue ID of the email.
- *** @param name The email file name.
+ *** @param relPath The email's path in the spool directory.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_IndexAdd(pXHashTable index, char* key, char* name)
+smtp_internal_IndexAdd(pXHashTable index, char* key, char* relPath)
     {
     pSmtpIndexEntry entry = NULL;
     pSmtpIndexEntry old;
@@ -1193,16 +1200,16 @@ smtp_internal_IndexAdd(pXHashTable index, char* key, char* name)
 	entry = nmMalloc(sizeof(SmtpIndexEntry));
 	if (UNLIKELY(entry == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to allocate %zu bytes to track email \"%s\".", sizeof(SmtpIndexEntry), name);
+	    mssError(1, "SMTP", "Failed to allocate %zu bytes to track email \"%s\".", sizeof(SmtpIndexEntry), relPath);
 	    goto end;
 	    }
 	memset(entry, 0, sizeof(SmtpIndexEntry));
 	SETMAGIC(entry, MGK_SMTP_INDEX_ENTRY);
 	entry->Key = nmSysStrdup(key);
-	entry->Name = nmSysStrdup(name);
-	if (UNLIKELY(entry->Key == NULL || entry->Name == NULL))
+	entry->RelPath = nmSysStrdup(relPath);
+	if (UNLIKELY(entry->Key == NULL || entry->RelPath == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to copy key \"%s\" to track email \"%s\".", key, name);
+	    mssError(1, "SMTP", "Failed to copy key \"%s\" to track email \"%s\".", key, relPath);
 	    goto end;
 	    }
 
@@ -1215,7 +1222,7 @@ smtp_internal_IndexAdd(pXHashTable index, char* key, char* name)
 	    }
 	if (UNLIKELY(xhAdd(index, entry->Key, (char*)entry) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to index email \"%s\" by \"%s\".", name, key);
+	    mssError(1, "SMTP", "Failed to index email \"%s\" by \"%s\".", relPath, key);
 	    goto end;
 	    }
 
@@ -1249,21 +1256,20 @@ smtp_internal_IndexRemove(pXHashTable index, char* key)
     }
 
 
-/*** smtp_internal_GetSpool - get the tracking data of a spool directory,
- *** creating it the first time.
+/*** smtp_internal_GetSpool - get the tracking data of the spool directory
+ *** set by the smtp config, creating it the first time.
  ***
- *** @param spoolDir The spool directory.
  *** @returns The spool, or NULL on failure.
  ***/
 pSmtpSpool
-smtp_internal_GetSpool(char* spoolDir)
+smtp_internal_GetSpool(void)
     {
     pSmtpSpool spool = NULL;
     bool messageIdsInitialized = false;
     bool queueIdsInitialized = false;
 
 	/** Find the spool. **/
-	spool = (pSmtpSpool)xhLookup(&SMTP_INF.Spools, spoolDir);
+	spool = SMTP_INF.Spool;
 	ASSERTMAGIC(spool, MGK_SMTP_SPOOL);
 	if (spool != NULL)
 	    return spool;
@@ -1272,41 +1278,32 @@ smtp_internal_GetSpool(char* spoolDir)
 	spool = nmMalloc(sizeof(SmtpSpool));
 	if (UNLIKELY(spool == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to allocate tracking data for spool directory \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to allocate tracking data for spool directory \"%s\".", SMTP_INF.SpoolDir);
 	    goto error;
 	    }
 	memset(spool, 0, sizeof(SmtpSpool));
 	SETMAGIC(spool, MGK_SMTP_SPOOL);
 	spool->LockFd = -1;
-	spool->Path = nmSysStrdup(spoolDir);
-	if (UNLIKELY(spool->Path == NULL))
-	    {
-	    mssError(1, "SMTP", "Failed to set spool directory path: \"%s\".", spoolDir);
-	    goto error;
-	    }
+	spool->Path = SMTP_INF.SpoolDir;
 	if (UNLIKELY(xhInit(&spool->ByMessageID, 257, 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to initialize the Message-ID index of spool directory \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to initialize the Message-ID index of spool directory \"%s\".", spool->Path);
 	    goto error;
 	    }
 	messageIdsInitialized = true;
 	if (UNLIKELY(xhInit(&spool->ByQueueID, 257, 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to initialize the queue ID index of spool directory \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to initialize the queue ID index of spool directory \"%s\".", spool->Path);
 	    goto error;
 	    }
 	queueIdsInitialized = true;
 	spool->LockSem = syCreateSem(1, 0);
 	if (UNLIKELY(spool->LockSem == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to create the lock semaphore of spool directory \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to create the lock semaphore of spool directory \"%s\".", spool->Path);
 	    goto error;
 	    }
-	if (UNLIKELY(xhAdd(&SMTP_INF.Spools, spool->Path, (char*)spool) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to add spool directory to hashtable: \"%s\".", spoolDir);
-	    goto error;
-	    }
+	SMTP_INF.Spool = spool;
 
 	return spool;
 
@@ -1316,7 +1313,6 @@ smtp_internal_GetSpool(char* spoolDir)
 	    if (messageIdsInitialized) xhDeInit(&spool->ByMessageID);
 	    if (queueIdsInitialized) xhDeInit(&spool->ByQueueID);
 	    if (spool->LockSem != NULL) syDestroySem(spool->LockSem, 0);
-	    if (spool->Path != NULL) nmSysFree(spool->Path);
 	    nmFree(spool, sizeof(SmtpSpool));
 	    }
 
@@ -1330,11 +1326,10 @@ smtp_internal_GetSpool(char* spoolDir)
  *** Pending emails since this one loaded them, they are reloaded at the
  *** next read of the mail log.
  ***
- *** @param spoolDir The spool directory, or NULL if the SMTP node has none.
  *** @returns The locked spool directory, or NULL on failure.
  ***/
 pSmtpSpool
-smtp_internal_LockSpool(char* spoolDir)
+smtp_internal_LockSpool(void)
     {
     pSmtpSpool spool = NULL;
     pThread self = thCurrent();
@@ -1350,13 +1345,8 @@ smtp_internal_LockSpool(char* spoolDir)
     bool fileLocked = false;
     pSmtpSpool rval = NULL;
 
-	/** Edge cases. **/
-	if (UNLIKELY(spoolDir == NULL))
-	    {
-	    mssError(1, "SMTP", "Failed to lock the spool directory: the SMTP node does not have a 'spool_dir' string.");
-	    return NULL; /* Skip error handler, which expects a spool. */
-	    }
-	spool = smtp_internal_GetSpool(spoolDir);
+	/** Find the spool. **/
+	spool = smtp_internal_GetSpool();
 	if (UNLIKELY(spool == NULL))
 	    return NULL; /* Skip error handler, which expects a spool. */
 
@@ -1370,7 +1360,7 @@ smtp_internal_LockSpool(char* spoolDir)
 	/** Wait for other threads. **/
 	if (UNLIKELY(syGetSem(spool->LockSem, 1, 0) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to wait for other threads to use spool directory \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to wait for other threads to use spool directory \"%s\".", spool->Path);
 	    goto end;
 	    }
 	semHeld = true;
@@ -1378,9 +1368,9 @@ smtp_internal_LockSpool(char* spoolDir)
 	/** Open the lock file and keep it open to hold the process lock. **/
 	if (spool->LockFd < 0)
 	    {
-	    if (UNLIKELY(snprintf(path, sizeof(path), "%s/%s", spoolDir, SMTP_LOCK_FILE) >= (int)sizeof(path)))
+	    if (UNLIKELY(snprintf(path, sizeof(path), "%s/%s", spool->Path, SMTP_LOCK_FILE) >= (int)sizeof(path)))
 		{
-		mssError(1, "SMTP", "Failed to build the spool lock path: \"%s/%s\" is too long.", spoolDir, SMTP_LOCK_FILE);
+		mssError(1, "SMTP", "Failed to build the spool lock path: \"%s/%s\" is too long.", spool->Path, SMTP_LOCK_FILE);
 		goto end;
 		}
 	    spool->LockFd = open(path, O_RDWR | O_CREAT, 0666);
@@ -1397,8 +1387,8 @@ smtp_internal_LockSpool(char* spoolDir)
 		goto end;
 		}
 	    if ((st.st_mode & 0666) != 0666 && (st.st_uid == geteuid() || geteuid() == 0) && UNLIKELY(fchmod(spool->LockFd, 0666) != 0))
-		fprintf(stderr,
-		    "Warning: Failed to let every user open spool lock \"%s\" (mode %04o): %s.\n",
+		mssWarn("SMTP",
+		    "Failed to let every user open spool lock \"%s\" (mode %04o): %s.",
 		    path, (unsigned int)(st.st_mode & 07777), strerror(errno)
 		);
 	    }
@@ -1411,14 +1401,14 @@ smtp_internal_LockSpool(char* spoolDir)
 	    {
 	    if (UNLIKELY(errno != EACCES && errno != EAGAIN && errno != EINTR))
 		{
-		mssErrorErrno(1, "SMTP", "Failed to lock spool directory \"%s/%s\".", spoolDir, SMTP_LOCK_FILE);
+		mssErrorErrno(1, "SMTP", "Failed to lock spool directory \"%s/%s\".", spool->Path, SMTP_LOCK_FILE);
 		goto end;
 		}
 	    if (UNLIKELY(polls++ >= SMTP_LOCK_TIMEOUT * 1000 / SMTP_LOCK_POLL_INTERVAL))
 		{
 		mssError(1, "SMTP",
 		    "Failed to lock spool directory \"%s/%s\": another process held it for %d seconds.",
-		    spoolDir, SMTP_LOCK_FILE, SMTP_LOCK_TIMEOUT
+		    spool->Path, SMTP_LOCK_FILE, SMTP_LOCK_TIMEOUT
 		);
 		goto end;
 		}
@@ -1432,7 +1422,7 @@ smtp_internal_LockSpool(char* spoolDir)
 	n = pread(spool->LockFd, buf, SMTP_SERIAL_LEN, 0);
 	if (UNLIKELY(n < 0))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to read the serial of spool directory \"%s/%s\".", spoolDir, SMTP_LOCK_FILE);
+	    mssErrorErrno(1, "SMTP", "Failed to read the serial of spool directory \"%s/%s\".", spool->Path, SMTP_LOCK_FILE);
 	    goto end;
 	    }
 	buf[n] = '\0';
@@ -1442,7 +1432,7 @@ smtp_internal_LockSpool(char* spoolDir)
 	    serial = strtoull(buf, &end, 10);
 	    if (UNLIKELY(errno != 0 || end == buf || *end != '\n'))
 		{
-		mssError(1, "SMTP", "Failed to read the serial of spool directory \"%s/%s\": \"%s\" is invalid.", spoolDir, SMTP_LOCK_FILE, buf);
+		mssError(1, "SMTP", "Failed to read the serial of spool directory \"%s/%s\": \"%s\" is invalid.", spool->Path, SMTP_LOCK_FILE, buf);
 		goto end;
 		}
 	    }
@@ -1463,7 +1453,7 @@ smtp_internal_LockSpool(char* spoolDir)
 	    if (fileLocked)
 		smtp_internal_UnlockSpool(spool);
 	    else if (semHeld && UNLIKELY(syPostSem(spool->LockSem, 1, 0) != 0))
-		fprintf(stderr, "Warning: Failed to let other threads use spool directory \"%s\".\n", spoolDir);
+		mssWarn("SMTP", "Failed to let other threads use spool directory \"%s\".", spool->Path);
 	    }
 
 	return rval;
@@ -1490,15 +1480,15 @@ smtp_internal_UnlockSpool(pSmtpSpool spool)
 	lock.l_type = F_UNLCK;
 	lock.l_whence = SEEK_SET;
 	if (UNLIKELY(fcntl(spool->LockFd, F_SETLK, &lock) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to unlock spool directory \"%s/%s\": %s.\n",
+	    mssWarn("SMTP",
+		"Failed to unlock spool directory \"%s/%s\": %s.",
 		spool->Path, SMTP_LOCK_FILE, strerror(errno)
 	    );
 
 	/** Let other threads in. **/
 	spool->LockOwner = NULL;
 	if (UNLIKELY(syPostSem(spool->LockSem, 1, 0) != 0))
-	    fprintf(stderr, "Warning: Failed to let other threads use spool directory \"%s\".\n", spool->Path);
+	    mssWarn("SMTP", "Failed to let other threads use spool directory \"%s\".", spool->Path);
 
     return;
     }
@@ -1543,7 +1533,9 @@ int
 smtp_internal_InitGlobals()
     {
     char local_host_name[HOST_NAME_MAX + 1];
+    pStructInf config = stLookup(CxGlobals.ParsedConfig, "smtp");
     char* logPath;
+    char* spoolDir = NULL;
 
 	/** Initialize the global attributes. **/
 	if (UNLIKELY(xaInit(&SMTP_INF.DefaultRootAttributes, 16) != 0
@@ -1552,18 +1544,13 @@ smtp_internal_InitGlobals()
 	    mssError(1, "SMTP", "Failed to initialize default attribute lists.");
 	    goto error;
 	    }
-	if (UNLIKELY(xhInit(&SMTP_INF.Spools, 17, 0) != 0))
-	    {
-	    mssError(1, "SMTP", "Failed to initialize the spool directory table.");
-	    goto error;
-	    }
 
 	/** Add all the required attributes. Yay hardcoding! **/
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
 	    {
 	    strtcpy(local_host_name, "localhost.localdomain", sizeof(local_host_name));
-	    fprintf(stderr,
-		"Warning: gethostname() failed (%s); using \"%s\".\n",
+	    mssWarn("SMTP",
+		"gethostname() failed (%s); using \"%s\".",
 		strerror(errno), local_host_name
 	    );
 	    }
@@ -1572,16 +1559,12 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "send_method",		DATA_T_STRING,	0,	"sendmail") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "server",		DATA_T_STRING,	0,	"127.0.0.1") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "port",			DATA_T_INTEGER,	25,	NULL) < 0)) goto error;
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "spool_dir",		DATA_T_STRING,	0,	"/var/spool/mail/_centrallix") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_dir",		DATA_T_STRING,	0,	"/var/log") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_date_attr",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_msgid_attr",	DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_info_attr",		DATA_T_STRING,	0,	"") < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "ratelimit_time",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "domlimit_time",		DATA_T_INTEGER,	5,	NULL) < 0)) goto error;
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "expire_time",		DATA_T_INTEGER,	SMTP_DEFAULT_EXPIRE_TIME,	NULL) < 0)) goto error;
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "log_read_interval",	DATA_T_INTEGER,	SMTP_DEFAULT_LOG_READ_INTERVAL,	NULL) < 0)) goto error;
-	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "sweep_interval",	DATA_T_INTEGER,	SMTP_DEFAULT_SWEEP_INTERVAL,	NULL) < 0)) goto error;
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultRootAttributes, "content_has_headers",	DATA_T_INTEGER,	1,	NULL) < 0)) goto error;
 
 	/** Add all the required email attributes. Behold the hard code; standeth it against all but the hardest hammer. **/
@@ -1607,13 +1590,36 @@ smtp_internal_InitGlobals()
 	if (UNLIKELY(smtp_internal_AddDefault(&SMTP_INF.DefaultEmailAttributes, "rcpt_count",		DATA_T_INTEGER,	0,	NULL) < 0)) goto error;
 
 	/** Get the mail log path. **/
-	if (stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "smtp"), "mail_log"), NULL, &logPath, 0) != 0)
+	if (stAttrValue(stLookup(config, "mail_log"), NULL, &logPath, 0) != 0)
 	    logPath = SMTP_DEFAULT_LOG_PATH;
 	if (UNLIKELY(strtcpy(SMTP_INF.LogPath, logPath, sizeof(SMTP_INF.LogPath)) < 0))
 	    {
 	    mssError(1, "SMTP", "Failed to set the mail log path: \"%s\" is too long.", logPath);
 	    goto error;
 	    }
+
+	/** Get the spool directory path, which smtpInitialize() requires. **/
+	stAttrValue(stLookup(CxGlobals.ParsedConfig, "spool_dir"), NULL, &spoolDir, 0);
+	if (UNLIKELY(snprintf(SMTP_INF.SpoolDir, sizeof(SMTP_INF.SpoolDir), "%s/%s", spoolDir, SMTP_SPOOL_SUBDIR) >= (int)sizeof(SMTP_INF.SpoolDir)))
+	    {
+	    mssError(1, "SMTP", "Failed to set the spool directory path: \"%s/%s\" is too long.", spoolDir, SMTP_SPOOL_SUBDIR);
+	    goto error;
+	    }
+
+	/** Create the spool directory if it does not exist. **/
+	if (mkdir(SMTP_INF.SpoolDir, 0777) != 0 && UNLIKELY(errno != EEXIST))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to create spool directory \"%s\".", SMTP_INF.SpoolDir);
+	    goto error;
+	    }
+
+	/** Get the spool directory settings. **/
+	SMTP_INF.ExpireTime = SMTP_DEFAULT_EXPIRE_TIME;
+	SMTP_INF.LogReadInterval = SMTP_DEFAULT_LOG_READ_INTERVAL;
+	SMTP_INF.SweepInterval = SMTP_DEFAULT_SWEEP_INTERVAL;
+	stAttrValue(stLookup(config, "expire_time"), &SMTP_INF.ExpireTime, NULL, 0);
+	stAttrValue(stLookup(config, "log_read_interval"), &SMTP_INF.LogReadInterval, NULL, 0);
+	stAttrValue(stLookup(config, "sweep_interval"), &SMTP_INF.SweepInterval, NULL, 0);
 
 	return 0;
 
@@ -1840,51 +1846,223 @@ smtp_internal_RemoveEmail(char* emailPath, char* structPath, char* resultPath)
     }
 
 
-/*** smtp_internal_SweepSpool - Deletes expired emails from a spool
+/*** smtp_internal_ForEachEmail - call a function for each email in the
+ *** subdirectories of the spool directory, which hold the emails of each node.
+ ***
+ *** @param fn The function, given the email's path in the spool directory
+ ***   (such as "<subdir>/x.eml") and arg.  Returns 0 to continue, or -1 to
+ ***   fail.
+ *** @param arg Passed to fn.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_ForEachEmail(int (*fn)(char* relPath, void* arg), void* arg)
+    {
+    DIR* spoolDir = NULL;
+    DIR* subdir = NULL;
+    struct dirent* subdirEntry;
+    struct dirent* entry;
+    char* path = NULL;
+    char* relPath = NULL;
+    int rval = -1;
+
+	/** Allocate the paths. **/
+	path = nmMalloc(PATH_MAX);
+	relPath = nmMalloc(PATH_MAX);
+	if (UNLIKELY(path == NULL || relPath == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate 2 paths of %d bytes to read the spool directory.", PATH_MAX);
+	    goto end;
+	    }
+
+	/** Open the spool directory. **/
+	spoolDir = opendir(SMTP_INF.SpoolDir);
+	if (UNLIKELY(spoolDir == NULL))
+	    {
+	    mssErrorErrno(1, "SMTP", "Failed to open spool directory \"%s\".", SMTP_INF.SpoolDir);
+	    goto end;
+	    }
+
+	/** Visit each subdirectory. **/
+	while (1)
+	    {
+	    /** Get the next subdirectory. **/
+	    errno = 0;
+	    subdirEntry = readdir(spoolDir);
+	    if (subdirEntry == NULL)
+		{
+		if (UNLIKELY(errno != 0))
+		    {
+		    mssErrorErrno(1, "SMTP", "Failed to read spool directory \"%s\".", SMTP_INF.SpoolDir);
+		    goto end;
+		    }
+		break; /* No more subdirectories. */
+		}
+
+	    /** Skip the lock, the cursor, and the links to "." and "..". **/
+	    if (subdirEntry->d_name[0] == '.')
+		continue;
+
+	    /** Open the subdirectory, skipping other files. **/
+	    if (UNLIKELY(snprintf(
+		path, PATH_MAX,
+		"%s/%s",
+		SMTP_INF.SpoolDir, subdirEntry->d_name
+	    ) >= PATH_MAX))
+		{
+		mssWarn("SMTP",
+		    "Path of \"%s\" in \"%s\" is too long to read, skipping.",
+		    subdirEntry->d_name, SMTP_INF.SpoolDir
+		);
+		continue;
+		}
+	    subdir = opendir(path);
+	    if (subdir == NULL)
+		{
+		if (errno == ENOTDIR)
+		    continue;
+		mssErrorErrno(1, "SMTP", "Failed to open spool subdirectory \"%s\".", path);
+		goto end;
+		}
+
+	    /** Visit each email in the subdirectory. **/
+	    while (1)
+		{
+		/** Get the next file. **/
+		errno = 0;
+		entry = readdir(subdir);
+		if (entry == NULL)
+		    {
+		    if (UNLIKELY(errno != 0))
+			{
+			mssErrorErrno(1, "SMTP", "Failed to read spool subdirectory \"%s\".", path);
+			goto end;
+			}
+		    break; /* No more files. */
+		    }
+
+		/** Skip non-email files. **/
+		if (!smtp_internal_IsEmail(entry->d_name))
+		    continue;
+
+		/** Call the function on the email. **/
+		if (UNLIKELY(snprintf(
+		    relPath, PATH_MAX,
+		    "%s/%s",
+		    subdirEntry->d_name, entry->d_name
+		) >= PATH_MAX))
+		    {
+		    mssWarn("SMTP",
+			"Path of email \"%s\" in \"%s\" is too long to read, skipping.",
+			entry->d_name, path
+		    );
+		    continue;
+		    }
+		if (UNLIKELY(fn(relPath, arg) != 0))
+		    goto end;
+		}
+	    closedir(subdir);
+	    subdir = NULL;
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (UNLIKELY(subdir != NULL)) closedir(subdir);
+	if (LIKELY(spoolDir != NULL)) closedir(spoolDir);
+	if (LIKELY(path != NULL)) nmFree(path, PATH_MAX);
+	if (LIKELY(relPath != NULL)) nmFree(relPath, PATH_MAX);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_SweepEmail - delete an email with its struct and result
+ *** files if it has expired.  Matches the fn signature of
+ *** smtp_internal_ForEachEmail().
+ ***
+ *** @param relPath The email's path in the spool directory.
+ *** @param now_v The current date (pDateTime).
+ *** @returns 0 on success, resolving errors about the email with a warning,
+ ***   or -1 if the paths cannot be allocated.
+ ***/
+int
+smtp_internal_SweepEmail(char* relPath, void* now_v)
+    {
+    pDateTime now = (pDateTime)now_v;
+    char* emailPath = NULL;
+    char* structPath = NULL;
+    char* resultPath = NULL;
+    int relPathLen = strlen(relPath) - 4;
+    int expired;
+    int rval = 0; /* Most failures in a sweep are demoted to warnings. */
+
+	/** Allocate the file paths. **/
+	emailPath = nmMalloc(PATH_MAX);
+	structPath = nmMalloc(PATH_MAX);
+	resultPath = nmMalloc(PATH_MAX);
+	if (UNLIKELY(emailPath == NULL || structPath == NULL || resultPath == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate 3 paths of %d bytes to sweep email \"%s\".", PATH_MAX, relPath);
+	    rval = -1; /* Memory allocation is not demoted to a warning. */
+	    goto end;
+	    }
+
+	/** Build the file paths. **/
+	if (UNLIKELY(snprintf(emailPath, PATH_MAX, "%s/%s", SMTP_INF.SpoolDir, relPath) >= PATH_MAX
+	    || snprintf(structPath, PATH_MAX, "%s/%.*s.struct", SMTP_INF.SpoolDir, relPathLen, relPath) >= PATH_MAX
+	    || snprintf(resultPath, PATH_MAX, "%s/%.*s.result", SMTP_INF.SpoolDir, relPathLen, relPath) >= PATH_MAX
+	))  {
+	    mssWarn("SMTP",
+		"Path of email \"%s\" in \"%s\" is too long to sweep, skipping.",
+		relPath, SMTP_INF.SpoolDir
+	    );
+	    goto end;
+	    }
+
+	/** Check if the email is expired. **/
+	expired = smtp_internal_IsExpired(structPath, now);
+	if (UNLIKELY(expired < 0))
+	    {
+	    mssWarnError("SMTP", "Failed to check whether email \"%s\" expired, skipping.", emailPath);
+	    goto end;
+	    }
+	if (expired != 1) goto end;
+
+	/** Delete the expired email. **/
+	if (UNLIKELY(smtp_internal_RemoveEmail(emailPath, structPath, resultPath) != 0))
+	    mssWarnError("SMTP", "Failed to delete expired email \"%s\", skipping.", emailPath);
+
+    end:
+	if (LIKELY(emailPath != NULL)) nmFree(emailPath, PATH_MAX);
+	if (LIKELY(structPath != NULL)) nmFree(structPath, PATH_MAX);
+	if (LIKELY(resultPath != NULL)) nmFree(resultPath, PATH_MAX);
+
+	return rval;
+    }
+
+
+/*** smtp_internal_SweepSpool - Deletes expired emails from the spool
  *** directory, at most once per sweep_interval seconds.  Callers continue
  *** without the sweep, so it resolves its own errors with a warning.
- *** @param spoolDir The spool directory to sweep.
- *** @param rootAttributes The attributes of the SMTP node.
  ***/
 void
-smtp_internal_SweepSpool(char* spoolDir, pXHashTable rootAttributes)
+smtp_internal_SweepSpool(void)
     {
     pSmtpSpool spool = NULL;
-    pSmtpAttribute intervalAttr = NULL;
-    int interval = SMTP_DEFAULT_SWEEP_INTERVAL;
-    DIR* dir = NULL;
-    struct dirent* entry = NULL;
-    char emailPath[PATH_MAX];
-    char structPath[PATH_MAX];
-    char resultPath[PATH_MAX];
     DateTime now;
     time_t curTime = time(NULL);
-    int nameLen;
-    int expired;
     bool locked = false;
     bool successful = false;
 
-	/** Track each spool directory. **/
-	spool = smtp_internal_GetSpool(spoolDir);
+	/** Track the spool directory. **/
+	spool = smtp_internal_GetSpool();
 	if (UNLIKELY(spool == NULL))
 	    goto end;
 
 	/** Throttle sweeps. **/
-	intervalAttr = SMTP_ATTR(xhLookup(rootAttributes, "sweep_interval"));
-	ASSERTMAGIC(intervalAttr, MGK_SMTP_ATTRIBUTE);
-	if (intervalAttr != NULL)
-	    {
-	    if (UNLIKELY(intervalAttr->Type != DATA_T_INTEGER))
-		{
-		mssError(1, "SMTP",
-		    "Attribute 'sweep_interval' must be an integer (got %s).",
-		    objTypeToStr(intervalAttr->Type)
-		);
-		goto end;
-		}
-	    interval = intervalAttr->Value.Integer;
-	    }
-	if (curTime - spool->LastSweep < interval)
+	if (curTime - spool->LastSweep < SMTP_INF.SweepInterval)
 	    {
 	    /** No sweep needed, we're done. **/
 	    successful = true;
@@ -1893,83 +2071,28 @@ smtp_internal_SweepSpool(char* spoolDir, pXHashTable rootAttributes)
 	spool->LastSweep = curTime;
 
 	/** Keep other threads and processes out until the sweep is done. **/
-	if (UNLIKELY(smtp_internal_LockSpool(spoolDir) == NULL))
+	if (UNLIKELY(smtp_internal_LockSpool() == NULL))
 	    goto end;
 	locked = true;
 
-	/** Open the spool directory. **/
+	/** Delete each expired email. **/
 	if (UNLIKELY(objCurrentDate(&now) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to get the current date to sweep \"%s\".", spoolDir);
+	    mssError(1, "SMTP", "Failed to get the current date to sweep \"%s\".", SMTP_INF.SpoolDir);
 	    goto end;
 	    }
-	dir = opendir(spoolDir);
-	if (UNLIKELY(dir == NULL))
-	    {
-	    mssErrorErrno(1, "SMTP",
-		"Failed to open spool directory \"%s\" to sweep it.",
-		spoolDir
-	    );
+	if (UNLIKELY(smtp_internal_ForEachEmail(smtp_internal_SweepEmail, &now) != 0))
 	    goto end;
-	    }
-
-	/** Delete each expired email with its struct and result files. **/
-	while (1)
-	    {
-	    /** Get the next file. **/
-	    errno = 0;
-	    entry = readdir(dir);
-	    if (entry == NULL)
-		{
-		if (UNLIKELY(errno != 0))
-		    {
-		    mssErrorErrno(1, "SMTP", "Failed to read spool directory \"%s\".", spoolDir);
-		    goto end;
-		    }
-		break; /* No more files. */
-		}
-
-	    /** Skip non-email files. **/
-	    if (!smtp_internal_IsEmail(entry->d_name))
-		continue;
-
-	    /** Build the file paths. **/
-	    nameLen = strlen(entry->d_name) - 4;
-	    if (UNLIKELY(snprintf(emailPath, sizeof(emailPath), "%s/%s", spoolDir, entry->d_name) >= (int)sizeof(emailPath)
-		|| snprintf(structPath, sizeof(structPath), "%s/%.*s.struct", spoolDir, nameLen, entry->d_name) >= (int)sizeof(structPath)
-		|| snprintf(resultPath, sizeof(resultPath), "%s/%.*s.result", spoolDir, nameLen, entry->d_name) >= (int)sizeof(resultPath)
-	    ))  {
-		fprintf(stderr,
-		    "Warning: Path of email \"%s\" in \"%s\" is too long to sweep, skipping.\n",
-		    entry->d_name, spoolDir
-		);
-		continue;
-		}
-
-	    /** Check if the email is expired. **/
-	    expired = smtp_internal_IsExpired(structPath, &now);
-	    if (UNLIKELY(expired < 0))
-		{
-		mssWarnError("Failed to check whether email \"%s\" expired, skipping.", emailPath);
-		continue;
-		}
-	    if (expired != 1) continue;
-
-	    /** Delete the expired email. **/
-	    if (UNLIKELY(smtp_internal_RemoveEmail(emailPath, structPath, resultPath) != 0))
-		mssWarnError("Failed to delete expired email \"%s\", skipping.", emailPath);
-	    }
 
 	/** Success. **/
 	successful = true;
 
     end:
-	if (dir != NULL) closedir(dir);
 	if (locked) smtp_internal_UnlockSpool(spool);
 
 	/** Resolve sweep errors. **/
 	if (UNLIKELY(!successful))
-	    mssWarnError("Failed to sweep spool directory \"%s\"; continuing.", spoolDir);
+	    mssWarnError("SMTP", "Failed to sweep spool directory \"%s\"; continuing.", SMTP_INF.SpoolDir);
     }
 
 
@@ -2285,7 +2408,6 @@ smtp_internal_ReloadStruct(pSmtpData inf)
 int
 smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
     {
-    pSmtpAttribute spoolDir;
     pSmtpSpool spool = NULL;
     pStructInf emailStruct = NULL;
     char* status;
@@ -2299,20 +2421,13 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 	    return 0;
 
 	/** Keep other threads and processes out until the attributes are loaded. **/
-	spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
-	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
-	if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
-	    {
-	    mssError(1, "SMTP", "Failed to reload the attributes of \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
-	    goto end;
-	    }
-	spool = smtp_internal_LockSpool(spoolDir->Value.String);
+	spool = smtp_internal_LockSpool();
 	if (UNLIKELY(spool == NULL))
 	    goto end;
 
 	/** Update the struct with results from the Postfix logs. **/
-	if (UNLIKELY(readLog && smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	if (UNLIKELY(readLog && smtp_internal_UpdateFromLog(true) != 0))
+	    mssWarnError("SMTP", "Failed to update the emails in \"%s\" from the mail log.", spool->Path);
 
 	/** Reload a replaced struct. **/
 	if (UNLIKELY(smtp_internal_ReloadStruct(inf) != 0))
@@ -2332,14 +2447,14 @@ smtp_internal_ReloadAttributes(pSmtpData inf, bool readLog)
 	    {
 	    status = smtp_internal_StructString(emailStruct, "status");
 	    if (status != NULL && strcmp(status, "Pending") == 0 && UNLIKELY(
-		smtp_internal_RefreshStatus(emailStruct, inf->ResultPath.String, false, inf->RootAttributes, &changed) != 0
+		smtp_internal_RefreshStatus(emailStruct, inf->ResultPath.String, false, &changed) != 0
 		|| (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, emailStruct) != 0)
 	    ))  {
 		found = -1;
 		}
 	    }
 	if (UNLIKELY(found < 0))
-	    mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
+	    mssWarnError("SMTP", "Failed to update the send status of email \"%s\".", inf->Name);
 
 	/** Load the updated status. **/
 	if (found == 1 && changed && UNLIKELY(smtp_internal_ReloadStruct(inf) != 0))
@@ -2532,9 +2647,9 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    has_headers = objDataToBoolean(attr->Type, value, 1);
 	    if (UNLIKELY(has_headers < 0))
 		{
-		fprintf(stderr,
-		    "Warning: Ignored unrecognized value '%s' for boolean attribute "
-		    "'content_has_headers' of \"%s\" (defaulting to 1).\n",
+		mssWarn("SMTP",
+		    "Ignored unrecognized value '%s' for boolean attribute "
+		    "'content_has_headers' of \"%s\" (defaulting to 1).",
 		    objDataToStringTmp(attr->Type, value, 0), inf->EmailPath.String
 		);
 		has_headers = 1;
@@ -2623,31 +2738,14 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 /*** smtp_internal_CalcExpireDate - calculate the expire_date of an email
  *** that becomes Sent or Error now, which is expire_time seconds from now.
  *** A negative expire_time keeps the email indefinitely.
- *** @param rootAttributes The attributes of the SMTP node.
  *** @param expireDate Set to the expire date, if the email expires.
  *** @returns 1 if the email expires, 0 if it does not, or -1 on failure.
  ***/
 int
-smtp_internal_CalcExpireDate(pXHashTable rootAttributes, pDateTime expireDate)
+smtp_internal_CalcExpireDate(pDateTime expireDate)
     {
-    pSmtpAttribute expireTimeAttr = NULL;
-    int expireTime = SMTP_DEFAULT_EXPIRE_TIME;
+    int expireTime = SMTP_INF.ExpireTime;
 
-	/** Get the expire time. **/
-	expireTimeAttr = SMTP_ATTR(xhLookup(rootAttributes, "expire_time"));
-	ASSERTMAGIC(expireTimeAttr, MGK_SMTP_ATTRIBUTE);
-	if (expireTimeAttr != NULL)
-	    {
-	    if (UNLIKELY(expireTimeAttr->Type != DATA_T_INTEGER))
-		{
-		mssError(1, "SMTP",
-		    "Attribute 'expire_time' must be an integer (got %s).",
-		    objTypeToStr(expireTimeAttr->Type)
-		);
-		return -1;
-		}
-	    expireTime = expireTimeAttr->Value.Integer;
-	    }
 	if (expireTime < 0)
 	    return 0; /* It never expires. */
 
@@ -2677,7 +2775,7 @@ smtp_internal_SetExpireDate(pSmtpData inf)
     int expires;
 
 	/** Calculate and record the expire date. **/
-	expires = smtp_internal_CalcExpireDate(inf->RootAttributes, &expireDate);
+	expires = smtp_internal_CalcExpireDate(&expireDate);
 	if (expires <= 0)
 	    return expires;
 	pod.DateTime = &expireDate;
@@ -2702,9 +2800,9 @@ smtp_internal_SendEmail(pSmtpData inf)
     pSmtpAttribute envTo = NULL;
     pSmtpAttribute tryCountAttr = NULL;
     pSmtpAttribute firstTryAttr = NULL;
-    pSmtpAttribute spoolDir = NULL;
     pSmtpSpool spool = NULL;
     char* messageId = NULL;
+    char* relPath = NULL;
     DateTime noExpireDate;
     DateTime tryDate;
     pXString tryMsg = NULL;
@@ -2721,24 +2819,17 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    return -1; /* Skip error handler, which expects a valid object. */
 	    }
 	ASSERTMAGIC(inf, MGK_SMTP_DATA);
-	spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
-	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
-	if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
-	    {
-	    mssError(1, "SMTP", "Failed to send \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
-	    return -1; /* Skip error handler, which records a failed try. */
-	    }
 
 	/** Keep other threads and processes out until this try is recorded. **/
-	spool = smtp_internal_LockSpool(spoolDir->Value.String);
+	spool = smtp_internal_LockSpool();
 	if (UNLIKELY(spool == NULL))
 	    return -1; /* Skip error handler, which records a failed try. */
 
 	/*** Read the mail log first, so any lines from earlier tries are not
 	 *** discovered later and applied to this one after we've cleared it.
 	 ***/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, false) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	if (UNLIKELY(smtp_internal_UpdateFromLog(false) != 0))
+	    mssWarnError("SMTP", "Failed to update the emails in \"%s\" from the mail log.", spool->Path);
 
 	/** Refuse to send an email that is already Pending, even from another open. **/
 	pending = smtp_internal_IsPending(inf->EmailStructPath.String);
@@ -2814,8 +2905,22 @@ smtp_internal_SendEmail(pSmtpData inf)
 
 	/** Track the email by its Message-ID until Postfix queues it. **/
 	messageId = smtp_internal_GetString(inf->Attributes, "message_id");
-	if (spool->Loaded && messageId != NULL && UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, messageId, inf->Name) != 0))
-	    goto end;
+	if (spool->Loaded && messageId != NULL)
+	    {
+	    relPath = nmMalloc(PATH_MAX);
+	    if (UNLIKELY(relPath == NULL))
+		{
+		mssError(1, "SMTP", "Failed to allocate %d bytes to track email \"%s\".", PATH_MAX, inf->Name);
+		goto end;
+		}
+	    if (UNLIKELY(snprintf(relPath, PATH_MAX, "%s/%s", inf->SpoolSubdir, inf->Name) >= PATH_MAX))
+		{
+		mssError(1, "SMTP", "Failed to track email \"%s\": \"%s/%s\" is too long.", inf->Name, inf->SpoolSubdir, inf->Name);
+		goto end;
+		}
+	    if (UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, messageId, relPath) != 0))
+		goto end;
+	    }
 
 	/** Add the header attributes to the email. **/
 	if (UNLIKELY(smtp_internal_ApplyHeaders(inf) < 0))
@@ -2862,13 +2967,14 @@ smtp_internal_SendEmail(pSmtpData inf)
 	    /** Report a failure to record it, then restore the send error it cleared. **/
 	    if (UNLIKELY(recordFailed))
 		{
-		fprintf(stderr, "Warning: Failed to record the failed try of \"%s\"; it may stay Pending.\n", inf->Name);
+		mssWarnError("SMTP", "Failed to record the failed try of \"%s\"; it may stay Pending.", inf->Name);
 		mssError(1, "SMTP", "Failed to send \"%s\": %s", inf->Name, tryMsgStr);
 		}
 	    }
 	smtp_internal_UnlockSpool(spool);
 
 	if (tryMsg != NULL) xsFree(tryMsg);
+	if (relPath != NULL) nmFree(relPath, PATH_MAX);
 
 	return rval;
     }
@@ -2964,12 +3070,11 @@ smtp_internal_ReadResult(char* resultPath, char* header, pXString output)
  *** @param emailStruct The struct of the email, read from its file.
  *** @param resultPath The path of the sendmail result file.
  *** @param expired Whether Postfix gave up and returned the email.
- *** @param rootAttributes The attributes of the SMTP node.
  *** @param changed Set to whether emailStruct changed. (Optional)
  *** @returns 0 on success (including no change), or -1 on failure.
  ***/
 int
-smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, pXHashTable rootAttributes, bool* changed)
+smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expired, bool* changed)
     {
     char header[SMTP_RESULT_HEADER_LEN + 1];
     XString output;
@@ -3182,7 +3287,7 @@ smtp_internal_RefreshStatus(pStructInf emailStruct, char* resultPath, bool expir
 	/** Record the final status. **/
 	if (status != NULL)
 	    {
-	    expires = smtp_internal_CalcExpireDate(rootAttributes, &expireDate);
+	    expires = smtp_internal_CalcExpireDate(&expireDate);
 	    if (UNLIKELY(expires < 0))
 		goto end;
 	    pod.DateTime = &expireDate;
@@ -3606,6 +3711,80 @@ smtp_internal_UnloadSpool(pSmtpSpool spool)
     }
 
 
+/*** smtp_internal_LoadEmail - index an email by its queue ID if it is
+ *** Pending, or its Message-ID until it has one.  Matches the fn signature of
+ *** smtp_internal_ForEachEmail().
+ ***
+ *** @param relPath The email's path in the spool directory.
+ *** @param spool_v The spool directory (pSmtpSpool).
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+int
+smtp_internal_LoadEmail(char* relPath, void* spool_v)
+    {
+    pSmtpSpool spool = (pSmtpSpool)spool_v;
+    char* path = NULL;
+    pStructInf emailStruct = NULL;
+    char* status;
+    char* key;
+    int found;
+    int rval = -1;
+
+	/** Read the struct. **/
+	path = nmMalloc(PATH_MAX);
+	if (UNLIKELY(path == NULL))
+	    {
+	    mssError(1, "SMTP", "Failed to allocate %d bytes to track email \"%s\".", PATH_MAX, relPath);
+	    goto end;
+	    }
+	if (UNLIKELY(smtp_internal_SpoolPath(path, spool->Path, relPath, ".struct") != 0))
+	    {
+	    mssWarnError("SMTP", "Failed to track email \"%s\" in \"%s\", skipping.", relPath, spool->Path);
+	    rval = 0;
+	    goto end;
+	    }
+	found = smtp_internal_ReadStruct(path, &emailStruct);
+	if (UNLIKELY(found < 0))
+	    {
+	    mssError(0, "SMTP", "Failed to track email \"%s\".", path);
+	    goto end;
+	    }
+	if (found == 0)
+	    {
+	    rval = 0; /* No struct yet. */
+	    goto end;
+	    }
+
+	/** Index it if it is Pending. **/
+	status = smtp_internal_StructString(emailStruct, "status");
+	if (status != NULL && strcmp(status, "Pending") == 0)
+	    {
+	    key = smtp_internal_StructString(emailStruct, "queue_id");
+	    if (key != NULL && key[0] != '\0')
+		{
+		if (UNLIKELY(smtp_internal_IndexAdd(&spool->ByQueueID, key, relPath) != 0))
+		    goto end;
+		}
+	    else
+		{
+		key = smtp_internal_StructString(emailStruct, "message_id");
+		if (key != NULL && key[0] != '\0'
+		    && UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, key, relPath) != 0))
+		    goto end;
+		}
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end:
+	if (emailStruct != NULL) stFreeInf(emailStruct);
+	if (LIKELY(path != NULL)) nmFree(path, PATH_MAX);
+
+	return rval;
+    }
+
+
 /*** smtp_internal_LoadSpool - read the mail log cursor of a spool directory
  *** and index its Pending emails.
  ***
@@ -3619,12 +3798,6 @@ smtp_internal_LoadSpool(pSmtpSpool spool)
     FILE* cursorFile = NULL;
     unsigned long long dev, ino;
     long long offset;
-    DIR* dir = NULL;
-    struct dirent* entry;
-    pStructInf emailStruct = NULL;
-    char* status;
-    char* key;
-    int found;
     int rval = -1;
 
 	/** Read the cursor, which is missing until the mail log is first read. **/
@@ -3645,7 +3818,7 @@ smtp_internal_LoadSpool(pSmtpSpool spool)
 	    }
 	else if (fscanf(cursorFile, "%llu %llu %lld", &dev, &ino, &offset) != 3 || offset < 0)
 	    {
-	    fprintf(stderr, "Warning: Ignored invalid mail log cursor \"%s\"; reading the mail log from the start.\n", path);
+	    mssWarn("SMTP", "Ignored invalid mail log cursor \"%s\"; reading the mail log from the start.", path);
 	    }
 	else
 	    {
@@ -3655,67 +3828,11 @@ smtp_internal_LoadSpool(pSmtpSpool spool)
 	    spool->HasCursor = true;
 	    }
 
-	/** Open the spool directory. **/
-	dir = opendir(spool->Path);
-	if (UNLIKELY(dir == NULL))
+	/** Index each Pending email. **/
+	if (UNLIKELY(smtp_internal_ForEachEmail(smtp_internal_LoadEmail, spool) != 0))
 	    {
-	    mssErrorErrno(1, "SMTP", "Failed to open spool directory \"%s\" to track its emails.", spool->Path);
+	    mssError(0, "SMTP", "Failed to track the emails in spool directory \"%s\".", spool->Path);
 	    goto end;
-	    }
-
-	/** Index each Pending email by its queue ID, or its Message-ID until it has one. **/
-	while (1)
-	    {
-	    /** Get the next file. **/
-	    errno = 0;
-	    entry = readdir(dir);
-	    if (entry == NULL)
-		{
-		if (UNLIKELY(errno != 0))
-		    {
-		    mssErrorErrno(1, "SMTP", "Failed to read spool directory \"%s\".", spool->Path);
-		    goto end;
-		    }
-		break; /* No more files. */
-		}
-
-	    /** Read the struct of each email. **/
-	    if (!smtp_internal_IsEmail(entry->d_name))
-		continue;
-	    if (UNLIKELY(smtp_internal_SpoolPath(path, spool->Path, entry->d_name, ".struct") != 0))
-		{
-		mssWarnError("Failed to track email \"%s\" in \"%s\", skipping.", entry->d_name, spool->Path);
-		continue;
-		}
-	    found = smtp_internal_ReadStruct(path, &emailStruct);
-	    if (UNLIKELY(found < 0))
-		{
-		mssError(0, "SMTP", "Failed to track email \"%s\".", path);
-		goto end;
-		}
-	    if (found == 0)
-		continue; /* No struct yet. */
-
-	    /** Index it if it is Pending. **/
-	    status = smtp_internal_StructString(emailStruct, "status");
-	    if (status != NULL && strcmp(status, "Pending") == 0)
-		{
-		key = smtp_internal_StructString(emailStruct, "queue_id");
-		if (key != NULL && key[0] != '\0')
-		    {
-		    if (UNLIKELY(smtp_internal_IndexAdd(&spool->ByQueueID, key, entry->d_name) != 0))
-			goto end;
-		    }
-		else
-		    {
-		    key = smtp_internal_StructString(emailStruct, "message_id");
-		    if (key != NULL && key[0] != '\0'
-			&& UNLIKELY(smtp_internal_IndexAdd(&spool->ByMessageID, key, entry->d_name) != 0))
-			goto end;
-		    }
-		}
-	    stFreeInf(emailStruct);
-	    emailStruct = NULL;
 	    }
 
 	/** Success. **/
@@ -3727,8 +3844,6 @@ smtp_internal_LoadSpool(pSmtpSpool spool)
 	    smtp_internal_UnloadSpool(spool);
 
 	if (cursorFile != NULL) fclose(cursorFile);
-	if (dir != NULL) closedir(dir);
-	if (UNLIKELY(emailStruct != NULL)) stFreeInf(emailStruct);
 
 	return rval;
     }
@@ -3792,8 +3907,8 @@ smtp_internal_SaveCursor(pSmtpSpool spool)
     end:
 	if (UNLIKELY(cursorFile != NULL)) fclose(cursorFile);
 	if (UNLIKELY(tmpCreated && remove(tmpPath) != 0))
-	    fprintf(stderr,
-		"Warning: Failed to remove partial mail log cursor (%s): %s.\n",
+	    mssWarn("SMTP",
+		"Failed to remove partial mail log cursor (%s): %s.",
 		tmpPath, strerror(errno)
 	    );
 
@@ -3828,7 +3943,7 @@ smtp_internal_InitLogBatch(pSmtpLogBatch batch)
     {
     bool linesInitialized = false;
     bool queueIdsInitialized = false;
-    bool namesInitialized = false;
+    bool relPathsInitialized = false;
 
 	if (UNLIKELY(xaInit(&batch->Lines, 16) != 0))
 	    goto error;
@@ -3836,9 +3951,9 @@ smtp_internal_InitLogBatch(pSmtpLogBatch batch)
 	if (UNLIKELY(xhInit(&batch->QueueIDs, 257, 0) != 0))
 	    goto error;
 	queueIdsInitialized = true;
-	if (UNLIKELY(xhInit(&batch->ByName, 257, 0) != 0))
+	if (UNLIKELY(xhInit(&batch->ByRelPath, 257, 0) != 0))
 	    goto error;
-	namesInitialized = true;
+	relPathsInitialized = true;
 	if (UNLIKELY(xaInit(&batch->Emails, 16) != 0))
 	    goto error;
 
@@ -3848,7 +3963,7 @@ smtp_internal_InitLogBatch(pSmtpLogBatch batch)
 	mssError(1, "SMTP", "Failed to initialize the mail log updates.");
 	if (linesInitialized) xaDeInit(&batch->Lines);
 	if (queueIdsInitialized) xhDeInit(&batch->QueueIDs);
-	if (namesInitialized) xhDeInit(&batch->ByName);
+	if (relPathsInitialized) xhDeInit(&batch->ByRelPath);
 
 	return -1;
     }
@@ -3875,11 +3990,11 @@ smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
 	    email = (pSmtpLogEmail)batch->Emails.Items[i];
 	    ASSERTMAGIC(email, MGK_SMTP_LOG_EMAIL);
 	    if (email->Struct != NULL) stFreeInf(email->Struct);
-	    if (email->Name != NULL) nmSysFree(email->Name);
+	    if (email->RelPath != NULL) nmSysFree(email->RelPath);
 	    nmFree(email, sizeof(SmtpLogEmail));
 	    }
-	xhClear(&batch->ByName, NULL, NULL);
-	xhDeInit(&batch->ByName);
+	xhClear(&batch->ByRelPath, NULL, NULL);
+	xhDeInit(&batch->ByRelPath);
 	xaDeInit(&batch->Emails);
 
     return;
@@ -3893,14 +4008,14 @@ smtp_internal_FreeLogBatch(pSmtpLogBatch batch)
  *** @param spool The spool directory.
  *** @param batch The current batch, which holds the cache for the current mail
  *** 	log read batch.
- *** @param name The email file name.
+ *** @param relPath The email's path in the spool directory.
  *** @param ret Set to the email, or NULL if it no longer exists.
  *** @returns 0 if the email was found,
  ***          1 if it no longer exists,
  ***         -1 on failure.
  ***/
 int
-smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name, pSmtpLogEmail* ret)
+smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* relPath, pSmtpLogEmail* ret)
     {
     pSmtpLogEmail email = NULL;
     char structPath[PATH_MAX];
@@ -3909,7 +4024,7 @@ smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name, pSm
 
 	/** Find the email in cache. **/
 	*ret = NULL;
-	email = (pSmtpLogEmail)xhLookup(&batch->ByName, name);
+	email = (pSmtpLogEmail)xhLookup(&batch->ByRelPath, relPath);
 	ASSERTMAGIC(email, MGK_SMTP_LOG_EMAIL);
 	if (email != NULL)
 	    {
@@ -3921,18 +4036,18 @@ smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name, pSm
 	email = nmMalloc(sizeof(SmtpLogEmail));
 	if (UNLIKELY(email == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to allocate %zu bytes to update email \"%s\".", sizeof(SmtpLogEmail), name);
+	    mssError(1, "SMTP", "Failed to allocate %zu bytes to update email \"%s\".", sizeof(SmtpLogEmail), relPath);
 	    goto end;
 	    }
 	memset(email, 0, sizeof(SmtpLogEmail));
 	SETMAGIC(email, MGK_SMTP_LOG_EMAIL);
-	email->Name = nmSysStrdup(name);
-	if (UNLIKELY(email->Name == NULL))
+	email->RelPath = nmSysStrdup(relPath);
+	if (UNLIKELY(email->RelPath == NULL))
 	    {
-	    mssError(1, "SMTP", "Failed to copy email name \"%s\".", name);
+	    mssError(1, "SMTP", "Failed to copy email path \"%s\".", relPath);
 	    goto end;
 	    }
-	if (UNLIKELY(smtp_internal_SpoolPath(structPath, spool->Path, name, ".struct") != 0))
+	if (UNLIKELY(smtp_internal_SpoolPath(structPath, spool->Path, relPath, ".struct") != 0))
 	    goto end;
 	found = smtp_internal_ReadStruct(structPath, &email->Struct);
 	if (UNLIKELY(found < 0))
@@ -3946,12 +4061,12 @@ smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name, pSm
 	/** Add it to the batch. **/
 	if (UNLIKELY(xaAddItem(&batch->Emails, email) < 0))
 	    {
-	    mssError(1, "SMTP", "Failed to add email \"%s\" to the mail log updates.", name);
+	    mssError(1, "SMTP", "Failed to add email \"%s\" to the mail log updates.", relPath);
 	    goto end;
 	    }
-	if (UNLIKELY(xhAdd(&batch->ByName, email->Name, (char*)email) != 0))
+	if (UNLIKELY(xhAdd(&batch->ByRelPath, email->RelPath, (char*)email) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to index email \"%s\" in the mail log updates.", name);
+	    mssError(1, "SMTP", "Failed to index email \"%s\" in the mail log updates.", relPath);
 	    xaRemoveItem(&batch->Emails, batch->Emails.nItems - 1);
 	    goto end;
 	    }
@@ -3963,11 +4078,11 @@ smtp_internal_GetLogEmail(pSmtpSpool spool, pSmtpLogBatch batch, char* name, pSm
 
     end:
 	if (UNLIKELY(rval < 0))
-	    mssError(0, "SMTP", "Failed to read email \"%s\" in \"%s\" to update it from the mail log.", name, spool->Path);
+	    mssError(0, "SMTP", "Failed to read email \"%s\" in \"%s\" to update it from the mail log.", relPath, spool->Path);
 	if (email != NULL)
 	    {
 	    if (email->Struct != NULL) stFreeInf(email->Struct);
-	    if (email->Name != NULL) nmSysFree(email->Name);
+	    if (email->RelPath != NULL) nmSysFree(email->RelPath);
 	    nmFree(email, sizeof(SmtpLogEmail));
 	    }
 
@@ -4004,7 +4119,7 @@ smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
 	if (entry == NULL)
 	    return 0;
 	ASSERTMAGIC(entry, MGK_SMTP_INDEX_ENTRY);
-	if (UNLIKELY(smtp_internal_GetLogEmail(spool, batch, entry->Name, &email) < 0))
+	if (UNLIKELY(smtp_internal_GetLogEmail(spool, batch, entry->RelPath, &email) < 0))
 	    return -1;
 
 	/** Stop tracking emails that were deleted or are no longer Pending. **/
@@ -4030,7 +4145,7 @@ smtp_internal_ApplyLogLine(pSmtpSpool spool, pSmtpLogBatch batch, char* line)
 	    if (UNLIKELY(smtp_internal_StructSet(email->Struct, "queue_id", DATA_T_STRING, &pod) != 0))
 		return -1;
 	    email->Changed = true;
-	    if (UNLIKELY(smtp_internal_IndexAdd(&spool->ByQueueID, parsed.QueueID, email->Name) != 0))
+	    if (UNLIKELY(smtp_internal_IndexAdd(&spool->ByQueueID, parsed.QueueID, email->RelPath) != 0))
 		return -1;
 	    smtp_internal_IndexRemove(index, key);
 	    return 0;
@@ -4211,18 +4326,16 @@ smtp_internal_ReadLogLines(pSmtpSpool spool, pSmtpLogBatch batch, pFile log, cha
 
 
 /*** smtp_internal_UpdateFromLog - record the results in the lines added to the
- *** mail log since a spool directory last read it in the structs of its
+ *** mail log since the spool directory last read it in the structs of its
  *** Pending emails, then save where it stopped.  The spool directory stays
  *** locked throughout, so other uses of it wait for the read.
  ***
- *** @param spoolDir The spool directory.
- *** @param rootAttributes The attributes of the SMTP node.
  *** @param throttle Whether to skip the read if one started in the last
  ***   log_read_interval seconds.
  *** @returns 0 on success, or -1 on failure.
  ***/
 int
-smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool throttle)
+smtp_internal_UpdateFromLog(bool throttle)
     {
     pSmtpSpool spool = NULL;
     SmtpLogBatch batch;
@@ -4240,8 +4353,6 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool thr
     pFile rotatedLog = NULL;
     off_t offset;
     off_t rotatedOffset;
-    pSmtpAttribute intervalAttr = NULL;
-    int interval = SMTP_DEFAULT_LOG_READ_INTERVAL;
     bool sameLog;
     bool changed;
     bool applied = false;
@@ -4251,31 +4362,14 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool thr
     int rval = -1;
 
 	/** Throttle reads. **/
-	spool = smtp_internal_GetSpool(spoolDir);
+	spool = smtp_internal_GetSpool();
 	if (UNLIKELY(spool == NULL))
 	    return -1; /* Skip error handler, which unlocks the spool directory. */
-	if (throttle)
-	    {
-	    intervalAttr = SMTP_ATTR(xhLookup(rootAttributes, "log_read_interval"));
-	    ASSERTMAGIC(intervalAttr, MGK_SMTP_ATTRIBUTE);
-	    if (intervalAttr != NULL)
-		{
-		if (UNLIKELY(intervalAttr->Type != DATA_T_INTEGER))
-		    {
-		    mssError(1, "SMTP",
-			"Attribute 'log_read_interval' must be an integer (got %s).",
-			objTypeToStr(intervalAttr->Type)
-		    );
-		    return -1; /* Skip error handler, which unlocks the spool directory. */
-		    }
-		interval = intervalAttr->Value.Integer;
-		}
-	    if (time(NULL) - spool->LastRead < interval)
-		return 0; /* Skip error handler, which unlocks the spool directory. */
-	    }
+	if (throttle && time(NULL) - spool->LastRead < SMTP_INF.LogReadInterval)
+	    return 0; /* Skip error handler, which unlocks the spool directory. */
 
 	/** Keep other threads and processes out until the read is done. **/
-	spool = smtp_internal_LockSpool(spoolDir);
+	spool = smtp_internal_LockSpool();
 	if (UNLIKELY(spool == NULL))
 	    return -1; /* Skip error handler, which unlocks the spool directory. */
 	spool->LastRead = time(NULL);
@@ -4331,10 +4425,10 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool thr
 		goto end;
 	    if (found == 0)
 		{
-		fprintf(stderr,
-		    "Warning: Failed to find the rotated mail log where \"%s\" stopped reading, "
-		    "so results Postfix logged there and in later rotated logs are missed.\n",
-		    spoolDir
+		mssWarn("SMTP",
+		    "Failed to find the rotated mail log where \"%s\" stopped reading, "
+		    "so results Postfix logged there and in later rotated logs are missed.",
+		    spool->Path
 		);
 		}
 
@@ -4379,12 +4473,12 @@ smtp_internal_UpdateFromLog(char* spoolDir, pXHashTable rootAttributes, bool thr
 		continue;
 
 	    /** Update the status, then write the struct. **/
-	    if (UNLIKELY(smtp_internal_SpoolPath(resultPath, spoolDir, email->Name, ".result") != 0
-		|| smtp_internal_RefreshStatus(email->Struct, resultPath, email->Expired, rootAttributes, &changed) != 0
-		|| smtp_internal_SpoolPath(structPath, spoolDir, email->Name, ".struct") != 0
+	    if (UNLIKELY(smtp_internal_SpoolPath(resultPath, spool->Path, email->RelPath, ".result") != 0
+		|| smtp_internal_RefreshStatus(email->Struct, resultPath, email->Expired, &changed) != 0
+		|| smtp_internal_SpoolPath(structPath, spool->Path, email->RelPath, ".struct") != 0
 		|| smtp_internal_WriteStruct(structPath, email->Struct) != 0
 	    ))  {
-		mssError(0, "SMTP", "Failed to update email \"%s\" in \"%s\" from the mail log.", email->Name, spoolDir);
+		mssError(0, "SMTP", "Failed to update email \"%s\" in \"%s\" from the mail log.", email->RelPath, spool->Path);
 		goto end;
 		}
 
@@ -4690,8 +4784,8 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (gethostname(local_host_name, sizeof(local_host_name)) < 0)
 	    {
 	    strtcpy(local_host_name, "localhost.localdomain", sizeof(local_host_name));
-	    fprintf(stderr,
-		"Warning: gethostname() failed (%s); using \"%s\".\n",
+	    mssWarn("SMTP",
+		"gethostname() failed (%s); using \"%s\".",
 		strerror(errno), local_host_name
 	    );
 	    }
@@ -4874,13 +4968,13 @@ smtp_internal_CreateEmail(pSmtpData inf)
 	if (UNLIKELY(rval != 0))
 	    {
 	    if (emailCreated && remove(inf->EmailPath.String) != 0)
-		fprintf(stderr,
-		    "Warning: Failed to remove partial email file (%s): %s.\n",
+		mssWarn("SMTP",
+		    "Failed to remove partial email file (%s): %s.",
 		    inf->EmailPath.String, strerror(errno)
 		);
 	    if (structCreated && remove(inf->EmailStructPath.String) != 0)
-		fprintf(stderr,
-		    "Warning: Failed to remove partial email struct file (%s): %s.\n",
+		mssWarn("SMTP",
+		    "Failed to remove partial email struct file (%s): %s.",
 		    inf->EmailStructPath.String, strerror(errno)
 		);
 	    }
@@ -4896,6 +4990,8 @@ int
 smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
     {
     pSnNode node = NULL;
+    char* nodePath;
+    unsigned char nodePathHash[SHA256_DIGEST_LENGTH];
 
 	/** Edge cases. **/
 	if (UNLIKELY(inf == NULL))
@@ -4963,6 +5059,17 @@ smtp_internal_OpenGeneral(pSmtpData inf, char* usrtype)
 	/** Store the node object. **/
 	inf->Node = node;
 	inf->Node->OpenCnt++;
+
+	/** Name the node's emails directory by a hash of the node's path. **/
+	nodePath = obj_internal_PathPart(inf->Obj->Pathname, 0, inf->Obj->SubPtr);
+	if (UNLIKELY(nodePath == NULL))
+	    goto error;
+	if (UNLIKELY(SHA256((unsigned char*)nodePath, strlen(nodePath), nodePathHash) == NULL
+	    || cxssHexify(nodePathHash, SMTP_SUBDIR_HASH_LEN, inf->SpoolSubdir, sizeof(inf->SpoolSubdir)) < 0
+	))   {
+	    mssError(1, "SMTP", "Failed to hash node path \"%s\".", nodePath);
+	    goto error;
+	    }
 
 	char* name = obj_internal_PathPart(inf->Obj->Pathname, inf->Obj->SubPtr + inf->Obj->SubCnt - 2, 1);
 	if (UNLIKELY(name == NULL))
@@ -5041,6 +5148,7 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
     pFile emailStructureFile = NULL;
     pStructInf emailStructure = NULL;
     pSmtpSpool spool = NULL;
+    char* dirPath = NULL;
     char* status = NULL;
     bool changed;
     int rval = -1;
@@ -5076,35 +5184,27 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    goto end;
 	    }
 
-	/** Calculate the real path of the email file. **/
-	pSmtpAttribute spoolDir = SMTP_ATTR(xhLookup(inf->RootAttributes, "spool_dir"));
-	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
-	if (UNLIKELY(spoolDir == NULL))
-	    {
-	    mssError(1, "SMTP", "The SMTP node does not have the required 'spool_dir' attribute.");
+	/** Keep other threads and processes out until the email is loaded. **/
+	spool = smtp_internal_LockSpool();
+	if (UNLIKELY(spool == NULL))
 	    goto end;
-	    }
 
+	/** Calculate the real path of the email file. **/
 	if (UNLIKELY(xsCopy(
 	    &inf->EmailPath,
-	    spoolDir->Value.String,
-	    strlen(spoolDir->Value.String)
+	    spool->Path,
+	    strlen(spool->Path)
 	) != 0))
 	    {
 	    mssError(1, "SMTP", "Failed to copy spool directory path into the email path.");
 	    goto end;
 	    }
 
-	if (UNLIKELY(xsConcatPrintf(&inf->EmailPath, "/%s", inf->Name) < 0))
+	if (UNLIKELY(xsConcatPrintf(&inf->EmailPath, "/%s/%s", inf->SpoolSubdir, inf->Name) < 0))
 	    {
-	    mssError(1, "SMTP", "Failed to append email name \"%s\" to email path.", inf->Name);
+	    mssError(1, "SMTP", "Failed to append \"%s/%s\" to email path.", inf->SpoolSubdir, inf->Name);
 	    goto end;
 	    }
-
-	/** Keep other threads and processes out until the email is loaded. **/
-	spool = smtp_internal_LockSpool(spoolDir->Value.String);
-	if (UNLIKELY(spool == NULL))
-	    goto end;
 
 	/** Check that the email file exists. **/
 	fd = fdOpen(inf->EmailPath.String, 0, 0);
@@ -5114,7 +5214,28 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    if (inf->Obj->Mode & OBJ_O_CREAT)
 		{
 		/** Sweep the spool dir to clean up expired emails. **/
-		smtp_internal_SweepSpool(spoolDir->Value.String, inf->RootAttributes);
+		smtp_internal_SweepSpool();
+
+		/** Create the node's emails directory if it does not exist. **/
+		dirPath = nmMalloc(PATH_MAX);
+		if (UNLIKELY(dirPath == NULL))
+		    {
+		    mssError(1, "SMTP", "Failed to allocate %d bytes for the emails directory path.", PATH_MAX);
+		    goto end;
+		    }
+		if (UNLIKELY(snprintf(dirPath, PATH_MAX, "%s/%s", spool->Path, inf->SpoolSubdir) >= PATH_MAX))
+		    {
+		    mssError(1, "SMTP",
+			"Failed to build the emails directory path: \"%s/%s\" is too long.",
+			spool->Path, inf->SpoolSubdir
+		    );
+		    goto end;
+		    }
+		if (mkdir(dirPath, 0777) != 0 && UNLIKELY(errno != EEXIST))
+		    {
+		    mssErrorErrno(1, "SMTP", "Failed to create emails directory \"%s\".", dirPath);
+		    goto end;
+		    }
 
 		/** Create the requested email. **/
 		if (UNLIKELY(smtp_internal_CreateEmail(inf) < 0))
@@ -5184,8 +5305,8 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	    }
 
 	/** Record the results Postfix logged since the last read. **/
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->RootAttributes, true) != 0))
-	    mssWarnError("Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	if (UNLIKELY(smtp_internal_UpdateFromLog(true) != 0))
+	    mssWarnError("SMTP", "Failed to update the emails in \"%s\" from the mail log.", spool->Path);
 
 	/** Open the email structure file. **/
 	emailStructureFile = fdOpen(inf->EmailStructPath.String, O_RDONLY, inf->Mask);
@@ -5220,10 +5341,10 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 	status = smtp_internal_StructString(emailStructure, "status");
 	if (status != NULL && strcmp(status, "Pending") == 0)
 	    {
-	    if (UNLIKELY(smtp_internal_RefreshStatus(emailStructure, inf->ResultPath.String, false, inf->RootAttributes, &changed) != 0
+	    if (UNLIKELY(smtp_internal_RefreshStatus(emailStructure, inf->ResultPath.String, false, &changed) != 0
 		|| (changed && smtp_internal_WriteStruct(inf->EmailStructPath.String, emailStructure) != 0)
 	    ))  {
-		mssWarnError("Failed to update the send status of email \"%s\".", inf->Name);
+		mssWarnError("SMTP", "Failed to update the send status of email \"%s\".", inf->Name);
 		}
 	    else if (changed && UNLIKELY(stat(inf->EmailStructPath.String, &inf->StructInfo) != 0))
 		{
@@ -5244,14 +5365,20 @@ smtp_internal_OpenEml(pSmtpData inf, char* usrtype)
 
     end:
 	if (UNLIKELY(rval != 0))
-	    mssError(0, "SMTP",
-		"Failed to open email: %s.",
-		(inf->Name != NULL) ? inf->Name : "unknown name"
-	    );
+	    {
+	    if ((inf->Obj->Mode & OBJ_O_AUTONAME) && inf->Name != NULL && strcmp(inf->Name, "*") == 0)
+		mssError(0, "SMTP", "Failed to open a new email.");
+	    else
+		mssError(0, "SMTP",
+		    "Failed to open email: %s.",
+		    (inf->Name != NULL) ? inf->Name : "unknown name"
+		);
+	    }
 
 	if (UNLIKELY(fd != NULL)) fdClose(fd, 0);
 	if (LIKELY(emailStructureFile != NULL)) fdClose(emailStructureFile, 0);
 	if (LIKELY(emailStructure != NULL)) stFreeInf(emailStructure);
+	if (dirPath != NULL) nmFree(dirPath, PATH_MAX);
 	if (spool != NULL) smtp_internal_UnlockSpool(spool);
 
 	return rval;
@@ -5526,7 +5653,7 @@ smtpDelete(pObject obj, pObjTrxTree* oxt)
 	else if (inf->Type == SMTP_T_EML)
 	    {
 	    /** Keep other threads and processes out until the email is deleted. **/
-	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    spool = smtp_internal_LockSpool();
 	    if (UNLIKELY(spool == NULL))
 		goto end;
 
@@ -5591,7 +5718,7 @@ smtpRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTr
 	    }
 
 	/** Keep other threads and processes from changing the email while it is read. **/
-	spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	spool = smtp_internal_LockSpool();
 	if (UNLIKELY(spool == NULL))
 	    return -1;
 
@@ -5640,7 +5767,7 @@ smtpWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	    }
 
 	/** Keep other threads and processes out until the content is written. **/
-	spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	spool = smtp_internal_LockSpool();
 	if (UNLIKELY(spool == NULL))
 	    return -1;
 
@@ -5677,8 +5804,8 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pSmtpData inf = SMTP(inf_v);
     pSmtpQueryData qy = NULL;
-    pSmtpAttribute attr = NULL;
-    char* spoolPath = NULL;
+    pSmtpSpool spool = NULL;
+    char* dirPath = NULL;
 
 	/** Edge cases. **/
 	if (UNLIKELY(inf == NULL))
@@ -5704,27 +5831,35 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	if (inf->Type == SMTP_T_ROOT)
 	    {
 	    /** Find and open the spool directory path. **/
-	    attr = (pSmtpAttribute)xhLookup(inf->Attributes, "spool_dir");
-	    ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
-	    if (UNLIKELY(attr == NULL))
-		{
-		mssError(1, "SMTP", "The SMTP node is missing the required 'spool_dir' attribute.");
+	    spool = smtp_internal_GetSpool();
+	    if (UNLIKELY(spool == NULL))
 		goto error;
-		}
-	    spoolPath = attr->Value.String;
 
 	    /** Sweep the spool dir to clean up expired emails. **/
-	    smtp_internal_SweepSpool(spoolPath, inf->Attributes);
+	    smtp_internal_SweepSpool();
 
-	    qy->Directory = opendir(spoolPath);
-	    if (UNLIKELY(qy->Directory == NULL))
+	    /** Open the node's emails directory, which is missing until its first email. **/
+	    dirPath = nmMalloc(PATH_MAX);
+	    if (UNLIKELY(dirPath == NULL))
+		{
+		mssError(1, "SMTP", "Failed to allocate %d bytes for the emails directory path.", PATH_MAX);
+		goto error;
+		}
+	    if (UNLIKELY(snprintf(dirPath, PATH_MAX, "%s/%s", spool->Path, inf->SpoolSubdir) >= PATH_MAX))
+		{
+		mssError(1, "SMTP", "Failed to build the emails directory path: \"%s/%s\" is too long.", spool->Path, inf->SpoolSubdir);
+		goto error;
+		}
+	    qy->Directory = opendir(dirPath);
+	    if (UNLIKELY(qy->Directory == NULL && errno != ENOENT))
 		{
 		mssErrorErrno(1, "SMTP",
-		    "Failed to open spool directory (%s) for query",
-		    spoolPath
+		    "Failed to open emails directory (%s) for query",
+		    dirPath
 		);
 		goto error;
 		}
+	    nmFree(dirPath, PATH_MAX);
 
 	    return qy;
 	    }
@@ -5743,6 +5878,7 @@ smtpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	);
 
 	if (qy != NULL) smtpQueryClose(qy, NULL);
+	if (dirPath != NULL) nmFree(dirPath, PATH_MAX);
 
 	return NULL;
     }
@@ -5779,6 +5915,10 @@ smtpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 
 	if (qy->Data->Type == SMTP_T_ROOT)
 	    {
+	    /** End the query of a node without an emails directory. **/
+	    if (qy->Directory == NULL)
+		return NULL;
+
 	    /** Infinite while loops are better than GOTOs... probably. **/
 	    while (1)
 		{
@@ -5906,7 +6046,7 @@ smtpGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Get the type of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -6016,7 +6156,7 @@ smtpGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Get the value of the stored attribute. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, attrname));
@@ -6100,7 +6240,7 @@ smtpGetFirstAttr(void* inf_v, pObjTrxTree oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	inf->CurAttr = 0;
 
@@ -6253,7 +6393,7 @@ smtp_internal_SetAttrValue(void* inf_v, char* attrname, int datatype, pObjData v
 	else if (inf->Type == SMTP_T_EML)
 	    {
 	    /** Keep other threads and processes out until the struct is written. **/
-	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    spool = smtp_internal_LockSpool();
 	    if (UNLIKELY(spool == NULL))
 		goto end;
 
@@ -6367,7 +6507,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Refuse to send an email that cannot be tracked. **/
 	if (UNLIKELY(inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") == 0
@@ -6387,7 +6527,7 @@ smtpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	/** Refuse to change a Pending email.  Sending checks is_ready itself. **/
 	if (inf != NULL && inf->Type == SMTP_T_EML && strcmp(attrname, "is_ready") != 0)
 	    {
-	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    spool = smtp_internal_LockSpool();
 	    if (UNLIKELY(spool == NULL))
 		return -1;
 	    pending = smtp_internal_IsPending(inf->EmailStructPath.String);
@@ -6552,7 +6692,7 @@ smtp_internal_AddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxT
 	else if (inf->Type == SMTP_T_EML)
 	    {
 	    /** Keep other threads and processes out until the struct is written. **/
-	    spool = smtp_internal_LockSpool(smtp_internal_GetString(inf->RootAttributes, "spool_dir"));
+	    spool = smtp_internal_LockSpool();
 	    if (UNLIKELY(spool == NULL))
 		goto end;
 
@@ -6666,7 +6806,7 @@ smtpAddAttr(void* inf_v, char* attrname, int type, void* val, pObjTrxTree oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (inf != NULL && UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
     return smtp_internal_AddAttr(inf_v, attrname, type, val, oxt);
     }
@@ -6724,7 +6864,6 @@ int
 smtpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt)
     {
     pSmtpData inf = SMTP(inf_v);
-    pSmtpAttribute spoolDir = NULL;
 
 	/** Edge cases. **/
 	if (UNLIKELY(inf == NULL || methodname == NULL))
@@ -6740,16 +6879,9 @@ smtpExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt
 	    }
 
 	/** Read the mail log now. **/
-	spoolDir = SMTP_ATTR(xhLookup(inf->Attributes, "spool_dir"));
-	ASSERTMAGIC(spoolDir, MGK_SMTP_ATTRIBUTE);
-	if (UNLIKELY(spoolDir == NULL || spoolDir->Type != DATA_T_STRING))
+	if (UNLIKELY(smtp_internal_UpdateFromLog(false) != 0))
 	    {
-	    mssError(1, "SMTP", "Failed to read the mail log for \"%s\": the SMTP node does not have a 'spool_dir' string.", inf->Name);
-	    return -1;
-	    }
-	if (UNLIKELY(smtp_internal_UpdateFromLog(spoolDir->Value.String, inf->Attributes, false) != 0))
-	    {
-	    mssError(0, "SMTP", "Failed to update the emails in \"%s\" from the mail log.", spoolDir->Value.String);
+	    mssError(0, "SMTP", "Failed to update the emails in \"%s\" from the mail log.", SMTP_INF.SpoolDir);
 	    return -1;
 	    }
 
@@ -6848,16 +6980,12 @@ smtpPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	{ "send_method",                  "Send Method",              16, .EnumList = sendMethods },
 	{ "server",                       "Server",                   32 },
 	{ "port",                         "Port",                      6, .MinValue = "1", .MaxValue = "65535" },
-	{ "spool_dir",                    "Spool Directory",          64 },
 	{ "log_dir",                      "Log Directory",            64 },
 	{ "log_date_attr",                "Log Date Attribute",       32 },
 	{ "log_msgid_attr",               "Log Message-ID Attribute", 32 },
 	{ "log_info_attr",                "Log Info Attribute",       32 },
 	{ "ratelimit_time",               "Rate Limit Time",           8, .MinValue = "0" },
 	{ "domlimit_time",                "Domain Limit Time",         8, .MinValue = "0" },
-	{ "expire_time",                  "Expire Time",              10 },
-	{ "log_read_interval",            "Log Read Interval",        10, .MinValue = "0" },
-	{ "sweep_interval",               "Sweep Interval",           10, .MinValue = "0" },
 	{ "content_has_headers",          "Content Has Headers",       2, .MinValue = "0", .MaxValue = "1" },
 	{ NULL }
 	};
@@ -6926,7 +7054,7 @@ smtpPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
 
 	/** Reload the attributes if the struct was replaced. **/
 	if (UNLIKELY(smtp_internal_ReloadAttributes(inf, true) != 0))
-	    mssWarnError("Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
+	    mssWarnError("SMTP", "Failed to reload the attributes of email \"%s\", using the loaded ones.", inf->Name);
 
 	/** Find the attribute. **/
 	for (i = 0; attrHints == NULL && commonHints[i].Name != NULL; i++)
@@ -7087,7 +7215,16 @@ int
 smtpInitialize()
     {
     pObjDriver drv = NULL;
+    char* spoolDir = NULL;
     bool typesInitialized = false;
+
+	/** Require a spool directory. **/
+	stAttrValue(stLookup(CxGlobals.ParsedConfig, "spool_dir"), NULL, &spoolDir, 0);
+	if (UNLIKELY(spoolDir == NULL || spoolDir[0] == '\0'))
+	    {
+	    mssError(1, "SMTP", "Failed to find the spool directory: centrallix.conf does not set a 'spool_dir' string.");
+	    goto error;
+	    }
 
 	/** Allocate the driver **/
 	drv = (pObjDriver)nmMalloc(sizeof(ObjDriver));

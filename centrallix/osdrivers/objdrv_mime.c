@@ -159,7 +159,7 @@ mimeOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
     /** Note whether the message is an SMTP email. **/
     outerTypeRval = objGetAttrValue(obj->Prev, "outer_type", DATA_T_STRING, POD(&ptr));
     if (outerTypeRval < 0)
-	mssWarnError("Failed to get the type of \"%s\", so its SMTP attributes will not pass through.", objFilePath(obj->Prev));
+	mssWarnError("MIME", "Failed to get the type of \"%s\", so its SMTP attributes will not pass through.", objFilePath(obj->Prev));
     else if (outerTypeRval == 0 && !strcmp(ptr, "system/smtp-message"))
 	inf->SmtpEmail = 1;
 

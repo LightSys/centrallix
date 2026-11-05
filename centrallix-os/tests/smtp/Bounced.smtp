@@ -1,6 +1,0 @@
-$Version=2$
-Bounced "system/smtp"
-    {
-    spool_dir = "/usr/local/src/cx-git/centrallix-os/tests/smtp/Bounced";
-    expire_time = -1;
-    }

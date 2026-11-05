@@ -1,0 +1,14 @@
+$Version=2$
+"Other.eml" "system/structure"
+    {
+    envelope_from =  "devel@localhost" ;
+    status =  "Sent" ;
+    is_ready = 1;
+    try_count = 1;
+    last_try_status =  "None" ;
+    last_try_msg =  "" ;
+    message_id =  "other@smtp.test" ;
+    expire_date =  "01 Jan 1900 00:00" ;
+    first_try_date =  "01 Jan 1900 00:00" ;
+    last_try_date =  "01 Jan 1900 00:00" ;
+    }

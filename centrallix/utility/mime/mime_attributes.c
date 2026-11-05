@@ -169,11 +169,10 @@ libmime_ParseAttr(pMimeHeader this, char* name, char* data, int attrSeekStart, i
 		}
 	    else
 		{
-		fprintf(stderr,
-		    "Warning: Skipping parameter \"%s\" of MIME header \"%s\" that could not be stored.\n",
+		mssWarnError("MIME",
+		    "Skipping parameter \"%s\" of MIME header \"%s\" that could not be stored.",
 		    paramName, name
 		);
-		mssClearError();
 		}
 	    }
 
@@ -862,7 +861,7 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	/** Allocate a new string array. **/
 	const size_t oldVecSize = stringVec->nStrings * sizeof(char*);
 	const size_t newVecSize = oldVecSize + (1 * sizeof(char*));
-	newVec = (char**)nmMalloc(newVecSize);
+	newVec = (char**)nmSysMalloc(newVecSize);
 	if (!newVec)
 	    {
 	    return -1;
@@ -879,12 +878,12 @@ libmime_AddStringArrayAttr(pMimeHeader this, char* attr, char* param, char* data
 	newVec[i] = nmSysStrdup(data);
 	if (!newVec[i])
 	    {
-	    nmFree(newVec, newVecSize);
+	    nmSysFree(newVec);
 	    return -1;
 	    }
 
 	/** Replace the old vector. **/
-	nmFree(stringVec->Strings, oldVecSize);
+	if (stringVec->Strings != NULL) nmSysFree(stringVec->Strings);
 	stringVec->Strings = newVec;
 	stringVec->nStrings++;
 
@@ -923,7 +922,7 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	/** Allocate a new string vector. **/
 	const size_t oldVecSize = stringVec->nStrings * sizeof(char*);
 	const size_t newVecSize = oldVecSize + (dataList->nItems * sizeof(char*));
-	newVec = (char**)nmMalloc(newVecSize);
+	newVec = (char**)nmSysMalloc(newVecSize);
 	if (!newVec)
 	    {
 	    return -1;
@@ -943,13 +942,13 @@ libmime_AppendStringArrayAttr(pMimeHeader this, char* attr, char* param, pXArray
 	    if (!newVec[i+j])
 		{
 		while (j-- > 0) nmSysFree(newVec[i+j]);
-		nmFree(newVec, newVecSize);
+		nmSysFree(newVec);
 		return -1;
 		}
 	    }
 
 	/** Replace the old string vector with the new one. **/
-	nmFree(stringVec->Strings, oldVecSize);
+	if (stringVec->Strings != NULL) nmSysFree(stringVec->Strings);
 	stringVec->Strings = newVec;
 	stringVec->nStrings += dataList->nItems;
 
@@ -1108,7 +1107,7 @@ libmime_ClearSpecials(pTObjData ptod)
 		    }
 
 		/** Deallocate the StringVec string array and the StringVec. **/
-		nmFree(stringVec->Strings, sizeof(char*)*stringVec->nStrings);
+		if (stringVec->Strings != NULL) nmSysFree(stringVec->Strings);
 		nmFree(stringVec, sizeof(StringVec));
 		ptod->Data.StringVec = NULL;
 		}

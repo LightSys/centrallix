@@ -358,7 +358,7 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
 
 	    /** Say so when the cap cut the content short **/
 	    if (bytes >= maxbytes && objRead(this, readbuf, 1, 0, 0) > 0)
-		fprintf(stderr, "Warning: objcontent of \"%s\" truncated to %d bytes (textsize).\n", obj_internal_PathPart(this->Pathname, 0, 0), maxbytes);
+		mssWarn("OSML", "objcontent of \"%s\" truncated to %d bytes (textsize).", obj_internal_PathPart(this->Pathname, 0, 0), maxbytes);
 
 	    val->String = this->ContentPtr->String;
 	    is_system_attr = 1;

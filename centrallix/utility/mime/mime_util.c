@@ -70,7 +70,7 @@ libmime_DeallocateHeader(pMimeHeader msg)
 
 	if (thExcessiveRecursion())
 	    {
-	    fprintf(stderr, "Warning: Failed to free a MIME header: resource exhaustion occurred.\n");
+	    mssWarn("MIME", "Failed to free a MIME header: resource exhaustion occurred.");
 	    return;
 	    }
 
@@ -212,8 +212,8 @@ libmime_FreeAddress(pEmailAddr addr)
 
 	if (thExcessiveRecursion())
 	    {
-	    fprintf(stderr,
-		"Warning: Failed to free email address \"%s\": resource exhaustion occurred.\n",
+	    mssWarn("MIME",
+		"Failed to free email address \"%s\": resource exhaustion occurred.",
 		addr->AddressLine
 	    );
 	    return;

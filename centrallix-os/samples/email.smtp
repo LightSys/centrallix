@@ -1,5 +1,4 @@
 $Version=2$
 email "system/smtp"
     {
-    spool_dir = "/var/spool/centrallix-smtp";
     }

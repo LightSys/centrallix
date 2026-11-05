@@ -1,6 +1,4 @@
 ##NAME Expired in the queue
-##UNDO /tests/smtp/Expired/Expired.struct
-##UNDO /tests/smtp/Expired/.mail_log_cursor
-##UNDO /tests/smtp/Expired/.spool_lock
+##UNDO /tests/spool/smtp
 
-query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/Expired.smtp
+query select :name, :status, :last_try_status, :last_try_msg from /tests/smtp/emails.smtp where :name = 'Expired.eml'

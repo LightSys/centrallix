@@ -579,6 +579,74 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
     }
 
 
+/*** mss_internal_StringErrorList - appends a session's error stack (but not
+ *** its recent warnings) to a string, newest error first.
+ ***
+ *** @param s The session whose errors are appended.
+ *** @param str The string to append to.
+ ***/
+static void
+mss_internal_StringErrorList(pMtSession s, pXString str)
+    {
+	xsConcatPrintf(str, "ERROR - Session By Username [%s]\r\n", s->UserName);
+	for (int i = s->ErrList.nItems - 1; i >= 0; i--)
+	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
+    }
+
+
+/*** mss_i_warn_error - handles errors with a warning that includes the error
+ *** stack (unless the errors were logged when raised), then clears them.
+ *** Use the mssWarnError() macro to call this function.
+ ***
+ *** Useful for handling errors in unimportant side-work (like cleaning up
+ *** temp files) that doesn't need to cause the main work to fail.
+ ***
+ *** @param module The module code of the module issuing the warning.
+ *** @param file The file where the function was called.
+ *** @param line The line number where the function was called.
+ *** @param message The warning, as a printf() format.
+ *** @param ... Variables matching format specifiers in the format.
+ ***/
+void
+mss_i_warn_error(char* module, char* file, int line, char* message, ...)
+    {
+    XString str; str.String = NULL;
+    va_list args;
+
+	/** Format the warning. **/
+	if (warnFail(xsInit(&str)) != 0) goto fallback;
+	va_start(args, message);
+	int rval = xsGenPrintf_va(xsWrite, &str, NULL, NULL, message, args);
+	va_end(args);
+	if (warnNeg(rval) < 0) goto fallback;
+
+	/** Append the errors, unless mss_i_error() already logged them. **/
+	pMtSession s = (thCurrent() != NULL) ? thGetParam(NULL, "mss") : NULL;
+	if (s != NULL && !MSS.LogAllErrors && s->ErrList.nItems > 0)
+	    {
+	    xsConcatenate(&str, "\r\n", 2);
+	    mss_internal_StringErrorList(s, &str);
+	    xsRTrim(&str);
+	    }
+
+	/** Log the warning. **/
+	mss_i_warn(module, file, line, "%s", xsString(&str));
+	goto end;
+
+    fallback:
+	/** Warn with the unformatted message. **/
+	mss_i_warn(module, file, line, "%s", message);
+
+    end:
+	/** Clean up. **/
+	if (LIKELY(str.String != NULL))
+	    warnFail(xsDeInit(&str));
+	mssClearError();
+
+	return;
+    }
+
+
 /*** mss_i_error - Displays error text to the user (but no stack trace).
  *** Does not exit the program, allowing the calling function to fail,
  *** creating a cascade of error messages which provides useful info.
@@ -772,47 +840,6 @@ mssPrintError(pFile fd)
     }
 
 
-/*** mssWarnError - handles errors with a warning including the error stack
- *** (unless the errors were logged when raised).
- ***
- *** Useful for handling errors in unimportant side-work (like cleaning up
- *** temp files) that doesn't need to cause the main work to fail.
- ***
- *** @param message The warning, as a printf() format.
- ***/
-void
-mssWarnError(char* message, ...)
-    {
-    va_list args;
-    XString str; str.String = NULL;
-
-	/** Print the warning. **/
-	fprintf(stderr, "Warning: ");
-	va_start(args, message);
-	vfprintf(stderr, message, args);
-	va_end(args);
-	fprintf(stderr, "\n");
-
-	/** Print the errors, unless mss_i_error() already logged them. **/
-	pMtSession s = thGetParam(NULL, "mss");
-	if (s != NULL && !MSS.LogAllErrors && s->ErrList.nItems > 0)
-	    {
-	    if (warnFail(xsInit(&str)) != 0 || warnFail(mssStringError(&str)) != 0)
-		fprintf(stderr, "Warning: Failed to print session errors.\n");
-	    else
-		fprintf(stderr, "%s", xsString(&str));
-	    }
-
-	/** Clean up. **/
-	if (LIKELY(str.String != NULL))
-	    warnFail(xsDeInit(&str));
-	mssClearError();
-	warnFail(fflush(stderr));
-
-	return;
-    }
-
-
 /*** mssStringError - copies the current error information into a newly
  *** allocated string.
  ***/
@@ -828,11 +855,7 @@ mssStringError(pXString str)
 	if (!s) return -1;
 
 	/** Print the error stack. **/
-	xsConcatPrintf(str, "ERROR - Session By Username [%s]\r\n", s->UserName);
-	for(i=s->ErrList.nItems-1;i>=0;i--)
-	    {
-	    xsConcatPrintf(str, "--- %s\r\n", (char*)(s->ErrList.Items[i]));
-	    }
+	mss_internal_StringErrorList(s, str);
 
 	/** Print recent warnings, newest first to match the error stack. **/
 	n_warnings = xrqCount(&s->WarnList);
