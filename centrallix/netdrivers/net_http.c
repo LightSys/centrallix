@@ -2123,6 +2123,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		wgtr_params.AppMinHeight = client_h;
 		wgtr_params.AppMaxWidth = client_w;
 		wgtr_params.AppMinWidth = client_w;
+    
+		/** Watchdog timer for applications **/
+		wgtr_params.AppWatchdogTime = NHT.AppWatchdogTime;
 
 		/** Check for gzip encoding **/
 		gzip=0;
@@ -2199,9 +2202,9 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		if (!strcmp(ptr, "widget/page"))
 		    {
 		    if (!group)
-			conn->AppGroup = group = nht_i_AllocAppGroup(url_inf->StrVal, nsess);
+			conn->AppGroup = group = nht_i_AllocAppGroup(url_inf->StrVal, nsess, NHT.AppWatchdogTime);
 		    if (group && !app)
-			conn->App = app = nht_i_AllocApp(url_inf->StrVal, group);
+			conn->App = app = nht_i_AllocApp(url_inf->StrVal, group, NHT.AppWatchdogTime);
 		    }
 
 		/** Build the akey - CSRF prevention **/
@@ -2335,6 +2338,8 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	/** Retrieve a new session/group/app key? **/
 	else if (!strcmp(find_inf->StrVal, "appinit"))
 	    {
+	    int grp_config_time;
+
 	    find_inf = stLookup_ne(url_inf, "cx__groupname");
 	    if (!find_inf || find_inf->StrVal[0] == '/')
 		kname = "API Client";
@@ -2343,9 +2348,13 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 
 	    /** Try to join an existing app group, if specified **/
 	    if (!group)
-		conn->AppGroup = group = nht_i_AllocAppGroup(kname, nsess);
+		conn->AppGroup = group = nht_i_AllocAppGroup(kname, nsess, NHT.APIWatchdogTime);
 	    if (group)
 		{
+		grp_config_time = nht_i_WatchdogConfigTime(group->WatchdogTimer);
+		if (grp_config_time < 0)
+		    grp_config_time = NHT.APIWatchdogTime * 1000;
+
 		find_inf = stLookup_ne(url_inf, "cx__appname");
 		if (!find_inf || find_inf->StrVal[0] == '/')
 		    kname = "API Client";
@@ -2353,7 +2362,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    kname = find_inf->StrVal;
 
 		/** Set up a new active app **/
-		conn->App = app = nht_i_AllocApp(kname, group);
+		conn->App = app = nht_i_AllocApp(kname, group, grp_config_time / 1000);
 		if (app)
 		    {
 		    /** We want to give the api client information about our
@@ -2378,7 +2387,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    nht_i_WriteResponse(conn, 200, "OK", NULL);
 		    nht_i_QPrintfConn(conn, 0,
 			    "{\"akey\":\"%STR&JSONSTR-%STR&JSONSTR-%STR&JSONSTR\", \"watchdogtimer\":%INT, \"servertime\":\"%STR&JSONSTR\", \"servertime_notz\":\"%STR&JSONSTR\"}\r\n",
-			    nsess->SKey, group->GKey, app->AKey, NHT.WatchdogTime, tbuf, tbuf2
+			    nsess->SKey, group->GKey, app->AKey, grp_config_time / 1000, tbuf, tbuf2
 			    );
 		    }
 		}
@@ -3201,7 +3210,7 @@ nht_i_CheckAccessLog()
 	    NHT.AccessLogFD = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 	    if (!NHT.AccessLogFD)
 		{
-		mssErrorErrno(1,"NHT","Could not open access_log file '%s'", NHT.AccessLogFile);
+		mssWarn("NHT", "Could not open access_log file '%s' (%s).", NHT.AccessLogFile, strerror(errno));
 		}
 	    }
 	else
@@ -3213,7 +3222,7 @@ nht_i_CheckAccessLog()
 		test_fd = fdOpen(NHT.AccessLogFile, O_CREAT | O_WRONLY | O_APPEND, 0600);
 		if (!test_fd)
 		    {
-		    mssErrorErrno(1,"NHT","Could not reopen access_log file '%s'", NHT.AccessLogFile);
+		    mssWarn("NHT", "Could not reopen access_log file '%s' (%s).", NHT.AccessLogFile, strerror(errno));
 		    }
 		else
 		    {
@@ -3240,6 +3249,7 @@ nhtInitialize()
     pStructInf my_config;
     char* strval;
     int i;
+    int t;
 
     	/** Initialize the random number generator. **/
 	srand48(time(NULL));
@@ -3257,7 +3267,8 @@ nhtInitialize()
 		}
 	    else
 		{
-		mssError(1, "NHT", "Warning: Could not initialize nonce/hash keystream; X-Nonce headers will not be emitted");
+		mssWarn("NHT", "Could not initialize nonce/hash keystream; X-Nonce headers will not be emitted.");
+		mssClearError();
 		}
 	    }
 
@@ -3271,6 +3282,8 @@ nhtInitialize()
 	xhnInitContext(&(NHT.TimerHctx));
 	xaInit(&(NHT.Timers),512);
 	NHT.WatchdogTime = 180;
+	NHT.AppWatchdogTime = 180;
+	NHT.APIWatchdogTime = 180;
 	NHT.InactivityTime = 1800;
 	NHT.CondenseJS = 1; /* not yet implemented */
 	NHT.UserSessionLimit = 100;
@@ -3350,7 +3363,7 @@ nhtInitialize()
 		    else if (!strcasecmp(strval, "web-form"))
 			NHT.AuthMethods |= NHT_AUTH_WEBFORM;
 		    else
-			mssError(1, "NHT", "Warning: invalid auth method '%s'", strval);
+			mssWarn("NHT", "invalid auth method '%s'.", strval);
 		    }
 		else
 		    {
@@ -3387,7 +3400,7 @@ nhtInitialize()
 	    stAttrValue(stLookup(my_config, "session_watchdog_timer"), &(NHT.WatchdogTime), NULL, 0);
 	    if (NHT.WatchdogTime <= 0 || NHT.WatchdogTime > 200000)
 		{
-		mssError(1, "NHT", "Warning: session_watchdog_timer (%d) must be > 0 and <= 200000, reverting to default (180).", NHT.WatchdogTime);
+		mssWarn("NHT", "session_watchdog_timer (%d) must be > 0 and <= 200000, reverting to default (180).", NHT.WatchdogTime);
 		NHT.WatchdogTime = 180;
 		}
 	    stAttrValue(stLookup(my_config, "session_inactivity_timer"), &(NHT.InactivityTime), NULL, 0);
@@ -3399,15 +3412,42 @@ nhtInitialize()
 		    i = 200000;
 		    NHT.WatchdogTime = 199999;
 		    }
-		mssError(1, "NHT", "Warning: session_inactivity_timer (%d) must be > watchdog (%d) and <= 200000, reverting to %d.", NHT.InactivityTime, NHT.WatchdogTime, i);
+		mssWarn("NHT", "session_inactivity_timer (%d) must be > watchdog (%d) and <= 200000, reverting to %d.", NHT.InactivityTime, NHT.WatchdogTime, i);
 		NHT.InactivityTime = i;
+		}
+	    if (stAttrValue(stLookup(my_config, "app_watchdog_timer"), &(NHT.AppWatchdogTime), NULL, 0) < 0)
+		{
+		NHT.AppWatchdogTime = NHT.WatchdogTime;
+		mssError(1, "NHT", "Warning: app_watchdog_timer not specified, defaulting to session_watchdog_timer's value (%d).", NHT.WatchdogTime);
+		}
+	    if (NHT.AppWatchdogTime < 120 || NHT.AppWatchdogTime > 600 || NHT.AppWatchdogTime > NHT.WatchdogTime)
+		{
+		t = NHT.AppWatchdogTime;
+		if (t < 120) t = 120;
+		if (t > 600) t = 600;
+		if (t > NHT.WatchdogTime) t = NHT.WatchdogTime;
+		mssError(1, "NHT", "Warning: app_watchdog_timer (%d) must be >= 120 and <= 600 and also <= session_watchdog_timer, reverting to %d.", NHT.AppWatchdogTime, t);
+		NHT.AppWatchdogTime = t;
+		}
+	    if (stAttrValue(stLookup(my_config, "api_watchdog_timer"), &(NHT.APIWatchdogTime), NULL, 0) < 0)
+		{
+		NHT.APIWatchdogTime = NHT.WatchdogTime;
+		mssError(1, "NHT", "Warning: api_watchdog_timer not specified, defaulting to session_watchdog_timer's value (%d).", NHT.WatchdogTime);
+		}
+	    if (NHT.APIWatchdogTime < 120 || NHT.APIWatchdogTime > NHT.WatchdogTime)
+		{
+		t = NHT.APIWatchdogTime;
+		if (t < 120) t = 120;
+		if (t > NHT.WatchdogTime) t = NHT.WatchdogTime;
+		mssError(1, "NHT", "Warning: api_watchdog_timer (%d) must be >= 120 and also <= session_watchdog_timer, reverting to %d.", NHT.APIWatchdogTime, t);
+		NHT.APIWatchdogTime = t;
 		}
 
 	    /** Session limits **/
 	    stAttrValue(stLookup(my_config, "user_session_limit"), &(NHT.UserSessionLimit), NULL, 0);
 	    if (NHT.UserSessionLimit > 1000 || NHT.UserSessionLimit < 1)
 		{
-		mssError(1, "NHT", "Warning: user_session_limit (%d) must be > 0 and <= 1000, reverting to default (100).", NHT.UserSessionLimit);
+		mssWarn("NHT", "user_session_limit (%d) must be > 0 and <= 1000, reverting to default (100).", NHT.UserSessionLimit);
 		NHT.UserSessionLimit = 100;
 		}
 

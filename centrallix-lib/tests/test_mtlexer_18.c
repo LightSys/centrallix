@@ -59,6 +59,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-18 LINEONLY mode test - file ends in newline";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * N_FLAGTYPE * 7;
     }

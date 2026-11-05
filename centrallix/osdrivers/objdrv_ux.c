@@ -97,12 +97,14 @@ typedef struct
     ino_t	Inode;
     pUxdNode	Node;
     int		Mode;		/* the mode we actually use for this file */
+    off_t	EofOffset;	/* fd position when closed at EOF (UXD_F_EOF) */
     }
     UxdData, *pUxdData;
 
 #define UXD_F_ISDIR	1	/* is a directory */
 #define UXD_F_ISOPEN	2	/* underlying file is open */
 #define UXD_F_STAT	4	/* Fileinfo stat() information is valid */
+#define UXD_F_EOF	8	/* fd closed after read hit EOF; see EofOffset */
 
 #define UXD(x) ((pUxdData)(x))
 
@@ -152,6 +154,24 @@ static struct
     {"size",DATA_T_INTEGER},
     {NULL,-1}
     };
+
+
+/*** uxd_internal_Stat - get file properties using stat() or fstat()
+ *** depending on whether the file is open or not.
+ ***/
+int
+uxd_internal_Stat(pUxdData inf, struct stat *fileinfo)
+    {
+    int rval;
+
+	/** Use fstat() if we can, to avoid race conditions. **/
+	if (inf->Flags & UXD_F_ISOPEN)
+	    rval = fstat(fdFD(inf->fd), fileinfo);
+	else
+	    rval = stat(inf->RealPathname, fileinfo);
+
+    return rval;
+    }
 
 
 /*** uxd_internal_DirType - get information from the .type file that
@@ -613,7 +633,7 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 			inf->Flags |= UXD_F_ISOPEN;
 			}
 		    obj->Flags |= OBJ_F_CREATED;
-		    if (stat(path,&(inf->Fileinfo)) == 0)
+		    if (uxd_internal_Stat(inf, &(inf->Fileinfo)) == 0)
 			inf->Flags |= UXD_F_STAT;
 		    }
 		else
@@ -655,6 +675,12 @@ uxdOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 	else
 	    inf->Mode = obj->Mode & (O_ACCMODE);
 
+	/** If we already created and opened the file above, any later reopen
+	 ** must not re-create, re-truncate, or fail due to O_EXCL.
+	 **/
+	if (inf->Flags & UXD_F_ISOPEN)
+	    inf->Mode &= ~(O_CREAT | O_TRUNC | O_EXCL);
+
 	/** Release the resources we temporarily used. **/
         nmFree(tmp_path, sizeof(Pathname));
 
@@ -683,6 +709,7 @@ uxd_internal_CheckReopen(pUxdData inf)
 		{
 		/** File may have been deleted or renamed - just close it. **/
 		fdClose(inf->fd, 0);
+		inf->fd = NULL;
 		inf->Flags &= ~(UXD_F_ISOPEN | UXD_F_STAT);
 		}
 	    else
@@ -692,6 +719,7 @@ uxd_internal_CheckReopen(pUxdData inf)
 		    {
 		    /** Close it and update the stat info **/
 		    fdClose(inf->fd, 0);
+		    inf->fd = NULL;
 		    inf->Flags &= ~UXD_F_ISOPEN;
 		    memcpy(&inf->Fileinfo, &fileinfo, sizeof(struct stat));
 		    }
@@ -702,11 +730,13 @@ uxd_internal_CheckReopen(pUxdData inf)
     }
 
 
-/*** uxd_internal_CheckOpen - see if we need to open the file or directory
+/*** uxd_internal_CheckOpen - see if we need to open the file or directory.
+ *** If require_same is set, ensure the file has not been replaced.
  ***/
 int
-uxd_internal_CheckOpen(pUxdData inf)
+uxd_internal_CheckOpen(pUxdData inf, int require_same)
     {
+    struct stat tmp_fileinfo;
 
 	/** Ok, do we need to open the file? **/
 	if (!(inf->Flags & UXD_F_ISOPEN))
@@ -717,23 +747,93 @@ uxd_internal_CheckOpen(pUxdData inf)
 		if (strrchr(inf->RealPathname, '*') == inf->RealPathname + strlen(inf->RealPathname) - 1)
 		    {
 		    mssError(1, "UXD", "Cannot read or write the file until a name is given");
-		    return -1;
+		    goto error;
 		    }
 		}
 
+	    /** Open the file and stat through the fd once it is open **/
 	    inf->fd = fdOpen(inf->RealPathname, inf->Mode & ~OBJ_O_CXOPTS, inf->Mask);
 	    if (!(inf->fd)) 
 	        {
 		mssErrorErrno(1,"UXD","Could not open file %s", inf->RealPathname);
-		return -1;
+		goto error;
 		}
-	    if (stat(inf->RealPathname, &(inf->Fileinfo)) < 0)
+	    if (fstat(fdFD(inf->fd), &tmp_fileinfo) < 0)
 		{
-		mssErrorErrno(1,"UXD","Could not stat() file %s", inf->RealPathname);
-		return -1;
+		mssErrorErrno(1,"UXD","Could not fstat() file %s", inf->RealPathname);
+		inf->Flags &= ~UXD_F_STAT;
+		goto error;
 		}
+
+	    /** If we're requiring the same exact file, ensure it hasn't been replaced. **/
+	    if (require_same && (tmp_fileinfo.st_ino != inf->Fileinfo.st_ino || tmp_fileinfo.st_dev != inf->Fileinfo.st_dev))
+		{
+		mssError(1, "UXD", "Could not reopen file '%s': file was replaced.", inf->RealPathname);
+		goto error;
+		}
+	    memcpy(&inf->Fileinfo, &tmp_fileinfo, sizeof(struct stat));
 	    inf->Flags |= (UXD_F_ISOPEN | UXD_F_STAT);
+
+	    /** Now that the file exists and is open, a later reopen (such as
+	     ** after an EOF close) must not re-create, re-truncate, or fail due
+	     ** to O_EXCL.
+	     **/
+	    inf->Mode &= ~(O_CREAT | O_TRUNC | O_EXCL);
 	    }
+
+	return 0;
+
+    error:
+	if (inf->fd && !(inf->Flags & UXD_F_ISOPEN))
+	    {
+	    fdClose(inf->fd, 0);
+	    inf->fd = NULL;
+	    }
+	return -1;
+    }
+
+
+/*** uxd_internal_CloseAtEOF - release the file descriptor after a read has
+ *** hit end of file, recording the descriptor's position so that later
+ *** reads and writes behave as if the descriptor had remained open.  This
+ *** is only done for regular files; FIFOs, devices, etc. are left open.
+ ***/
+void
+uxd_internal_CloseAtEOF(pUxdData inf)
+    {
+    off_t pos;
+
+	/** Only for open regular files whose position we can determine. **/
+	if (!(inf->Flags & UXD_F_ISOPEN) || !(inf->Flags & UXD_F_STAT) || !S_ISREG(inf->Fileinfo.st_mode))
+	    return;
+	pos = lseek(fdFD(inf->fd), 0, SEEK_CUR);
+	if (pos < 0)
+	    return;
+
+	/** Close it, and remember where we were. **/
+	fdClose(inf->fd, 0);
+	inf->fd = NULL;
+	inf->Flags &= ~UXD_F_ISOPEN;
+	inf->Flags |= UXD_F_EOF;
+	inf->EofOffset = pos;
+
+    return;
+    }
+
+
+/*** uxd_internal_EofFileChanged - after an EOF close, check whether the
+ *** pathname still refers to the same file we had open.  Returns 1 if the
+ *** file is gone or has been replaced, 0 otherwise.  The current stat()
+ *** information is returned in 'fileinfo'.
+ ***/
+int
+uxd_internal_EofFileChanged(pUxdData inf, struct stat* fileinfo)
+    {
+
+	if (stat(inf->RealPathname, fileinfo) < 0)
+	    return 1;
+	if ((inf->Flags & UXD_F_STAT) && (fileinfo->st_ino != inf->Fileinfo.st_ino || fileinfo->st_dev != inf->Fileinfo.st_dev))
+	    return 1;
 
     return 0;
     }
@@ -843,13 +943,15 @@ int
 uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pUxdData inf = UXD(inf_v);
+    struct stat fileinfo;
     int rval;
+    int require_same = 0;
 
 	/** Verify not a directory **/
 	if (inf->Flags & UXD_F_ISDIR) 
 	    {
 	    mssError(1,"UXD","UNIX directories do not have content");
-	    return -1;
+	    goto error;
 	    }
 
 	/** Recheck our file when rewinding the file descriptor.  We don't do
@@ -861,14 +963,52 @@ uxdRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
 	if ((flags & OBJ_U_SEEK) && offset == 0)
 	    uxd_internal_CheckReopen(inf);
 
+	/** If the descriptor was closed at EOF, resume as if it had stayed
+	 ** open.  A rewind (above) may pick up a replaced file; anything else
+	 ** must still refer to the same file we had open.
+	 **/
+	if ((inf->Flags & UXD_F_EOF) && !((flags & OBJ_U_SEEK) && offset == 0))
+	    {
+	    require_same = 1;
+	    if (uxd_internal_EofFileChanged(inf, &fileinfo))
+		{
+		/** Sequential read: the old file has no more data. **/
+		if (!(flags & OBJ_U_SEEK))
+		    return 0;
+		mssError(1,"UXD","File %s was removed or replaced", inf->RealPathname);
+		goto error;
+		}
+	    if (!(flags & OBJ_U_SEEK))
+		{
+		/** Don't reopen unless the file has grown past our position. **/
+		if (maxcnt <= 0 || fileinfo.st_size <= inf->EofOffset)
+		    return 0;
+		flags |= FD_U_SEEK;
+		if (inf->EofOffset > (off_t)INT_MAX)
+		    {
+		    mssError(1, "UXD", "uxdRead: Could not restore file offset; file %s too large.", inf->RealPathname);
+		    goto error;
+		    }
+		offset = (int)inf->EofOffset;
+		}
+	    }
+
 	/** Need to open it? */
-	if (uxd_internal_CheckOpen(inf) < 0)
-	    return -1;
+	if (uxd_internal_CheckOpen(inf, require_same) < 0)
+	    goto error;
+	inf->Flags &= ~UXD_F_EOF;
 
 	/** Now, do the read. **/
 	rval = fdRead(inf->fd, buffer, maxcnt, offset, flags);
 
-    return rval;
+	/** Hit end of file?  Release the descriptor until it's needed again. **/
+	if (rval == 0 && maxcnt > 0)
+	    uxd_internal_CloseAtEOF(inf);
+
+	return rval;
+
+    error:
+	return -1;
     }
 
 
@@ -878,23 +1018,53 @@ int
 uxdWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pUxdData inf = UXD(inf_v);
+    struct stat fileinfo;
     int rval;
+    int require_same = 0;
 
 	/** Verify not a directory **/
 	if (inf->Flags & UXD_F_ISDIR)
 	    {
 	    mssError(1,"UXD","UNIX directories do not have content");
-	    return -1;
+	    goto error;
+	    }
+
+	/** If the descriptor was closed at EOF, it must still be the same
+	 ** file, and an unpositioned write resumes where the descriptor was,
+	 ** as if it had remained open.
+	 **/
+	if (inf->Flags & UXD_F_EOF)
+	    {
+	    require_same = 1;
+	    if (uxd_internal_EofFileChanged(inf, &fileinfo))
+		{
+		mssError(1,"UXD","File %s was removed or replaced", inf->RealPathname);
+		goto error;
+		}
+	    if (!(flags & OBJ_U_SEEK))
+		{
+		flags |= FD_U_SEEK;
+		if (inf->EofOffset > (off_t)INT_MAX)
+		    {
+		    mssError(1, "UXD", "uxdWrite: Could not restore file offset; file %s too large.", inf->RealPathname);
+		    goto error;
+		    }
+		offset = (int)inf->EofOffset;
+		}
 	    }
 
 	/** Need to open it? */
-	if (uxd_internal_CheckOpen(inf) < 0)
-	    return -1;
+	if (uxd_internal_CheckOpen(inf, require_same) < 0)
+	    goto error;
+	inf->Flags &= ~UXD_F_EOF;
 
 	/** Now, do the write. **/
 	rval = fdWrite(inf->fd, buffer, cnt, offset, flags);
 
-    return rval;
+	return rval;
+
+    error:
+	return -1;
     }
 
 

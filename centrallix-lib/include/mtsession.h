@@ -25,11 +25,13 @@
 #include "xarray.h"
 #include "xstring.h"
 #include "xhash.h"
+#include "xringqueue.h"
 #else
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xstring.h"
 #include "cxlib/xhash.h"
+#include "cxlib/xringqueue.h"
 #endif
 
 #include <errno.h>
@@ -47,6 +49,10 @@
 #define MSS_PARAMNAME_SIZE	32
 
 
+/** Default number of recent warnings kept per session **/
+#define MSS_WARN_HISTORY_DEFAULT	16
+
+
 /** Structure for a session. **/
 typedef struct
     {
@@ -55,6 +61,7 @@ typedef struct
     char	UserName[MSS_USERNAME_SIZE];
     char	Password[MSS_PASSWORD_SIZE];
     XArray	ErrList;
+    XRingQueue	WarnList;
     XHashTable	Params;
     int		LinkCnt;
     }
@@ -73,7 +80,7 @@ typedef struct
 
 
 /** User auth Functions **/
-int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname);
+int mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, char* log_progname, int warn_history);
 char* mssUserName();
 char* mssPassword();
 int mssAuthenticate(char* username, char* password, int bypass_crypt);
@@ -88,13 +95,22 @@ void* mssGetParam(char* paramname);
 /** Error handling functions **/
 int mssLog(int level, char* msg);
 
-/** The message is a printf() format, so let the compiler check it. **/
+/*** Informs the compiler that message for errors and warnings is
+ *** a printf() format so it can check them.
+ ***/
+void mss_i_warn(char* module, char* file, int line, char* message, ...)
+    #ifdef __GNUC__
+    __attribute__ ((format(printf, 4, 5)))
+    #endif
+;
 void mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
     #ifdef __GNUC__
     __attribute__ ((format(printf, 5, 6)))
     #endif
 ;
 
+#define mssWarn(module, message, ...) \
+    mss_i_warn(module, __FILE__, __LINE__, message, ##__VA_ARGS__)
 #define mssError(clear, module, message, ...) \
     mss_i_error(clear, module, __FILE__, __LINE__, message, ##__VA_ARGS__)
 #define mssErrorErrno(clear, module, message, ...) \

@@ -1246,7 +1246,7 @@ stParseMsg(pFile inp_fd, int flags)
     pLxSession s;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxOpenSession(inp_fd, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	s = mlxOpenSession(inp_fd, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES | MLX_F_NODISCARD);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
@@ -1273,7 +1273,7 @@ stParseMsgGeneric(void* src, int (*read_fn)(), int flags)
     pLxSession s;
 
 	/** Open a session with the lexical analyzer **/
-	s = mlxGenericSession(src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES);
+	s = mlxGenericSession(src,read_fn, MLX_F_CPPCOMM | MLX_F_DBLBRACE | MLX_F_FILENAMES | MLX_F_NODISCARD);
 	if (!s) 
 	    {
 	    mssError(0,"ST","Could not begin analysis of structure file");
