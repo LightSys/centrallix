@@ -581,9 +581,7 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Write JS call to initialize the pinging system. **/
-	pStructInf net_http_config = stLookup(CxGlobals.ParsedConfig, "net_http");
-	pStructInf watchdog_timer_attr = stLookup(net_http_config, "session_watchdog_timer");
-	stAttrValue(watchdog_timer_attr, &watchdogtimer, NULL, 0);
+	watchdogtimer = s->ClientInfo->AppWatchdogTime;
 	if (htrAddScriptInit_va(s,
 	    "\tpg_ping_init(htr_subel(wgtrGetNodeRef(ns, '%STR&SYM'), 'pgping'), %INT);\n",
 	    name, watchdogtimer * 500
