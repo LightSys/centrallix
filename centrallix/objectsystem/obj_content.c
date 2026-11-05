@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -45,8 +45,17 @@
 
 
 
-/*** objRead - read content from an object at a particular optional seek
- *** offset.  Very similar to MTask's fdRead().
+/*** Reads content from an object, like fdRead().  Without OBJ_U_SEEK, reading
+ *** continues where the previous read ended.  Use objInfo() to check whether
+ *** an object has content and supports seeking.
+ ***
+ *** @param this The object to read from.
+ *** @param buffer The buffer to read into.  The data is not null-terminated.
+ *** @param maxcnt The maximum number of bytes to read.
+ *** @param offset The byte offset to read from, if flags has OBJ_U_SEEK.
+ *** @param flags 0, or OBJ_U_SEEK to read from offset.
+ *** @returns The number of bytes read, 0 at the end of the content,
+ *** 	or -1 if an error occurs.
  ***/
 int 
 objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
@@ -68,8 +77,16 @@ objRead(pObject this, char* buffer, int maxcnt, int offset, int flags)
     }
 
 
-/*** objWrite - write content to an object at a particular optional seek
- *** offset.  Also very similar to MTask's fdWrite().
+/*** Writes content to an object, like fdWrite().  Without OBJ_U_SEEK, writing
+ *** continues where the previous write ended.
+ ***
+ *** @param this The object to write to, opened for writing.
+ *** @param buffer The data to write.
+ *** @param cnt The number of bytes to write.
+ *** @param offset The byte offset to write at, if flags has OBJ_U_SEEK.
+ *** @param flags 0, or OBJ_U_SEEK to write at offset, optionally with
+ *** 	OBJ_U_TRUNCATE to truncate the content at offset.
+ *** @returns The number of bytes written, or -1 if an error occurs.
  ***/
 int 
 objWrite(pObject this, char* buffer, int cnt, int offset, int flags)
