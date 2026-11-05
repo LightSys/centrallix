@@ -502,9 +502,12 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 		    dst_obj = mq_internal_ContentSource(assign_exp, stmt->Query->ObjList);
 		    if (src_obj && dst_obj)
 			{
-			if (mq_internal_CopyContent(src_obj, dst_obj) < 0)
-			    goto error;
-			did_update = 1;
+			if (!mq_internal_ContentEqual(src_obj, dst_obj))
+			    {
+			    if (mq_internal_CopyContent(src_obj, dst_obj) < 0)
+				goto error;
+			    did_update = 1;
+			    }
 			continue;
 			}
 
