@@ -391,6 +391,18 @@ obj_internal_QueryDeleteEach(pObjQuery this)
     pObject obj = NULL;
     XArray paths = {0};
     char* path = NULL;
+    pObjectInfo info;
+
+	/** Deleting by path requires results with valid paths. **/
+	info = objInfo(this->Obj);
+	if (info != NULL && (info->Flags & OBJ_INFO_F_TEMPORARY))
+	    {
+	    mssError(1, "OSML",
+		"Failed to delete query results: \"%s\" is a temporary object without valid paths.",
+		objGetPathname(this->Obj)
+	    );
+	    goto end_free;
+	    }
 
 	/** Collect paths first: deleting mid-query can shift the driver's cursor. **/
 	if (xaInit(&paths, 16) != 0)
