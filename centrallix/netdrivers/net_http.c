@@ -3271,6 +3271,7 @@ nhtInitialize()
 	xhnInitContext(&(NHT.TimerHctx));
 	xaInit(&(NHT.Timers),512);
 	NHT.WatchdogTime = 180;
+	NHT.AppWatchdogTime = 180;
 	NHT.InactivityTime = 1800;
 	NHT.CondenseJS = 1; /* not yet implemented */
 	NHT.UserSessionLimit = 100;
@@ -3401,6 +3402,16 @@ nhtInitialize()
 		    }
 		mssError(1, "NHT", "Warning: session_inactivity_timer (%d) must be > watchdog (%d) and <= 200000, reverting to %d.", NHT.InactivityTime, NHT.WatchdogTime, i);
 		NHT.InactivityTime = i;
+		}
+	    if (stAttrValue(stLookup(my_config, "app_watchdog_timer"), &(NHT.AppWatchdogTime), NULL, 0) < 0)
+		{
+		NHT.AppWatchdogTime = NHT.WatchdogTime;
+		mssError(1, "NHT", "Warning: app_watchdog_timer not specified, defaulting to session_watchdog_timer's value (%d).", NHT.WatchdogTime);
+		}
+	    if (NHT.AppWatchdogTime < 120 || NHT.AppWatchdogTime > 600)
+		{
+		mssError(1, "NHT", "Warning: app_watchdog_timer (%d) must be >= 120 and <= 600, reverting to default (180).", NHT.AppWatchdogTime);
+		NHT.AppWatchdogTime = 180;
 		}
 
 	    /** Session limits **/

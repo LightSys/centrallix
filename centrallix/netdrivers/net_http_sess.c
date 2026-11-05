@@ -725,7 +725,7 @@ nht_i_AllocApp(char* path, pNhtAppGroup group)
 	app->AppObjSess = objOpenSession("/");
 	if (!app->AppObjSess)
 	    goto error;
-	app->WatchdogTimer = nht_i_AddWatchdog(NHT.WatchdogTime*1000, nht_i_WTimeoutApp, (void*)app);
+	app->WatchdogTimer = nht_i_AddWatchdog(NHT.AppWatchdogTime*1000, nht_i_WTimeoutApp, (void*)app);
 	if (app->WatchdogTimer == XHN_INVALID_HANDLE)
 	    goto error;
 	/*app->InactivityTimer = nht_i_AddWatchdog(NHT.InactivityTime*1000, nht_i_ITimeoutApp, (void*)app);*/
@@ -835,7 +835,7 @@ nht_i_AllocAppGroup(char* path, pNhtSessionData s)
 	snprintf(group->G_ID_Text, sizeof(group->G_ID_Text), "%s|%lld", s->S_ID_Text, group->G_ID);
 	objCurrentDate(&(group->FirstActivity));
 	objCurrentDate(&(group->LastActivity));
-	group->WatchdogTimer = nht_i_AddWatchdog(NHT.WatchdogTime*1000, nht_i_WTimeoutAppGroup, (void*)group);
+	group->WatchdogTimer = nht_i_AddWatchdog(NHT.AppWatchdogTime*1000, nht_i_WTimeoutAppGroup, (void*)group);
 	/*group->InactivityTimer = nht_i_AddWatchdog(NHT.InactivityTime*1000, nht_i_ITimeoutAppGroup, (void*)group);*/
 	xaInit(&group->Apps, 16);
 	xaAddItem(&s->AppGroups, (void*)group);

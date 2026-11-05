@@ -340,6 +340,7 @@ typedef struct
     pSemaphore	TimerDataMutex;
     XArray	Timers;
     HandleContext TimerHctx;
+    int		AppWatchdogTime;
     int		WatchdogTime;
     int		InactivityTime;
     regex_t*	reNet47;
