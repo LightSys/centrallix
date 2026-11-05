@@ -2511,6 +2511,8 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
     int i, cnt, name_len, line, line_end, newline;
     void* value;
     int has_headers;
+    bool headers_applied;
+    int body;
     ObjData pod;
     int rval = -1;
 
@@ -2659,11 +2661,27 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 		}
 	    }
 
-	/** Content keeps the headers an earlier send added. **/
+	/** Remove headers from an earlier send, leaving just the body. **/
 	attr = SMTP_ATTR(xhLookup(inf->Attributes, "headers_applied"));
 	ASSERTMAGIC(attr, MGK_SMTP_ATTRIBUTE);
-	if (attr != NULL && attr->Type == DATA_T_INTEGER && attr->Value.Integer != 0)
-	    has_headers = 1;
+	headers_applied = (attr != NULL && attr->Type == DATA_T_INTEGER && attr->Value.Integer != 0);
+	if (!has_headers && headers_applied)
+	    {
+	    body = xsFind(content, "\n\n", 2, 0);
+	    if (UNLIKELY(body < 0))
+		{
+		mssError(1, "SMTP",
+		    "Failed to find the end of the headers an earlier send added to \"%s\".",
+		    inf->EmailPath.String
+		);
+		goto end;
+		}
+	    if (UNLIKELY(xsSubst(content, 0, body + 2, "", 0) < 0))
+		{
+		mssError(1, "SMTP", "Failed to remove %d bytes of headers an earlier send added.", body + 2);
+		goto end;
+		}
+	    }
 
 	/** Add the blank line before the body. **/
 	if (!has_headers && UNLIKELY(xsConcatenate(new_headers, "\n", 1) < 0))
@@ -2727,7 +2745,7 @@ smtp_internal_ApplyHeaders(pSmtpData inf)
 	    }
 
 	/** Record that the content now starts with headers. **/
-	if (!has_headers)
+	if (!has_headers && !headers_applied)
 	    {
 	    pod.Integer = 1;
 	    if (UNLIKELY(smtp_internal_SetAttrValue(inf, "headers_applied", DATA_T_INTEGER, &pod, NULL) != 0))
