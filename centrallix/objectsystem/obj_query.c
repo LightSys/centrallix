@@ -390,6 +390,7 @@ obj_internal_QueryDeleteEach(pObjQuery this)
     int rval = -1;
     pObject obj = NULL;
     XArray paths = {0};
+    pXString path_xs = NULL;
     char* path = NULL;
     pObjectInfo info;
 
@@ -410,12 +411,24 @@ obj_internal_QueryDeleteEach(pObjQuery this)
 	    mssError(1, "OSML", "Failed to allocate an XArray of %d paths.", 16);
 	    goto end_free;
 	    }
+	path_xs = xsNew();
+	if (UNLIKELY(path_xs == NULL))
+	    {
+	    mssError(1, "OSML", "Failed to allocate an XString for paths.");
+	    goto end_free;
+	    }
 	while ((obj = objQueryFetch(this, O_WRONLY)) != NULL)
 	    {
-	    path = nmSysStrdup(objGetPathname(obj));
+	    /** Path with each element's open params. **/
+	    if (UNLIKELY(xsCopy(path_xs, "", 0) < 0 || obj_internal_PathToText(obj->Pathname, obj->Pathname->nElements, path_xs) < 0))
+		{
+		mssError(1, "OSML", "Failed to build path for \"%s\".", objGetPathname(obj));
+		goto end_free;
+		}
+	    path = nmSysStrdup(xsString(path_xs));
 	    if (UNLIKELY(path == NULL))
 		{
-		mssError(1, "OSML", "nmSysStrdup(\"%s\") failed.", objGetPathname(obj));
+		mssError(1, "OSML", "nmSysStrdup(\"%s\") failed.", xsString(path_xs));
 		goto end_free;
 		}
 	    if (UNLIKELY(xaAddItem(&paths, (void*)path) < 0))
@@ -450,6 +463,7 @@ obj_internal_QueryDeleteEach(pObjQuery this)
 
 	/** Clean up owned memory and objects. **/
 	if (UNLIKELY(path != NULL)) nmSysFree(path);
+	if (LIKELY(path_xs != NULL)) xsFree(path_xs);
 	if (UNLIKELY(obj != NULL)) warnFail(objClose(obj));
 	if (LIKELY(paths.Items != NULL))
 	    {
