@@ -1753,7 +1753,10 @@ nht_i_POST(pNhtConn conn, pStruct url_inf, int size, char* content)
 	/** Error if POST with no files **/
 	if (n_uploaded_files == 0)
 	    {
-	    mssError(1, "NHT", "Upload: no files provided in the request");
+	    if (payload->status != -1)
+		{
+		mssError(1, "NHT", "Upload: no files provided in the request");
+		}
 	    nht_i_WriteErrResponse(conn, 400, "Bad Request", NULL);
 	    goto error;
 	    }
