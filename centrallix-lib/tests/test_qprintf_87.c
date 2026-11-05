@@ -5,7 +5,7 @@
 
 #include "qprintf.h"
 #include "test_qprintf.h"
-#include "test_utils.h"
+#include "t_utils.h"
 
 static bool doTest(void)
     {
@@ -16,7 +16,7 @@ static bool doTest(void)
 	char buf[8];
 	memset(buf, 'X', sizeof(buf));
 	
-	/** Test string buffer overflow. **/
+	/** Test a NULL %nSTR argument. **/
 	const int rval = qpfPrintf(s, buf, 6, "%2STR", NULL);
 	
 	/** Verify results. **/

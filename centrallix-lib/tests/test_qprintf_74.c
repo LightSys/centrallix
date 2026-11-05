@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "test_utils.h"
+#include "t_utils.h"
 
 #include "qprintf.h"
 
@@ -69,6 +69,7 @@ doTest(void)
 
 	    /** Neither call may move or resize the buffer. **/
 	    assert(dst_null == (char*)raw_null + GUARD);
+	    assert(dst_nogrow == (char*)raw_nogrow + GUARD);
 	    assert(size_null == cases[c].Size);
 	    assert(size_nogrow == cases[c].Size);
 

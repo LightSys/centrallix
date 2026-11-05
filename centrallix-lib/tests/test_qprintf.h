@@ -11,7 +11,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_utils.h						*/
+/* Module:	test_qprintf.h						*/
 /* Author:	Israel Fuller						*/
 /* Creation:	April 10th, 2026					*/
 /* Description:	Code shared between test files when testing qprintf().	*/
@@ -20,7 +20,7 @@
 #include <stdbool.h>
 
 #include "qprintf.h"
-#include "test_utils.h"
+#include "t_utils.h"
 
 #define ALL_SPECS "\t%% %& %STR %INT %POS %DBL %CHR %LL\t"
 #define ALL_SPECS_VALUES "test", -4, 4, 4.2, 'E', (__UINT32_MAX__ + 1ll)
@@ -30,7 +30,7 @@
 #define ASSERT_NO_ERRORS(s) \
     ({ \
     pQPSession _s = (s); \
-    const bool success = ASSERT_EQL(qpfErrors(_s), QPF_ERR_T_NO_ERRORS, "%d"); \
+    const bool success = ASSERT_EQL(qpfErrors(_s), QPF_ERR_T_NO_ERRORS, "%u"); \
     if (!success) qpfLogErrors(_s); \
     success; \
     })
