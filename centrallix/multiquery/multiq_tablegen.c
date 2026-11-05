@@ -356,12 +356,11 @@ mqt_internal_UpdateAggregates(pQueryStatement stmt, pQueryElement qe, int level,
     int i, id;
     pExpression exp;
 
-	/** Update our SELECT item expressions **/
+	/** Update the SELECT items that accumulate per row **/
 	for(i=0;i<qe->AttrCompiledExpr.nItems;i++)
 	    {
 	    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
-	    if (exp /* && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL) */ )
-	    //if (exp && (exp->AggLevel != 0 || qe->AttrDeriv.Items[i] != NULL))
+	    if (exp && (exp->AggLevel != 0 || (exp->Flags & EXPR_F_HASWINDOWFN)))
 		{
 		expUnlockAggregates(exp, level);
 		if (expEvalTree(exp, objlist) < 0)

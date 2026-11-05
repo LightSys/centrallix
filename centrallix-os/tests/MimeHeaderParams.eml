@@ -1,0 +1,13 @@
+From: tester@example.com
+Subject: A part whose headers have parameters
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+From: Tester <tester@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 8bit
+Content-Disposition: inline; filename=note.txt
+
+Body.
+--b1--
