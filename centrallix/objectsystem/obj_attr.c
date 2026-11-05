@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2004 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -99,8 +99,13 @@ objAddVirtualAttr(pObject this, char* attrname, void* context, int (*type_fn)(),
     }
 
 
-/*** objGetAttrType -- returns the data type of a particular attribute.
- *** Data types are DATA_T_xxx, as defined in obj.h
+/*** Gets the data type of an object attribute.
+ ***
+ *** @param this The object.
+ *** @param attrname The attribute's name.
+ *** @returns A DATA_T_* type from datatypes.h,
+ *** 	or DATA_T_UNAVAILABLE if the attribute does not exist
+ *** 	or -1 if an error occurs.
  ***/
 int
 objGetAttrType(pObject this, char* attrname)
@@ -197,8 +202,22 @@ objGetAttrType(pObject this, char* attrname)
     }
 
 
-/*** objGetAttrValue -- returns the integer, string, or other value of a
- *** particular attribute.
+/*** Gets the value of an object's attribute.
+ ***
+ *** Note: Every object has the string attributes "name", "annotation",
+ *** "content_type", "inner_type", and "outer_type".  The OSML also provides
+ *** "objcontent" (the object's content), "cx__pathname" (the object's full
+ *** path), and "cx__pathpartN" (the Nth element of that path).
+ ***
+ *** @param this The object.
+ *** @param attrname The attribute's name.
+ *** @param data_type The attribute's type, from objGetAttrType().
+ *** @param val Where to store the value, e.g. POD(&my_int).  Integers and
+ *** 	doubles are stored by value.  Other types are stored as pointers that
+ *** 	stay valid until the object is closed or the next objGetAttrValue() or
+ *** 	objSetAttrValue() call, whichever is first.
+ *** @returns 0 if successful, 1 if the value is NULL, or -1 if the attribute
+ *** 	does not exist or an error occurs.
  ***/
 int 
 objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
@@ -446,8 +465,12 @@ objGetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     }
 
 
-/*** objGetFirstAttr -- gets the first attribute associated with the 
- *** object.  NOTE: will not return the 'name' or 'types' attributes.
+/*** Gets the name of an object's first attribute.  Use objGetNextAttr() to
+ *** get the rest.  Required attributes are skipped (see objGetAttrValue()).
+ ***
+ *** @param this The object.
+ *** @returns The attribute's name, or NULL if the object has no other
+ *** 	attributes.
  ***/
 char*
 objGetFirstAttr(pObject this)
@@ -457,9 +480,11 @@ objGetFirstAttr(pObject this)
     }
 
 
-/*** objGetNextAttr -- gets the next attribute; call this multiple
- *** times after calling objGetFirstAttr until one of the functions
- *** returns NULL.
+/*** Gets the name of an object's next attribute, after calling
+ *** objGetFirstAttr().
+ ***
+ *** @param this The object.
+ *** @returns The attribute's name, or NULL after the last attribute.
  ***/
 char*
 objGetNextAttr(pObject this)
@@ -469,8 +494,15 @@ objGetNextAttr(pObject this)
     }
 
 
-/*** objSetAttrValue -- sets the value of an attribute.  An object 
- *** can be renamed by setting the "name" attribute.
+/*** Sets the value of an object's attribute.  Set "name" to rename it or set
+ *** "objcontent" to overwrite its content.
+ ***
+ *** @param this The object, opened for writing.
+ *** @param attrname The attribute's name.
+ *** @param data_type The new value's type, usually from objGetAttrType().
+ *** @param val The new value, e.g. POD(&my_int).  May be NULL.
+ *** @returns 0 if successful, or -1 if an error occurs.  Setting
+ *** 	"objcontent" instead returns the number of bytes written.
  ***/
 int 
 objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
@@ -570,8 +602,14 @@ objSetAttrValue(pObject this, char* attrname, int data_type, pObjData val)
     }
 
 
-/*** objAddAttr - adds a new attribute to an object.  Not all objects
- *** support this.
+/*** Adds a new attribute to an object.  Only some objects support this (see
+ *** OBJ_INFO_F_CAN_ADD_ATTR from objInfo()).
+ ***
+ *** @param this The object.
+ *** @param attrname The new attribute's name.
+ *** @param type The new attribute's DATA_T_* type.
+ *** @param val The attribute's initial value, e.g. POD(&my_int).
+ *** @returns 0 if successful, or -1 if an error occurs.
  ***/
 int
 objAddAttr(pObject this, char* attrname, int type, pObjData val)
@@ -593,8 +631,15 @@ objAddAttr(pObject this, char* attrname, int type, pObjData val)
     }
 
 
-/*** objOpenAttr -- open an attribute for reading/writing as if it were
- *** an independent object with content.
+/*** Opens an attribute as an object, so its value can be accessed with
+ *** objRead() and objWrite().  Only some objects support this.  Close it with
+ *** objClose(), or by closing the object it belongs to.
+ ***
+ *** @param this The object the attribute belongs to.
+ *** @param attrname The attribute's name.
+ *** @param mode The open mode.  See objOpen().
+ *** @returns The open attribute, or NULL if the object does not support this
+ *** 	or an error occurs.
  ***/
 pObject 
 objOpenAttr(pObject this, char* attrname, int mode)
@@ -630,12 +675,14 @@ objOpenAttr(pObject this, char* attrname, int mode)
     }
 
 
-/*** objPresentationHints - return information on how a particular
- *** attribute should be presented to the end-user.  This is normally
- *** handled by the driver, but if the driver omits this function, this
- *** routine will make a 'best guess' approximation at some presentation
- *** hints.  The calling routine must take care to nmFree() the returned
- *** data structure.
+/*** Gets hints for presenting and validating an attribute, such as its
+ *** default value, valid values, and display format.  If the driver has no
+ *** hints for the attribute, the hints are empty.
+ ***
+ *** @param this The object.
+ *** @param attrname The attribute's name.
+ *** @returns The hints, which the caller must free with objFreeHints(),
+ *** 	or NULL if an error occurs.
  ***/
 pObjPresentationHints
 objPresentationHints(pObject this, char* attrname)
@@ -664,8 +711,10 @@ objPresentationHints(pObject this, char* attrname)
     return ph;
     }
 
-/*** obj_internal_FreeHints - release the Hints structure as well as its
- *** associated allocated strings and such.
+/*** Frees hints from objPresentationHints().
+ ***
+ *** @param ph The hints to free.
+ *** @returns 0, always.
  ***/
 int
 objFreeHints(pObjPresentationHints ph)
@@ -694,8 +743,16 @@ objFreeHints(pObjPresentationHints ph)
     }
 
 
-/*** objSetEvalContext() - sets an object list (objlist) to be used in
- *** the evaluation of property values that use runserver() expressions.
+/*** Sets the list of objects used to evaluate an expression in runserver().
+ *** objGetAttrType() and objGetAttrValue() can then return the expression's
+ *** result.  Objects later fetched or opened from this one share the context.
+ ***
+ *** @param this The object.
+ *** @param objlist_v The objects to evaluate with (pParamObjects), or NULL to
+ *** 	clear the context.  The caller keeps ownership, and this must remain
+ *** 	valid until every object sharing it is closed or has its context
+ *** 	changed or cleared.
+ *** @returns 0, always.
  ***/
 int
 objSetEvalContext(pObject this, void* objlist_v)
@@ -710,12 +767,13 @@ objSetEvalContext(pObject this, void* objlist_v)
     }
 
 
-/*** objGetEvalContext() - gets an object list (objlist) to be used in
- *** the evaluation of property values that use runserver() expressions.
+/*** Gets the objects set with objSetEvalContext().
+ ***
+ *** @param this The object.
+ *** @returns The objects (pParamObjects), or NULL if none are set.
  ***/
 void*
 objGetEvalContext(pObject this)
     {
     return this->EvalContext;
     }
-
