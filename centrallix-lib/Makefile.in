@@ -61,7 +61,7 @@ PROFILE=@PROFILE@
 COVERAGE=@COVERAGE@
 CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g
 MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g -O0
-TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS))
+TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS)) -DCX_TESTING
 
 XSTATICFILES=mtask.o mtlexer.o memstr.o xarray.o xhash.o xstring.o mtsession.o newmalloc.o xhashqueue.o bdqs_transport.o xhandle.o xringqueue.o cxsec.o smmalloc.o qprintf.o strtcpy.o util.o timer.o warn.o range.o
 STATICFILES=$(patsubst %,src/%,$(XSTATICFILES))
@@ -170,8 +170,8 @@ install: all
 	@echo "***************************************************************"
 	@echo ""
 
-%.bin:	%.c tests/t_driver.c libCentrallix.a
-	$(CC) $(TCFLAGS) tests/t_driver.c $< libCentrallix.a -o $@ ${LIBS}
+%.bin:	%.c tests/t_driver.c tests/t_utils.c tests/t_utils.h libCentrallix.a
+	$(CC) $(TCFLAGS) tests/t_driver.c tests/t_utils.c $< libCentrallix.a -o $@ ${LIBS}
 
 ## Runs the selected tests $(TESTJOBS) at a time.  Output is captured per test
 ## rather than written straight to the terminal, then printed in listing order
@@ -184,9 +184,26 @@ install: all
 ## tests/t_driver.c), so a nonzero status means the test did not complete
 ## normally and must fail the target; only valgrind's --error-exitcode is
 ## dropped.  A test whose output never appears is reported and also fails.
+##
+## On SIGINT or SIGTERM, the shell stops the tests, removes the captured
+## output without printing it, and then dies from the same signal.  xargs
+## runs in its own process group so that the whole group can be killed:
+## a background job ignores SIGINT, so Ctrl+C never reaches the tests.
 RUN_TESTS = \
     RESULTS=$$(mktemp -d) || exit 1; \
-    trap 'rm -rf "$$RESULTS"' EXIT INT TERM; \
+    XARGS=; \
+    stop() { \
+	trap - EXIT INT TERM; \
+	if [ -n "$$XARGS" ]; then \
+	    kill -s TERM -- -"$$XARGS" 2>/dev/null; \
+	    wait "$$XARGS" 2>/dev/null; \
+	fi; \
+	rm -rf "$$RESULTS"; \
+	kill -s "$$1" $$$$; \
+    }; \
+    trap 'rm -rf "$$RESULTS"' EXIT; \
+    trap 'stop INT' INT; \
+    trap 'stop TERM' TERM; \
     N=0; \
     for PROG in $$( ls $(TESTPROGS) ); do \
 	case "$$PROG" in tests/test_$$TONLY*) \
@@ -195,7 +212,7 @@ RUN_TESTS = \
 	esac; \
     done > "$$RESULTS/list"; \
     if [ "$$N" -eq 0 ]; then exit 0; fi; \
-    xargs -r -n 2 -P $(TESTJOBS) sh -c "$$TESTCMD" sh \
+    setsid xargs -r -n 2 -P $(TESTJOBS) sh -c "$$TESTCMD" sh \
 	< "$$RESULTS/list" 2> "$$RESULTS/stderr" & \
     XARGS=$$!; \
     RC=0; \
@@ -263,11 +280,11 @@ cov-clean:
 
 .PHONY: clean
 clean: cov-clean
-	@rm -f src/*.o src/*.lo $(TESTPROGS) ${FINAL_TARGETS} 2>/dev/null
+	@rm -f src/*.o src/*.lo tests/*.bin ${FINAL_TARGETS} 2>/dev/null
 
 distclean: clean
 	@rm -f config.status config.cache config.log
-	@rm -rf autom4te-*.cache/
+	@rm -rf autom4te-*.cache/ autom4te.cache/
 	@rm -f config.h
 	@rm -f include/cxlibconfig.h
 	@rm -f include/cxlibconfig-internal.h
@@ -281,6 +298,7 @@ distreallyclean: distclean
 	@rm -f include/cxlibconfig.h.in
 	@rm -f include/cxlibconfig-internal.h.in
 	@rm -f include/cxlibconfig-all.h.in
+	@rm -f include/*.h.in~
 	@rm -f install-sh
 
 .PHONY: depend

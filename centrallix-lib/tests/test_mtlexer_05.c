@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Integers in the data file, and so the ops performed by one pass. **/
 #define N_INTS	60000
@@ -47,6 +47,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-05 integer data, one per line with eol/eof";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * N_INTS;
     }

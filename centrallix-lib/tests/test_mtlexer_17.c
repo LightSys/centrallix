@@ -7,7 +7,7 @@
 #include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 #define N_FLAGTYPE	4
 #define N_TOK		15
@@ -59,6 +59,6 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-17 LINEONLY mode test";
-    mssInitialize("system", "", "", 0, "test");
+    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * N_FLAGTYPE * 7;
     }

@@ -11,7 +11,7 @@
 /* Module:	test_timer_00.c						*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 24th, 2025					*/
-/* Description:	Test the util.h timer1 functionality.			*/
+/* Description:	Test the timer.h functionality.				*/
 /************************************************************************/
 
 #include <math.h>
@@ -21,7 +21,7 @@
 #include <unistd.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Tested module. **/
 #include "timer.h"
@@ -116,5 +116,7 @@ long long test(char** tname)
 	
 	/** Return failure. **/
 	fail:
+	timerDeInit(timer1);
+	timerFree(timer2);
 	return -1;
     }

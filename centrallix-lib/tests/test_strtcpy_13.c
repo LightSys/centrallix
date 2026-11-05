@@ -6,7 +6,7 @@
 #include <string.h>
 #include <wchar.h>
 
-#include "test_utils.h"
+#include "t_utils.h"
 
 #include "strtcpy.h"
 
@@ -43,7 +43,7 @@ static const char* prefixes[] =
     };
 
 /*** Positions at or past the end of dst, as a caller with corrupt state
- *** would supply.  SIZE_MAX also catches a start+1 overflow in the guard.
+ *** would supply, up to SIZE_MAX.
  ***/
 static size_t bad_positions[] =
     {
@@ -152,7 +152,10 @@ test(char** tname)
 
 	/** Only run the conversion cases where the platform really fails. **/
 	setlocale(LC_ALL, "C");
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 	can_fail = (snprintf(probe, sizeof(probe), failing_fmts[0], inconvertible) < 0);
+	#pragma GCC diagnostic pop
 	if (!can_fail)
 	    printf("(vsnprintf() converts %%ls here, skipping those cases) ");
 	ncases = NBAD + 3 + (can_fail ? NFMTS * NPFX : 0);

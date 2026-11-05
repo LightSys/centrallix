@@ -16,7 +16,7 @@
 /*									*/
 /*		Unsupported cases skipped by the test suite:		*/
 /*		- a table with zero rows: divides by zero.		*/
-/*		- a key shorter nonzero key length: reads past the end.	*/
+/*		- a key shorter than a nonzero key length: over reads.	*/
 /*		- xhDeInit() on a table with entries: leaks them.	*/
 /*		- xhAdd() allocation failure: needs an inject to test.	*/
 /************************************************************************/
@@ -26,7 +26,7 @@
 #include <string.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Tested module. **/
 #include "xhash.h"

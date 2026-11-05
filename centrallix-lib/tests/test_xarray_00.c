@@ -13,8 +13,8 @@
 /* Creation:	November 25th, 2025					*/
 /* Description:	Test all the functions in the xarray library, except	*/
 /* 		xaInit() and xaDeInit() because testing xaNew() and	*/
-/* 		xaFree() should cover them, and xaAddItemSorted() and	*/
-/* 		xaAddItemSortedInt32().					*/
+/* 		xaFree() should cover them, and xaAddItemSorted(),	*/
+/* 		xaAddItemSortedInt32(), and xaClearR().			*/
 /************************************************************************/
 
 #include <math.h>
@@ -23,13 +23,13 @@
 #include <stdlib.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
+#include "t_utils.h"
 #include "newmalloc.h"
 
 /** Tested module. **/
 #include "xarray.h"
 
-/** Helper used by xaClear/xaClearR to free allocated items and count them. **/
+/** Helper used by xaClear() to free allocated items and count them. **/
 static int test_free(void* p, void* arg)
     {
 	if (p == NULL) return 0;
@@ -100,8 +100,8 @@ static bool doTest(void)
 	*v_not = value_not;
 	success &= ASSERT_EQL(xaFindItem(xa, NULL), -1, "%d");
 	success &= ASSERT_EQL(xaFindItemR(xa, NULL), -1, "%d");
-	success &= ASSERT_EQL(xaFindItem(xa, &v_not), -1, "%d");
-	success &= ASSERT_EQL(xaFindItemR(xa, &v_not), -1, "%d");
+	success &= ASSERT_EQL(xaFindItem(xa, v_not), -1, "%d");
+	success &= ASSERT_EQL(xaFindItemR(xa, v_not), -1, "%d");
 	nmFree(v_not, sizeof(int)); v_not = NULL;
 
 	/** Insert before index 1. **/
@@ -130,20 +130,21 @@ static bool doTest(void)
 	success &= ASSERT_EQL(xaGetItem(xa, 4), NULL, "%p"); /* Check null gap. */
 
 	/** Remove an item and ensure that it is gone. **/
-	success &= ASSERT_EQL(xaRemoveItem(xa, 2), 0, "%d"); /* Remove original index 2. */
+	success &= ASSERT_EQL(xaRemoveItem(xa, 2), 0, "%d"); /* Remove v2. */
 	success &= ASSERT_EQL(xaCount(xa), 5, "%d");
 	nmFree(v2, sizeof(int)); v2 = NULL; /* v2 is removed so it isn't freed with xaClear(). */
 
 	/** Count non-NULL items prior to clearing. **/
 	int count_before = xaCount(xa);
-	int nonnull = 0;
-	for (unsigned int i = 0; i < count_before; i++)
+	success &= ASSERT_RANGE(count_before, 0u, (unsigned int)__INT_MAX__, "%u");
+	unsigned int nonnull = 0;
+	for (unsigned int i = 0; i < (unsigned int)count_before; i++)
 	    if (xaGetItem(xa, i) != NULL) nonnull++;
 
 	/** Clear and verify free was called for each non-NULL item. **/
 	unsigned int freed_count = 0;
 	success &= ASSERT_EQL(xaClear(xa, test_free, &freed_count), 0, "%d");
-	success &= ASSERT_EQL(freed_count, nonnull, "%d");
+	success &= ASSERT_EQL(freed_count, nonnull, "%u");
 	success &= ASSERT_EQL(xaCount(xa), 0, "%d");
 
 	/** Clean up. **/
@@ -155,5 +156,5 @@ static bool doTest(void)
 long long test(char** tname)
     {
     *tname = "xarray-00 Full Test";
-    return loopTest(doTest) * 34;
+    return loopTest(doTest) * 37;
     }

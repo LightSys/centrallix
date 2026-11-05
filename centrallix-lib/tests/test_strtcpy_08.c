@@ -6,7 +6,7 @@
 #include "strtcpy.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /*** Main reason to have both a 1 char and 2 char test is that the compiler's
  *** optimization seems to partly unroll the loop into a copy-first-char and

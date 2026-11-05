@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -45,9 +45,11 @@
 
 
 
-/*** objOpenSession - start a new session with a specific current
- *** directory.  If current_dir is NULL, then the new session is started
- *** in the home directory of the calling user.
+/*** Opens an OSML session, which is needed to open objects.  Close it with
+ *** objCloseSession().
+ ***
+ *** @param current_dir The working directory for relative paths, e.g. "/".
+ *** @returns The new session, or NULL if an error occurs.
  ***/
 pObjSession 
 objOpenSession(char* current_dir)
@@ -76,8 +78,10 @@ objOpenSession(char* current_dir)
     }
 
 
-/*** objCloseSession - closes an open session and closes any objects,
- *** queries, and attributes that were open via this session.
+/*** Closes an OSML session, along with any objects and queries open in it.
+ ***
+ *** @param this The session to close.
+ *** @returns 0, always.
  ***/
 int 
 objCloseSession(pObjSession this)
@@ -91,7 +95,7 @@ objCloseSession(pObjSession this)
 	/** Close session being re-entered? **/
 	if (this->Flags & OBJ_SESS_F_CLOSING)
 	    {
-	    mssError(1,"OSML","Bark! Session close was re-entered");
+	    mssWarn("OSML", "Bark! Session close was re-entered.");
 	    return 0;
 	    }
 	this->Flags |= OBJ_SESS_F_CLOSING;
@@ -125,7 +129,7 @@ objCloseSession(pObjSession this)
 		}
 	    if (!closed)
 		{
-		mssError(1,"OSML","Bark! %d unmanaged object(s) remained unclosed at session destroy", this->OpenObjects.nItems);
+		mssWarn("OSML", "Bark! %d unmanaged object(s) remained unclosed at session destroy.", this->OpenObjects.nItems);
 		for(i=0;i<this->OpenObjects.nItems;i++)
 		    {
 		    obj = (pObject)this->OpenObjects.Items[i];
@@ -202,9 +206,12 @@ objUnmanageQuery(pObjSession this, pObjQuery qy)
     }
 
 
-/*** objCommit - commit changes made during a transaction.  Only partly
- *** implemented at present, and only if supported by the underlying
- *** driver.
+/*** Commits the top-level object in the session's current transaction.  Use
+ *** objCommitObject() to commit a specific object.
+ ***
+ *** @param this The OSML session.
+ *** @returns 0 if successful or if there is nothing to commit, or -1 if an
+ *** 	error occurs.
  ***/
 int
 objCommit(pObjSession this)

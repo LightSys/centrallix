@@ -21,7 +21,7 @@
 #include <stdlib.h>
 
 /** Test dependencies. **/
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Tested module. **/
 #include "range.h"
@@ -54,7 +54,7 @@ static bool doTest(void)
 	success &= ASSERT_EQL(roundTo(123.4, -1), 120.0, "%g");
 	success &= ASSERT_EQL(roundTo(586241.7, -4), 590000.0, "%g");
 	
-	/** Rounding infinity. */
+	/** Rounding infinity. **/
 	success &= ASSERT_EQL(roundTo( INFINITY, 0), INFINITY, "%g");
 	success &= ASSERT_EQL(roundTo(-INFINITY, 0), -INFINITY, "%g");
 	success &= ASSERT_EQL(roundTo( INFINITY, 16), INFINITY, "%g");

@@ -8,7 +8,7 @@
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
-#include "test_utils.h"
+#include "t_utils.h"
 
 /** Longest line the sweep builds. **/
 #define MAX_LEN	6000
@@ -82,7 +82,7 @@ test(char** tname)
 
 	*tname = "mtlexer-03 BID#156 - line length based failure";
 
-	mssInitialize("system", "", "", 0, "test");
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	/** Seed the input and the expected first token at their full length. **/
 	memset(str, 'a', MAX_LEN+1);
@@ -93,7 +93,8 @@ test(char** tname)
 	tokstr[1] = "nextline";
 	tokstr[2] = "thirdline";
 
-	rval = loopTest(doTest);
+	/** Each pass lexes MAX_LEN / N_PASS of the line lengths. **/
+	rval = loopTest(doTest) * MAX_LEN / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;
