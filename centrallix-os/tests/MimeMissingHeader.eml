@@ -1,0 +1,14 @@
+From: tester@example.com
+Subject: Parts with and without a header
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Subject: Has a subject
+Content-Type: text/plain; charset=us-ascii
+
+First part.
+--b1
+Content-Type: text/plain
+
+Second part.
+--b1--

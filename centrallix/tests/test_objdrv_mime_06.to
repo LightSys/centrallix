@@ -1,0 +1,3 @@
+##NAME Reply-To and Sender addresses
+
+query select :name, reply_to = :"Reply-To", sender = :"Sender" from /tests/MimeReplyToSender.eml
