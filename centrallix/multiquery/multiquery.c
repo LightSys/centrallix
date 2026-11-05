@@ -412,6 +412,69 @@ mq_internal_CopyContent(pObject src, pObject dst)
     }
 
 
+/*** mq_internal_ContentEqual - check whether two objects have the same
+ *** content.  Returns 1 when src and dst are the same object, have the same
+ *** path, or hold the same bytes, and 0 otherwise, including when either
+ *** object fails to read.
+ ***/
+int
+mq_internal_ContentEqual(pObject src, pObject dst)
+    {
+    char src_buf[256];
+    char dst_buf[256];
+    int src_cnt, dst_cnt, rcnt;
+    char* src_path;
+    char* dst_path;
+
+	/** Same object or path **/
+	if (src == dst)
+	    return 1;
+	src_path = objGetPathname(src);
+	dst_path = objGetPathname(dst);
+	if (src_path != NULL && dst_path != NULL && strcmp(src_path, dst_path) == 0)
+	    return 1;
+
+	/** Start both at the beginning **/
+	if (objSeek(src, 0) < 0 || objSeek(dst, 0) < 0)
+	    goto read_failed;
+
+	while (true)
+	    {
+	    src_cnt = objRead(src, src_buf, sizeof(src_buf), 0, 0);
+	    if (src_cnt < 0)
+		goto read_failed;
+
+	    /** Equal only if dst ends with src **/
+	    if (src_cnt == 0)
+		{
+		rcnt = objRead(dst, dst_buf, 1, 0, 0);
+		if (rcnt < 0)
+		    goto read_failed;
+		return (rcnt == 0);
+		}
+
+	    /** Read as many bytes from dst as src gave **/
+	    for (dst_cnt = 0; dst_cnt < src_cnt; dst_cnt += rcnt)
+		{
+		rcnt = objRead(dst, dst_buf + dst_cnt, src_cnt - dst_cnt, 0, 0);
+		if (rcnt < 0)
+		    goto read_failed;
+		if (rcnt == 0)
+		    return 0;
+		}
+
+	    if (memcmp(src_buf, dst_buf, src_cnt) != 0)
+		return 0;
+	    }
+
+    read_failed:
+	/** Unreadable content counts as changed, so the caller copies it **/
+	mssClearError();
+
+    return 0;
+    }
+
+
 /*** mq_internal_SetCoverage - walk the QE tree and determine what parts
  *** of the tree contain various object references.
  ***/
