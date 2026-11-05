@@ -45,6 +45,9 @@
 #define	MSS_PASSWORD_SIZE	64
 #define MSS_USERNAME_SIZE	32
 
+/** Session parameter name size; a longer name is refused **/
+#define MSS_PARAMNAME_SIZE	32
+
 
 /** Default number of recent warnings kept per session **/
 #define MSS_WARN_HISTORY_DEFAULT	16
@@ -68,9 +71,10 @@ typedef struct
 /** Parameter data **/
 typedef struct
     {
-    char	Name[32];
+    char	Name[MSS_PARAMNAME_SIZE];
     char*	Value;
     char	ValueBuf[64];
+    int		IsAlloc;
     }
     MtParam, *pMtParam;
 
