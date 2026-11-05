@@ -2387,7 +2387,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    nht_i_WriteResponse(conn, 200, "OK", NULL);
 		    nht_i_QPrintfConn(conn, 0,
 			    "{\"akey\":\"%STR&JSONSTR-%STR&JSONSTR-%STR&JSONSTR\", \"watchdogtimer\":%INT, \"servertime\":\"%STR&JSONSTR\", \"servertime_notz\":\"%STR&JSONSTR\"}\r\n",
-			    nsess->SKey, group->GKey, app->AKey, NHT.APIWatchdogTime, tbuf, tbuf2
+			    nsess->SKey, group->GKey, app->AKey, grp_config_time / 1000, tbuf, tbuf2
 			    );
 		    }
 		}
