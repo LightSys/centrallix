@@ -76,6 +76,7 @@ typedef struct
     char*	Overlays[WGTR_MAX_OVERLAY];
     char*	AppPath;
     char*	BaseDir;
+    int		AppWatchdogTime;
     }
     WgtrClientInfo, *pWgtrClientInfo;
 
