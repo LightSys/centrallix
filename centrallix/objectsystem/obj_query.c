@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2025 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -385,6 +385,9 @@ objQueryDelete(pObjQuery this)
     {
     int rval = 0;
     pObject obj;
+    XArray paths;
+    char* path;
+    int i;
 
 	ASSERTMAGIC(this, MGK_OBJQUERY);
 
@@ -402,14 +405,35 @@ objQueryDelete(pObjQuery this)
 	    }
 	else
 	    {
+	    /** Collect paths first: deleting mid-query can shift the driver's cursor. **/
+	    if (xaInit(&paths, 16) < 0)
+		{
+		mssError(1,"OSML","Failed to allocate list of objects to delete");
+		return -1;
+		}
 	    while((obj = objQueryFetch(this,O_WRONLY)))
 		{
-		if (objDelete(obj->Session, objGetPathname(obj)) < 0)
+		path = nmSysStrdup(objGetPathname(obj));
+		if (!path || xaAddItem(&paths, path) < 0)
+		    {
+		    mssError(1,"OSML","Failed to save path '%s' for deletion", objGetPathname(obj));
+		    if (path) nmSysFree(path);
+		    objClose(obj);
 		    rval = -1;
-		objClose(obj);
-		if (rval < 0)
 		    break;
+		    }
+		objClose(obj);
 		}
+
+	    /** Delete each result, stopping at the first failure **/
+	    for(i=0; i<paths.nItems; i++)
+		{
+		path = (char*)xaGetItem(&paths, i);
+		if (rval == 0 && objDelete(this->Obj->Session, path) < 0)
+		    rval = -1;
+		nmSysFree(path);
+		}
+	    xaDeInit(&paths);
 	    }
 
     return rval;
