@@ -49,6 +49,8 @@ centrallix "system/config"
 	ssl_session_cookie = "SCXID";
 	session_watchdog_timer = 180; //seconds
 	session_inactivity_timer = 1800; //seconds
+	app_watchdog_timer = 180; //seconds
+	api_watchdog_timer = 180; //seconds
 	enable_gzip = 0; // false - NS4 fails on this
 	condense_js = 1; // true
 	dir_index = "index.app","index.html","index.htm","index.rpt";
