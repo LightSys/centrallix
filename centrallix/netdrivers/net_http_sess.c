@@ -59,7 +59,7 @@ int
 nht_i_LinkSess(pNhtSessionData sess)
     {
     if (sess->LinkCnt <= 0 || sess->LinkCnt > 65535)
-	mssError(1,"NHT","Bark!  Bad link count %d for session %s", sess->LinkCnt, sess->Cookie);
+	mssWarn("NHT", "Bark!  Bad link count %d for session %s.", sess->LinkCnt, sess->Cookie);
     sess->LinkCnt++;
     sess->LastAccess = NHT.AccCnt++;
     return 0;
@@ -546,6 +546,20 @@ nht_i_WatchdogTime(handle_t th)
     }
 
 
+/*** nht_i_WatchdogConfigTime() - returns the configured time for a watchdog
+ *** timer, in milliseconds.
+ ***/
+int
+nht_i_WatchdogConfigTime(handle_t th)
+    {
+    pNhtTimer t = xhnHandlePtr(&(NHT.TimerHctx), th);
+
+	if (!t) return -1;
+
+    return t->Time;
+    }
+
+
 /*** nht_i_WTimeout() - this routine is called when the session 
  *** watchdog timer expires for a session.  The response is to remove the
  *** session.
@@ -694,7 +708,7 @@ nht_i_DiscardASession(pNhtUser usr)
 /*** nht_i_AllocApp() - allocate a new application structure
  ***/
 pNhtApp
-nht_i_AllocApp(char* path, pNhtAppGroup group)
+nht_i_AllocApp(char* path, pNhtAppGroup group, int watchdog_time)
     {
     pNhtApp app = NULL;
     int akey[2];
@@ -725,7 +739,7 @@ nht_i_AllocApp(char* path, pNhtAppGroup group)
 	app->AppObjSess = objOpenSession("/");
 	if (!app->AppObjSess)
 	    goto error;
-	app->WatchdogTimer = nht_i_AddWatchdog(NHT.WatchdogTime*1000, nht_i_WTimeoutApp, (void*)app);
+	app->WatchdogTimer = nht_i_AddWatchdog(watchdog_time*1000, nht_i_WTimeoutApp, (void*)app);
 	if (app->WatchdogTimer == XHN_INVALID_HANDLE)
 	    goto error;
 	/*app->InactivityTimer = nht_i_AddWatchdog(NHT.InactivityTime*1000, nht_i_ITimeoutApp, (void*)app);*/
@@ -812,7 +826,7 @@ nht_i_UnlinkApp(pNhtApp app)
 /*** nht_i_AllocAppGroup() - allocate a new application group structure
  ***/
 pNhtAppGroup
-nht_i_AllocAppGroup(char* path, pNhtSessionData s)
+nht_i_AllocAppGroup(char* path, pNhtSessionData s, int watchdog_time)
     {
     pNhtAppGroup group;
     int gkey[2];
@@ -835,7 +849,7 @@ nht_i_AllocAppGroup(char* path, pNhtSessionData s)
 	snprintf(group->G_ID_Text, sizeof(group->G_ID_Text), "%s|%lld", s->S_ID_Text, group->G_ID);
 	objCurrentDate(&(group->FirstActivity));
 	objCurrentDate(&(group->LastActivity));
-	group->WatchdogTimer = nht_i_AddWatchdog(NHT.WatchdogTime*1000, nht_i_WTimeoutAppGroup, (void*)group);
+	group->WatchdogTimer = nht_i_AddWatchdog(watchdog_time*1000, nht_i_WTimeoutAppGroup, (void*)group);
 	/*group->InactivityTimer = nht_i_AddWatchdog(NHT.InactivityTime*1000, nht_i_ITimeoutAppGroup, (void*)group);*/
 	xaInit(&group->Apps, 16);
 	xaAddItem(&s->AppGroups, (void*)group);

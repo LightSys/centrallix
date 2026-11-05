@@ -320,7 +320,8 @@ objInitialize()
 	    	    MLX_F_ICASE | MLX_F_FILENAMES, 0);
 	        if (!ct->TypeNameExpression)
 	            {
-		    mssError(0,"OSML","Could not compile expression for type '%s'",ct->Name);
+		    mssWarn("OSML", "Could not compile expression for type '%s'.",ct->Name);
+		    mssClearError();
 		    break;
 		    }
 		}
@@ -363,7 +364,7 @@ objInitialize()
 		parent_ct = (pContentType)xhLookup(&(OSYS.Types),ptr);
 		if (!parent_ct)
 		    {
-		    mssError(1,"OSML","Undefined parent type '%s' of type '%s'",ptr,ct->Name);
+		    mssWarn("OSML", "Undefined parent type '%s' of type '%s'.",ptr,ct->Name);
 		    xaDeInit(&(ct->Extensions));
 		    xaDeInit(&(ct->IsA));
 		    /** MJM - also related to the above condition **/

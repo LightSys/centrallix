@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdbool.h>
 #include "barcode.h"
 #include "report.h"
 #include "cxlib/mtask.h"
@@ -172,12 +173,13 @@ prt_textlm_Resize(pPrtObjStream this, double new_width, double new_height)
 
 
 /*** prt_textlm_ChildBreakReq() - a child object is requesting a page break
- *** operation.  Right now, we ain't gonna support such thangs in this lm.
+ *** operation, which breaks this area so the child can continue in the
+ *** area's continuation.
  ***/
 int
 prt_textlm_ChildBreakReq(pPrtObjStream this, pPrtObjStream child, pPrtObjStream *new_this)
     {
-    return -1;
+    return this->LayoutMgr->Break(this, new_this);
     }
 
 
@@ -408,6 +410,27 @@ prt_textlm_JustifyLine(pPrtObjStream starting_point, int jtype)
 	    }
 
     return 0;
+    }
+
+
+/*** prt_textlm_LineJustification() - returns the justification for the line
+ *** ending at line_tail.  We use the justification of the last non-empty
+ *** object, or the justification of line_tail if the line is empty (aka. it's
+ *** only style changes).
+ ***/
+int
+prt_textlm_LineJustification(pPrtObjStream line_tail)
+    {
+    pPrtObjStream scan;
+
+	for(scan=line_tail; scan; scan=scan->Prev)
+	    {
+	    if (scan->ObjType->TypeID != PRT_OBJ_T_STRING || scan->Content[0] != '\0') return scan->Justification;
+	    if (scan->Flags & PRT_OBJ_F_XSET) break;
+	    if (scan->Prev && scan->Prev->Flags & (PRT_OBJ_F_NEWLINE | PRT_OBJ_F_SOFTNEWLINE)) break;
+	    }
+
+    return line_tail->Justification;
     }
 
 
@@ -978,12 +1001,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream search;
     double x,y;
     int handle_id;
-
-	/** Need to adjust the height/width if unspecified? **/
-	if (new_child_obj->Width < 0)
-	    new_child_obj->Width = prtInnerWidth(this);
-	if (new_child_obj->Height < 0)
-	    new_child_obj->Height = prtInnerHeight(this);
+    bool is_marker;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
@@ -1012,7 +1030,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		/** New line needed.
 		 ** Justify previous line?
 		 **/
-		prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
+		prt_textlm_JustifyLine(this->ContentTail, prt_textlm_LineJustification(this->ContentTail));
 
 		/** Start a new line at the left edge **/
 		objptr->X = 0.0;
@@ -1068,6 +1086,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		    }
 		}
 
+	    /** Fill the width if unspecified; start the height at 0 and let it grow **/
+	    if (objptr->Width < 0)
+		objptr->Width = prtInnerWidth(this);
+	    if (objptr->Height < 0)
+		objptr->Height = 0;
+
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
@@ -1119,44 +1143,33 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    /** Ok, done any initial splitting or moving that was needed. **/
 	    /** Add the objptr, and then see about adding split_obj if needed. **/
 	    /** First, do we need to request more room in the 'area'? **/
+	    /** Empty strings that do not end a line (style changes) need no room. **/
 	    new_parent = NULL;
-	    if (objptr->Y + objptr->Height - PRT_FP_FUDGE > prtInnerHeight(this))
+	    is_marker = (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && objptr->Content[0] == '\0'
+		&& !(objptr->Flags & PRT_OBJ_F_NEWLINE));
+	    if (!is_marker && objptr->Y + objptr->Height - PRT_FP_FUDGE > prtInnerHeight(this))
 	        {
 		/** Request the additional space, if allowed **/
 		if (this->LayoutMgr->Resize(this, this->Width, objptr->Y + objptr->Height + this->MarginTop + this->MarginBottom + this->BorderTop + this->BorderBottom) < 0)
 		    {
-		    /** Resize denied.  If container is empty, we can't do a Break. **/
-		    if (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next))
+		    /** Resize denied.  Shrink the text to fit if min_fontsize is set. **/
+		    if (objptr->TextStyle.MinFontSize > 0.0 && prt_textlm_Rescale(this, objptr) == 0)
+			continue;
+
+		    /*** If container is empty, a Break can't give it more room when it is
+		     *** at the top of its parent, fixed in size, or fixed in position.
+		     ***/
+		    if ((this->Y < PRT_FP_FUDGE || (this->Flags & (PRT_OBJ_F_FIXEDSIZE | PRT_OBJ_F_YSET))) && (!this->ContentHead || (this->ContentHead->X + this->ContentHead->Width == 0.0 && !this->ContentHead->Next)))
 			{
-			/** Try rescale if possible. **/
-			if (prt_textlm_Rescale(this, objptr) < 0)
-			    {
-			    /** Resize and Rescale denied?  Fail if so. **/
-			    mssError(1,"PRT","Could not fit new object into layout area");
-			    goto error;
-			    }
-			else
-			    {
-			    /** Reposition wrapped item **/
-			    continue;
-			    }
+			mssError(1,"PRT","Could not fit new object into layout area");
+			goto error;
 			}
 
 		    /** Try a break operation. **/
 		    if (!(this->Flags & PRT_OBJ_F_ALLOWSOFTBREAK) || this->LayoutMgr->Break(this, &new_parent) < 0)
 			{
-			/** Unable to break.  Try rescale if possible. **/
-			if (prt_textlm_Rescale(this, objptr) < 0)
-			    {
-			    /** Resize, Break and Rescale all denied?  Fail if so. **/
-			    mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
-			    goto error;
-			    }
-			else
-			    {
-			    /** Reposition wrapped item **/
-			    continue;
-			    }
+			mssError(1,"PRT","Could not fit new object into layout area, and automatic page break failed");
+			goto error;
 			}
 		    }
 
@@ -1264,7 +1277,7 @@ prt_textlm_Finalize(pPrtObjStream this)
     pPrtTextLMData lm_inf = (pPrtTextLMData)(this->LMData);
 
 	/** Finish off justification? **/
-	if (this->ContentTail) prt_textlm_JustifyLine(this->ContentTail, this->ContentTail->Justification);
+	if (this->ContentTail) prt_textlm_JustifyLine(this->ContentTail, prt_textlm_LineJustification(this->ContentTail));
 
 	/** Border? **/
 	if (lm_inf->AreaBorder.nLines > 0)

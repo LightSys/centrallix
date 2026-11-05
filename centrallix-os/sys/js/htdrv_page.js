@@ -772,7 +772,7 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //	pl.parentLayer.appendChild(tl);
     moveAbove(tl,pl);
     //moveToAbsolute(tl,x,y);
-    $(tl).offset({left:x, top:y});
+    setPageXY(tl, x, y);
     htr_setzindex(tl,z);
 
     resizeTo(bl,w+s-1,1);
@@ -782,7 +782,7 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //	pl.parentLayer.appendChild(bl);
     moveAbove(bl,pl);
     //moveToAbsolute(bl,x,y+h-s+1);
-    $(bl).offset({left:x, top:y+h-s+1});
+    setPageXY(bl, x, y+h-s+1);
     htr_setzindex(bl,z);
 
     resizeTo(ll,1,h);
@@ -792,7 +792,7 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //	pl.parentLayer.appendChild(ll);
     moveAbove(ll,pl);
     //moveToAbsolute(ll,x,y);
-    $(ll).offset({left:x, top:y});
+    setPageXY(ll, x, y);
     htr_setzindex(ll,z);
 
     resizeTo(rl,1,h+1);
@@ -802,7 +802,7 @@ function pg_mkbox(pl, x,y,w,h, s, tl,bl,rl,ll, c1,c2, z)
     //	pl.parentLayer.appendChild(rl);
     moveAbove(rl,pl);
     //moveToAbsolute(rl,x+w-s+1,y);
-    $(rl).offset({left:x+w-s+1, top:y});
+    setPageXY(rl, x+w-s+1, y);
     htr_setzindex(rl,z);
     
     htr_setvisibility(tl, 'inherit');
@@ -1314,6 +1314,14 @@ function pg_appwindowprop()
 	}
     }
 
+// pg_init_zoom() - sets the zoom the server laid the page out for, and
+// rescales the page to fit the viewport whenever it resizes.
+function pg_init_zoom(zoom)
+    {
+    cx__zoom = zoom;
+    window.addEventListener("resize", () => fitZoom(pg_width, pg_height));
+    }
+
 function pg_init(l,a,gs,ct) //SETH: ??
     {
     window.windowlist = {};
@@ -1505,11 +1513,14 @@ function pg_launch(aparam)
 	var v = aparam[p];
 	var r = wgtrCheckReference(v);
 	if (r) v = r;
-	if (url.lastIndexOf('?') > url.lastIndexOf('/'))
-	    url += '&';
-	else
-	    url += '?';
-	url += (htutil_escape(p) + '=' + htutil_escape(v));
+	if (v !== null)
+	    {
+	    if (url.lastIndexOf('?') > url.lastIndexOf('/'))
+		url += '&';
+	    else
+		url += '?';
+	    url += (htutil_escape(p) + '=' + htutil_escape(v));
+	    }
 	}
 
     if (obscure_data)
@@ -1926,7 +1937,7 @@ function pg_setmousefocus(l, xo, yo)
 	    if (!pg_curarea.layer.getmousefocushandler || pg_curarea.layer.getmousefocushandler(xo, yo, a.layer, a.cls, a.name, a))
 		{
 		// wants mouse focus
-		var offs = $(pg_curarea.layer).offset();
+		var offs = getPageRect(pg_curarea.layer);
 		//var x = getPageX(pg_curarea.layer)+pg_curarea.x;
 		//var y = getPageY(pg_curarea.layer)+pg_curarea.y;
 		var x = offs.left+pg_curarea.x;
@@ -2043,7 +2054,7 @@ function pg_setkbdfocus(l, a, xo, yo)
     if (!a)
 	return false;
 
-    var offs=$(a.layer).offset();
+    var offs=getPageRect(a.layer);
     //var x = getPageX(a.layer)+a.x;
     //var y = getPageY(a.layer)+a.y;
     var x = offs.left+a.x;
@@ -2764,7 +2775,7 @@ function pg_mousemove(e)
         }*/
     if (pg_curlayer != null)
         {
-	var offs = $(pg_curlayer).offset();
+	var offs = getPageRect(pg_curlayer);
         //pg_setmousefocus(pg_curlayer, e.pageX - getPageX(pg_curlayer), e.pageY - getPageY(pg_curlayer));
         pg_setmousefocus(pg_curlayer, e.pageX - offs.left, e.pageY - offs.top);
         }

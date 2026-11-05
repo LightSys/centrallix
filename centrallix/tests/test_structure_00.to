@@ -1,0 +1,6 @@
+##NAME Structure files: add missing attributes
+##UNDO /tests/Structure.struct
+
+query update /tests/Structure.struct set :b = 2 where :name = 'group1'
+query insert into /tests/Structure.struct select name = 'group2', b = 3
+csv select :name, :a, :b from /tests/Structure.struct

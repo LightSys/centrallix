@@ -1,0 +1,8 @@
+$Version=2$
+Structure "system/structure"
+    {
+    group1 "system/object"
+	{
+	a = 1;
+	}
+    }

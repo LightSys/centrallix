@@ -104,6 +104,7 @@ typedef struct _QE
 #define MQ_EF_WILDCARD		128		/* SELECT ... FROM WILDCARD /path/name*.txt */
 #define MQ_EF_PRUNESUBTREE	256		/* SELECT ... FROM PRUNED SUBTREE /path */
 #define MQ_EF_PAGED		512		/* SELECT ... FROM PAGED ... */
+#define MQ_EF_EXPRESSION	1024		/* SELECT ... FROM EXPRESSION (exp) */
 
 
 /*** Structure for the syntactical analysis of the query text. ***/
