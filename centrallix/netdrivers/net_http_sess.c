@@ -546,6 +546,20 @@ nht_i_WatchdogTime(handle_t th)
     }
 
 
+/*** nht_i_WatchdogConfigTime() - returns the configured time for a watchdog
+ *** timer, in milliseconds.
+ ***/
+int
+nht_i_WatchdogConfigTime(handle_t th)
+    {
+    pNhtTimer t = xhnHandlePtr(&(NHT.TimerHctx), th);
+
+	if (!t) return -1;
+
+    return t->Time;
+    }
+
+
 /*** nht_i_WTimeout() - this routine is called when the session 
  *** watchdog timer expires for a session.  The response is to remove the
  *** session.

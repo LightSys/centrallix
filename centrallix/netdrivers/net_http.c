@@ -2338,6 +2338,8 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 	/** Retrieve a new session/group/app key? **/
 	else if (!strcmp(find_inf->StrVal, "appinit"))
 	    {
+	    int grp_config_time;
+
 	    find_inf = stLookup_ne(url_inf, "cx__groupname");
 	    if (!find_inf || find_inf->StrVal[0] == '/')
 		kname = "API Client";
@@ -2349,6 +2351,10 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		conn->AppGroup = group = nht_i_AllocAppGroup(kname, nsess, NHT.APIWatchdogTime);
 	    if (group)
 		{
+		grp_config_time = nht_i_WatchdogConfigTime(group->WatchdogTimer);
+		if (grp_config_time < 0)
+		    grp_config_time = NHT.APIWatchdogTime;
+
 		find_inf = stLookup_ne(url_inf, "cx__appname");
 		if (!find_inf || find_inf->StrVal[0] == '/')
 		    kname = "API Client";
@@ -2356,7 +2362,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 		    kname = find_inf->StrVal;
 
 		/** Set up a new active app **/
-		conn->App = app = nht_i_AllocApp(kname, group, NHT.APIWatchdogTime);
+		conn->App = app = nht_i_AllocApp(kname, group, grp_config_time);
 		if (app)
 		    {
 		    /** We want to give the api client information about our
