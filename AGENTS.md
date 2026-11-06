@@ -1,7 +1,7 @@
 # Editing Files
 
 ## Styling
-Match the surrounding style when editing a file, but keep in mind that many files are styled badly or incorrectly. If user instructions, coding best practices, or your memory conflict with styles in a file, they take precedence over the file. If styling is unclear, read `centrallix-sysdoc/BeeleyCodingStyle.md` for clarification.
+Follow `centrallix-sysdoc/CentrallixCodingStyle.md`. It is the source of truth for style in this project, and all new changes must follow it. Many existing files break its rules, so do not copy the style of the surrounding code where the two disagree. For anything it does not cover, follow the best practices of the language in use and match the surrounding style. If user instructions, coding best practices, or your memory conflict with the style in a file, they take precedence over the file.
 
 ### Comments
 Inline comments are one short line, not blocks. They say what the code does now: never history ("used to"), alternatives ("rather than"), or other things it does not do. Function preambles are the only multi-line comments.
@@ -10,7 +10,7 @@ Inline comments are one short line, not blocks. They say what the code does now:
 `mssError()` is only for failures that propagate up the call chain. A condition the program continues past is a warning: use `fprintf(stderr, "Warning: ...\n")`.
 
 ## Copyright notices
-When making meaningful changes to a file (more than a few lines), update the copyright notice at the top of the file to extend to the current year.
+When making meaningful changes to a file (more than a few lines), update the copyright notice at the top of the file to extend to the current year. See the Copyright Notices section of `centrallix-sysdoc/CentrallixCodingStyle.md` for the format and its exceptions.
 
 ## Generated files
 Read these generated files freely, but don't edit them: builds overwrite them.
