@@ -746,7 +746,7 @@ dbl_internal_VerifyDefinition(pDblTableInf tdata)
 	    }
 	if (tdata->FileHeader.PhysLen < tdata->FileHeader.RecLen) 
 	    {
-	    mssError(1, "DBL", "Table '%s' physical record length %d is not shorter than logical record length %d",
+	    mssError(1, "DBL", "Table '%s' physical record length %d is shorter than logical record length %d",
 		    tdata->Name, tdata->FileHeader.PhysLen, tdata->FileHeader.RecLen);
 	    return -1;
 	    }
@@ -1527,7 +1527,7 @@ dbl_internal_ParseOneDefItem(char* itemstring)
 	whitespaceptr = sepptr+1;
 	while (*whitespaceptr == ' ') *(whitespaceptr++) = '\0';
 
-	/** Parse destination (.DEF) pattrn **/
+	/** Parse destination (.DEF) pattern **/
 	item->DefPattern = whitespaceptr;
 	sepptr = strchr(item->DefPattern,'(');
 	if (!sepptr) goto error;
@@ -1844,7 +1844,7 @@ dblOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree*
 
 #if 0
 /*** dbl_internal_InsertRow - inserts a new row into the database, looking
- *** throught the OXT structures for the column values.  For text/image columns,
+ *** through the OXT structures for the column values.  For text/image columns,
  *** it automatically inserts "" for an unspecified column value when the column
  *** does not allow nulls.
  ***/
@@ -2665,7 +2665,7 @@ dblSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 
 
 /*** dblAddAttr - add an attribute to an object.  This doesn't work for
- *** unix filesystem objects, so we just deny the request.
+ *** DBL objects, so we just deny the request.
  ***/
 int
 dblAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt)
@@ -2675,7 +2675,7 @@ dblAddAttr(void* inf_v, char* attrname, int type, pObjData val, pObjTrxTree* oxt
 
 
 /*** dblOpenAttr - open an attribute as if it were an object with 
- *** content.  The Sybase database objects don't yet have attributes that are
+ *** content.  The DBL objects don't yet have attributes that are
  *** suitable for this.
  ***/
 void*

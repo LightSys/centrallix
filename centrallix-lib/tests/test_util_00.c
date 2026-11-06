@@ -28,7 +28,7 @@ long long
 test(char** tname){
     int i;
     char text[TXT_SIZE]="";
-    *tname = "util-00 convertion from strings to integers";
+    *tname = "util-00 conversion from strings to integers";
     
     for(i=-RANGE; i<RANGE; i++){
         snprintf(text,TXT_SIZE,"%d",i);

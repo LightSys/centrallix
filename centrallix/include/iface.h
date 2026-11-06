@@ -28,7 +28,7 @@
 /* Module: 	Interface Module     					*/
 /* Author:	Matt McGill (MJM)					*/
 /* Creation:	July 26, 2004   					*/
-/* Description:	Provies the functionality for handling interfaces in a  */
+/* Description:	Provides the functionality for handling interfaces in a */
 /*		general way, to be used by any Centrallix module that   */
 /*		has need of support for interfaces.                    	*/
 /************************************************************************/
@@ -58,7 +58,7 @@ typedef struct IfcHandle_t* IfcHandle;
 int ifcContains(IfcHandle h, int category, char* member);
 pObject ifcGetProperties(IfcHandle h, int category, char* member);
 int ifcIsSubset(IfcHandle h1, IfcHandle h2);	/* is h2 a subset of h1? Does h1 provide all the functionality in h2? */
-IfcHandle ifcGetHandle(pObjSession s, char* path);	/* Returns a handle to an interfae */
+IfcHandle ifcGetHandle(pObjSession s, char* path);	/* Returns a handle to an interface */
 void ifcReleaseHandle(IfcHandle handle);    /* Releases a handle to an interface */
 int ifcInitialize();
 

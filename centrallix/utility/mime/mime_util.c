@@ -130,7 +130,7 @@ libmime_StringFirstCaseCmp(char *s1, char *s2)
     }
 
 /*
-**  libmime_PrintAddrList
+**  libmime_PrintAddressList
 */
 int
 libmime_PrintAddressList(pXArray xary, int level)
@@ -221,7 +221,7 @@ libmime_B64Purify(char *string)
 
 /*  libmime_ContentExtension
 **
-**  Modifies the first parameter to contain the three leter extension
+**  Modifies the first parameter to contain the three letter extension
 **  that is associated with the given content type and subtype.
 */
 int

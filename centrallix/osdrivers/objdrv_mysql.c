@@ -222,7 +222,7 @@ mysd_internal_GetConn(pMysdNode node)
 		return NULL;
 		}
         
-            /** Get usernamename/password from session **/
+            /** Get username/password from session **/
             username = mssUserName();
             password = mssPassword();
         
@@ -234,7 +234,7 @@ mysd_internal_GetConn(pMysdNode node)
             }
         else
             {
-            /** Use usernamename/password from node **/
+            /** Use username/password from node **/
             username = node->Username;
             password = node->Password;
             }
@@ -404,7 +404,7 @@ mysd_internal_ReleaseConn(pMysdConn * conn)
     }
 
 /*** mysd_internal_RunQuery() - safely runs a query on the database
-*** This works simarly to prepared statments using the question mark syntax.
+*** This works similarly to prepared statements using the question mark syntax.
 *** Instead of calling bindParam for each argument as is done in general,
 *** all of the arguments to be replaced are passed as varargs
 ***
@@ -423,7 +423,7 @@ mysd_internal_ReleaseConn(pMysdConn * conn)
 *** (add_quote has no effect on '?a' forms).  Otherwise, a non-'\0' value
 *** for add_quote[x] means to add single quotes '' onto the value.
 ***
-*** All parameters are sanatized with mysql_real_escape_string before
+*** All parameters are sanitized with mysql_real_escape_string before
 *** the query is built
 *** This WILL NOT WORK WITH BINARY DATA
 ***/
@@ -792,7 +792,7 @@ mysd_internal_GetTData(pMysdNode node, char* tablename)
         if (tdata)
             return tdata;
 
-        /** sanatize the table name and build the query**/
+        /** sanitize the table name and build the query**/
         length = strlen(tablename);
         /** this next bit will break any charset not ASCII **/ 
         /** throw an error if some joker tries to throw in a backtick **/
@@ -1224,7 +1224,7 @@ mysd_internal_UpdateRow(pMysdData data, char* newval, int col)
         return 0;
     }
     
-/*** mysd_internal_DeleteRow() - update a given row
+/*** mysd_internal_DeleteRow() - delete a given row
  ***/
 int
 mysd_internal_DeleteRow(pMysdData data)
@@ -1247,7 +1247,7 @@ mysd_internal_DeleteRow(pMysdData data)
     }
 
 
-/*** mysd_internal_InsertRow() - update a given row
+/*** mysd_internal_InsertRow() - insert a new row
  ***/
 int
 mysd_internal_InsertRow(pMysdData inf, pObjTrxTree oxt)
@@ -1723,7 +1723,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_PROPERTY:
-                /** 'Frozen' object?  IF so, use current tree value **/
+                /** 'Frozen' object?  If so, use current tree value **/
                 if (tree->Flags & EXPR_F_FREEZEEVAL || (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL)))
                     {
                     if (tree->Flags & EXPR_F_NULL)
@@ -1786,7 +1786,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                         }
                     else if (!strcmp(tree->Name,"annotation"))
                         {
-                        /** no anotation support atm **/
+                        /** no annotation support atm **/
                         }
                     else
                         {
@@ -2137,7 +2137,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		if (subtree->DataType == DATA_T_STRING)
 		    {
 		    /** We get here if 1) op 1 is a constant STRING, 2) op 1 is one of
-		     ** of our properties and we know it is a string, 3) the parent
+		     ** our properties and we know it is a string, 3) the parent
 		     ** node of this + operator is another + operator and it used CONCAT,
 		     ** or 4) op 1 is a function call that is known to return a string.
 		     **/
@@ -3158,7 +3158,7 @@ mysdExecuteMethod(void* inf_v, char* methodname, pObjData param, pObjTrxTree oxt
     }
 
 
-/*** mysqlPresentationHints() - Return a structure containing "presentation hints"
+/*** mysdPresentationHints() - Return a structure containing "presentation hints"
  *** data, which is basically metadata about a particular attribute, which
  *** can include information which relates to the visual representation of
  *** the data on the client.
@@ -3334,7 +3334,7 @@ mysdPresentationHints(void* inf_v, char* attrname, pObjTrxTree* oxt)
     }
 
 
-/*** mysqlInfo() - return object metadata - about the object, not about a 
+/*** mysdInfo() - return object metadata - about the object, not about a 
  *** particular attribute.
  ***/
 int
@@ -3345,7 +3345,7 @@ mysdInfo(void* inf_v, pObjectInfo info_struct)
     }
 
 
-/*** mysqlCommit() - commit any changes made to the underlying data source.
+/*** mysdCommit() - commit any changes made to the underlying data source.
  ***/
 int
 mysdCommit(void* inf_v, pObjTrxTree* oxt)
@@ -3387,7 +3387,7 @@ mysdCommit(void* inf_v, pObjTrxTree* oxt)
     }
 
 
-/*** mysqlInitialize() - initialize this driver, which also causes it to 
+/*** mysdInitialize() - initialize this driver, which also causes it to 
  *** register itself with the objectsystem.
  ***/
 int

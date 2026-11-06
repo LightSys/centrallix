@@ -47,7 +47,7 @@
 /* Description:	This module provides the Version-3 printmanagement	*/
 /*		subsystem functionality.				*/
 /*									*/
-/*		prtmgmt_v3_lmtext.c:  This module implements the text-	*/
+/*		prtmgmt_v3_lm_text.c:  This module implements the text-	*/
 /*		flow layout manager.  The textflow layout manager	*/
 /*		provides justification, word wrapping, image embedding,	*/
 /*		and so forth.						*/

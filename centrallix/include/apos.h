@@ -81,7 +81,7 @@ typedef struct
 int aposAutoPositionWidgetTree(pWgtrNode);	/**top-level function, called from wgtr module**/
 int aposAutoPositionContainers (pWgtrNode);	/**Auto-positions all widgets inside a container**/
 int aposInit();					/**Registers datastructures used in auto-positioning**/
-int aposInitiallizeGrid (pAposGrid);		/**Initiallizes the XArrays in the grid object**/
+int aposInitiallizeGrid (pAposGrid);		/**Initializes the XArrays in the grid object**/
 int aposFree(pAposGrid);				/**Frees dynamically allocated memory**/
 int aposFreeGrids(pWgtrNode);				/**Frees dynamically allocated memory**/
 int aposSetOffsetBools(pWgtrNode, int*, int*, int*, int*, int*); /**sets bools used to offset widgets**/

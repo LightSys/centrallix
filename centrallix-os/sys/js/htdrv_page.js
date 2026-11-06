@@ -58,7 +58,7 @@ function pg_get_style(element,attr)
     {
     if(!element)
 	{
-	alert("NULL ELEMENT, attr " + attr + "is unknown.");
+	alert("NULL ELEMENT, attr " + attr + " is unknown.");
 	return null;
 	}
     if(cx__capabilities.Dom1HTML && cx__capabilities.Dom2CSS)
@@ -161,7 +161,7 @@ function pg_get_style(element,attr)
             }
         else 
             {
-            alert(" attr " + attr + " need to be implemeneted in pg_get_style of htdrv_page.js");
+            alert(" attr " + attr + " need to be implemented in pg_get_style of htdrv_page.js");
             }
         return null;
         }
@@ -731,7 +731,7 @@ function pg_isinlayer(outer,inner)
 /** Function to make four layers into a box  //SETH: ?? what's a 'box'?
 * pl - a layer
 * x,y - x,y-cord
-* w,h - widht, height
+* w,h - width, height
 * s - ?
 * tl - top layer
 * bl - bottom layer
@@ -1613,8 +1613,8 @@ function pg_mvpginpt(ly)
     	setTimeout(pg_mvpginpt, 500, pg_layer);
     }
 
-//START SECTION: setTimout wrappers ------------------------------------------
-//these are wrappers for setTimeout as a NS4 hack since NS4 had a small, limited number of timers that could run simultaniously.
+//START SECTION: setTimeout wrappers ------------------------------------------
+//these are wrappers for setTimeout as a NS4 hack since NS4 had a small, limited number of timers that could run simultaneously.
 
 // see pg_addsched_fn
 function pg_addschedtolist(s)
@@ -1678,7 +1678,7 @@ function pg_addsched(e,o,t)
     return sched.id;
     }
 
-//this is a wrapper for setTimeout as a NS4 hack since NS4 had a small, limited number of timers that could run simultaniously.
+//this is a wrapper for setTimeout as a NS4 hack since NS4 had a small, limited number of timers that could run simultaneously.
 function pg_addsched_fn(o,f,p,t)
     {
     var sched = {func:f, obj:o, param:p, tm:pg_timestamp() + t, id:pg_schedtimeoutid++};
@@ -1755,7 +1755,7 @@ function pg_timestamp()
     return (new Date()).valueOf() - pg_init_ts;
     }
 
-//END SECTION: setTimout wrappers ------------------------------------------
+//END SECTION: setTimeout wrappers ------------------------------------------
 
 //START SECTION: 'expression' functions ----------------------------------------
 
@@ -2547,7 +2547,7 @@ function pg_reveal_check_ok(e)
     return true;
     }
 
-// pg_reveal_check_veto() - when a listener veto's a triggerer's check
+// pg_reveal_check_veto() - when a listener vetoes a triggerer's check
 // event.
 function pg_reveal_check_veto(e)
     {

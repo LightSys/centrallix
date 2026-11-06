@@ -1,6 +1,6 @@
 IE Port Notes
 ********************************************************************
-Affected file: ht_utils_cursor.js
+Affected file: ht_utils_string.js
 Author: Jason Yip
 Date: 2/27/2004
 *********************************************************************

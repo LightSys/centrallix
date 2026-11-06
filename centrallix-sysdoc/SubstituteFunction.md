@@ -57,7 +57,7 @@ A string is considered "empty" if it has a zero length when trimmed of leading a
 ### D.	Conditional Formatting if Any Attribute is Set
 `[+:firstattr,:secondattr]Text[/+:firstattr,:secondattr]`
 
-These conditionals are like simple conditional formatting when an attribute is set, but this allows formatting the text if ANY of the comma-separate attributes (or :objname:attrname) are set.
+These conditionals are like simple conditional formatting when an attribute is set, but this allows formatting the text if ANY of the comma-separated attributes (or :objname:attrname) are set.
 
 To do conditional formatting when ALL of a set of attributes are set, just nest the single-attribute version of this format.
 

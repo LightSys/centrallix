@@ -115,7 +115,7 @@ oihCommit(void* this_v, pObjTrxTree* oxt)
     pObjInhPtr this = (pObjInhPtr)(this_v);
     int rval;
 
-    	/** Call the driver to make the close operation. **/
+    	/** Call the driver to make the commit operation. **/
 	if (!this->Obj->ILowLevelDriver->Commit) return 0;
 	rval = this->Obj->ILowLevelDriver->Commit(this->LLParam, oxt);
 

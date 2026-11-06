@@ -30,7 +30,7 @@ This document describes a proposal for enabling web form logins and FIDO2 / U2F 
 
 3.	Minimal attack surface.  Only a minimum of server functionality should be accessible to the connecting user before authentication is complete.  This likely means that any login screens will be static HTML rather than Centrallix apps, and communication with the server will be via specific endpoints that do not include any of the standard Centrallix client interaction features and APIs.
 
-4.	Password login first.  The user should be asked to log in via their username and password first, and if that succeeds, challenge them with the FIDO2 / U2F authentication.  This is the way that most web apps operate, and it provides an oppotunity to recognize potentially compromised passwords if the user provides a correct password but no valid FIDO2 authentication.
+4.	Password login first.  The user should be asked to log in via their username and password first, and if that succeeds, challenge them with the FIDO2 / U2F authentication.  This is the way that most web apps operate, and it provides an opportunity to recognize potentially compromised passwords if the user provides a correct password but no valid FIDO2 authentication.
 
 5.	Registration management.  If the user does not have a second factor, registering a second factor is allowed without already having one.  Once the user has a second factor, then a second factor must be provided in order to manage factor registrations or to add another registration.
 

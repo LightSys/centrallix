@@ -40,7 +40,7 @@
 /* Description:	Implements the ObjectSystem part of the Centrallix.    */
 /*		The various obj_*.c files implement the various parts of*/
 /*		the ObjectSystem interface.				*/
-/*		--> obj_xact.c: Implements simple transaction control	*/
+/*		--> obj_trx.c: Implements simple transaction control	*/
 /*		to make possible some grouped operations.		*/
 /************************************************************************/
 
@@ -230,7 +230,7 @@ obj_internal_SetTreeAttr(pObjTrxTree oxt, int type, pObjData val)
     }
 
 
-/*** obj_internal_FindAttrOxt - locate an attribute OXT with a given attribute
+/*** oxt_internal_FindAttrOxt - locate an attribute OXT with a given attribute
  *** name under the current Oxt tree structure.
  ***/
 pObjTrxTree
@@ -495,7 +495,7 @@ oxtCommit(void* this_v, pObjTrxTree* oxt)
 
 	if (oxt && *oxt) ASSERTMAGIC(*oxt, MGK_OXT);
 
-    	/** Call the driver to make the close operation. **/
+    	/** Call the driver to make the commit operation. **/
 	if (!this->Obj->TLowLevelDriver->Commit) return 0;
     	pass_oxt = &(this->Trx);
 	if (pass_oxt && *pass_oxt) ASSERTMAGIC(*pass_oxt, MGK_OXT);

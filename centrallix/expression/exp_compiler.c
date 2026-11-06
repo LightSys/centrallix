@@ -1043,8 +1043,8 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
 
 /*** expBindExpression - do late binding of an expression tree to an
  *** object list.  'domain' specifies the requested bind domain, whether
- *** runstatic (EXP_F_RUNSTATIC), runserver (EXP_F_RUNSERVER), or runclient
- *** (EXP_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
+ *** runstatic (EXPR_F_RUNSTATIC), runserver (EXPR_F_RUNSERVER), or runclient
+ *** (EXPR_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
  *** a domainless expression.
  ***/
 int

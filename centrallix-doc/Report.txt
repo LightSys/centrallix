@@ -127,7 +127,7 @@ III GETTING STARTED....
     In this case, we declared a query which listed the twelve months of the
     year from the Months CSV file.  Only two elements can invoke a query, the
     report/form and report/table.  The former leaves it up to the author to 
-    construct what will be output for each record retrieve from the query.  The
+    construct what will be output for each record retrieved from the query.  The
     latter automatically formats the output into a tabular structure.
 
     Note that in the query, we named the second column "id = :id + 1".  Any
@@ -218,14 +218,14 @@ IV  REFERENCE....
 			    "center".  "barcode" style converts a number into
 			    a USPS barcode for mailings.
 	
-	font	    string  The font to output the text in.  Maybe one of the
+	font	    string  The font to output the text in.  May be one of the
 			    following: "times","helvetica", or "courier".
 
 	xpos	    integer The numeric X column position to print the text
 			    at.
 	
 	ypos	    integer The numeric Y row position (relative to the page as
-			    a whole) to print thext text at.
+			    a whole) to print the text at.
 
 	relypos	    integer The numeric Y row position, relative to the current
 			    section, to print the text at.
@@ -271,7 +271,7 @@ IV  REFERENCE....
 			    "center".  "barcode" style converts a number into
 			    a USPS barcode for mailings.
 	
-	font	    string  The font to output the text in.  Maybe one of the
+	font	    string  The font to output the text in.  May be one of the
 			    following: "times","helvetica", or "courier".
 
 	moneyformat string  The format to print Money data type in.  For the
@@ -311,7 +311,7 @@ IV  REFERENCE....
 	source	    string  The name of the query(ies) to invoke for this form.
 			    If more than one query is specified, then normally
 			    the queries are nested inside of each other as if
-			    several report/form blocks had ben nested.  This
+			    several report/form blocks had been nested.  This
 			    default can be changed, however.
 
 	page	    integer A numeric value setting the current page number.
@@ -347,7 +347,7 @@ IV  REFERENCE....
 			    discarded.  The second mode is "outer".  In this
 			    mode, the form does not 'consume' records with each
 			    iteration - but rather iterates until all of the 
-			    data is used up.  How does it use up data, then if
+			    data is used up.  How does it use up data, then if it
 			    does not itself consume records?  This requires a
 			    form of the third type - 'inner' - to be included
 			    somewhere within the outer mode form.  An 'inner'
@@ -397,7 +397,7 @@ IV  REFERENCE....
 	source	    string  The name of the query(ies) to invoke for this form.
 			    If more than one query is specified, then normally
 			    the queries are nested inside of each other as if
-			    several report/form blocks had ben nested.  This
+			    several report/form blocks had been nested.  This
 			    default can be changed, however.
 
 	reclimit    integer A limit on the number of records to print in this

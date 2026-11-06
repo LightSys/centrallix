@@ -26,7 +26,7 @@ Status: Design Specification and API Reference
       - [C.  Triggerer sends Obscure/Reveal/ObscureCheck/RevealCheck event.](#c--triggerer-sends-obscurerevealobscurecheckrevealcheck-event)
         - [For Check events:](#for-check-events)
         - [For non-Check events:](#for-non-check-events)
-      - [D.  Triggerer is itself receives Reveal/Obscure/RevealCheck/etc event](#d--triggerer-is-itself-receives-revealobscurerevealchecketc-event)
+      - [D.  Triggerer itself receives Reveal/Obscure/RevealCheck/etc event](#d--triggerer-itself-receives-revealobscurerevealchecketc-event)
       - [E.  RevealCheck or ObscureCheck event needs to be sent to listeners on a triggerer.](#e--revealcheck-or-obscurecheck-event-needs-to-be-sent-to-listeners-on-a-triggerer)
       - [F.  Check OK callback occurs from a listener](#f--check-ok-callback-occurs-from-a-listener)
       - [G.  Check VETO callback occurs from a listener](#g--check-veto-callback-occurs-from-a-listener)
@@ -61,7 +61,7 @@ Much of this mechanism is required to be asynchronous, and thus callback- driven
 | Reveal         | A widget is 'revealing' a content area to the user, making it visible and thus accessible to the user.
 | Obscure        | A widget is 'obscuring', or hiding, a content area from the user, making it potentially inaccessible.
 | RevealCheck    | A widget desires to reveal a content area, and needs to give objects in that content area a chance to "veto" the reveal operation.
-| ObscureCheck   | A widget desire to obscure a content area, and needs to give objects in that content area a chance to "veto" or cancel the obscure operation.
+| ObscureCheck   | A widget desires to obscure a content area, and needs to give objects in that content area a chance to "veto" or cancel the obscure operation.
 
 ### Events for Triggerers:
 
@@ -128,7 +128,7 @@ Next, the RevealCheck or ObscureCheck sequences of events commences (see below).
 ##### For non-Check events:
 The __pg_reveal_visible value is updated, and Reveal or Obscure events are sent to all listeners connected with this triggerer.
 
-#### D.  Triggerer is itself receives Reveal/Obscure/RevealCheck/etc event
+#### D.  Triggerer itself receives Reveal/Obscure/RevealCheck/etc event
 When the triggerer is obscured or revealed because the parent triggerer changed its obscure/reveal status and called its listeners' __pg_reveal_listener_fn() functions, the following events commence.
 
 First, the value of __pg_reveal_parent_visible is checked, and if the reveal/obscure event is the same as the current status, nothing is done.

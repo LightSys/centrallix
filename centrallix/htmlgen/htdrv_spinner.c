@@ -37,7 +37,7 @@
 /* Module: 	htdrv_spinner.c         				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	October 22, 2001 					*/
-/* Description:	HTML Widget driver for a single-line editbox.		*/
+/* Description:	HTML Widget driver for a spinner box.			*/
 /************************************************************************/
 
 /*This file was based on the edit box file revision 1.2*/
@@ -100,7 +100,7 @@ htspnrRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
 	strtcpy(name,ptr,sizeof(name));
 
-	/** Style of editbox - raised/lowered **/
+	/** Style of spinner - raised/lowered **/
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"lowered")) is_raised = 0;
 	if (is_raised)
 	    {

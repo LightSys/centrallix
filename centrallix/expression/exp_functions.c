@@ -836,7 +836,7 @@ int exp_fn_datepart(pExpression tree, pParamObjects objlist, pExpression i0, pEx
 	}
     else
         {
-	mssError(1,"EXP","param 1 to datepart() must be month, day, year, hour, minute, or second");
+	mssError(1,"EXP","param 1 to datepart() must be month, day, weekday, year, hour, minute, or second");
 	return -1;
 	}
     return 0;
@@ -1199,7 +1199,7 @@ int exp_fn_rtrim(pExpression tree, pParamObjects objlist, pExpression i0, pExpre
     while(ptr > i0->String && ptr[-1] == ' ') ptr--;
     if (ptr == i0->String + strlen(i0->String))
         {
-	/** optimization for strings are still the same **/
+	/** optimization for strings that are still the same **/
 	tree->String = i0->String;
 	}
     else
@@ -2027,7 +2027,7 @@ int exp_fn_moneyformat(pExpression tree, pParamObjects objlist, pExpression i0, 
     /** checks **/
     if (!i0 || !i1)
 	{
-	mssError(1, "EXP", "moneyformat() takes two parameters: (datetime, string)");
+	mssError(1, "EXP", "moneyformat() takes two parameters: (money, string)");
 	return -1;
 	}
     if ((i0->Flags & EXPR_F_NULL) || (i1->Flags & EXPR_F_NULL))
@@ -2929,17 +2929,17 @@ int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	/*hashctx = EVP_MD_CTX_new();
 	if (!hashctx)
 	    {
-	    mssError(1, "EXP", "hash(): could not allocate hash digest context");
+	    mssError(1, "EXP", "hmac(): could not allocate hash digest context");
 	    goto error;
 	    }*/
 	if (!i0 || (i0->Flags & EXPR_F_NULL) || i0->DataType != DATA_T_STRING)
 	    {
-	    mssError(1, "EXP", "hash() requires hash type as its first parameter");
+	    mssError(1, "EXP", "hmac() requires hash type as its first parameter");
 	    goto error;
 	    }
 	if (!i1)
 	    {
-	    mssError(1, "EXP", "hash() requires a string as its second parameter");
+	    mssError(1, "EXP", "hmac() requires a string as its second parameter");
 	    goto error;
 	    }
 	if (i1->Flags & EXPR_F_NULL)
@@ -2950,7 +2950,7 @@ int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    }
 	if (i1->DataType != DATA_T_STRING)
 	    {
-	    mssError(1, "EXP", "hash() requires a string (input data) as its second parameter");
+	    mssError(1, "EXP", "hmac() requires a string (input data) as its second parameter");
 	    goto error;
 	    }
 	if (i2->Flags & EXPR_F_NULL)
@@ -2961,7 +2961,7 @@ int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    }
 	if (i2->DataType != DATA_T_STRING)
 	    {
-	    mssError(1, "EXP", "hash() requires a string (key) as its third parameter");
+	    mssError(1, "EXP", "hmac() requires a string (key) as its third parameter");
 	    goto error;
 	    }
 	if (!strcmp(i0->String, "md5"))
@@ -2976,7 +2976,7 @@ int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	    hashtype = EVP_sha512();
 	if (!hashtype)
 	    {
-	    mssError(1, "EXP", "hash(): invalid or unsupported hash type %s", i0->String);
+	    mssError(1, "EXP", "hmac(): invalid or unsupported hash type %s", i0->String);
 	    goto error;
 	    }
 	/*EVP_DigestInit_ex(hashctx, hashtype, NULL);
@@ -2986,7 +2986,7 @@ int exp_fn_hmac(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	tree->String = nmSysMalloc(hashlen * 2 + 1);
 	if (!tree->String)
 	    {
-	    mssError(1, "EXP", "hash(): out of memory");
+	    mssError(1, "EXP", "hmac(): out of memory");
 	    goto error;
 	    }
 	qpfPrintf(NULL, tree->String, hashlen * 2 + 1, "%*STR&HEX", hashlen, hashvalue);
@@ -4139,7 +4139,7 @@ const int EXP_VECTOR_TABLE_SIZE = 251;
 
 /*
  * hash_char_pair
- * This method creates an vector table index based a given character pair. The characters are represented 
+ * This method creates a vector table index based on a given character pair. The characters are represented 
  * as their ASCII code points.
  *
  * Parameters:
@@ -4212,7 +4212,7 @@ int exp_fn_i_frequency_table(unsigned short *table, char *term)
 	    temp2 = (int)tolower(term[i]);
 	    }
 
-	// Else character is not null	// If either character is a number, reassign the code point
+	// If either character is a number, reassign the code point
 	if (temp1 >= 48 && temp1 <= 57)
 	    {
 	    temp1 += 75;
@@ -4240,7 +4240,7 @@ int exp_fn_i_frequency_table(unsigned short *table, char *term)
 
 /*
  * exp_fn_i_dot_product
- * This method calculautes the dot product of two vectors.
+ * This method calculates the dot product of two vectors.
  *
  * Parameters:
  * 	dot_product : the place where the result is stored (double)
@@ -4299,7 +4299,7 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
     // Ensure function receives two non-null parameters
     if (!i0 || !i1)
 	{
-	mssError(1,"EXP","cos_compare() requires two parameter.");
+	mssError(1,"EXP","cos_compare() requires two parameters.");
 	return -1;
 	}
 
@@ -4366,7 +4366,7 @@ int exp_fn_cos_compare(pExpression tree, pParamObjects objlist, pExpression i0, 
  * Parameters:
  * 	pExpression tree: 
  * 	pParamObjects: 
- * 	pExpression passowrd: The password, passed as a pExpression
+ * 	pExpression password: The password, passed as a pExpression
  * 	pExpression salt: The salt, passed as a pExpression
  *
  * returns:

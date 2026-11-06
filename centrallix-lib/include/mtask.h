@@ -61,7 +61,7 @@
 #define	MT_F_SEGV	16		/* a thread seg faulted */
 #define MT_F_QUIET	32		/* suppress MTASK messages */
 
-#define MT_FD_CACHE_SIZE	4096	/* 8kb */
+#define MT_FD_CACHE_SIZE	4096	/* 4kb */
 #define MT_FD_FLUSH_INTERVAL	5000	/* 5 seconds */
 
 
@@ -316,7 +316,7 @@ unsigned int mtTicks();
 unsigned int mtLastTick();
 
 
-/** MTASK Signal handing functions **/
+/** MTASK Signal handling functions **/
 int mtAddSignalHandler(int signum, void(*start_fn)());
 int mtRemoveSignalHandler(int signum, void(*start_fn)());
 

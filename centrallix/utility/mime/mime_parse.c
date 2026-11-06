@@ -290,7 +290,7 @@ libmime_SetDate(pMimeHeader msg, char *buf)
 int
 libmime_SetSubject(pMimeHeader msg, char *buf)
     {
-    /** Get the date **/
+    /** Get the subject **/
     strncpy(msg->Subject, buf, 79);
     msg->Subject[79] = 0;
 
@@ -756,7 +756,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 
 		    /*
 		    **  Now we need to fetch a chunk of base64 encoded data.  The only
-		    **  problems is that we need to ignore anything that is not in the
+		    **  problem is that we need to ignore anything that is not in the
 		    **  base64 alphabet.  Here, I'm looping through and filling up the
 		    **  buffer with base64 encoded data until the buffer is full or
 		    **  until I've reached the end of the stream, ignoring all characters
@@ -789,7 +789,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		    }
 
 		/*
-		**  Now lets figure out the number of characters that we want out of
+		**  Now let's figure out the number of characters that we want out of
 		**  this chunk.  It could be a few characters on the left side of the
 		**  buffer, on the right side of the buffer, or the whole buffer.  We
 		**  gotta check.

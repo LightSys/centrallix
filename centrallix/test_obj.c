@@ -524,7 +524,7 @@ int handle_tab(int unused_1, int unused_2)
     /** is this a relative or absolute path **/
     if(xstrLastInputParam->String[0]!='/')
 	{
-	/* objGetWD has the trailing slash aready at the root */
+	/* objGetWD has the trailing slash already at the root */
 	if(strlen(objGetWD(s))>1)
 	    xsInsertAfter(xstrLastInputParam,"/",-1,0);
 	xsInsertAfter(xstrLastInputParam,objGetWD(s),-1,0);
@@ -657,7 +657,7 @@ int handle_tab(int unused_1, int unused_2)
     nmFree(xstrQueryString,sizeof(XString));
     nmFree(xstrMatched,sizeof(XString));
 
-    /** if we output lines, go to an new one and inform readline **/
+    /** if we output lines, go to a new one and inform readline **/
     if(secondtab)
 	{
 	printf("\n");
@@ -1745,7 +1745,7 @@ main(int argc, char* argv[])
     int ch;
     char* ptr;
 
-	/** Inital setup **/
+	/** Initial setup **/
 	cxSetupGlobals(argc, argv);
 	memset(&TESTOBJ,0,sizeof(TESTOBJ));
 	strcpy(TESTOBJ.OutputFilename, "/dev/tty");

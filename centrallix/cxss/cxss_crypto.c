@@ -234,7 +234,7 @@ cxssGenerate128bitIV(char *init_vector)
 /** @brief Generate 256-bit key from password+salt
  *
  *  Generate a 256-bit key suitable for AES-256 from a 
- *  password/passphrase and a random salt. The alogrithm 
+ *  password/passphrase and a random salt. The algorithm 
  *  uses a password-based key derivation function. 
  *
  *  @param password     User password
@@ -269,7 +269,7 @@ cxssGenerate256bitRandomKey(char *key)
 {
     assert(CSPRNG_Initialized);
 
-    /* Generate random initialization vector */
+    /* Generate random key */
     if (RAND_bytes((unsigned char *)key, 32) != 1) {
         mssError(0, "CXSS", "Failed to generate key!\n");
         return CXSS_CRYPTO_KEYGEN_ERROR;

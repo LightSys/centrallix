@@ -38,7 +38,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:	prtmgmt.c,prtmgmt.h                                     */
+/* Module:	prtmgmt_v3_session.c                                    */
 /* Author:	Greg Beeley (GRB)                                       */
 /* Date:	December 12, 2001                                       */
 /*									*/
@@ -240,8 +240,8 @@ prtSetUnits(pPrtSession s, char* units_name)
     }
 
 
-/*** prtGetUnits() - return the name of the conversion units name
- *** that is currently in effect for the session.
+/*** prtGetUnits() - return the name of the conversion units
+ *** that are currently in effect for the session.
  ***/
 char* 
 prtGetUnits(pPrtSession s)

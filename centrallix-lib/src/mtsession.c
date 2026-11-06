@@ -227,7 +227,7 @@ mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_
     }
 
 
-/*** mssLinkSess -- keep track of how many threads are using this
+/*** mssLinkSession -- keep track of how many threads are using this
  *** session structure.
  ***/
 int
@@ -238,7 +238,7 @@ mssLinkSession(pMtSession s)
     }
 
 
-/*** mssUnlinkSess -- on final unlink, we end the session.
+/*** mssUnlinkSession -- on final unlink, we end the session.
  ***/
 int
 mssUnlinkSession(pMtSession s)

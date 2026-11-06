@@ -590,7 +590,7 @@ function wn_close(l)
 	    }
 	else
 	    {
-	    alert("close type " + l.closetype + " is not implimented for this browser");
+	    alert("close type " + l.closetype + " is not implemented for this browser");
 	    }
 	}
     }

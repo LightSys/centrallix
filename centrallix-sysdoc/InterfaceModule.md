@@ -70,7 +70,7 @@ This function provides a way to retrieve the properties of a member of an interf
 | h1        | an interface handle
 | h2        | another interface handle
 
-This function encapsulates some of the versioning rules of the interface module. Based on the definition paths, and the major and minor version numbers, this function determines if h2 describes a subset of the functionality described by h1. In otherwords, this function returns true if h1 and h2 reference the same interface definition and have the same major version number, and if h2's minor version is less than or equal to h1's version number.
+This function encapsulates some of the versioning rules of the interface module. Based on the definition paths, and the major and minor version numbers, this function determines if h2 describes a subset of the functionality described by h1. In other words, this function returns true if h1 and h2 reference the same interface definition and have the same major version number, and if h2's minor version is less than or equal to h1's version number.
 
 #### IfcHandle ifcGetHandle(pObjSession s, char* path)
 | Param  | Description
@@ -93,7 +93,7 @@ This function initializes the interface module. This is one of the places where 
 #### int ifcToHtml(pFile file, pObjSession s, char* def_str)
 | Param    | Description
 | -------- | ------------
-| file     | the file to output the recieve the htmlified interface definition to
+| file     | the file to output the htmlified interface definition to
 | s        | the object session to use to find the referenced interface definition
 | def_str  | the path to the interface definition to convert
 
@@ -124,7 +124,7 @@ This function recursively walks a widget tree, generating inline object definiti
 | str    | will contain the generated javascript code
 | obj    | the OSML object to javascriptify
 
-This function takes an open OSML object, and recursively generates a javascript inline object declaration, effectively building a javascript representation of the OSML object and its children, and their children, etc. The function is concious of the OSML object's properties and children, and creates a javascript object with the same properties, and sub-objects for each child. NOTE: As currently implemented, it's possible for collisions if an OSML object has a property with the same name as one of its children.
+This function takes an open OSML object, and recursively generates a javascript inline object declaration, effectively building a javascript representation of the OSML object and its children, and their children, etc. The function is conscious of the OSML object's properties and children, and creates a javascript object with the same properties, and sub-objects for each child. NOTE: As currently implemented, it's possible for collisions if an OSML object has a property with the same name as one of its children.
 
 #### IfcHandle ifc_internal_BuildHandle(pIfcDefinition def, int major, int minor)
 | Param  | Description
@@ -141,7 +141,7 @@ This function builds an interface handle out of an interface definition and a ma
 | s      | the OSML session to use to open the definition
 | path   | the OSML path to the definition
 
-This function takes an OSML path, and parses the object it referers to into an interface definition. The interface definition includes the information for all versions of the interface. Users of the module never interact with IfcDefinitions - they only interact with the handles built out of them.
+This function takes an OSML path, and parses the object it refers to into an interface definition. The interface definition includes the information for all versions of the interface. Users of the module never interact with IfcDefinitions - they only interact with the handles built out of them.
 
 #### pIfcMajorVersion ifc_internal_NewMajorVersion(pObject def, int type)
 | Param  | Description
@@ -151,7 +151,7 @@ This function takes an OSML path, and parses the object it referers to into an i
 
 This function is arguably the most complicated in the module. It takes an open OSML object and parses it into the IFC module's internal representation of a major version of an interface definition. 
 
-After some initial set-up, the function makes two passes through the object. The first path is mostly to check for errors, malformed or duplicated minor version names. It also establishes the highest minor version number present. The second pass sorts the minor versions, makes sure no minor versions were skipped, and actually fills out the IfcMajorVersion datastructure. See below for more info on the datastructure. 
+After some initial set-up, the function makes two passes through the object. The first pass is mostly to check for errors, malformed or duplicated minor version names. It also establishes the highest minor version number present. The second pass sorts the minor versions, makes sure no minor versions were skipped, and actually fills out the IfcMajorVersion datastructure. See below for more info on the datastructure. 
 
 This second pass does some verification of the contents of the minor versions, ensuring that they play by the versioning rules and don't break backward-compatibility. One thing is lacking: the ability to modify the properties of a member between minor versions, and still be able to detect if the user is cheating and breaking the versioning rules. Currently, it is illegal to include the same member in the definition of two minor versions.
 
@@ -175,7 +175,7 @@ The most important thing to remember is that Offsets, Members, and Properties ar
 
 NumMinorVersions is just that - the number of minor versions contained in this major version.
 
-Members and Properties are fairly straight-forward. Members is an array of XArrays, where each XArray is a list of the member names across all the minor versions, sorted in descending order by the minor version they belong two. So the first items in Members[IFC_CAT_WIDGET_PROP] are the members in the property category that belong to the highest minor version number. Properties is another array of XArrays, where each XArray is a list of OSML paths to properties, matching up one-to-one with the list of members. So if the member name is retrieved with xaGetItem(&(maj_v->Members[IFC_CAT_WIDGET_PROP]), 3), the path to the properties object for that member can be obtained with xaGetItem(&(maj_v->Properties[IFC_CAT_WIDGET_PROP]), 3).
+Members and Properties are fairly straight-forward. Members is an array of XArrays, where each XArray is a list of the member names across all the minor versions, sorted in descending order by the minor version they belong to. So the first items in Members[IFC_CAT_WIDGET_PROP] are the members in the property category that belong to the highest minor version number. Properties is another array of XArrays, where each XArray is a list of OSML paths to properties, matching up one-to-one with the list of members. So if the member name is retrieved with xaGetItem(&(maj_v->Members[IFC_CAT_WIDGET_PROP]), 3), the path to the properties object for that member can be obtained with xaGetItem(&(maj_v->Properties[IFC_CAT_WIDGET_PROP]), 3).
 
 Offsets is what makes it possible to locate the members that belong to a minor version. Offsets is an array of XArrays, where the XArray for a given category is a list of the offsets into the Members and Properties XArrays for the same category that correspond to the first member of a minor version, where the index into the XArray for the given category of Offsets is the minor version. An example will hopefully help that to make sense. The following diagram attempts to illustrate what's going on:
 
@@ -218,9 +218,9 @@ NumMinorVersions = 2
 1	    0		     0		    0
 ```
 
-Remember that each category has an XArray, and within that XArray the members are sorted descending according to the minor version they're introduced in. To determine what members of the properties category belong to minor version 0, I do xaGetItem(&(Offsets[IFC_CAT_WIDGET_PROP]), 0), and get 0 as my result. This tells me that everything from index 0 to the end of Members[IFC_CAT_WIDGET_PROP] belongs to minor version 0. Checking for minor version 1 yeilds the same result, which is the desired behavior - minor version 1 inherits everything from minor version 0.
+Remember that each category has an XArray, and within that XArray the members are sorted descending according to the minor version they're introduced in. To determine what members of the properties category belong to minor version 0, I do xaGetItem(&(Offsets[IFC_CAT_WIDGET_PROP]), 0), and get 0 as my result. This tells me that everything from index 0 to the end of Members[IFC_CAT_WIDGET_PROP] belongs to minor version 0. Checking for minor version 1 yields the same result, which is the desired behavior - minor version 1 inherits everything from minor version 0.
 
-To see what members belong to the action category in minor version 0, I check xaGetItem(&(Offsets[IFC_CAT_WIDGET_ACTION]), 0) and get 1. This means that the action members for minor version 0 start at index 2 of Members[IFC_CAT_WIDGET_ACTION]. But there are only two items in that XArray - this tells us that there are *no* members of the action category for minor version 0. Checking for minor version 1 yeilds index 0, telling us that both items in the Members[IFC_CAT_WIDGET_ACTION] XArray belong to minor version 1 exclusively.
+To see what members belong to the action category in minor version 0, I check xaGetItem(&(Offsets[IFC_CAT_WIDGET_ACTION]), 0) and get 1. This means that the action members for minor version 0 start at index 2 of Members[IFC_CAT_WIDGET_ACTION]. But there are only two items in that XArray - this tells us that there are *no* members of the action category for minor version 0. Checking for minor version 1 yields index 0, telling us that both items in the Members[IFC_CAT_WIDGET_ACTION] XArray belong to minor version 1 exclusively.
 
 #### IfcDefinition
 ```
@@ -254,12 +254,12 @@ pXArray             Members, Properties;
 
 This is the datastructure the user receives after a call to ifcGetHandle. It contains information for a specific version of an interface definition.
 
-ObjSession is the OSML session of the related interface definition. DefPath is the absolute path to the definition without the cx__version parameter. FullPath is the absolute path to the definition including the cx__version parameter. MinorVersion and MajorVersion are self-explanitory. LinkCount is the number of references to this handle that are currently in use. Type is the type of the interface definition. Members and Properties are pointers to the Members and Properties arrays in the related IfcDefinition struct, and Offsets is an array of the offsets into the Members and Properties XArrays for the minor version of the handle.
+ObjSession is the OSML session of the related interface definition. DefPath is the absolute path to the definition without the cx__version parameter. FullPath is the absolute path to the definition including the cx__version parameter. MinorVersion and MajorVersion are self-explanatory. LinkCount is the number of references to this handle that are currently in use. Type is the type of the interface definition. Members and Properties are pointers to the Members and Properties arrays in the related IfcDefinition struct, and Offsets is an array of the offsets into the Members and Properties XArrays for the minor version of the handle.
 
 The user is not meant to touch any of the internals of this data structure - the user should treat an interface handle like a magic black box.
 
 ### Caching Interface Definitions and Handles
-Since there are a limitted number of interface definitions that will most likely be referenced many times, the IFC module only parses each interface definition the first time it is referenced - the result is saved in a hash table, with the key being the absolute pathname to the definition.
+Since there are a limited number of interface definitions that will most likely be referenced many times, the IFC module only parses each interface definition the first time it is referenced - the result is saved in a hash table, with the key being the absolute pathname to the definition.
 
 Handles are also cached; however, unlike the definitions which are kept around until Centrallix exits, a handle is only cached while it is in use. If six widgets in a tree all request a handle to a version of an interface definition, only one data structure is actually allocated. When the last widget has released its handle, the data structure is destroyed. The handles are stored in a hash table with their absolute path, including cx__version parameter, as the key.
 

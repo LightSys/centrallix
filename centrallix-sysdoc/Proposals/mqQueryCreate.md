@@ -4,7 +4,7 @@ Author:	    Greg Beeley (GRB)
 Date:	    23-July-2014
 
 ## Overview
-The OSML provides an interface called objQueryCreate() which allow for the creation of a new object in the context of a running query.  This allows for the various query criteria to be applied (in reverse) to the new object when it is created.
+The OSML provides an interface called objQueryCreate() which allows for the creation of a new object in the context of a running query.  This allows for the various query criteria to be applied (in reverse) to the new object when it is created.
 
 This document describes the implementation of this feature in the MultiQuery layer, which of course usually involves queries with multiple data sources.
 

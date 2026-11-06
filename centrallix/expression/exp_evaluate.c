@@ -1126,7 +1126,7 @@ expEvalCompare(pExpression tree, pParamObjects objlist)
 	if (exp_internal_EvalTree(i0,objlist) <0) return -1;
 	if (exp_internal_EvalTree(i1,objlist) <0) return -1;
 
-	/** Get a data ptr to the 2nd data type value **/
+	/** Get a data ptr to the 1st data type value **/
 	switch(i0->DataType)
 	    {
 	    case DATA_T_INTEGER: dptr0 = &(i0->Integer); break;
@@ -1860,7 +1860,7 @@ expEvalList(pExpression tree, pParamObjects objlist)
     }
 
 
-/*** expEvalTree - evalute an expression
+/*** expEvalTree - evaluate an expression
  ***/
 int
 expEvalTree(pExpression tree, pParamObjects objlist)
@@ -2056,7 +2056,7 @@ exp_internal_EvalAggregates(pExpression tree, pParamObjects objlist)
     }
 
 
-/*** expReverseEval - evaluates an expression tree in reverse.  This
+/*** expReverseEvalTree - evaluates an expression tree in reverse.  This
  *** means that given an expression and a certain result that the
  *** expression should evaluate to, we set any object attributes
  *** that are forced.  For example if the expression is "where

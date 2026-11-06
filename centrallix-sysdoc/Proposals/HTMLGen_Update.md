@@ -39,7 +39,7 @@ The benefits of this update will be as follows:
 
 4.  Dynamically loadable widgets.  This will allow, for instance, a htmlwindow widget to be loaded from the server into the running application without having to reload the page or jump to another page.  It will potentially also allow, for instance, a dynamic_server dropdown box or static table to be reloaded from the server, thus gaining new or changed data values.
     
-    a.  NOTE: the browser-compatiblity/feasibility of this has
+    a.  NOTE: the browser-compatibility/feasibility of this has
         *not* been tested.  Reloaded layers may or may not
         cooperate with the rest of the application.
 
@@ -196,7 +196,7 @@ When this is done, the open object passed to htmlgen will be the object of the c
 
 Before the container is reloaded, its contents will have to be cleared.  Because the contents can include widgets with global variable references, those references will have to be deleted via a recursive search mechanism through the container.  If the child widgets have "DeInit" methods on them, they are called.
 
-After the container is reloaded, it will have freshly uninitialized widgets within it.  A function "startup()" will be called in the container's document upon load, which will be analogous to the main document's startup() function, and generated in much the same manner. Because the script init lines in that function will be referencing objects in the DOM from an absolute perspective, a method will need to be provided to give the script init some context.  This will be done by passing a the container's global name to the htmlgen subsystem, passed as a URL parameter, as follows:
+After the container is reloaded, it will have freshly uninitialized widgets within it.  A function "startup()" will be called in the container's document upon load, which will be analogous to the main document's startup() function, and generated in much the same manner. Because the script init lines in that function will be referencing objects in the DOM from an absolute perspective, a method will need to be provided to give the script init some context.  This will be done by passing the container's global name to the htmlgen subsystem, passed as a URL parameter, as follows:
 
     cx__parent	- reference to parent container document.
 
@@ -260,7 +260,7 @@ In order to allow other layout methods to be used, the following properties are 
 
 The 'free' layout type indicates that objects are placed in the container according to their (x,y) positions relative to the upper left corner of the container.  With a 'vertical' layout type, the 'x' coordinate retains its traditional meaning, but the 'y' coordinate then becomes an ordered number (0 to n-1) indicating the order in which the widget is to appear, vertically, within the container.  Nonvisual widgets are ignored for this purpose.
 
-The 'horizontal' layout type is the reverse of 'vertical': the 'y' coordinate retains its normal pixel-based meaning, and the 'x' coordinate provides the order (0 to n-1) in which the widget appears horizontally within the container.  Finally, the 'tabular' layout type abstracts both the 'x' and 'y' and creates a 'grid' in the container, where widgets are placed in the grid from (0,0) to (n-1,n-1) in ordered fashion (where (2,2) is the third column across and third column down from the top).
+The 'horizontal' layout type is the reverse of 'vertical': the 'y' coordinate retains its normal pixel-based meaning, and the 'x' coordinate provides the order (0 to n-1) in which the widget appears horizontally within the container.  Finally, the 'tabular' layout type abstracts both the 'x' and 'y' and creates a 'grid' in the container, where widgets are placed in the grid from (0,0) to (n-1,n-1) in ordered fashion (where (2,2) is the third column across and third row down from the top).
 
 A given widget cannot occupy more than one cell in a 'tabular' layout situation (no equivalent of 'rowspan' or 'colspan'), for simplicity at the current time.  Those features may be added in later.
 

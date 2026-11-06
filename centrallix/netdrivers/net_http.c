@@ -557,7 +557,7 @@ nht_i_RegisterSessionInfo()
     }
 
 
-/*** nht_i_AddRequestHeader - add a header to the HTTP request
+/*** nht_i_AddHeader - add a header to the HTTP request
  ***/
 int
 nht_i_AddHeader(pXArray hdrlist, char* hdrname, char* hdrvalue, int hdralloc)
@@ -1232,7 +1232,7 @@ nht_i_Logout(pNhtConn conn, pNhtAppGroup group, pNhtApp app, int do_all)
 
 /*** nht_i_ParsePostPayload - parses the payload of a post request.
  *** The request includes one or more files.  This function needs to be
- *** called once for each file recieved and -not- per request.  Payload
+ *** called once for each file received and -not- per request.  Payload
  *** contains relevant info about the given file and a pointer to the file on disk.
  *** Returns the payload struct.
  ***/
@@ -1834,7 +1834,7 @@ nht_i_GET(pNhtConn conn, pStruct url_inf, char* if_modified_since)
 //TODO (from Seth): should this be moved out of nht_i_GET and back into nht_i_ConnHandler?
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
-        /** If we're opening the "errorstream", pass of processing to err handler **/
+        /** If we're opening the "errorstream", pass off processing to err handler **/
 	if (!strncmp(url_inf->StrVal,"/INTERNAL/errorstream",21))
 	    {
 		return nht_i_ErrorHandler(conn);
@@ -3321,7 +3321,7 @@ nhtInitialize()
 	/** Set up secret for login cookie hash **/
 	cxssGenerateKey(NHT.LoginKey, 32);
 
-	/* intialize the regex for netscape 4.7 -- it has a broken gzip implimentation */
+	/* initialize the regex for netscape 4.7 -- it has a broken gzip implementation */
 	NHT.reNet47=(regex_t *)nmMalloc(sizeof(regex_t));
 	if(!NHT.reNet47 || regcomp(NHT.reNet47, "Mozilla\\/4\\.(7[5-9]|8)",REG_EXTENDED|REG_NOSUB|REG_ICASE))
 	    {

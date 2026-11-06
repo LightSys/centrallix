@@ -537,7 +537,7 @@ mqt_internal_NextChildItem(pQueryElement parent, pQueryElement child, pQueryStat
 
 
 /*** mqtNextItem - retrieves the first/next item in the result set for the
- *** tablular query.  This driver only runs its own loop once through, but
+ *** tabular query.  This driver only runs its own loop once through, but
  *** within that one iteration may be multiple row result sets handled by
  *** lower-level drivers, like a projection or join operation.
  ***/

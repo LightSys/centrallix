@@ -590,7 +590,7 @@ cxHtInit()
 	htimgInitialize();			/* image widget */
 	htfbInitialize();			/* form bar composite widget test */
 	htocInitialize();			/* object canvas widget */
-	htmapInitialize();			/* object canvas widget */
+	htmapInitialize();			/* map widget */
 	htfuInitialize();			/* file upload widget */
 
 	htformInitialize();			/* forms module */

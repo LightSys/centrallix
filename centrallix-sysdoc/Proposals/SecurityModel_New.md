@@ -5,7 +5,7 @@ Author:	Greg Beeley (GRB)
 Date:	13-Nov-2012, updated 28-Sep-2015
 
 ## Overview
-This document describes the Centrallix Security Subsystem (CXSS), a role- based policy-driven security model.
+This document describes the Centrallix Security Subsystem (CXSS), a role-based policy-driven security model.
 
 ## Table of Contents
 - [Security subsystem](#security-subsystem)
@@ -102,7 +102,7 @@ All widgets can have the following properties:
 
 ### A.  require_endorsements = string[,string ...]
 
-This specifies a list of one or more endorsements that a widget requires in order to render property.
+This specifies a list of one or more endorsements that a widget requires in order to render properly.
 
 ## Subject Identifiers
 Subject identifiers must distinguish between a specific user, a group that a user is in, or a role that a user is acting in.
@@ -220,7 +220,7 @@ Below are the components of a policy:
 This setting allows the system administrator to completely disable the security subsystem, or to leave it disabled with warning messages about where security failures would occur.  This setting is only valid in the top level (main) security policy.
 
 #### default = {allow|deny|none}
-This setting, most commonly used in sub- policies, controls what the default action is should no rules match.  The 'none' option is only valid in sub-policies.
+This setting, most commonly used in sub-policies, controls what the default action is should no rules match.  The 'none' option is only valid in sub-policies.
 
 #### domain = "string"
 Declares the name of the domain, which shows up as the first part of object specs and endorsement specs.  This defaults to "system" on the top level policy.  The domain is allowed to be the same as that of the parent policy only if the delegation rules in the parent policy permit it.  Otherwise the domain must be unique system-wide.  Policies encountered with duplicate domains will be rejected.
@@ -342,7 +342,7 @@ These functions should check for read permissions for the given object type and 
 These functions should check for write permissions for the given object type and path.
 
 ### objOpenQuery, objQueryClose:
-These function need no security checks.  Checks are performed when objects are actually fetched.
+These functions need no security checks.  Checks are performed when objects are actually fetched.
 
 ### objQueryFetch:
 This function must check for observe permissions on any object to be returned.  If no objects remain that are observable, the function must return NULL.

@@ -85,7 +85,7 @@ error:
  *  context.
  *
  *  @param dbcontext    Database context handle
- *  @return             Status code
+ *  @return             void
  */
 void
 cxssCredentialsDatabaseClose(CXSS_DB_Context_t dbcontext)
@@ -98,8 +98,8 @@ cxssCredentialsDatabaseClose(CXSS_DB_Context_t dbcontext)
 /** @brief Setup database tables/statements
  *
  *  This function creates the required tables to store the user's 
- *  credentials (if they don't already exists in the database file)
- *  and pre-compiles some SQL queries into perpared statements.
+ *  credentials (if they don't already exist in the database file)
+ *  and pre-compiles some SQL queries into prepared statements.
  *
  *  @param dbcontext    Database context handle
  *  @return             Status code
@@ -502,7 +502,7 @@ bind_error:
  *
  *  @param dbcontext    Database context handle
  *  @param cxss_userid  CXSS User ID
- *  @return             void
+ *  @return             Status code
  */
 int
 cxssRetrieveUserAuthLL(CXSS_DB_Context_t dbcontext, const char *cxss_userid, 
@@ -855,7 +855,7 @@ cxssDeleteAllUserAuth(CXSS_DB_Context_t dbcontext, const char *cxss_userid)
     
     /* Execute query */
     if (sqlite3_step(dbcontext->delete_user_auths_stmt) != SQLITE_DONE) {
-        mssError(0, "CXSS", "Failed to delete resource\n");
+        mssError(0, "CXSS", "Failed to delete user auth\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return CXSS_DB_SUCCESS;
@@ -920,7 +920,7 @@ cxssFreeUserAuthLL(CXSS_UserAuth_LLNode *start)
 
 /** @brief Get user count
  *
- *  Returns the number of users registerd in CXSS database.
+ *  Returns the number of users registered in CXSS database.
  *
  *  @param dbcontext    Database context handle
  *  @return             User count
@@ -1013,7 +1013,7 @@ cxssDbContainsResc(CXSS_DB_Context_t dbcontext, const char *resource_id)
 
     /* Execute query */
     if (sqlite3_step(dbcontext->is_resc_in_db_stmt) != SQLITE_ROW) {
-        mssError(0, "CXSS", "Failed to verify user existence in database\n");
+        mssError(0, "CXSS", "Failed to verify resource existence in database\n");
         return CXSS_DB_QUERY_ERROR;
     }
     return sqlite3_column_int(dbcontext->is_resc_in_db_stmt, 0);
@@ -1060,7 +1060,7 @@ cxssFreeUserAuth(CXSS_UserAuth *UserAuth)
  *  Free dynamically-allocated struct members 
  *  containing query results.
  *
- *  @param UserAuth     Pointer to CXSS_UserResc struct
+ *  @param UserResc     Pointer to CXSS_UserResc struct
  *  @return             void
  */
 void

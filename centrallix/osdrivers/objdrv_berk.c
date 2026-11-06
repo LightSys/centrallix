@@ -63,7 +63,7 @@
 #define	    USE_ENV 0
 #define	    DEBUGGER 0
 
-/*** EnvNode holds an open environment and databse       ***/
+/*** EnvNode holds an open environment and database      ***/
 /*** Both the objects and the queries can point to this  ***/
 /*** It stays until the last thing pointing to it closes ***/
 typedef struct EN
@@ -88,7 +88,7 @@ typedef struct BN
     {
     struct BN*	    pNext;	/* Used for finding and closing open cursors on updates */
     int		    fState;	/* fOpen is set to BERK_NODESTATE_name  */
-    DBT*	    pKey;	/* This needs to keep it's own memory. It is set if the actual cursor must be closed */
+    DBT*	    pKey;	/* This needs to keep its own memory. It is set if the actual cursor must be closed */
     DBC*	    pCursor;	
     pEnvNode	    pMyEnvNode;
     int		    ObjSubPtr;	/* keep track of how deep we are into the path */
@@ -189,7 +189,7 @@ berkInternalHexToKey(void* dest, char* src, int dL, int sL)
 	}
     if(i > sL)
 	{
-	mssError(0, "BERK", "HexToKey: hex value must be NULL termintated.  Results not defined");
+	mssError(0, "BERK", "HexToKey: hex value must be NULL terminated.  Results not defined");
 	return -1;
 	}
     return 0;
@@ -245,7 +245,7 @@ berkInternalTranslateKey(pBerkData inf)
 	/* go through the key, and translate the hex into binary */
 	r = berkInternalHexToKey(inf->pKey->data, inf->ObjName, inf->pKey->size, strlen(inf->ObjName));
 #if DEBUGGER
-	mssError(0, "BERK", "  InternalTranslateKey: post translataion key: '%s'", inf->pKey->data);
+	mssError(0, "BERK", "  InternalTranslateKey: post translation key: '%s'", inf->pKey->data);
 #endif
 	return r;
     }
@@ -295,7 +295,7 @@ berkInternalDetermineType(pBerkData inf)
     return 0;
     };
 
-/*** Create the evnironment ***/
+/*** Create the environment ***/
 pEnvNode
 berkInternalCreateEnv(pBerkData inf, pEnvNode pPrevNode)
     {
@@ -392,7 +392,7 @@ berkInternalCloseCursors(pBerkData inf)
 #if DEBUGGER
 	mssError(0, "BERK", "InternalCloseCursors called");
 #endif
-	/* if there are no cursors: sucsess */
+	/* if there are no cursors: success */
 	if(BERK_INF.pBerkNodeList == NULL) return 0;
 	
 	pBerkNodeTemp  = BERK_INF.pBerkNodeList;
@@ -432,7 +432,7 @@ berkInternalCloseCursors(pBerkData inf)
 	return 0; /* success */
     }
 
-/*** Verify the existance of a record: create it if needed and allowed	***/
+/*** Verify the existence of a record: create it if needed and allowed	***/
 /*** Also, integrate any data that is in inf->newData if needed		***/
 int
 berkInternalRecVerify(pBerkData inf)
@@ -444,7 +444,7 @@ berkInternalRecVerify(pBerkData inf)
 	inf->pData->flags = DB_DBT_MALLOC;
 	if(!inf->pMyEnvNode->TheDatabaseIni)
 	    {
-	    mssError(0, "BERK", "berkInternalRecVerify: The database hasn't been initalized yet");
+	    mssError(0, "BERK", "berkInternalRecVerify: The database hasn't been initialized yet");
 	    return -1;
 	    }
 	r = inf->pMyEnvNode->TheDatabase->get(inf->pMyEnvNode->TheDatabase, NULL, inf->pKey, inf->pData, 0);
@@ -604,7 +604,7 @@ berkInternalDestructor(pBerkData inf)
 	if(inf->pMyEnvNode)
 	    {
 	    inf->pMyEnvNode->nNumOpen--;
-	    /* if nobody else is using the Env, the get rid of it */
+	    /* if nobody else is using the Env, then get rid of it */
 	    if(inf->pMyEnvNode->nNumOpen <= 0)
 		{
 		inf->pMyEnvNode->TheDatabaseIni = 0;
@@ -1028,7 +1028,7 @@ berkWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
 	return cnt;
     }
 
-/*** berkQueryOpen - prepare a query to be run: open a cursor to the database ***/
+/*** berkOpenQuery - prepare a query to be run: open a cursor to the database ***/
 void*
 berkOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
@@ -1138,7 +1138,7 @@ berkQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 		    }
 		break;
 	    case BERK_NODESTATE_NONE:
-		/*create a cursor.  Becuase it isn't initialized, calling get with DB_NEXT will get the first key */
+		/*create a cursor.  Because it isn't initialized, calling get with DB_NEXT will get the first key */
 		if(qy->pMyEnvNode->TheDatabase->cursor(qy->pMyEnvNode->TheDatabase, NULL, &qy->pCursor, 0))
 		    {
 		    mssError(0, "BERK", "QueryFetch: creating the cursor failed");
@@ -1207,7 +1207,7 @@ berkQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	    
 	inf->Pathname.Elements[inf->Pathname.nElements-1]=p;
 	
-	/* NULL seperate the elements in the pathname */
+	/* NULL separate the elements in the pathname */
 	for(i=1;i<inf->Pathname.nElements;i++)
 	    *(inf->Pathname.Elements[i]-1) = 0;
 
@@ -1361,7 +1361,7 @@ berkGetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 		    nmSysFree(inf->pStrAttr);
 		if(!strcmp(attrname, "data"))
 		    {
-		    /* get the data from the database.  this call simply reads the all the data into pData */
+		    /* get the data from the database.  this call simply reads all the data into pData */
 		    if(berkInternalRead(inf, -1, 0, 0))
 			{
 			mssError(0, "BERK", "berkGetAttrValue tried to read data, which failed");
@@ -1521,7 +1521,7 @@ berkSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTr
 	    inf->Annotation[0] = '\0';
 	return 0;
 	}
-    /* all other attributes are unique to there inf->Type */
+    /* all other attributes are unique to their inf->Type */
     switch(inf->Type)
 	{
 	case BERK_TYPE_DBT:
@@ -1724,7 +1724,7 @@ berkOpenAttr(void* inf_v, char* attrname, int mode, pObjTrxTree* oxt)
     return NULL;
     }
 
-/*** berkGetFirstMethod - get the non-existant methods  ***/
+/*** berkGetFirstMethod - get the non-existent methods  ***/
 char*
 berkGetFirstMethod(void* inf_v, pObjTrxTree* oxt)
     {
@@ -1782,7 +1782,7 @@ berkInternalSysExists(const char *path, int *isdirp)
 #endif
     if(!strcmp(path, "/var/tmp"))
 	{
-	/* asked for existance of temp folder.  we're gonna say 'yes' */
+	/* asked for existence of temp folder.  we're gonna say 'yes' */
 	if(isdirp)
 	    *(isdirp) = 1;
 	return 0;
@@ -1800,7 +1800,7 @@ berkInternalSysFree(void *ptr)
     return;
     }
 
-/*** SysFsync  this doesn't need to do anything, becuase everything gets written at write time ***/
+/*** SysFsync  this doesn't need to do anything, because everything gets written at write time ***/
 int
 berkInternalSysFsync(int fd)
     {
@@ -2003,7 +2003,7 @@ berkInternalSysSleep(u_long seconds, u_long microseconds)
     return thSleep(microseconds);
     }
 
-/*** Berkely isn't allowed to unlink.  ***/
+/*** Berkeley isn't allowed to unlink.  ***/
 int
 berkInternalSysUnlink(const char *path)
     {

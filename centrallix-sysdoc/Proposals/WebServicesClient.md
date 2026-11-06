@@ -64,7 +64,7 @@ Requests:  This driver will use the concept of a "request" to mean a single requ
 
 2.  URL
 
-    The URL is the location of the remote resource, and can be contructed from data from other requests or objects.
+    The URL is the location of the remote resource, and can be constructed from data from other requests or objects.
 
 3.  Framing
 

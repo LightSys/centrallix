@@ -72,7 +72,7 @@ start(void* v)
 	    }
 	cxLinkSigningSetup(my_config);
 
-	/** No file specified? **/
+	/** No link specified? **/
 	if (!LINKSIGN.Link[0]) 
 	    {
 	    puts("no link specified to sign (use option -l).");

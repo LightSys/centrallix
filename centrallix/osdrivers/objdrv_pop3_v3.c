@@ -11,7 +11,7 @@
 #include "st_node.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
-/** module definintions **/
+/** module definitions **/
 #include "centrallix.h"
 
 /************************************************************************/
@@ -20,7 +20,7 @@
 /* 									*/
 /* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
 /* 									*/
-/* This program is nmSysFree software; you can redistribute it and/or modify	*/
+/* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
 /* the Free Software Foundation; either version 2 of the License, or	*/
 /* (at your option) any later version.					*/
@@ -41,7 +41,7 @@
 /* Module: 	POP3 Object System Driver  				*/
 /* Author:	Matt McGill <matt_mcgill@tayloru.edu>                   */
 /* Creation:	June 14                					*/
-/* Description:	     Allows the integeration of multiple POP mail   	*/
+/* Description:	     Allows the integration of multiple POP mail   	*/
 /*		     servers, with selected maildrops and their      	*/
 /*		     messages, to be accessed by Centrallix.            */
 /*									*/
@@ -134,7 +134,7 @@ struct
 
 
 /*** pop_internal_GetType(pPopData inf) - returns the type of the object.
- *** Currently bases this of of inf->Obj->SubCnt, as the object type
+ *** Currently bases this off of inf->Obj->SubCnt, as the object type
  *** is directly related to its path length off the node. One path element
  *** means a server object, two path elements means an account object,
  *** three path elements means an e-mail object
@@ -548,7 +548,7 @@ pop_internal_GetMaildrop(pPopData inf)
 
 
 /*** pop_internal_Create - creates a new object
- *** POP server objects can be created, but mail messages cannot (go write an SMPT driver).
+ *** POP server objects can be created, but mail messages cannot (go write an SMTP driver).
  *** Receives a pointer to a PopData object that's been allocated and init'd by popOpen.
  *** FIXME: creating a new server hasn't yet been implemented
  ***/
@@ -561,7 +561,7 @@ pop_internal_Create(pPopData inf, char* usrtype)
     }
 
 
-/*** pop_internal_SetParam - attempt to look up 'param_name' in node, make
+/*** pop_internal_GetParam - attempt to look up 'param_name' in node, make
  *** a copy of the resulting value, and return it. Up to the caller to free
  *** returned pointer.
  ***/
@@ -659,7 +659,7 @@ void pop_internal_Cleanup(pPopData inf)
     }
 
 
-/*** pop_internal_OpenMaildrop - stuff that's specific to opening a server
+/*** pop_internal_OpenMaildrop - stuff that's specific to opening a maildrop
  ***/
 int
 pop_internal_OpenMaildrop(pPopData inf, char* usrtype)
@@ -815,7 +815,7 @@ int pop_internal_OpenMessage(pPopData inf, char* usrtype)
 	 **/
 	if ( (s = mlxOpenSession(inf->Drop->Session, MLX_F_LINEONLY | MLX_F_NODISCARD)) == NULL)
 	    {
-	    mssError(1, "POP", "popRead() - Couldn't start a lexer session");
+	    mssError(1, "POP", "pop_internal_OpenMessage() - Couldn't start a lexer session");
 	    nmSysFree(inf->Content);
 	    return -1;
 	    }
@@ -967,7 +967,7 @@ piO_Cleanup:
     }
 
 /*** popOpen - open an object.
- *** This function decides weather we need to open or create an object, and
+ *** This function decides whether we need to open or create an object, and
  *** calls the appropriate function.
  ***/
 void*
@@ -1115,7 +1115,7 @@ popDelete(pObject obj, pObjTrxTree* oxt)
 	    return -1;
 	case POP_T_MAILDROP:
 	    popClose(inf, oxt);
-	    mssError(1, "POP", "Can't delet POP3 account objects");
+	    mssError(1, "POP", "Can't delete POP3 account objects");
 	    return -1;
 	case POP_T_MSG:
 	    /** FIXME FIXME FILL ME IN FIXME FIXME **/
@@ -1128,7 +1128,7 @@ popDelete(pObject obj, pObjTrxTree* oxt)
     }
 
 
-/*** popRead - Structure elements have no content.  Fails.
+/*** popRead - read the content of a message object.
  ***/
 int
 popRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTree* oxt)
@@ -1325,7 +1325,7 @@ popQueryClose(void* qy_v, pObjTrxTree* oxt)
     }
 
 
-/*** popGetAttrType - get the type (DATA_T_pop) of an attribute by name.
+/*** popGetAttrType - get the type (DATA_T_xxx) of an attribute by name.
  ***/
 int
 popGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)

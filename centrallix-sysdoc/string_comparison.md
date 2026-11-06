@@ -49,7 +49,7 @@ const char *CHAR_SET ...
 ```c
 int exp_fn_i_frequency_table(double *table, char *term)
 ```
-Helper function for similarity(). Creates a frequency table containing indices corresponding to all characters in `CHAR_SET` (all other characters are ignored). The values in the frequency table will contain the number of times each character appers in `term`.
+Helper function for similarity(). Creates a frequency table containing indices corresponding to all characters in `CHAR_SET` (all other characters are ignored). The values in the frequency table will contain the number of times each character appears in `term`.
 
 The `table` parameter must be allocated prior to calling the function with `nmMalloc()` using `sizeof(x * sizeof(double))`, where `x` is the length of `CHAR_SET`. The function will initialize all `table` values to 0, before calculating the frequency values.
 

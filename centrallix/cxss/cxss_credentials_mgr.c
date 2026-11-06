@@ -61,7 +61,7 @@ cxssCredentialsManagerClose(void)
 /** @brief Add user to CXSS
  *
  *  @param cxss_userid          Centrallix User ID
- *  @param pb_userk ey          Password-based user encryption key (used to encrypt private key)
+ *  @param pb_userkey           Password-based user encryption key (used to encrypt private key)
  *  @param keylength            Length of password-based user encryption key
  *  @param salt                 User salt
  *  @param salt_len             Length of user salt
@@ -224,7 +224,7 @@ error:
  *  @param resource_username    Resource Username
  *  @param username_len         Length of resource username
  *  @param resource_password    Resource Password
- *  @param password_len         Lenght of resource password
+ *  @param password_len         Length of resource password
  *  @return                     Status code
  */
 int

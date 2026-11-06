@@ -40,7 +40,7 @@
 /*		The various obj_*.c files implement the various parts of*/
 /*		the ObjectSystem interface.				*/
 /*		obj_types.c --> implements the objectsystem type	*/
-/*		heirarchy ("is-a", etc.)				*/
+/*		hierarchy ("is-a", etc.)				*/
 /************************************************************************/
 
 

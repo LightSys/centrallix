@@ -34,7 +34,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module:      htdrv_formstatus.c                                      */
+/* Module:      htdrv_formbar.c                                         */
 /* Author:      Matt McGill (MJM)                                       */
 /* Creation:    July 19, 2004                                           */
 /* Description: HTML Widget driver for a form bar, basically a tech     */
@@ -68,7 +68,7 @@ int htfbRender(pHtSession s, pWgtrNode tree, int z) {
 
 
 /* 
-   htfsInitialize - register with the ht_render module.
+   htfbInitialize - register with the ht_render module.
 */
 int htfbInitialize() {
    pHtDriver drv;

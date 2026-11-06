@@ -79,7 +79,7 @@ function htutil_common(str1,str2)
     return str1.substring(0,cnt);
     }
 
-/** compare two URL's for same server **/
+/** compare two URLs for same server **/
 function htutil_url_cmp(str1,str2) 
     {
     var common = htutil_common(str1,str2);

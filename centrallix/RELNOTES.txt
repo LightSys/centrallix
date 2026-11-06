@@ -209,7 +209,7 @@ clarifications though.
     centrallix-os packages.  The system will be nonfunctional without at least
     those three packages.
 
-2.  Autoconf detects many of the settings that had to be configured manuallly
+2.  Autoconf detects many of the settings that had to be configured manually
     previously including Sybase support and the different versions of 
     Readline.
 

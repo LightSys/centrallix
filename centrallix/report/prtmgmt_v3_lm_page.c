@@ -45,7 +45,7 @@
 /* Description:	This module provides the Version-3 printmanagement	*/
 /*		subsystem functionality.				*/
 /*									*/
-/*		prtmgmt_v3_lmpage.c:  This module implements the page-	*/
+/*		prtmgmt_v3_lm_page.c:  This module implements the page-	*/
 /*		break (pagination) layout manager.  When an area	*/
 /*		exceeds the page length, it is broken in two and a new	*/
 /*		page is started for that area.				*/
@@ -273,7 +273,7 @@ prt_pagelm_DeinitContainer(pPrtObjStream this)
     }
 
 
-/*** prt_pagelm_Initialize() - initialize the textflow layout manager and
+/*** prt_pagelm_Initialize() - initialize the paged layout manager and
  *** register with the print management subsystem.
  ***/
 int

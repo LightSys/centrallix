@@ -51,7 +51,7 @@ STRUCTURE FILE PROPERTIES
 	source		(string) The ObjectSystem pathname of the document to
 			be presented, or the HTTP URL of the document to be 
 			presented.  HTTP URL's can only be used on dynamic 
-			mode tables, and some functionality will be disabled
+			mode html areas, and some functionality will be disabled
 			if the URL isn't on the local server.
 
 	prologue	(string) HTML text to be placed at the beginning of

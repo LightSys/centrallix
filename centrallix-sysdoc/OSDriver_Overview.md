@@ -113,7 +113,7 @@ A translation driver takes existing content or structure and transforms it into 
 Some OSD's are used for special purposes, usually internal to the OSML itself.  One example of this is the "rootnode" OSD, which is used to configure the root of the objectsystem.  It normally is set to use a local filesystem directory for the root, but essentially almost any object type can be the root if needed.
 
 ## Services a Driver Provides
-An OSD will need to provide serveral important services to the OSML for the type of data that it manages.  The most significant of these are summarized below.
+An OSD will need to provide several important services to the OSML for the type of data that it manages.  The most significant of these are summarized below.
 
 ### A.	Opening and Closing objects
 The driver will need to provide a way of opening and closing objects within the subtree of objects that it manages.  In the case of some drivers, like the report writer, the subtree is just one object - the generated report itself.  In the case of other drivers like a database access driver, several different types of objects might be involved: rows, columns, the database itself, and so forth.  The driver in such cases will need to determine which kind of object is being opened and respond accordingly.

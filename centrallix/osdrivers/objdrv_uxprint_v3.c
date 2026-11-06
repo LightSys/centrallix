@@ -49,7 +49,7 @@
 /* A copy of the GNU General Public License has been included in this	*/
 /* distribution in the file "COPYING".					*/
 /* 									*/
-/* Module: 	objdrv_uxprint.c         				*/
+/* Module: 	objdrv_uxprint_v3.c      				*/
 /* Author:	Greg Beeley (GRB)					*/
 /* Creation:	February 1, 1999					*/
 /* Description:	UNIX printer objectsystem driver.			*/
@@ -380,7 +380,7 @@ uxp_internal_StartFilter(pUxpData inf)
     	/** Create the socket pair and connect 'em with mtask **/
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, lowlevel_fd) < 0)
 	    {
-	    mssErrorErrno(1,"UXP","Could open socketpair pipe for print writer");
+	    mssErrorErrno(1,"UXP","Could not open socketpair pipe for print writer");
 	    return -1;
 	    }
 	inf->MasterFD = fdOpenFD(lowlevel_fd[0], O_WRONLY);

@@ -281,7 +281,7 @@ stxDelete(pObject obj, pObjTrxTree* oxt)
 	    snWriteNode(inf->Obj->Prev,inf->Node);
 	    inf->Node->OpenCnt--;
 	    }
-	/** Otherwise, if not a subinf, delete the whole file if not empty **/
+	/** Otherwise, if not a subinf, delete the whole file if empty **/
 	else
 	    {
 	    if (inf->Node->OpenCnt > 1) 
@@ -689,7 +689,7 @@ stxSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	if (t <= 0) return -1;
 	if (datatype != t)
 	    {
-	    mssError(1,"STX","Type mismatch setting attribute '%s' [requested=%s, actual=%s",
+	    mssError(1,"STX","Type mismatch setting attribute '%s' [requested=%s, actual=%s]",
 		    attrname, obj_type_names[datatype], obj_type_names[t]);
 	    return -1;
 	    }

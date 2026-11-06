@@ -278,7 +278,7 @@ prt_pclod_GetNearestFontSize(void* context_v, double req_size)
 
 /*** prt_pclod_GetCharacterMetric() - return the width of a printed character
  *** in a given font size, attributes, etc., in 10ths of an inch (relative to
- *** 10cpi, or 12point, fonts.
+ *** 10cpi, or 12point, fonts).
  ***/
 void
 prt_pclod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style, double* width, double* height)

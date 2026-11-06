@@ -230,7 +230,7 @@ int
 prt_internal_CopyGeom(pPrtObjStream src, pPrtObjStream dst)
     {
 
-	/** Copy just the formatting attributes, nothing else **/
+	/** Copy just the geometry attributes, nothing else **/
 	dst->Height = src->Height;
 	dst->Width = src->Width;
 	dst->ConfigHeight = src->ConfigHeight;
@@ -496,7 +496,7 @@ prt_internal_YMergeSort_r(pPrtObjStream * arr1, pPrtObjStream * arr2, int cnt, i
 #endif /* 00 */
 
 
-/*** prt_internal_YPrintArray() - show the contents of a y sort array ***/
+/*** prt_internal_PrintArray() - show the contents of a y sort array ***/
 int
 prt_internal_PrintArray(pPrtObjStream * arr, int cnt)
     {
@@ -968,7 +968,7 @@ prt_internal_DumpOne(pPrtObjStream obj, int level)
     }
 
 
-/*** prt_internal_Dump() - debugging printout of an entire subtree.
+/*** prt_internal_Dump_r() - debugging printout of an entire subtree.
  ***/
 int
 prt_internal_Dump_r(pPrtObjStream obj, int level)
@@ -1174,7 +1174,7 @@ prt_internal_Reflow(pPrtObjStream container)
 
 /*** prt_internal_ScheduleEvent() - schedules an event to occur as soon as
  *** the current API entry point has completed.  This allows things to be
- *** schedule to occur without interfering with current goings-on.
+ *** scheduled to occur without interfering with current goings-on.
  ***/
 int
 prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, void* param)
@@ -1182,7 +1182,7 @@ prt_internal_ScheduleEvent(pPrtSession s, pPrtObjStream target, int type, void* 
     pPrtEvent e;
     pPrtEvent *se;
 
-	/** Find queue tail.  Don't add duplictes. **/
+	/** Find queue tail.  Don't add duplicates. **/
 	se = &(s->PendingEvents);
 	while(*se) 
 	    {

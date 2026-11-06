@@ -262,7 +262,7 @@ xhn_internal_FreeHandle(void* v1, void* v2)
     }
 
 
-/*** xhnIterateHandles() - goes through all of the handles in a context
+/*** xhnClearHandles() - goes through all of the handles in a context
  *** and calls the given function on them.
  ***/
 int

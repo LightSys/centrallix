@@ -331,7 +331,7 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
 		len = objBuildBinaryImageXString(&this->SortInf->SortDataBuf, this->SortBy, n_sortby, this->ObjList, 0);
 		if (len < 0)
 		    {
-		    mssError(1, "OSML", "objOpenQuery: could build binary comparison image for sort");
+		    mssError(1, "OSML", "objOpenQuery: could not build binary comparison image for sort");
 		    OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "null\n");
 		    goto error;
 		    }
