@@ -111,6 +111,8 @@ typedef struct _MPI
     pQueryStatement Statement;
     int		    Page;	/* used when MQP_MI_F_PAGED is set */
     int		    PageRecCnt;	/* count of records returned from this page */
+    int		    RowsReturned;	/* rows returned since mqpStart, for onerow limit */
+    int		    Remapping;	/* if expression obj id remapping is in effect */
     }
     MqpInf, *pMqpInf;
 
@@ -120,6 +122,9 @@ typedef struct _MPI
 #define MQP_MI_F_LASTMATCHED	8	/* last item returned matched (for pruning) */
 #define MQP_MI_F_PAGED		16	/* paged (multi-part) source */
 #define	MQP_MI_F_ONEROW		32	/* only need first row of results */
+#define MQP_MI_F_ONEROWLIMIT	64	/* explicit onerow qualifier; enforce in NextItem */
+
+#define MQP_ONEROW_MET(mi)	(((mi)->Flags & MQP_MI_F_ONEROWLIMIT) && (mi)->RowsReturned > 0)
 
 
 int mqp_internal_SetupSubtreeAttrs(pQueryElement qe, pObject obj);
@@ -624,6 +629,11 @@ mqpAnalyze(pQueryStatement stmt)
 		mi->ObjMode = O_RDONLY;
 
 	    /** Only need first row? **/
+	    if (from_qs->Flags & MQ_SF_ONEROW)
+		{
+		cxTestOutput(1, "MQP: Applying hard single row limit to source '%s'.\n", from_qs->Source);
+		mi->Flags |= MQP_MI_F_ONEROWLIMIT;
+		}
 	    if (stmt->Query->Flags & MQ_F_ONEROW || (stmt->LimitStart == 0 && stmt->LimitCnt == 1) || (from_qs->Flags & MQ_SF_ONEROW))
 		{
 		having_qs = mq_internal_FindItem(stmt->QTree, MQ_T_HAVINGCLAUSE, NULL);
@@ -730,10 +740,18 @@ mqp_internal_CacheRow(pQueryStatement stmt, pQueryElement qe, pExpression criter
 	row->Obj = obj;
 	xsCopy(&rc->CriteriaBuf, mi->CurrentSource, -1);
 	xsConcatenate(&rc->CriteriaBuf, " :: ", 4);
-	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	if (criteria)
+	    {
+	    if (mi->Remapping)
+		expRemapID(qe->Constraint, qe->SrcIndex, qe->SrcIndex);
+	    expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	    if (mi->Remapping)
+		expRemapID(qe->Constraint, qe->SrcIndex, 0);
+	    }
 	row->Criteria = nmSysStrdup(rc->CriteriaBuf.String);
 	xaAddItem(&rc->Cache, row);
 	/*fdQPrintf(mqp_log, "ADD:   %STR (%POS)\n", row->Criteria, xaCount(&rc->Cache)-1);*/
+	cxTestOutput(2, "MQP: Cached '%s' => %s.\n", row->Criteria, obj?"one row":"no row");
 
     return 0;
     }
@@ -744,14 +762,23 @@ mqp_internal_CacheRow(pQueryStatement stmt, pQueryElement qe, pExpression criter
  *** found in the cache, and the cache id otherwise.
  ***/
 int
-mqp_internal_CheckCache(pQueryStatement stmt, pMqpRowCache rc, char* source, pExpression criteria)
+mqp_internal_CheckCache(pQueryStatement stmt, pQueryElement qe, char* source, pExpression criteria)
     {
     int i;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
+    pMqpRowCache rc = mi->RowCache;
     pMqpOneRow row;
 
 	xsCopy(&rc->CriteriaBuf, source, -1);
 	xsConcatenate(&rc->CriteriaBuf, " :: ", 4);
-	if (criteria) expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	if (criteria)
+	    {
+	    if (mi->Remapping)
+		expRemapID(qe->Constraint, qe->SrcIndex, qe->SrcIndex);
+	    expGenerateText(criteria, stmt->Query->ObjList, xsWrite, &rc->CriteriaBuf, '\0', "cxsql", 0);
+	    if (mi->Remapping)
+		expRemapID(qe->Constraint, qe->SrcIndex, 0);
+	    }
 	for(i=0;i<rc->Cache.nItems;i++)
 	    {
 	    row = xaGetItem(&rc->Cache, i);
@@ -1206,11 +1233,10 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    if (mi->RowCache)
 		{
 		rc = mi->RowCache;
-		rc->CurCached = mqp_internal_CheckCache(stmt, rc, mi->CurrentSource, qe->Constraint);
+		rc->CurCached = mqp_internal_CheckCache(stmt, qe, mi->CurrentSource, qe->Constraint);
 		if (rc->CurCached >= 0)
 		    {
 		    /** We're going from the cache this time **/
-		    /*objClose(qe->LLSource);*/
 		    qe->LLSource = NULL;
 		    qe->LLQuery = NULL;
 		    mi->Flags |= MQP_MI_F_USINGCACHE;
@@ -1263,7 +1289,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 				NULL, 
 				(qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
 				(void**)(qe->OrderBy[0]?qe->OrderBy:NULL), 
-				(mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
+				((mi->Flags & MQP_MI_F_ONEROW) && !(qe->Flags & MQ_EF_FROMSUBTREE))?OBJ_QY_F_ONEROW:0
 				);
 	    if (!qe->LLQuery) 
 		{
@@ -1307,6 +1333,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		    {
 		    if (row->Obj) objLinkTo(row->Obj);
 		    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, row->Obj);
+		    cxTestOutput(2, "MQP: Returning cached result: %s.\n", row->Obj?"one row":"no row");
 		    return row->Obj?1:0;
 		    }
 		else if (qe->IterCnt == 2)
@@ -1349,7 +1376,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    }
 
 	/** Attempt to recurse a subtree? **/
-	if ((qe->Flags & MQ_EF_FROMSUBTREE) && (!(mi->Flags & MQP_MI_F_LASTMATCHED) || !(qe->Flags & MQ_EF_PRUNESUBTREE)) && stmt->Query->ObjList->Objects[qe->SrcIndex])
+	if ((qe->Flags & MQ_EF_FROMSUBTREE) && !MQP_ONEROW_MET(mi) && (!(mi->Flags & MQP_MI_F_LASTMATCHED) || !(qe->Flags & MQ_EF_PRUNESUBTREE)) && stmt->Query->ObjList->Objects[qe->SrcIndex])
 	    {
 	    obj = mqp_internal_Recurse(qe, stmt, stmt->Query->ObjList->Objects[qe->SrcIndex]);
 	    if (obj)
@@ -1379,7 +1406,10 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		return 0;
 
 	    /** Fetch the next item and set the object... **/
-	    obj = objQueryFetch(qe->LLQuery, mi->ObjMode);
+	    if (MQP_ONEROW_MET(mi))
+		obj = NULL;
+	    else
+		obj = objQueryFetch(qe->LLQuery, mi->ObjMode);
 	    if (obj)
 		{
 		/** Got one. **/
@@ -1440,6 +1470,8 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	mi->AddlExp = additional_expr;
 	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
 	mi->Page = 0;
+	mi->RowsReturned = 0;
+	mi->Remapping = 0;
 
 	/** Additional expression supplied?? **/
 	if (mi->AddlExp) qe->Flags |= MQ_EF_ADDTLEXP;
@@ -1454,7 +1486,10 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    }
 	if (!qe->Constraint) qe->Constraint = mi->AddlExp;
         if (qe->Constraint && !(qe->Flags & MQ_EF_FROMSUBTREE) && !(qe->Flags & MQ_EF_FROMOBJECT))
+	    {
+	    mi->Remapping = 1;
 	    expRemapID(qe->Constraint, qe->SrcIndex, 0);
+	    }
 
 	qe->LLSource = NULL;
 	qe->LLQuery = NULL;
@@ -1478,6 +1513,11 @@ mqpNextItem(pQueryElement qe, pQueryStatement stmt)
 	    {
 	    if (!(mi->Flags & MQP_MI_F_SOURCEOPEN))
 		{
+		if (MQP_ONEROW_MET(mi))
+		    {
+		    rval = 0;
+		    break;
+		    }
 		rval = mqp_internal_OpenNextSource(qe, stmt);
 		if (rval != 1) break; /* return if no more sources (0) or error (-1) */
 		}
@@ -1506,7 +1546,10 @@ mqpNextItem(pQueryElement qe, pQueryStatement stmt)
 
 	    /** Count it, if valid row **/
 	    if (rval == 1)
+		{
 		mi->PageRecCnt++;
+		mi->RowsReturned++;
+		}
 
 	    /** Return if valid row (1) or if error (-1) **/
 	    if (rval != 0) break;
@@ -1526,6 +1569,7 @@ int
 mqpFinish(pQueryElement qe, pQueryStatement stmt)
     {
     pExpression del_exp;
+    pMqpInf mi = (pMqpInf)(qe->PrivateData);
 
     	/** Close the previous fetched object? **/
 	if (stmt->Query->ObjList->Objects[qe->SrcIndex])
@@ -1534,7 +1578,8 @@ mqpFinish(pQueryElement qe, pQueryStatement stmt)
 	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, NULL);
 	    }
 
-	if (qe->Constraint) expRemapID(qe->Constraint, qe->SrcIndex, qe->SrcIndex);
+	if (mi->Remapping)
+	    expRemapID(qe->Constraint, qe->SrcIndex, qe->SrcIndex);
 
 	/** Remove additional expression?? **/
 	if ((qe->Flags & MQ_EF_ADDTLEXP) && (qe->Flags & MQ_EF_CONSTEXP))
