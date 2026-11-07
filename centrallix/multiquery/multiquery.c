@@ -1457,7 +1457,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     pQueryStructure declare_cls = NULL;
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
-    int t,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom,nonempty,paged;
+    int t,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom,nonempty,paged,onerow;
     int is_object;
     char* ptr;
     char* str;
@@ -2549,12 +2549,18 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 		    expfrom = 0;
 		    collfrom = 0;
 		    nonempty = 0;
+		    onerow = 0;
 		    paged = 0;
 		    sourcetype[0] = '\0';
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("identity", ptr))
 			{
 			t = mlxNextToken(lxs);
 			identity = 1;
+			}
+		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("onerow", ptr))
+			{
+			t = mlxNextToken(lxs);
+			onerow = 1;
 			}
 		    if (t == MLX_TOK_KEYWORD && (ptr = mlxStringVal(lxs,NULL)) && !strcasecmp("nonempty", ptr))
 			{
@@ -2680,6 +2686,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 		    if (expfrom) new_qs->Flags |= MQ_SF_EXPRESSION;
 		    if (collfrom) new_qs->Flags |= MQ_SF_COLLECTION;
 		    if (nonempty) new_qs->Flags |= MQ_SF_NONEMPTY;
+		    if (onerow) new_qs->Flags |= MQ_SF_ONEROW;
 		    if (paged) new_qs->Flags |= MQ_SF_PAGED;
 		    xaAddItem(&from_cls->Children, (void*)new_qs);
 		    new_qs->Parent = from_cls;

@@ -624,12 +624,12 @@ mqpAnalyze(pQueryStatement stmt)
 		mi->ObjMode = O_RDONLY;
 
 	    /** Only need first row? **/
-	    if (stmt->Query->Flags & MQ_F_ONEROW || (stmt->LimitStart == 0 && stmt->LimitCnt == 1))
+	    if (stmt->Query->Flags & MQ_F_ONEROW || (stmt->LimitStart == 0 && stmt->LimitCnt == 1) || (from_qs->Flags & MQ_SF_ONEROW))
 		{
 		having_qs = mq_internal_FindItem(stmt->QTree, MQ_T_HAVINGCLAUSE, NULL);
 
 		/** We can only pass through ONEROW in very limited circumstances **/
-		if (!having_qs && !groupby_qs && num_sources == 1 && !has_unhandled_where && !has_unhandled_orderby && !has_aggregates && !has_assignments)
+		if ((from_qs->Flags & MQ_SF_ONEROW) || (!having_qs && !groupby_qs && num_sources == 1 && !has_unhandled_where && !has_unhandled_orderby && !has_aggregates && !has_assignments))
 		    {
 		    cxTestOutput(1, "MQP: Applying single row limit to source '%s'.\n", from_qs->Source);
 		    mi->Flags |= MQP_MI_F_ONEROW;
