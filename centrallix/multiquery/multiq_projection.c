@@ -272,7 +272,7 @@ mqp_internal_Recurse(pQueryElement qe, pQueryStatement stmt, pObject obj)
 		    NULL, 
 		    (qe->Flags & MQ_EF_FROMSUBTREE)?NULL:qe->Constraint, 
 		    (void**)(qe->OrderBy[0]?qe->OrderBy:NULL),
-		    (mi->Flags & MQP_MI_F_ONEROW)?OBJ_QY_F_ONEROW:0
+		    0
 		    );
 	if (!newqy) return NULL;
 	objUnmanageQuery(stmt->Query->SessionID, newqy);
