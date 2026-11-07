@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -867,6 +867,28 @@ xsLength(pXString this)
     CXSEC_VERIFY(*this);
     CXSEC_EXIT(XS_FN_KEY);
     return this->Length;
+    }
+
+
+/*** xsCharAt - returns the character at the given position in the string, or
+ *** '\0' if the position is outside of it.  This is the bounds checked way to
+ *** read one character, in place of indexing the buffer from xsString().
+ ***/
+char
+xsCharAt(pXString this, int pos)
+    {
+    CXSEC_ENTRY(XS_FN_KEY);
+    ASSERTMAGIC(this, MGK_XSTRING);
+    CXSEC_VERIFY(*this);
+
+	if (pos < 0 || pos >= this->Length)
+	    {
+	    CXSEC_EXIT(XS_FN_KEY);
+	    return '\0';
+	    }
+
+    CXSEC_EXIT(XS_FN_KEY);
+    return this->String[pos];
     }
 
 
