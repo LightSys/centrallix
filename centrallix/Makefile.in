@@ -604,6 +604,7 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	NRAN=$$((NPASS+NSKIP+NFAIL+NCRASH+NLOCKUP)); \
 	TOSUM "Pass" "$$NPASS" "$$CGREEN"; \
 	[ "$$NSKIP" -gt 0 ] && TOSUM "Skipped" "$$NSKIP" "$$CYELLOW"; \
+	[ -n "$$TONLY" ] && TOSUM "Filtered (TONLY=$$TONLY)" "$$(($(words $(wildcard tests/test_*.to tests/test_*.c))-NRAN))" "$$CYELLOW"; \
 	TOSUM "FAIL" "$$NFAIL" "$$CRED"; \
 	TOSUM "CRASH" "$$NCRASH" "$$CRED"; \
 	TOSUM "LOCKUP" "$$NLOCKUP" "$$CRED"; \
