@@ -5,6 +5,7 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include "obj.h"
+#include "obj_private.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
