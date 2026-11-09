@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -46,7 +46,7 @@ typedef struct _SI
     int		    Magic;
     int		    LinkCnt;
     char*	    Name;	/* name of attrib or group */
-    char*	    UsrType;	/* type of group, null if attrib */
+    char*	    UsrType;	/* type of group (e.g. "system/object"), null if attrib */
     pExpression	    Value;	/* value; EXPR_N_LIST if several listed */
     struct _SI*	    Parent;	/* Parent inf, null if toplevel */
     struct _SI**    SubInf;	/* List of attrs/groups included */
@@ -124,7 +124,8 @@ int stPrintInf(pStructInf this);
 int stRemoveInf(pStructInf inf);
 int stGetAttrValue(pStructInf this, int type, pObjData value, int nval);
 int stGetObjAttrValue(pStructInf this, char* attrname, int type, pObjData value);
-int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess, pParamObjects objlist);
+int stGetObjAttrValueOSML(pStructInf this, char* attrname, int type, pObjData pod, int nval, pObjSession sess, pParamObjects objlist, int domain);
+int stGetAttrValueOSML(pStructInf this, int type, pObjData value, int nval, pObjSession sess, pParamObjects objlist, int domain);
 int stGetAttrType(pStructInf this, int nval);
 int stStructType(pStructInf this);
 int stSetAttrValue(pStructInf this, int type, pObjData value, int nval);
@@ -135,4 +136,3 @@ int stAttrIsNull(pStructInf this);
 pStructInf stFind(pStructInf this, char* name);
 
 #endif /* _STPARSE_H */
-
