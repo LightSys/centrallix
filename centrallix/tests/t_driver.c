@@ -22,7 +22,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 2005 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 2005-2026 LightSys Technology Services, Inc.	*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -38,6 +38,13 @@
 /************************************************************************/
 
 long long test(char**);
+
+/** Exit statuses, counted by the test target in Makefile.in. **/
+#define T_EXIT_PASS	0
+#define T_EXIT_FAIL	1
+#define T_EXIT_SKIPPED	2
+#define T_EXIT_CRASH	3
+#define T_EXIT_LOCKUP	4
 
 char * test_name = "?";
 bool use_curses = true;
@@ -79,19 +86,19 @@ void
 segv_handler(int v)
     {
     print_result("CRASH", COLOR_RED);
-    exit(0);
+    exit(T_EXIT_CRASH);
     }
 void
 abort_handler(int v)
     {
     print_result("FAIL", COLOR_RED);
-    exit(0);
+    exit(T_EXIT_FAIL);
     }
 void
 alarm_handler(int v)
     {
     print_result("LOCKUP", COLOR_RED);
-    exit(0);
+    exit(T_EXIT_LOCKUP);
     }
 
 void
@@ -119,13 +126,17 @@ start(void* v)
     rval = test(&test_name);
 
     if (rval < 0)
+        {
         print_result("FAIL", COLOR_RED);
-    else if (rval == 1)
+        exit(T_EXIT_FAIL);
+        }
+    if (rval == 1)
+        {
         print_result("Skipped", COLOR_YELLOW);
-    else
-        print_result("Pass", COLOR_GREEN);
-
-    return;
+        exit(T_EXIT_SKIPPED);
+        }
+    print_result("Pass", COLOR_GREEN);
+    exit(T_EXIT_PASS);
     }
 
 int
