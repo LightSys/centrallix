@@ -7,7 +7,7 @@ Match the surrounding style when editing a file, but keep in mind that many file
 Inline comments are one short line, not blocks. They say what the code does now: never history ("used to"), alternatives ("rather than"), or other things it does not do. Function preambles are the only multi-line comments.
 
 ### Errors vs warnings
-`mssError()` is only for failures that propagate up the call chain. A condition the program continues past is a warning: use `fprintf(stderr, "Warning: ...\n")`.
+`mssError()` is only for failures that propagate up the call chain. A condition the program continues past is a warning: use `mssWarn()`.
 
 ## Copyright notices
 When making meaningful changes to a file (more than a few lines), update the copyright notice at the top of the file to extend to the current year.
