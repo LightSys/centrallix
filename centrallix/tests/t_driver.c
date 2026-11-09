@@ -12,6 +12,10 @@
 #ifdef HAVE_NCURSES
 #include <curses.h>
 #include <term.h>
+#else
+#define COLOR_RED	1
+#define COLOR_GREEN	2
+#define COLOR_YELLOW	3
 #endif
 
 /************************************************************************/
@@ -45,7 +49,7 @@ puterr(char character)
 }
 
 void
-print_result(char * result, bool succeeded)
+print_result(char * result, int color)
     {
     #ifdef HAVE_NCURSES
     if (use_curses) {
@@ -58,7 +62,6 @@ print_result(char * result, bool succeeded)
 
     #ifdef HAVE_NCURSES
     if (use_curses) {
-        int color = succeeded ? COLOR_GREEN : COLOR_RED;
         tputs(tparm(tigetstr("setaf"), color), 1, putchar); //set stdout text color
     }
     #endif
@@ -75,19 +78,19 @@ print_result(char * result, bool succeeded)
 void
 segv_handler(int v)
     {
-    print_result("CRASH", false);
+    print_result("CRASH", COLOR_RED);
     exit(0);
     }
 void
 abort_handler(int v)
     {
-    print_result("FAIL", false);
+    print_result("FAIL", COLOR_RED);
     exit(0);
     }
 void
 alarm_handler(int v)
     {
-    print_result("LOCKUP", false);
+    print_result("LOCKUP", COLOR_RED);
     exit(0);
     }
 
@@ -116,11 +119,11 @@ start(void* v)
     rval = test(&test_name);
 
     if (rval < 0)
-        print_result("FAIL", false);
+        print_result("FAIL", COLOR_RED);
     else if (rval == 1)
-        print_result("Skipped", true);
+        print_result("Skipped", COLOR_YELLOW);
     else
-        print_result("Pass", true);
+        print_result("Pass", COLOR_GREEN);
 
     return;
     }
