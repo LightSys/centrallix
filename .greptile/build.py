@@ -11,6 +11,7 @@
 #   Rule text in Markdown.
 #
 # Run after editing any rule: python3 .greptile/build.py
+# With --check, exit with status 1 if config.json is out of date.
 
 import json
 import os
@@ -46,6 +47,8 @@ def parse_rule(path):
 
 
 def main():
+    if sys.argv[1:] not in ([], ["--check"]):
+        sys.exit("Usage: %s [--check]" % sys.argv[0])
     rules_dir = os.path.join(here, "rules")
     rules = []
 
@@ -56,10 +59,19 @@ def main():
         scope, rule = parse_rule(os.path.join(rules_dir, name))
         rules.append({"id": name[:-3], "rule": rule, "scope": scope})
 
+    config = json.dumps({"rules": rules}, indent=2, ensure_ascii=False) + "\n"
+    config_path = os.path.join(here, "config.json")
+
+    # Compare against the committed config.
+    if sys.argv[1:] == ["--check"]:
+        with open(config_path) as f:
+            if f.read() != config:
+                sys.exit("Failed check: '%s' is out of date; run python3 .greptile/build.py." % config_path)
+        return
+
     # Write the config Greptile reads.
-    with open(os.path.join(here, "config.json"), "w") as f:
-        json.dump({"rules": rules}, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    with open(config_path, "w") as f:
+        f.write(config)
 
 
 main()
