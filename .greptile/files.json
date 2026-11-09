@@ -3,7 +3,7 @@
     {
       "path": "centrallix-doc/StructureFile.txt",
       "description": "Structure file syntax, including $Version=2$ expressions.",
-      "scope": ["**/*.app", "**/*.cmp", "**/*.tpl", "**/*.struct", "**/*.ifc", "**/*.thm", "**/*.qy", "**/*.qyt", "**/*.rpt"]
+      "scope": ["**/*.app", "**/*.cmp", "**/*.tpl", "**/*.struct", "**/*.ifc", "**/*.thm", "**/*.qy", "**/*.qyt", "**/*.rpt", "**/*.qyp", "**/*.spec", "**/*.http", "**/*.uxu", "**/*.pop3", "**/*.sybdb", "**/*.mysdb", "**/*.prt", "**/*.uxd", "**/*.sch", "**/*.dbl", "**/*.fp"]
     },
     {
       "path": "centrallix-doc/Widgets/widgets.xml",
