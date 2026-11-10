@@ -33,6 +33,7 @@
 
 #include <ctype.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -43,6 +44,7 @@
 
 #include "barcode.h"
 #include "centrallix.h"
+#include "cxlib/base64.h"
 #include "cxlib/expect.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
@@ -728,18 +730,25 @@ prt_htmlfm_WriteImage(pPrtHTMLfmInf context, pPrtHTMLfmImage image)
 
 	/** Write the base64 image with line wrap. **/
 	const size_t b64_len = image->Base64Size - 1;
-	for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
+	const size_t wrapped_size = b64WrappedSize(b64_len, PRT_HTMLFM_B64_LINE_LEN, B64_F_NONE);
+	if (UNLIKELY(wrapped_size == 0 || wrapped_size > INT_MAX))
 	    {
-	    const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
-	    if (UNLIKELY(prt_htmlfm_Output(context, image->Base64 + off, line_len) < 0
-		|| prt_htmlfm_OutputStrLiteral(context, "\n") < 0
-	    ))  {
-		mssError(0, "PRT",
-		    "Failed to write base64 line at offset %zu/%zu of image %lu.",
-		    off, b64_len, image->ID
-		);
-		return -1;
-		}
+	    mssError(1, "PRT", "Failed to wrap %zu bytes of base64 for image %lu: too large.", b64_len, image->ID);
+	    return -1;
+	    }
+	char* wrapped = nmSysMalloc(wrapped_size);
+	if (UNLIKELY(wrapped == NULL))
+	    {
+	    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", wrapped_size);
+	    return -1;
+	    }
+	const ssize_t wrapped_len = b64Wrap(wrapped, wrapped_size, image->Base64, (ssize_t)b64_len, PRT_HTMLFM_B64_LINE_LEN, B64_F_NONE);
+	const int output_rval = (wrapped_len < 0) ? -1 : prt_htmlfm_Output(context, wrapped, (int)wrapped_len);
+	nmSysFree(wrapped);
+	if (UNLIKELY(output_rval < 0))
+	    {
+	    mssError(0, "PRT", "Failed to write base64 for image %lu.", image->ID);
+	    return -1;
 	    }
 
 	/** Write the part footer. **/
@@ -1489,16 +1498,21 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    }
 
 		/** Encode the image to base64. **/
-		base64Size = 4 * ((imgBuf.size + 2) / 3) + 1;
+		base64Size = b64EncodedSize(imgBuf.size, 0, B64_F_NONE);
+		if (UNLIKELY(base64Size == 0))
+		    {
+		    mssError(1, "PRT", "Failed to base64-encode %zu-byte image: too large.", imgBuf.size);
+		    goto error_image;
+		    }
 		base64Image = nmSysMalloc(base64Size);
 		if (UNLIKELY(base64Image == NULL))
 		    {
 		    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", base64Size);
 		    goto error_image;
 		    }
-		if (UNLIKELY(qpfPrintf(NULL, base64Image, base64Size, "%*STR&B64", (int)imgBuf.size, imgBuf.buffer) < 0))
+		if (UNLIKELY(b64Encode(base64Image, base64Size, imgBuf.buffer, (ssize_t)imgBuf.size, 0, B64_F_NONE) < 0))
 		    {
-		    mssError(1, "PRT", "Failed to base64-encode %zu-byte image.", imgBuf.size);
+		    mssError(0, "PRT", "Failed to base64-encode %zu-byte image.", imgBuf.size);
 		    goto error_image;
 		    }
 
