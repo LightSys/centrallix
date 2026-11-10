@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include "cxlib/base64.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "obj.h"
@@ -777,14 +778,19 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 			    toffset = msg->MsgSeekStart + mdat->ExternalChunkSeek + tlen;
 			    }
 			tsize = mdat->ReadFn(mdat->Parent, tptr, tleft, toffset, FD_U_SEEK);
+			if (tsize < 0) return -1;
 			tlen += tsize;
-			tremoved = libmime_B64Purify(mdat->EncBuffer); // tremoved is the number of chars removed this iteration
+			tremoved = tsize - b64Purify(tptr, tsize); // tremoved is the number of chars removed this iteration
 			trem_total += tremoved; // trem_total is the total number of chars removed for this chunk
 			tptr += (tsize - tremoved);
 			tleft -= (tsize - tremoved);
 			}
-		    mdat->EncBuffer[tlen-trem_total] = 0;
-		    tsize = libmime_DecodeBase64(mdat->Buffer, mdat->EncBuffer, tlen-trem_total);
+		    tsize = b64Decode(mdat->Buffer, sizeof(mdat->Buffer), mdat->EncBuffer, tlen-trem_total, B64_F_NONE);
+		    if (tsize < 0)
+			{
+			mssError(0, "MIME", "Failed to decode base64 chunk at offset %ld", msg->MsgSeekStart + mdat->ExternalChunkSeek);
+			return -1;
+			}
 		    rem += trem_total; // rem is the total characters removed (non b64 chars)
 		    }
 

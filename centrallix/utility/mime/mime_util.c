@@ -2,7 +2,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -187,36 +187,6 @@ libmime_StringUnquote(char *str)
 	return str+1;
 	}
     return str;
-    }
-
-/*  libmime_B64Purify
-**
-**  Removes all characters from a Base64 string that are not part
-**  of the Base64 alphabet.
-*/
-int
-libmime_B64Purify(char *string)
-    {
-    char *wrk, *tmp;
-    static char allowset[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    int rem=0;
-
-    for (wrk = string; *wrk;)
-	{
-	if (strchr(allowset, *wrk) != NULL)
-	    wrk++;
-	else
-	    {
-	    char ch = *wrk;
-	    for (tmp = wrk; tmp;)
-		{
-		memmove(tmp, tmp+1, strlen(tmp+1)+1);
-		tmp = strchr(tmp, ch);
-		rem++;
-		}
-	    }
-	}
-    return rem;
     }
 
 /*  libmime_ContentExtension
