@@ -1,0 +1,31 @@
+##NAME FROM ONEROW feature
+
+# Enable test output for ONEROW and single row caching
+test 1
+
+# Query without one row feature
+csv select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id = :t2:f_id
+
+# Query with one row feature
+csv select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, onerow /tests/Testdata2.csv/rows t2 where :t1:f_id = :t2:f_id
+
+# Large resultset query without one row feature
+csv select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id > :t2:f_id
+
+# Large resultset query with one row feature
+csv select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, onerow /tests/Testdata2.csv/rows t2 where :t1:f_id > :t2:f_id
+
+# Large resultset query with order by
+csv select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, /tests/Testdata2.csv/rows t2 where :t1:f_id > :t2:f_id order by :t1:f_id, :t2:f_id desc
+
+# Large resultset query with one row feature and order by
+csv select t1id = :t1:f_id, t2id = :t2:f_id, t1desc = :t1:f_desc, t2desc = :t2:f_desc, cnt = :t1:f_count + :t2:f_square from /tests/Testdata1.csv/rows t1, onerow /tests/Testdata2.csv/rows t2 where :t1:f_id > :t2:f_id order by :t1:f_id, :t2:f_id desc
+
+# Wildcard
+csv select :f_id, :f_desc from wildcard '/tests/Testdata*.csv/rows' t
+
+# Wildcard with onerow, from first source
+csv select :f_id, :f_desc from onerow wildcard '/tests/Testdata*.csv/rows' t where char_length(:f_desc) = 6
+
+# Wildcard with onerow, from second source
+csv select :f_id, :f_desc from onerow wildcard '/tests/Testdata*.csv/rows' t where char_length(:f_desc) = 8
