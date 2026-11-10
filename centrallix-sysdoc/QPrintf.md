@@ -69,8 +69,8 @@ Please check the end of this document for information on which of these specifie
 | &SYM              | Treats the string as a 'symbol', beginning with [_a-zA-Z] and then containing [_a-zA-Z0-9].  Results in an error if the string does not match.
 | &HEX              | Hex-encodes the entire string.
 | &DHEX             | Hex-decodes the entire string.
-| &B64              | Base64-encodes the entire string.
-| &DB64             | Base64-decodes the entire string.
+| &B64              | Base64-encodes the entire string, with padding and without line breaks.
+| &DB64             | Base64-decodes the entire string.  Padding is optional.  Any other character, including a line break, is an error.
 | &RF/reg/          | Filters string value through regular expression, and if it does not match in its entirety, causes an error.
 | &RR/reg/rep/      | Filters string value through regular expression and replaces occurrences of 'reg' with 'rep'.  It is not an error if the regular expression does not match at all.
 | &HTE              | Converts special HTML characters to HTML entities (includes &, <, >, ', and ".
