@@ -383,7 +383,7 @@ obj_internal_PathToText(pPathname pathinfo, int pathcnt, pXString str)
 	    for(i=1; i < pathcnt && i < pathinfo->nElements; i++)
 		{
 		path_element = obj_internal_PathPart(pathinfo, i, 1);
-		xsConcatPrintf(str, "/%s", path_element);
+		xsConcatQPrintf(str, "/%STR&URL", path_element);
 		obj_internal_OpenCtlToString(pathinfo, i, i, str);
 		}
 	    }

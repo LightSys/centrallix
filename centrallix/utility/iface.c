@@ -47,6 +47,7 @@
 #include "obj.h"
 #include "centrallix.h"
 #include "ht_render.h"
+#include "cxlib/mtsession.h"
 
 struct _IFC IFC;
 
