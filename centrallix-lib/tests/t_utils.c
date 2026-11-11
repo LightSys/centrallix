@@ -21,6 +21,7 @@
 
 #include "expect.h"
 #include "range.h"
+#include "strtcpy.h"
 #include "t_utils.h"
 
 /*** Implement ASSERT_TRUE().
@@ -114,11 +115,11 @@ t_i_assertStrEqlN(const char* str1, const char* str2, size_t len, const char* ex
 	    {
 	    const size_t buf_len = max(7, len + 1);
 	    char tmp1[buf_len];
-	    if (str1 == NULL) strcpy(tmp1, "(null)");
+	    if (str1 == NULL) strtcpy(tmp1, "(null)", sizeof(tmp1));
 	    else copyReplaceNulls(tmp1, str1, len);
 
 	    char tmp2[buf_len];
-	    if (str2 == NULL) strcpy(tmp2, "(null)");
+	    if (str2 == NULL) strtcpy(tmp2, "(null)", sizeof(tmp2));
 	    else copyReplaceNulls(tmp2, str2, len);
 
 	    fprintf(stderr,

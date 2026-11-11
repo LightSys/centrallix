@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 /** Test dependencies. **/
+#include "strtcpy.h"
 #include "t_utils.h"
 
 /** Tested module. **/
@@ -39,7 +40,7 @@
     const size_t _buf_size = (size_t)(buf_size); \
     const int _len = fn((buf), _buf_size, (value)); \
     char _trunc[strlen(_expect) + 1]; \
-    strcpy(_trunc, _expect); \
+    strtcpy(_trunc, _expect, sizeof(_trunc)); \
     if (_buf_size > 0 && (size_t)_len >= _buf_size) _trunc[_buf_size - 1] = '\0'; \
     ASSERT_EQL(_len, (int)strlen(_expect), "%d") && \
 	(_buf_size == 0 || ASSERT_STR_EQL((buf), _trunc)); \
