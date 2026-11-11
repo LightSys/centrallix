@@ -73,31 +73,17 @@ function dd_resetvalue()
 
 function dd_enable()
     {
-    pg_images(this)[0].src = '/sys/images/ico15b.gif';
-    htr_setbgcolor(this, this.bg);
-    this.keyhandler = dd_keyhandler;
-    this.enabled = 'full';
+    this.setenable('full');
     }
 
 function dd_readonly()
     {
-    pg_images(this)[0].src = '/sys/images/ico15b.gif';
-    htr_setbgcolor(this, "#e0e0e0");
-    this.keyhandler = null;
-    this.enabled = 'readonly';
+    this.setenable('readonly');
     }
 
 function dd_disable()
     {
-    if (dd_current)
-	{
-	htr_setvisibility(dd_current.PaneLayer, 'hidden');
-	dd_current = null;
-	}
-    pg_images(this)[0].src = '/sys/images/ico15a.gif';
-    htr_setbgcolor(this, "#e0e0e0");
-    this.keyhandler = null;
-    this.enabled = 'disabled';
+    this.setenable('disabled');
     }
 
 // Normal functions
@@ -106,7 +92,7 @@ function dd_keyhandler(l,e,k)
     {
     //if (!dd_current) return;
     var dd = this.mainlayer;
-    if (dd.enabled != 'full') return 1;
+    if (dd.composite_enabled != 'full') return 1;
     if ((k >= 65 && k <= 90) || (k >= 97 && k <= 122) || (k >= 48 && k <= 57))
 	{
 	if (!dd.PaneLayer || htr_getvisibility(dd.PaneLayer) != 'inherit')
@@ -518,13 +504,18 @@ function dd_select_item(l,i,from)
     l.VisLayer = l.HidLayer;
     l.HidLayer = t;
     //pg_debug('new id = ' + l.VisLayer.id + '\n');
+    let changed = false;
     if (i != null)
 	{
+	if (l.value != l.Values[l.VisLayer.index].value)
+	    changed = true;
 	l.value = l.Values[l.VisLayer.index].value;
 	l.label = l.Values[l.VisLayer.index].label;
 	}
     else
 	{
+	if (l.value != null)
+	    changed = true;
 	l.value = null;
 	l.label = null;
 	}
@@ -534,7 +525,7 @@ function dd_select_item(l,i,from)
 	//alert(i);
 	//l.osrc.MoveToRecord(i);
 	}
-    if (from != 'init')
+    if (from != 'init' && changed)
 	cn_activate(l, "DataChange", {Value:l.value, Label:l.label, FromOSRC:(from == 'osrc')});
     }
 
@@ -546,7 +537,7 @@ function dd_datachange(l)
 
 function dd_getfocus()
     {
-    if (this.enabled != 'full') return 0;
+    if (this.composite_enabled != 'full') return 0;
     if(this.form)
 	{
 	if (!this.form.FocusNotify(this)) return 0;
@@ -846,7 +837,7 @@ function dd_mouseout(e)
 function dd_mousemove(e)
     {
     var ti=dd_target_img;
-    if (ti != null && ti.name == 't' && dd_current && dd_current.enabled!='disabled')
+    if (ti != null && ti.name == 't' && dd_current && dd_current.composite_enabled!='disabled')
         {
         var pl=ti.mainlayer.PaneLayer;
         var v=getClipHeight(pl)-(3*18)-4;
@@ -877,7 +868,7 @@ function dd_mouseover(e)
         cn_activate(e.mainlayer, 'MouseOver');
         dd_cur_mainlayer = e.mainlayer;
         }
-    if (e.kind == 'dd_itm' && dd_current && dd_current.enabled=='full')
+    if (e.kind == 'dd_itm' && dd_current && dd_current.composite_enabled=='full')
         {
         dd_lastkey = null;
         dd_hilight_item(dd_current, e.layer.index);
@@ -903,7 +894,7 @@ function dd_mouseup(e)
             pg_set(dd_target_img,'src',htutil_subst_last(dd_target_img.src,"b.gif"));
         dd_target_img = null;
         }
-    if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.enabled != 'disabled')
+    if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.composite_enabled != 'disabled')
         {
         dd_toggle(e.mainlayer,false);
         }
@@ -915,7 +906,7 @@ function dd_mousedown(e)
     {
     if (e.mainlayer && e.mainkind == 'dd') cn_activate(e.mainlayer, 'MouseDown');
     dd_target_img = e.target;
-    if (e.kind == 'dd_itm' && dd_current && dd_current.enabled == 'full')
+    if (e.kind == 'dd_itm' && dd_current && dd_current.composite_enabled == 'full')
         {
 	var cur = dd_current;
 	if(e.which == 2 || e.which == 3)
@@ -926,8 +917,8 @@ function dd_mousedown(e)
 		A related issue is that after you right click, the next click outside the widget will be trapped.
 	    */
 	    e.mainlayer.ifcProbe(ifEvent).Activate('RightClick',{Label:e.mainlayer.Values[e.layer.index].label,Value:e.mainlayer.Values[e.layer.index].value,X:e.pageX, Y:e.pageY});
-            dd_select_item(dd_current, e.layer.index, 'mouse');
-            dd_datachange(dd_current);
+            dd_select_item(cur, e.layer.index, 'mouse');
+            dd_datachange(cur);
 	    return EVENT_HALT | EVENT_PREVENT_DEFAULT_ACTION;
 	    }
 	if(e.mainlayer.Mode == 3)
@@ -935,19 +926,19 @@ function dd_mousedown(e)
 	    // OSRC-selector dropdown
 	    if(e.mainlayer.Values[e.layer.index].osrcindex)
 		e.mainlayer.osrc.MoveToRecord(e.mainlayer.Values[e.layer.index].osrcindex); 
-	    dd_collapse(dd_current);
+	    dd_collapse(cur);
 	    return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 	    }
 	else
 	    {
-	    dd_select_item(dd_current, e.layer.index, 'mouse');
-	    dd_datachange(dd_current);
+	    dd_select_item(cur, e.layer.index, 'mouse');
+	    dd_datachange(cur);
 	    }
-	if(!dd_current.form || dd_current.form.mode != 'Query' || !dd_current.query_multiselect)
-	    dd_collapse(dd_current);
+	if(!cur.form || cur.form.mode != 'Query' || !cur.query_multiselect)
+	    dd_collapse(cur);
 	else 
-	    if (dd_current.Items[e.layer.index])
-		htr_setbgcolor(dd_current.Items[e.layer.index], dd_current.hl);
+	    if (cur.Items[e.layer.index])
+		htr_setbgcolor(cur.Items[e.layer.index], cur.hl);
 	    //dd_hilight_item(dd_current, e.layer.index);
 	// Re-select the dropdown
 	pg_setkbdfocus(cur, null, null, null);
@@ -981,7 +972,7 @@ function dd_mousedown(e)
                 break;
             }
         }
-    else if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.enabled != 'disabled')
+    else if ((e.kind == 'dd' || e.kind == 'ddtxt') && e.mainlayer.composite_enabled != 'disabled')
         {
         if (dd_current)
             {
@@ -1179,6 +1170,83 @@ function dd_cb_reveal(e)
     return true;
     }
 
+function dd_setenable(v)
+    {
+    if (v != 'full' && v != 'readonly' && v != 'disabled')
+	return this.enabled;
+    this.enabled = v;
+    this.update_enabled();
+    return this.enabled;
+    }
+
+function dd_update_enabled()
+    {
+    var new_composite_enabled;
+    if (this.enabled == 'full' && this.user_enabled == 'full')
+	{
+	pg_images(this)[0].src = '/sys/images/ico15b.gif';
+	htr_setbgcolor(this, this.bg);
+	this.keyhandler = dd_keyhandler;
+	new_composite_enabled = 'full';
+	}
+    else if (this.enabled == 'disabled' || this.user_enabled == 'disabled')
+	{
+	if (dd_current)
+	    {
+	    htr_setvisibility(dd_current.PaneLayer, 'hidden');
+	    dd_current = null;
+	    }
+	pg_images(this)[0].src = '/sys/images/ico15a.gif';
+	htr_setbgcolor(this, "#e0e0e0");
+	this.keyhandler = null;
+	new_composite_enabled = 'disabled';
+	}
+    else
+	{
+	pg_images(this)[0].src = '/sys/images/ico15b.gif';
+	htr_setbgcolor(this, "#e0e0e0");
+	this.keyhandler = null;
+	new_composite_enabled = 'readonly';
+	}
+    if (this.composite_enabled != new_composite_enabled)
+	{
+	this.composite_enabled = this.ifcProbe(ifValue).Changing('enabled', new_composite_enabled, true, this.composite_enabled, true);
+	}
+    }
+
+// Getter and setter for client dynamic properties.  We allow setting a
+// 'user defined' enabled value but return a composite of that and the
+// form-driven enabled value.
+function dd_get_enabled(prop)
+    {
+    if (prop == 'enabled')
+	return this.composite_enabled;
+    else
+	return null;
+    }
+function dd_set_enabled(prop, v)
+    {
+    if (prop == 'enabled')
+	{
+	if (v == 'full' || v == 'readonly' || v == 'disabled')
+	    {
+	    this.user_enabled = v;
+	    this.update_enabled();
+	    }
+	return this.user_enabled;
+	}
+    }
+function dd_user_enable()
+    {
+    this.user_enabled = 'full';
+    this.update_enabled();
+    }
+function dd_user_disable()
+    {
+    this.user_enabled = 'disabled';
+    this.update_enabled();
+    }
+
 function dd_deinit()
     {
     dd_collapse(this);
@@ -1247,6 +1315,10 @@ function dd_init(param)
     l.w = param.width; l.h = param.height;
     l.fieldname = param.fieldname;
     l.enabled = 'full';
+    l.user_enabled = 'full';
+    l.composite_enabled = 'full';
+    l.setenable = dd_setenable;
+    l.update_enabled = dd_update_enabled;
     if (l.Mode != 3)
 	{
 	if (param.form)
@@ -1290,11 +1362,14 @@ function dd_init(param)
     ia.Add("SetGroup", dd_action_set_group);
     ia.Add("SetItems", dd_action_set_items);
     ia.Add("ClearItems", dd_clear_layers);
+    ia.Add("Enable", dd_user_enable);
+    ia.Add("Disable", dd_user_disable);
 
     var iv = l.ifcProbeAdd(ifValue);
     iv.Add("sql", dd_cb_getsql, dd_cb_setsql);
     iv.Add("value", "value");
     iv.Add("label", "label");
+    iv.Add("enabled", dd_get_enabled, dd_set_enabled);
 
     if (l.form)
 	{
