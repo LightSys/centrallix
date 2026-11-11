@@ -166,11 +166,18 @@ copyReplaceNulls(char* dest, const char* src, size_t n)
 long long
 loopTest(bool (*test_fn)(void))
     {
+    return loopTestMin(test_fn, 0ll);
+    }
+
+long long
+loopTestMin(bool (*test_fn)(void), long long min_runs)
+    {
     long long result = 0ll;
     Timer iter_timer_buf;
     Timer *iter_timer = timerStart(timerInit(&iter_timer_buf));
 
-	while (timerGet(iter_timer) < MIN_TEST_SECONDS)
+	if (ON_VALGRIND) min_runs = 0ll;
+	while (result < min_runs || timerGet(iter_timer) < MIN_TEST_SECONDS)
 	    {
 	    result++;
 	    if (!test_fn())

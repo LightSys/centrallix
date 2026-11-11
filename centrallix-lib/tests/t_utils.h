@@ -36,10 +36,11 @@
 /** Detect valgrind. **/
 #ifdef USING_VALGRIND
 #include "valgrind/valgrind.h"
-#define LOCKUP_SECONDS	((RUNNING_ON_VALGRIND) ? VALGRIND_LOCKUP_SECONDS : NORMAL_LOCKUP_SECONDS)
+#define ON_VALGRIND	(RUNNING_ON_VALGRIND)
 #else
-#define LOCKUP_SECONDS	NORMAL_LOCKUP_SECONDS
+#define ON_VALGRIND	0
 #endif
+#define LOCKUP_SECONDS	((ON_VALGRIND) ? VALGRIND_LOCKUP_SECONDS : NORMAL_LOCKUP_SECONDS)
 
 /*** The minimum number of seconds that a test can take.  Tests that take less
  *** time than this might not use enough cpu cycles, confusing the test suite
@@ -143,5 +144,10 @@ void copyReplaceNulls(char* dest, const char* src, size_t n);
 
 /** Repeat the test as many times as possible within a set time window. **/
 long long loopTest(bool (*test_fn)(void));
+
+/*** Repeat the test like loopTest(), but at least `min_runs` times.  Valgrind
+ *** is too slow for more than a sample, so it skips the minimum.
+ ***/
+long long loopTestMin(bool (*test_fn)(void), long long min_runs);
 
 #endif

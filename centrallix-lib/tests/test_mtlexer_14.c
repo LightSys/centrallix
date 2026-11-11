@@ -59,5 +59,5 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-14 normal/oversized double floating point";
-    return loopTest(doTest);
+    return loopTestMin(doTest, MAX_LEN);
     }

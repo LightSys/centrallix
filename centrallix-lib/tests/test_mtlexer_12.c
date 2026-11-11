@@ -61,5 +61,5 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-12 normal/oversized keywords";
-    return loopTest(doTest);
+    return loopTestMin(doTest, MAX_LEN);
     }

@@ -91,7 +91,7 @@ test(char** tname)
 	tokstr[2] = "thirdline";
 
 	/** Each pass lexes MAX_LEN / N_PASS of the line lengths. **/
-	rval = loopTest(doTest) * MAX_LEN / N_PASS;
+	rval = loopTestMin(doTest, N_PASS) * MAX_LEN / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

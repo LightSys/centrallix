@@ -98,7 +98,7 @@ test(char** tname)
 	tokstr[0][MAX_LEN+1] = '\0';
 
 	/** Each pass lexes about (MAX_LEN-20) / N_PASS of the strings. **/
-	rval = loopTest(doTest) * (MAX_LEN-20) / N_PASS;
+	rval = loopTestMin(doTest, N_PASS) * (MAX_LEN-20) / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

@@ -64,5 +64,5 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-13 normal/oversized integers";
-    return loopTest(doTest);
+    return loopTestMin(doTest, MAX_LEN);
     }
