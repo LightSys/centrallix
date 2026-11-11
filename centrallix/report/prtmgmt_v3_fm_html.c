@@ -33,7 +33,6 @@
 
 #include <ctype.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -728,24 +727,8 @@ prt_htmlfm_WriteImage(pPrtHTMLfmInf context, pPrtHTMLfmImage image)
 	    return -1;
 	    }
 
-	/** Write the base64 image with line wrap. **/
-	const size_t b64_len = image->Base64Size - 1;
-	const size_t wrapped_size = b64WrappedSize(b64_len, PRT_HTMLFM_B64_LINE_LEN, B64_F_NONE);
-	if (UNLIKELY(wrapped_size == 0 || wrapped_size > INT_MAX))
-	    {
-	    mssError(1, "PRT", "Failed to wrap %zu bytes of base64 for image %lu: too large.", b64_len, image->ID);
-	    return -1;
-	    }
-	char* wrapped = nmSysMalloc(wrapped_size);
-	if (UNLIKELY(wrapped == NULL))
-	    {
-	    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", wrapped_size);
-	    return -1;
-	    }
-	const ssize_t wrapped_len = b64Wrap(wrapped, wrapped_size, image->Base64, (ssize_t)b64_len, PRT_HTMLFM_B64_LINE_LEN, B64_F_NONE);
-	const int output_rval = (wrapped_len < 0) ? -1 : prt_htmlfm_Output(context, wrapped, (int)wrapped_len);
-	nmSysFree(wrapped);
-	if (UNLIKELY(output_rval < 0))
+	/** Write the base64 image, which is already wrapped. **/
+	if (UNLIKELY(prt_htmlfm_Output(context, image->Base64, (int)(image->Base64Size - 1)) < 0))
 	    {
 	    mssError(0, "PRT", "Failed to write base64 for image %lu.", image->ID);
 	    return -1;
@@ -1497,8 +1480,9 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    goto error_image;
 		    }
 
-		/** Encode the image to base64. **/
-		base64Size = b64EncodedSize(imgBuf.size, 0, B64_F_NONE);
+		/** Encode the image to base64, wrapped for email attachments. **/
+		const size_t line_len = (context->Flags & PRT_HTMLFM_F_EMAIL) ? PRT_HTMLFM_B64_LINE_LEN : 0;
+		base64Size = b64EncodedSize(imgBuf.size, line_len, B64_F_NONE);
 		if (UNLIKELY(base64Size == 0))
 		    {
 		    mssError(1, "PRT", "Failed to base64-encode %zu-byte image: too large.", imgBuf.size);
@@ -1510,7 +1494,7 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", base64Size);
 		    goto error_image;
 		    }
-		if (UNLIKELY(b64Encode(base64Image, base64Size, imgBuf.buffer, (ssize_t)imgBuf.size, 0, B64_F_NONE) < 0))
+		if (UNLIKELY(b64Encode(base64Image, base64Size, imgBuf.buffer, (ssize_t)imgBuf.size, line_len, B64_F_NONE) < 0))
 		    {
 		    mssError(0, "PRT", "Failed to base64-encode %zu-byte image.", imgBuf.size);
 		    goto error_image;
