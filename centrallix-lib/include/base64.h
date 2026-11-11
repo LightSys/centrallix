@@ -25,6 +25,7 @@
 #define B64_F_NONE		(0)
 #define B64_F_CRLF		(1<<0)	/* Wrap lines with "\r\n", not "\n". */
 #define B64_F_SKIP_INVALID	(1<<1)	/* Decoding ignores non-alphabet characters. */
+#define B64_F_REJECT_SPACE	(1<<2)	/* Decoding rejects whitespace. */
 
 size_t b64EncodedSize(size_t src_len, size_t line_len, int flags);
 size_t b64DecodedSizeMax(size_t src_len);

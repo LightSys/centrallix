@@ -64,6 +64,7 @@ static Case cases[] =
 
     /** A decoding error fails the print. **/
 	{ "%STR&DB64",		0,	"Zg=",			NULL },
+	{ "%STR&DB64",		0,	"Zm9v\nYmFy",		NULL },
 
     /** The output and its null must fit. **/
 	{ "%STR&B64",		0,	"0123456789012345678901234567890123456789012345", NULL },

@@ -47,6 +47,19 @@ b64_i_Value(unsigned char ch)
     }
 
 
+/*** Check whether a character is whitespace.
+ ***
+ *** @param ch The character.
+ *** @returns Whether ch is a space, tab, line ending, vertical tab, or form
+ ***	feed.
+ ***/
+static bool
+b64_i_IsSpace(unsigned char ch)
+    {
+    return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f');
+    }
+
+
 /*** Resolve a length argument, where -1 means the string's strlen().
  ***
  *** @param str The string the length applies to.
@@ -288,7 +301,8 @@ b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t l
 
 
 /*** Decode standard base64.  Padding is optional, but a padded final group
- *** must have all of its padding and no data it.  Decoding text in chunks
+ *** must have all of its padding and no data it.  Whitespace is ignored
+ *** unless B64_F_REJECT_SPACE is passed.  Decoding text in chunks
  *** gives the same data as decoding it in one call if every chunk but the
  *** last chunk holds a multiple of 4 alphabet characters.
  ***
@@ -298,8 +312,9 @@ b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t l
  ***	is always enough.
  *** @param src The base64 text to decode.
  *** @param src_len The length of src, or -1 to use strlen(src).
- *** @param flags B64_F_SKIP_INVALID to ignore characters outside the base64
- ***	alphabet, such as line endings, otherwise B64_F_NONE.
+ *** @param flags B64_F_SKIP_INVALID to ignore all characters outside the
+ ***	base64 alphabet, B64_F_REJECT_SPACE to reject whitespace, otherwise
+ ***	B64_F_NONE.  These two flags cannot be combined.
  *** @returns The number of decoded bytes, excluding the null, or -1 with
  ***	mssError() on failure.  On failure, dst may be partly written.
  ***/
@@ -308,13 +323,15 @@ b64Decode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
     {
     unsigned char* out = (unsigned char*)dst;
     const bool skip_invalid = ((flags & B64_F_SKIP_INVALID) != 0);
+    const bool skip_space = ((flags & B64_F_REJECT_SPACE) == 0);
     uint32_t group = 0;
     int n_chars = 0, n_pads = 0;
     size_t len;
     size_t o = 0;
 
 	/** Check the arguments. **/
-	if (UNLIKELY((flags & ~B64_F_SKIP_INVALID) != 0))
+	if (UNLIKELY((flags & ~(B64_F_SKIP_INVALID | B64_F_REJECT_SPACE)) != 0
+	    || (skip_invalid && !skip_space)))
 	    {
 	    mssError(1, "B64", "Failed to decode: invalid flags 0x%x.", (unsigned int)flags);
 	    return -1;
@@ -341,7 +358,7 @@ b64Decode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	    const int value = b64_i_Value(ch);
 	    if (value < 0)
 		{
-		if (skip_invalid) continue;
+		if (skip_invalid || (skip_space && b64_i_IsSpace(ch))) continue;
 		mssError(1, "B64", "Failed to decode: invalid character 0x%02x at offset %zu.", ch, i);
 		return -1;
 		}

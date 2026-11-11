@@ -562,7 +562,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
 
 	if (qpf_internal_Reserve(s, b64DecodedSizeMax(src_size), dst, dst_size, *dst_offset, grow_fn, grow_arg) < 0)
 	    return -1;
-	n = b64Decode(*dst + *dst_offset, *dst_size - *dst_offset, src, (ssize_t)src_size, B64_F_NONE);
+	n = b64Decode(*dst + *dst_offset, *dst_size - *dst_offset, src, (ssize_t)src_size, B64_F_REJECT_SPACE);
 	if (n < 0)
 	    {
 	    QPERR(QPF_ERR_T_BADCHAR);

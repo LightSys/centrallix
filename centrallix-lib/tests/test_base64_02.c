@@ -65,13 +65,20 @@ static Case cases[] =
 	{ "Z=g=",	-1,	AREA,	B64_F_NONE,		-1 },
 
     /** Characters outside the alphabet. **/
-	{ "Zm9v\n",	-1,	AREA,	B64_F_NONE,		-1 },
-	{ "Zm 9v",	-1,	AREA,	B64_F_NONE,		-1 },
 	{ "Zm9v#",	-1,	AREA,	B64_F_NONE,		-1 },
 	{ "PD8_",	-1,	AREA,	B64_F_NONE,		-1 },
 	{ "PD8-",	-1,	AREA,	B64_F_NONE,		-1 },
 	{ "Zm\x80v",	-1,	AREA,	B64_F_NONE,		-1 },
 	{ "Zm\0v",	 4,	AREA,	B64_F_NONE,		-1 },
+
+    /** B64_F_REJECT_SPACE makes whitespace invalid. **/
+	{ "Zm9v\n",	-1,	AREA,	B64_F_REJECT_SPACE,	-1 },
+	{ "Zm9v\r",	-1,	AREA,	B64_F_REJECT_SPACE,	-1 },
+	{ "Zm 9v",	-1,	AREA,	B64_F_REJECT_SPACE,	-1 },
+	{ "\tZm9v",	-1,	AREA,	B64_F_REJECT_SPACE,	-1 },
+	{ "Zm\v9v",	-1,	AREA,	B64_F_REJECT_SPACE,	-1 },
+	{ "Zm9\fv",	-1,	AREA,	B64_F_REJECT_SPACE,	-1 },
+	{ "Zm9v",	-1,	AREA,	B64_F_REJECT_SPACE,	 3 },
 
     /** The decoded data and its null must fit in dst. **/
 	{ "Zm9vYmFy",	-1,	7,	B64_F_NONE,		 6 },
@@ -87,6 +94,7 @@ static Case cases[] =
 	{ "Zm9v",	-2,	AREA,	B64_F_NONE,		-1 },
 	{ "Zm9v",	-1,	AREA,	B64_F_CRLF,		-1 },
 	{ "Zm9v",	-1,	AREA,	1<<8,			-1 },
+	{ "Zm9v",	-1,	AREA,	B64_F_SKIP_INVALID | B64_F_REJECT_SPACE, -1 },
     };
 
 /** Number of cases run per call to doTest(). **/
@@ -124,8 +132,9 @@ doTest(void)
 
 /*** This test verifies that b64Decode() returns -1 for a 1-character final
  *** group, partial or excess padding, data after padding, characters outside
- *** the alphabet, bad arguments, and a dst too small for the data and its
- *** null, while never writing outside the dst_size it was given.
+ *** the alphabet, whitespace with B64_F_REJECT_SPACE, bad arguments, and a
+ *** dst too small for the data and its null, while never writing outside the
+ *** dst_size it was given.
  ***/
 long long
 test(char** tname)

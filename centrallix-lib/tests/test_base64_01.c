@@ -76,6 +76,13 @@ static Case cases[] =
 	{ "YQBi",		-1,	"a\0b",			3 },
 	{ "+/8=",		-1,	"\xFB\xFF",		2 },
 
+    /** Whitespace is ignored anywhere, including around the padding. **/
+	{ "Zm9v\r\nYmFy\r\n",	-1,	"foobar",		6 },
+	{ "Zm9v\nYmE=\n",	-1,	"fooba",		5 },
+	{ " Z m\t9\vv\f",	-1,	"foo",			3 },
+	{ "Zg=\n=",		-1,	"f",			1 },
+	{ "\r\n",		-1,	"",			0 },
+
     /** An HTTP Basic credential. **/
 	{ "QWxhZGRpbjpvcGVuIHNlc2FtZQ==", -1, "Aladdin:open sesame", 19 },
     };
@@ -124,8 +131,8 @@ doTest(void)
     }
 
 /*** This test verifies that b64Decode() accepts standard base64 with or
- *** without padding, ignores leftover bits, honors an explicit length or -1
- *** for strlen(), and decodes in place.
+ *** without padding, ignores leftover bits and whitespace, honors an explicit
+ *** length or -1 for strlen(), and decodes in place.
  ***/
 long long
 test(char** tname)
