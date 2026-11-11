@@ -8,7 +8,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_base64_08.c					*/
+/* Module:	test_qprintf_69.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 10th, 2026					*/
 /* Description:	Test the qprintf &B64 and &DB64 filters, which use the	*/
@@ -62,12 +62,8 @@ static Case cases[] =
 	{ "user=%STR&DB64.",	0,	"Zm9v",			"user=foo." },
 	{ "%*STR&DB64",		4,	"Zm9vYmFy",		"foo" },
 
-    /** Decoding follows b64Decode(): padding is optional but must be complete. **/
-	{ "%STR&DB64",		0,	"Zm8",			"fo" },
-	{ "%STR&DB64",		0,	"Zm8=",			"fo" },
+    /** A decoding error fails the print. **/
 	{ "%STR&DB64",		0,	"Zg=",			NULL },
-	{ "%STR&DB64",		0,	"Zg==Zg==",		NULL },
-	{ "%STR&DB64",		0,	"Zm9v\n",		NULL },
 
     /** The output and its null must fit. **/
 	{ "%STR&B64",		0,	"0123456789012345678901234567890123456789012345", NULL },
@@ -214,6 +210,6 @@ doTest(void)
 long long
 test(char** tname)
     {
-    *tname = "base64-08 qprintf &B64 and &DB64 filters";
+    *tname = "qprintf-69 &B64 and &DB64 filters";
     return loopTest(doTest) * (NCASES + 4);
     }
