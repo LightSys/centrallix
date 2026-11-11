@@ -93,7 +93,9 @@ static bool doTest(void)
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, 1073741823, (cs) ? "1 GiB"      : "1.07 GB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, 10239,      (cs) ? "10 KiB"     : "10.24 KB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, 102399,     (cs) ? "100 KiB"    : "102.4 KB");
+	#if ULONG_MAX > UINT_MAX
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, ULONG_MAX,  (cs) ? "16 EiB"     : "18.45 EB");
+	#endif
 
 	/** Truncation: the full length is returned, but only part is written. **/
 	success &= TEST_SNPRINT_BYTES(buf, 0, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");
