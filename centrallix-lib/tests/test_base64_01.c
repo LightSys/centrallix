@@ -124,8 +124,8 @@ doTest(void)
     }
 
 /*** This test verifies that b64Decode() accepts standard, padded base64,
- *** ignores leftover bits and whitespace, honors an explicit
- *** length or -1 for strlen(), and decodes in place.
+ *** ignores leftover bits and whitespace, honors an explicit length or -1
+ *** for strlen(), and decodes in place.
  ***/
 long long
 test(char** tname)

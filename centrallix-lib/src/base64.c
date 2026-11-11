@@ -167,7 +167,7 @@ b64DecodedSizeMax(size_t src_len)
  *** @param line_len The maximum characters per line (must be at least 1).
  *** @param flags B64_F_CRLF for "\r\n" line endings, otherwise B64_F_NONE.
  *** @returns The length of the result, excluding the null, or -1 with
- ***	mssError() on failure.  On failure, dst is not modifed.
+ ***	mssError() on failure.  On failure, dst is not modified.
  ***/
 ssize_t
 b64Wrap(char* dst, size_t dst_size, const char* src, ssize_t src_len, size_t line_len, int flags)
@@ -235,7 +235,7 @@ b64Wrap(char* dst, size_t dst_size, const char* src, ssize_t src_len, size_t lin
  ***	for no wrapping.  Every line ends in a line ending.
  *** @param flags B64_F_CRLF for "\r\n" line endings, otherwise B64_F_NONE.
  *** @returns The length of the encoding, excluding the null, or -1 with
- ***	mssError() on failure.  On failure, dst is not modifed.
+ ***	mssError() on failure.  On failure, dst is not modified.
  ***/
 ssize_t
 b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t line_len, int flags)
@@ -302,9 +302,9 @@ b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t l
 
 /*** Decode standard, padded base64.  A final group of 2 or 3 characters must
  *** be padded to 4.  Whitespace is ignored unless B64_F_REJECT_SPACE is
- *** passed.  Decoding text in chunks
- *** gives the same data as decoding it in one call if every chunk but the
- *** last chunk holds a multiple of 4 alphabet characters.
+ *** passed.  Decoding text in chunks gives the same data as decoding it in
+ *** one call if every chunk but the last holds a multiple of 4 alphabet
+ *** characters.
  ***
  *** @param dst The buffer to write the null-terminated decoded data into.  It
  ***	may equal src to decode in place, but must not otherwise overlap it.
@@ -388,7 +388,7 @@ b64Decode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	/** The final group must be padded to 4 characters. **/
 	if (UNLIKELY(n_chars > 0 && n_chars + n_pads != 4))
 	    {
-	    mssError(1, "B64", "Failed to decode: an incomplete group ends %zu characters.", len);
+	    mssError(1, "B64", "Failed to decode: incomplete group after %zu characters.", len);
 	    return -1;
 	    }
 

@@ -138,10 +138,10 @@ doTest(void)
     }
 
 /*** This test verifies that b64Decode() returns -1 for an unpadded final
- *** group, a 1-character final group, partial or excess padding, data after padding, characters outside
- *** the alphabet, whitespace with B64_F_REJECT_SPACE, bad arguments, and a
- *** dst too small for the data and its null, while never writing outside the
- *** dst_size it was given.
+ *** group, a 1-character final group, partial or excess padding, data after
+ *** padding, characters outside the alphabet, whitespace with
+ *** B64_F_REJECT_SPACE, bad arguments, and a dst too small for the data and
+ *** its null, while never writing outside the dst_size it was given.
  ***/
 long long
 test(char** tname)

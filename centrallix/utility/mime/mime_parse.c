@@ -788,7 +788,7 @@ libmime_PartRead(pMimeData mdat, pMimeHeader msg, char* buffer, int maxcnt, int 
 		    tsize = b64Decode(mdat->Buffer, sizeof(mdat->Buffer), mdat->EncBuffer, tlen-trem_total, B64_F_NONE);
 		    if (tsize < 0)
 			{
-			mssError(0, "MIME", "Failed to decode base64 chunk at offset %ld", msg->MsgSeekStart + mdat->ExternalChunkSeek);
+			mssError(0, "MIME", "Failed to decode base64 chunk at offset %ld.", msg->MsgSeekStart + mdat->ExternalChunkSeek);
 			return -1;
 			}
 		    rem += trem_total; // rem is the total characters removed (non b64 chars)

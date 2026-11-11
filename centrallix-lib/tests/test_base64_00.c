@@ -12,7 +12,7 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	November 10th, 2026					*/
 /* Description:	Test b64Encode() for text and binary data, without line	*/
-/* 		wrapping.						*/
+/*		wrapping.						*/
 /************************************************************************/
 
 #include <stdbool.h>
