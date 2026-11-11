@@ -8,7 +8,7 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /*									*/
-/* Module:	test_base64_09.c					*/
+/* Module:	test_base64_08.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 11th, 2026					*/
 /* Description:	Test that b64Decode() reverses b64Encode() on every	*/
@@ -74,6 +74,6 @@ doTest(void)
 long long
 test(char** tname)
     {
-    *tname = "base64-09 round trip";
+    *tname = "base64-08 round trip";
     return loopTest(doTest) * 2;
     }
