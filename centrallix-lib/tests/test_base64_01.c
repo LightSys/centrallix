@@ -11,8 +11,8 @@
 /* Module:	test_base64_01.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 10th, 2026					*/
-/* Description:	Test b64Decode() on valid input, with and without	*/
-/*		padding, including decoding in place.			*/
+/* Description:	Test b64Decode() on valid input, including decoding	*/
+/*		in place.						*/
 /************************************************************************/
 
 #include <stdbool.h>
@@ -53,16 +53,9 @@ static Case cases[] =
 	{ "Zm9vYmE=",		-1,	"fooba",		5 },
 	{ "Zm9vYmFy",		-1,	"foobar",		6 },
 
-    /** Padding is optional. **/
-	{ "Zg",			-1,	"f",			1 },
-	{ "Zm8",		-1,	"fo",			2 },
-	{ "Zm9vYg",		-1,	"foob",			4 },
-	{ "Zm9vYmE",		-1,	"fooba",		5 },
-
     /** Leftover bits in the final group are ignored. **/
 	{ "QQ==",		-1,	"A",			1 },
 	{ "QR==",		-1,	"A",			1 },
-	{ "QR",			-1,	"A",			1 },
 	{ "QUJ=",		-1,	"AB",			2 },
 
     /** An explicit length decodes only the start of the input. **/
@@ -130,8 +123,8 @@ doTest(void)
     return success;
     }
 
-/*** This test verifies that b64Decode() accepts standard base64 with or
- *** without padding, ignores leftover bits and whitespace, honors an explicit
+/*** This test verifies that b64Decode() accepts standard, padded base64,
+ *** ignores leftover bits and whitespace, honors an explicit
  *** length or -1 for strlen(), and decodes in place.
  ***/
 long long

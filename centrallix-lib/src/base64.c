@@ -300,9 +300,9 @@ b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t l
     }
 
 
-/*** Decode standard base64.  Padding is optional, but a padded final group
- *** must have all of its padding and no data it.  Whitespace is ignored
- *** unless B64_F_REJECT_SPACE is passed.  Decoding text in chunks
+/*** Decode standard, padded base64.  A final group of 2 or 3 characters must
+ *** be padded to 4.  Whitespace is ignored unless B64_F_REJECT_SPACE is
+ *** passed.  Decoding text in chunks
  *** gives the same data as decoding it in one call if every chunk but the
  *** last chunk holds a multiple of 4 alphabet characters.
  ***
@@ -385,15 +385,10 @@ b64Decode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 		}
 	    }
 
-	/** Check the final group. **/
-	if (UNLIKELY(n_pads > 0 && n_chars + n_pads != 4))
+	/** The final group must be padded to 4 characters. **/
+	if (UNLIKELY(n_chars > 0 && n_chars + n_pads != 4))
 	    {
-	    mssError(1, "B64", "Failed to decode: incomplete padding at the end of %zu characters.", len);
-	    return -1;
-	    }
-	if (UNLIKELY(n_chars == 1))
-	    {
-	    mssError(1, "B64", "Failed to decode: a lone character ends %zu characters.", len);
+	    mssError(1, "B64", "Failed to decode: an incomplete group ends %zu characters.", len);
 	    return -1;
 	    }
 

@@ -94,11 +94,6 @@ checkSizes(const unsigned char* data, size_t len, size_t line_len, int flags)
 	success &= ASSERT_EQL(dec_len, (ssize_t)len, "%zd");
 	success &= ASSERT_TRUE(memcmp(decoded, data, len) == 0);
 
-	/** Without padding too. **/
-	size_t unpadded_len = (size_t)unwrapped_len;
-	while (unpadded_len > 0 && unwrapped[unpadded_len - 1] == '=') unpadded_len--;
-	success &= ASSERT_EQL(b64Decode(decoded, b64DecodedSizeMax(unpadded_len), unwrapped, (ssize_t)unpadded_len, B64_F_NONE), (ssize_t)len, "%zd");
-
     return success;
     }
 

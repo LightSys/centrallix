@@ -44,6 +44,13 @@ static Case cases[] =
     {
     /**	  Src		SrcLen	DstSize	Flags			ExpRval **/
 
+    /** A final group must be padded to 4 characters. **/
+	{ "QQ",		-1,	AREA,	B64_F_NONE,		-1 },
+	{ "QUI",	-1,	AREA,	B64_F_NONE,		-1 },
+	{ "Zm9vYg",	-1,	AREA,	B64_F_NONE,		-1 },
+	{ "Zm9vYmE",	-1,	AREA,	B64_F_NONE,		-1 },
+	{ "Zm9v\nYmE\n",	-1,	AREA,	B64_F_NONE,		-1 },
+
     /** A final group of 1 character holds too few bits for a byte. **/
 	{ "Q",		-1,	AREA,	B64_F_NONE,		-1 },
 	{ "Q=",		-1,	AREA,	B64_F_NONE,		-1 },
@@ -85,8 +92,8 @@ static Case cases[] =
 	{ "Zm9vYmFy",	-1,	6,	B64_F_NONE,		-1 },
 	{ "Zm9vYmE=",	-1,	6,	B64_F_NONE,		 5 },
 	{ "Zm9vYmE=",	-1,	5,	B64_F_NONE,		-1 },
-	{ "Zg",		-1,	2,	B64_F_NONE,		 1 },
-	{ "Zg",		-1,	1,	B64_F_NONE,		-1 },
+	{ "Zg==",	-1,	2,	B64_F_NONE,		 1 },
+	{ "Zg==",	-1,	1,	B64_F_NONE,		-1 },
 	{ "",		-1,	1,	B64_F_NONE,		 0 },
 	{ "",		-1,	0,	B64_F_NONE,		-1 },
 
@@ -130,8 +137,8 @@ doTest(void)
     return success;
     }
 
-/*** This test verifies that b64Decode() returns -1 for a 1-character final
- *** group, partial or excess padding, data after padding, characters outside
+/*** This test verifies that b64Decode() returns -1 for an unpadded final
+ *** group, a 1-character final group, partial or excess padding, data after padding, characters outside
  *** the alphabet, whitespace with B64_F_REJECT_SPACE, bad arguments, and a
  *** dst too small for the data and its null, while never writing outside the
  *** dst_size it was given.
