@@ -140,6 +140,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    else
 	osrc[0]='\0';
 
+    /** enable/disable expression for editbox **/
+    htrCheckAddExpression(s, tree, name, "enabled");
+
     /** Get name **/
     if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
     strtcpy(name,ptr,sizeof(name));

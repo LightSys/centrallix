@@ -126,7 +126,7 @@ htebRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree,"style",DATA_T_STRING,POD(&ptr)) == 0 && !strcmp(ptr,"raised")) is_raised = 1;
 
 	/** enable/disable expression for editbox **/
-	/*htrCheckAddExpression(s, tree, name, "enabled");*/
+	htrCheckAddExpression(s, tree, name, "enabled");
 
 	if (wgtrGetPropertyValue(tree,"fieldname",DATA_T_STRING,POD(&ptr)) == 0)
 	    strtcpy(fieldname,ptr,sizeof(fieldname));
