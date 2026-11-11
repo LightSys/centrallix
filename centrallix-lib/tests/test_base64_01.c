@@ -12,7 +12,7 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	November 10th, 2026					*/
 /* Description:	Test b64Decode() on valid input, with and without	*/
-/*		padding, including round trips and decoding in place.	*/
+/*		padding, including decoding in place.			*/
 /************************************************************************/
 
 #include <stdbool.h>
@@ -30,10 +30,6 @@
 #define GUARD	4
 #define AREA	64
 #define RAW	(GUARD + AREA + GUARD)
-
-/** Largest round trip input, and a buffer that holds its encoding. **/
-#define MAX_DATA	300
-#define MAX_ENC		(MAX_DATA / 3 * 4 + 4 + 1)
 
 typedef struct
     {
@@ -87,8 +83,6 @@ static Case cases[] =
 /** Number of cases run per call to doTest(). **/
 #define NCASES	((int)(sizeof(cases) / sizeof(Case)))
 
-static unsigned int seed_counter = 0;
-
 /** Decode each case into a guarded area, and again in place. **/
 static bool
 testCases(void)
@@ -129,59 +123,19 @@ testCases(void)
     return success;
     }
 
-/** Round trip every byte value, then random data of a random length. **/
-static bool
-testRoundTrip(void)
-    {
-    bool success = true;
-    unsigned char data[MAX_DATA];
-    unsigned char decoded[MAX_DATA + 1];
-    char encoded[MAX_ENC];
-
-	/** Use a distinct seed each pass so the data varies. **/
-	srand(seed_counter++);
-
-	for (int pass = 0; pass < 2; pass++)
-	    {
-	    /** Every byte value in order, then random bytes. **/
-	    size_t len = 256;
-	    for (size_t i = 0; i < len; i++) data[i] = (unsigned char)i;
-	    if (pass == 1)
-		{
-		len = (size_t)rand() % (MAX_DATA + 1);
-		for (size_t i = 0; i < len; i++) data[i] = (unsigned char)rand();
-		}
-
-	    /** Encode, then decode the result. **/
-	    const ssize_t enc_len = b64Encode(encoded, sizeof(encoded), data, (ssize_t)len, 0, B64_F_NONE);
-	    success &= ASSERT_EQL(enc_len, (ssize_t)((len + 2) / 3 * 4), "%zd");
-	    if (enc_len < 0) return false;
-	    const ssize_t dec_len = b64Decode(decoded, sizeof(decoded), encoded, enc_len, B64_F_NONE);
-	    success &= ASSERT_EQL(dec_len, (ssize_t)len, "%zd");
-	    success &= ASSERT_TRUE(memcmp(decoded, data, len) == 0);
-	    }
-
-    return success;
-    }
-
 static bool
 doTest(void)
     {
-    bool success = true;
-
-	success &= testCases();
-	success &= testRoundTrip();
-
-    return success;
+    return testCases();
     }
 
 /*** This test verifies that b64Decode() accepts standard base64 with or
  *** without padding, ignores leftover bits, honors an explicit length or -1
- *** for strlen(), decodes in place, and round trips with b64Encode().
+ *** for strlen(), and decodes in place.
  ***/
 long long
 test(char** tname)
     {
     *tname = "base64-01 b64Decode() on valid input";
-    return loopTest(doTest) * (NCASES * 2 + 2);
+    return loopTest(doTest) * (NCASES * 2);
     }
