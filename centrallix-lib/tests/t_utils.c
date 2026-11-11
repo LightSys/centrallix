@@ -87,7 +87,9 @@ t_i_assertStrEql(const char* str1, const char* str2, const char* expr1, const ch
 	if (UNLIKELY(!success))
 	    fprintf(stderr,
 		"  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n",
-		expr1, str1, expr2, str2, file, line
+		expr1, (str1 == NULL) ? "(null)" : str1,
+		expr2, (str2 == NULL) ? "(null)" : str2,
+		file, line
 	    );
 
     return success;
