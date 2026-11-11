@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "newmalloc.h"
-#include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -51,6 +50,5 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-20 NODISCARD flag test";
-    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest);
     }

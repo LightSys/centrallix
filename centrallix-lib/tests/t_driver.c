@@ -22,6 +22,7 @@
 
 #include "cxlibconfig-internal.h"
 #include "mtask.h"
+#include "mtsession.h"
 #include "t_utils.h"
 #include "util.h"
 
@@ -57,6 +58,9 @@ start(void* v)
     struct tms t;
     clock_t start,end;
     long long rval;
+
+	/** Set up the session library for errors and warnings. **/
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	/** Set up handlers for signals that may occur during a test. **/
 	signal(SIGSEGV, segv_handler);

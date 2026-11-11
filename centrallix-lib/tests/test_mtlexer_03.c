@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "newmalloc.h"
-#include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -81,8 +80,6 @@ test(char** tname)
     long long rval;
 
 	*tname = "mtlexer-03 BID#156 - line length based failure";
-
-	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	/** Seed the input and the expected first token at their full length. **/
 	memset(str, 'a', MAX_LEN+1);
