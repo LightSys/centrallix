@@ -145,12 +145,12 @@ b64EncodedSize(size_t src_len, size_t line_len, int flags)
  ***
  *** @param src_len The length of the base64 text, excluding any null.
  *** @returns A size b64Decode() never exceeds for its output, including the
- ***	null.  It is exact for unwrapped, unpadded text.
+ ***	null.  It is exact for text without padding or line endings.
  ***/
 size_t
 b64DecodedSizeMax(size_t src_len)
     {
-    return (src_len / 4 * 3) + (src_len % 4 * 3 / 4) + 1;
+    return (src_len / 4 * 3) + 1;
     }
 
 
