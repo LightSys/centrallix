@@ -45,6 +45,13 @@ static unsigned int seed_counter = 0;
 static bool doTest(void)
     {
     bool success = true;
+    bool finished = false;
+    pXArray xa = NULL;
+    int* v1 = NULL;
+    int* v2 = NULL;
+    int* v3 = NULL;
+    int* v4 = NULL;
+    int* vset = NULL;
 
 	/** Create random values using a consistent, distinct seed. **/
 	srand(seed_counter++);
@@ -66,23 +73,23 @@ static bool doTest(void)
 	const int value_not = possible_value_not;
 
 	/** Create a new xarray. **/
-	pXArray xa = xaNew(2);
-	if (!ASSERT_NOT_NULL(xa)) return false;
+	xa = xaNew(2);
+	if (!ASSERT_NOT_NULL(xa)) goto end;
 
 	/** A new xarray should have 0 items. **/
 	success &= ASSERT_EQL(xaCount(xa), 0, "%d");
 
 	/** Test adding an item. **/
-	int* v1 = nmMalloc(sizeof(int));
-	if (!ASSERT_NOT_NULL(v1)) return false;
+	v1 = nmMalloc(sizeof(int));
+	if (!ASSERT_NOT_NULL(v1)) goto end;
 	*v1 = value1;
 	success &= ASSERT_EQL(xaAddItem(xa, v1), 0, "%d");
 	success &= ASSERT_EQL(xaCount(xa), 1, "%d");
 	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 0), value1, "%d");
 
 	/** Test adding another item. **/
-	int* v2 = nmMalloc(sizeof(int));
-	if (!ASSERT_NOT_NULL(v2)) return false;
+	v2 = nmMalloc(sizeof(int));
+	if (!ASSERT_NOT_NULL(v2)) goto end;
 	*v2 = value2;
 	success &= ASSERT_EQL(xaAddItem(xa, v2), 1, "%d");
 	success &= ASSERT_EQL(xaCount(xa), 2, "%d");
@@ -96,7 +103,7 @@ static bool doTest(void)
 
 	/** Test finding items that don't exist. **/
 	int* v_not = nmMalloc(sizeof(int));
-	if (!ASSERT_NOT_NULL(v_not)) return false;
+	if (!ASSERT_NOT_NULL(v_not)) goto end;
 	*v_not = value_not;
 	success &= ASSERT_EQL(xaFindItem(xa, NULL), -1, "%d");
 	success &= ASSERT_EQL(xaFindItemR(xa, NULL), -1, "%d");
@@ -105,24 +112,24 @@ static bool doTest(void)
 	nmFree(v_not, sizeof(int)); v_not = NULL;
 
 	/** Insert before index 1. **/
-	int* v3 = nmMalloc(sizeof(int));
-	if (!ASSERT_NOT_NULL(v3)) return false;
+	v3 = nmMalloc(sizeof(int));
+	if (!ASSERT_NOT_NULL(v3)) goto end;
 	*v3 = value3;
 	success &= ASSERT_EQL(xaInsertBefore(xa, 1, v3), 1, "%d");
 	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 1), value3, "%d");
 	success &= ASSERT_EQL(xaCount(xa), 3, "%d");
 
 	/** Insert after index 2. **/
-	int* v4 = nmMalloc(sizeof(int));
-	if (!ASSERT_NOT_NULL(v4)) return false;
+	v4 = nmMalloc(sizeof(int));
+	if (!ASSERT_NOT_NULL(v4)) goto end;
 	*v4 = value4;
 	success &= ASSERT_EQL(xaInsertAfter(xa, 2, v4), 3, "%d");
 	success &= ASSERT_EQL(*(int*)xaGetItem(xa, 3), value4, "%d");
 	success &= ASSERT_EQL(xaCount(xa), 4, "%d");
 
 	/** xaSetItem() beyond current end should create NULL gaps. **/
-	int* vset = nmMalloc(sizeof(int));
-	if (!ASSERT_NOT_NULL(vset)) return false;
+	vset = nmMalloc(sizeof(int));
+	if (!ASSERT_NOT_NULL(vset)) goto end;
 	*vset = value5;
 	success &= ASSERT_EQL(xaSetItem(xa, 5, vset), 5, "%d");
 	success &= ASSERT_EQL(xaCount(xa), 6, "%d");
@@ -144,13 +151,22 @@ static bool doTest(void)
 	/** Clear and verify free was called for each non-NULL item. **/
 	unsigned int freed_count = 0;
 	success &= ASSERT_EQL(xaClear(xa, test_free, &freed_count), 0, "%d");
+	v1 = v3 = v4 = vset = NULL; /* xaClear() freed them. */
 	success &= ASSERT_EQL(freed_count, nonnull, "%u");
 	success &= ASSERT_EQL(xaCount(xa), 0, "%d");
 
-	/** Clean up. **/
-	success &= ASSERT_EQL(xaFree(xa), 0, "%d");
+	finished = true;
 
-    return success;
+    end:
+	/** Clean up whatever is still allocated. **/
+	if (xa != NULL) success &= ASSERT_EQL(xaFree(xa), 0, "%d");
+	if (vset != NULL) nmFree(vset, sizeof(int));
+	if (v4 != NULL) nmFree(v4, sizeof(int));
+	if (v3 != NULL) nmFree(v3, sizeof(int));
+	if (v2 != NULL) nmFree(v2, sizeof(int));
+	if (v1 != NULL) nmFree(v1, sizeof(int));
+
+    return finished && success;
     }
 
 long long test(char** tname)
