@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "newmalloc.h"
-#include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -89,8 +88,6 @@ test(char** tname)
 
 	*tname = "mtlexer-09 strings spanning multiple lines";
 
-	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
-
 	/** A quoted run of 'a', and the expected token it should lex to. **/
 	memset(str, 'a', MAX_LEN+3);
 	str[0] = '"';
@@ -101,7 +98,7 @@ test(char** tname)
 	tokstr[0][MAX_LEN+1] = '\0';
 
 	/** Each pass lexes about (MAX_LEN-20) / N_PASS of the strings. **/
-	rval = loopTest(doTest) * (MAX_LEN-20) / N_PASS;
+	rval = loopTestMin(doTest, N_PASS) * (MAX_LEN-20) / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

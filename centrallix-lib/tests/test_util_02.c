@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 /** Test dependencies. **/
+#include "strtcpy.h"
 #include "t_utils.h"
 
 /** Tested module. **/
@@ -39,7 +40,7 @@
     const size_t _buf_size = (size_t)(buf_size); \
     const int _len = fn((buf), _buf_size, (value)); \
     char _trunc[strlen(_expect) + 1]; \
-    strcpy(_trunc, _expect); \
+    strtcpy(_trunc, _expect, sizeof(_trunc)); \
     if (_buf_size > 0 && (size_t)_len >= _buf_size) _trunc[_buf_size - 1] = '\0'; \
     ASSERT_EQL(_len, (int)strlen(_expect), "%d") && \
 	(_buf_size == 0 || ASSERT_STR_EQL((buf), _trunc)); \
@@ -92,7 +93,9 @@ static bool doTest(void)
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, 1073741823, (cs) ? "1 GiB"      : "1.07 GB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, 10239,      (cs) ? "10 KiB"     : "10.24 KB");
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, 102399,     (cs) ? "100 KiB"    : "102.4 KB");
+	#if ULONG_MAX > UINT_MAX
 	success &= TEST_SNPRINT_BYTES(buf, buf_size, ULONG_MAX,  (cs) ? "16 EiB"     : "18.45 EB");
+	#endif
 
 	/** Truncation: the full length is returned, but only part is written. **/
 	success &= TEST_SNPRINT_BYTES(buf, 0, pow(1024, 1), (cs) ? "1 KiB" : "1.02 KB");

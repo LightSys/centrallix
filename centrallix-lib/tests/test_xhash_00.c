@@ -26,6 +26,7 @@
 #include <string.h>
 
 /** Test dependencies. **/
+#include "strtcpy.h"
 #include "t_utils.h"
 
 /** Tested module. **/
@@ -73,7 +74,7 @@ static bool doTest(void)
 
 	/** Keys are matched by content rather than by pointer. **/
 	char key_copy[16];
-	strcpy(key_copy, keys[0]);
+	strtcpy(key_copy, keys[0], sizeof(key_copy));
 	success &= ASSERT_EQL(xhLookup(&hash, key_copy), data[0], "%p");
 
 	/** Neither a prefix nor an extension of a key matches it. **/
