@@ -71,16 +71,16 @@ static Case cases[] =
 	{ "PD8_",	-1,	AREA,	B64_F_NONE,		-1 },
 	{ "PD8-",	-1,	AREA,	B64_F_NONE,		-1 },
 	{ "Zm\x80v",	-1,	AREA,	B64_F_NONE,		-1 },
-	{ "Zm\0v",	4,	AREA,	B64_F_NONE,		-1 },
+	{ "Zm\0v",	 4,	AREA,	B64_F_NONE,		-1 },
 
     /** The decoded data and its null must fit in dst. **/
-	{ "Zm9vYmFy",	-1,	7,	B64_F_NONE,		6 },
+	{ "Zm9vYmFy",	-1,	7,	B64_F_NONE,		 6 },
 	{ "Zm9vYmFy",	-1,	6,	B64_F_NONE,		-1 },
-	{ "Zm9vYmE=",	-1,	6,	B64_F_NONE,		5 },
+	{ "Zm9vYmE=",	-1,	6,	B64_F_NONE,		 5 },
 	{ "Zm9vYmE=",	-1,	5,	B64_F_NONE,		-1 },
-	{ "Zg",		-1,	2,	B64_F_NONE,		1 },
+	{ "Zg",		-1,	2,	B64_F_NONE,		 1 },
 	{ "Zg",		-1,	1,	B64_F_NONE,		-1 },
-	{ "",		-1,	1,	B64_F_NONE,		0 },
+	{ "",		-1,	1,	B64_F_NONE,		 0 },
 	{ "",		-1,	0,	B64_F_NONE,		-1 },
 
     /** Bad arguments. **/

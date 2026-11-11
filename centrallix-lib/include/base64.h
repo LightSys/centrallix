@@ -23,7 +23,7 @@
 
 /** Flags. **/
 #define B64_F_NONE		(0)
-#define B64_F_CRLF		(1<<0)	/* Wrapped lines end in "\r\n", not "\n". */
+#define B64_F_CRLF		(1<<0)	/* Wrap lines with "\r\n", not "\n". */
 #define B64_F_SKIP_INVALID	(1<<1)	/* Decoding ignores non-alphabet characters. */
 
 size_t b64EncodedSize(size_t src_len, size_t line_len, int flags);

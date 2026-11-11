@@ -11,8 +11,8 @@
 /* Module:	test_base64_00.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	November 10th, 2026					*/
-/* Description:	Test b64Encode() without line wrapping, on text and	*/
-/*		binary data.						*/
+/* Description:	Test b64Encode() for text and binary data, without line	*/
+/* 		wrapping.						*/
 /************************************************************************/
 
 #include <stdbool.h>
@@ -53,7 +53,7 @@ static Case cases[] =
 
     /** A length of -1 means strlen(). **/
 	{ "",			-1,	"" },
-	{ "Aladdin:open sesame", -1,	"QWxhZGRpbjpvcGVuIHNlc2FtZQ==" },
+	{ "Aladdin:open sesame",-1,	"QWxhZGRpbjpvcGVuIHNlc2FtZQ==" },
 
     /** A shorter length encodes only the start of the data. **/
 	{ "foobar",		3,	"Zm9v" },

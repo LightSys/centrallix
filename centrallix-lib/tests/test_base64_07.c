@@ -12,7 +12,7 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	November 10th, 2026					*/
 /* Description:	Test encoding and decoding data in chunks, the way a	*/
-/*		caller streams data through the stateless functions.	*/
+/*		caller will to stream data using stateless functions.	*/
 /************************************************************************/
 
 #include <stdbool.h>

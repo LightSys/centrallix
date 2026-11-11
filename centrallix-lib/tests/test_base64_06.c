@@ -12,7 +12,7 @@
 /* Author:	Israel Fuller						*/
 /* Creation:	November 10th, 2026					*/
 /* Description:	Test b64Purify(), which removes characters outside the	*/
-/*		base64 alphabet in place.				*/
+/*		base64 alphabet (in place).				*/
 /************************************************************************/
 
 #include <stdbool.h>
@@ -45,6 +45,7 @@ static Case cases[] =
     /** Line endings from wrapped base64. **/
 	{ "Zm9v\r\nYmFy\r\n",		-1,	"Zm9vYmFy" },
 	{ "Zm9v\nYmE=\n",		-1,	"Zm9vYmE=" },
+	{ "Zm9v\nYmE=\r\n",		-1,	"Zm9vYmE=" }, /* mixed. */
 
     /** Padding and the whole alphabet are kept. **/
 	{ "Zg==",			-1,	"Zg==" },

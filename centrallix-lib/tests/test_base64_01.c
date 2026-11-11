@@ -85,7 +85,7 @@ static Case cases[] =
 
 /** Decode each case into a guarded area, and again in place. **/
 static bool
-testCases(void)
+doTest(void)
     {
     bool success = true;
     unsigned char raw[RAW];
@@ -121,12 +121,6 @@ testCases(void)
 	    }
 
     return success;
-    }
-
-static bool
-doTest(void)
-    {
-    return testCases();
     }
 
 /*** This test verifies that b64Decode() accepts standard base64 with or

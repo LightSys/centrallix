@@ -13,7 +13,7 @@
 /* Creation:	November 10th, 2026					*/
 /* Description:	Test the size helpers b64EncodedSize(),			*/
 /*		b64WrappedSize(), and b64DecodedSizeMax() against the	*/
-/*		output of the functions they size for.			*/
+/*		output of the functions they predict.			*/
 /************************************************************************/
 
 #include <limits.h>
@@ -127,6 +127,8 @@ doTest(void)
 	/** Sizes that do not fit in a ssize_t give a size of 0, even if they fit in a size_t. **/
 	success &= ASSERT_EQL(b64EncodedSize((size_t)SSIZE_MAX / 4 * 3 + 3, 0, B64_F_NONE), (size_t)0, "%zu");
 	success &= ASSERT_EQL(b64WrappedSize((size_t)SSIZE_MAX, 1, B64_F_NONE), (size_t)0, "%zu");
+	success &= ASSERT_EQL(b64WrappedSize((size_t)SSIZE_MAX - 1, (size_t)SSIZE_MAX, B64_F_NONE), (size_t)0, "%zu");
+	success &= ASSERT_EQL(b64WrappedSize((size_t)SSIZE_MAX - 2, (size_t)SSIZE_MAX, B64_F_NONE), (size_t)SSIZE_MAX, "%zu");
 	success &= ASSERT_EQL(b64EncodedSize(SIZE_MAX, 0, B64_F_NONE), (size_t)0, "%zu");
 	success &= ASSERT_EQL(b64EncodedSize(SIZE_MAX / 4 * 3, 4, B64_F_CRLF), (size_t)0, "%zu");
 	success &= ASSERT_EQL(b64WrappedSize(SIZE_MAX, 1, B64_F_NONE), (size_t)0, "%zu");
@@ -144,5 +146,5 @@ long long
 test(char** tname)
     {
     *tname = "base64-05 size helpers";
-    return loopTest(doTest) * ((MAX_DATA + 1) * N_LINE_LENS * N_FLAG_SETS + 10);
+    return loopTest(doTest) * ((MAX_DATA + 1) * N_LINE_LENS * N_FLAG_SETS + 12);
     }

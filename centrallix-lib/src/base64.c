@@ -74,7 +74,7 @@ b64_i_Length(const char* str, ssize_t len, const char* action, size_t* out)
     }
 
 
-/*** Get the size needed to hold text with line endings added.
+/*** Get the exact size needed to hold text with line endings added.
  ***
  *** @param src_len The length of the text, excluding any null.
  *** @param line_len The maximum characters per line.
@@ -88,16 +88,21 @@ b64WrappedSize(size_t src_len, size_t line_len, int flags)
     {
 	if (line_len == 0 || (flags & ~B64_F_CRLF) != 0) return 0;
 
-	/** Every line, including a short final line, gets a line ending. **/
-	const size_t n_lines = src_len / line_len + ((src_len % line_len != 0) ? 1 : 0);
+	/** Every line, including a short final line, ends in eol_len bytes. **/
 	const size_t eol_len = (flags & B64_F_CRLF) ? 2 : 1;
-	if (src_len > (size_t)SSIZE_MAX || n_lines > ((size_t)SSIZE_MAX - src_len) / eol_len) return 0;
+	const size_t n_lines = src_len / line_len + ((src_len % line_len != 0) ? 1 : 0);
 
-    return src_len + n_lines * eol_len + 1;
+	/** Handle outputs that are too long for ssize_t. **/
+	const size_t max_len = (size_t)SSIZE_MAX - 1;
+	if (src_len > max_len) return 0;
+	const size_t max_eols = (max_len - src_len) / eol_len;
+	if (n_lines > max_eols) return 0;
+
+    return src_len + (n_lines * eol_len) + 1;
     }
 
 
-/*** Get the size needed to hold base64 encoded data.
+/*** Get the exact size needed to hold base64 encoded data.
  ***
  *** @param src_len The number of bytes to encode.
  *** @param line_len The maximum characters per line, a multiple of 4, or 0
@@ -132,7 +137,7 @@ b64EncodedSize(size_t src_len, size_t line_len, int flags)
 size_t
 b64DecodedSizeMax(size_t src_len)
     {
-    return src_len / 4 * 3 + src_len % 4 * 3 / 4 + 1;
+    return (src_len / 4 * 3) + (src_len % 4 * 3 / 4) + 1;
     }
 
 
@@ -140,15 +145,16 @@ b64DecodedSizeMax(size_t src_len)
  *** including a short final line, ends in a line ending, so empty text
  *** stays empty.
  ***
- *** @param dst The buffer to write the null-terminated result into.  It may
+ *** @param dst The buffer for writing the null-terminated result.  It may
  ***	equal src to wrap in place, but must not otherwise overlap it.
- *** @param dst_size The size of dst.  b64WrappedSize() gives the size needed.
+ *** @param dst_size The size of dst.  b64WrappedSize() gives the size needed
+ ***	to avoid truncation.
  *** @param src The text to wrap.
  *** @param src_len The length of src, or -1 to use strlen(src).
- *** @param line_len The maximum characters per line, greater than 0.
+ *** @param line_len The maximum characters per line (must be at least 1).
  *** @param flags B64_F_CRLF for "\r\n" line endings, otherwise B64_F_NONE.
  *** @returns The length of the result, excluding the null, or -1 with
- ***	mssError() on failure.  On failure, dst is untouched.
+ ***	mssError() on failure.  On failure, dst is not modifed.
  ***/
 ssize_t
 b64Wrap(char* dst, size_t dst_size, const char* src, ssize_t src_len, size_t line_len, int flags)
@@ -177,7 +183,10 @@ b64Wrap(char* dst, size_t dst_size, const char* src, ssize_t src_len, size_t lin
 	    }
 	if (UNLIKELY(req_size > dst_size))
 	    {
-	    mssError(1, "B64", "Failed to wrap %zu characters: needs %zu bytes, but dst holds %zu.", len, req_size, dst_size);
+	    mssError(1, "B64",
+		"Failed to wrap %zu characters: dst can only hold %zu/%zu needed bytes.",
+		len, dst_size, req_size
+	    );
 	    return -1;
 	    }
 
@@ -200,11 +209,11 @@ b64Wrap(char* dst, size_t dst_size, const char* src, ssize_t src_len, size_t lin
 
 
 /*** Encode data as standard, padded base64, optionally wrapped into lines.
- *** Encoding data in chunks gives the same text as encoding it all at once
- *** if every chunk but the last is a multiple of 3 bytes, or of line_len / 4
- *** * 3 bytes when wrapping.
+ *** Encoding data in chunks gives the same text as encoding it in one call,
+ *** as long as every chunk but the last is a multiple of 3 bytes, or (when
+ *** wrapping) line_len / 4 * 3 bytes.
  ***
- *** @param dst The buffer to write the null-terminated encoding into, which
+ *** @param dst The buffer for writing the null-terminated encoding, which
  ***	must not overlap src.
  *** @param dst_size The size of dst.  b64EncodedSize() gives the size needed.
  *** @param src The data to encode.
@@ -213,7 +222,7 @@ b64Wrap(char* dst, size_t dst_size, const char* src, ssize_t src_len, size_t lin
  ***	for no wrapping.  Every line ends in a line ending.
  *** @param flags B64_F_CRLF for "\r\n" line endings, otherwise B64_F_NONE.
  *** @returns The length of the encoding, excluding the null, or -1 with
- ***	mssError() on failure.  On failure, dst is untouched.
+ ***	mssError() on failure.  On failure, dst is not modifed.
  ***/
 ssize_t
 b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t line_len, int flags)
@@ -279,9 +288,9 @@ b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t l
 
 
 /*** Decode standard base64.  Padding is optional, but a padded final group
- *** must have all of its padding, and nothing may follow it.  Decoding text
- *** in chunks gives the same data as decoding it all at once if every chunk
- *** but the last holds a multiple of 4 alphabet characters.
+ *** must have all of its padding and no data it.  Decoding text in chunks
+ *** gives the same data as decoding it in one call if every chunk but the
+ *** last chunk holds a multiple of 4 alphabet characters.
  ***
  *** @param dst The buffer to write the null-terminated decoded data into.  It
  ***	may equal src to decode in place, but must not otherwise overlap it.
@@ -371,7 +380,7 @@ b64Decode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	    return -1;
 	    }
 
-	/** Decode a final 2 or 3 characters as 1 or 2 bytes. **/
+	/** Decode a final 2 or 3 characters as 1 or 2 bytes (respectively). **/
 	const size_t n_bytes = (n_chars == 0) ? 0 : (size_t)n_chars - 1;
 	if (UNLIKELY(dst_size - o <= n_bytes))
 	    {

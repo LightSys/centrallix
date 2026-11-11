@@ -127,17 +127,14 @@ checkGuards(const unsigned char* raw)
 
 /** Check one result against an expected string, or NULL for an error. **/
 static bool
-checkResult(int c, ssize_t rval, const char* dst, const char* exp)
+checkResult(const char* table, int c, ssize_t rval, const char* dst, const char* exp)
     {
     bool success = true;
 
 	const ssize_t exp_rval = (exp == NULL) ? -1 : (ssize_t)strlen(exp);
-	if (!ASSERT_EQL(rval, exp_rval, "%zd"))
-	    {
-	    fprintf(stderr, "  > Case %d\n", c);
-	    success = false;
-	    }
+	success &= ASSERT_EQL(rval, exp_rval, "%zd");
 	if (exp != NULL) success &= ASSERT_STR_EQL(dst, exp);
+	if (!success) fprintf(stderr, "  > %s case %d\n", table, c);
 
     return success;
     }
@@ -155,7 +152,7 @@ testEncode(void)
 
 	    memset(raw, 0xAA, RAW);
 	    const ssize_t rval = b64Encode(dst, AREA, tc->Src, -1, tc->LineLen, tc->Flags);
-	    success &= checkResult(c, rval, dst, tc->Exp);
+	    success &= checkResult("encode_cases", c, rval, dst, tc->Exp);
 	    success &= checkGuards(raw);
 	    }
 
@@ -176,14 +173,14 @@ testWrap(void)
 	    /** Wrap into a separate buffer. **/
 	    memset(raw, 0xAA, RAW);
 	    ssize_t rval = b64Wrap(dst, AREA, tc->Src, -1, tc->LineLen, tc->Flags);
-	    success &= checkResult(c, rval, dst, tc->Exp);
+	    success &= checkResult("wrap_cases", c, rval, dst, tc->Exp);
 	    success &= checkGuards(raw);
 
 	    /** Wrapping in place gives the same result. **/
 	    memset(raw, 0xAA, RAW);
 	    memcpy(dst, tc->Src, strlen(tc->Src) + 1);
 	    rval = b64Wrap(dst, AREA, dst, -1, tc->LineLen, tc->Flags);
-	    success &= checkResult(c, rval, dst, tc->Exp);
+	    success &= checkResult("wrap_cases in place", c, rval, dst, tc->Exp);
 	    success &= checkGuards(raw);
 	    }
 
@@ -208,6 +205,7 @@ testMimeLines(void)
 	for (size_t i = 0; i < sizeof(lens) / sizeof(lens[0]); i++)
 	    {
 	    const ssize_t enc_len = b64Encode(unwrapped, sizeof(unwrapped), data, (ssize_t)lens[i], 0, B64_F_NONE);
+	    if (!ASSERT_TRUE(enc_len >= 0)) return false;
 	    const ssize_t exp_len = b64Wrap(expected, sizeof(expected), unwrapped, enc_len, MIME_LINE, B64_F_CRLF);
 	    const ssize_t rval = b64Encode(wrapped, sizeof(wrapped), data, (ssize_t)lens[i], MIME_LINE, B64_F_CRLF);
 	    success &= ASSERT_EQL(rval, exp_len, "%zd");
