@@ -140,12 +140,12 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
    else
 	osrc[0]='\0';
 
-    /** enable/disable expression for editbox **/
-    htrCheckAddExpression(s, tree, name, "enabled");
-
     /** Get name **/
     if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) return -1;
     strtcpy(name,ptr,sizeof(name));
+
+    /** enable/disable expression for editbox **/
+    htrCheckAddExpression(s, tree, name, "enabled");
 
     /** Ok, write the style header items. **/
     htrAddStylesheetItem_va(s,"\t#dd%POSbtn { OVERFLOW:hidden; POSITION:absolute; VISIBILITY:inherit; LEFT:%INTpx; TOP:%INTpx; HEIGHT:%POSpx; WIDTH:%POSpx; Z-INDEX:%POS; cursor:default; background-color: %STR&CSSVAL; border:1px outset #e0e0e0;}\n",id,x,y,h,w,z,bgstr);
