@@ -1040,11 +1040,20 @@ prtSetMargins(int handle_id, double t, double b, double l, double r)
 	mr = (r >= 0.0) ? r : obj->MarginRight;
 
 	/** Pages need room inside their margins **/
-	if (obj->ObjType->TypeID == PRT_OBJ_T_PAGE && (ml + mr >= obj->Width || mt + mb >= obj->Height))
+	if (obj->ObjType->TypeID == PRT_OBJ_T_PAGE)
 	    {
-	    mssError(1,"PRT","Failed to set page margins: left %.2f + right %.2f must be less than width %.2f, and top %.2f + bottom %.2f less than height %.2f",
-		    ml, mr, obj->Width, mt, mb, obj->Height);
-	    return -1;
+	    if (ml + mr >= obj->Width)
+		{
+		mssError(1,"PRT","Failed to set page margins: left %.2f + right %.2f must be less than page width %.2f",
+			ml, mr, obj->Width);
+		return -1;
+		}
+	    if (mt + mb >= obj->Height)
+		{
+		mssError(1,"PRT","Failed to set page margins: top %.2f + bottom %.2f must be less than page height %.2f",
+			mt, mb, obj->Height);
+		return -1;
+		}
 	    }
 
 	/** Set the appropriate values. **/
