@@ -1148,7 +1148,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 		if (UNLIKELY(at_line_start && objptr->Width >= unwrapped_width))
 		    {
 		    mssError(1, "PRT",
-			"Failed to fit text '%s' into a layout area %.2f wide",
+			"Failed to fit text '%s' into a layout area %.2f wide (in tenths of an inch)",
 			(char*)objptr->Content, prtInnerWidth(this)
 		    );
 		    goto error;
