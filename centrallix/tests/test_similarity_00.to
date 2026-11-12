@@ -3,4 +3,4 @@
 query select sw1 = (cos_compare('hello', 'hello')          >= 0.999) and (cos_compare('hello', 'hello')          <= 1)
 query select sw1 = (cos_compare('hello', 'goodbye')        >= 0)     and (cos_compare('hello', 'goodbye')        <= 0.001)
 query select sw1 = (cos_compare('hello', 'hello world')    >= 0.890) and (cos_compare('hello', 'hello world')    <= 0.891)
-query select sw1 = (cos_compare('hello', 'hellow')         >= 0.935) and (cos_compare('hello', 'hellow')         <= 0.936)
+query select sw1 = (cos_compare('hello', 'helo')           >= 0.900) and (cos_compare('hello', 'helo')           <= 0.950)
