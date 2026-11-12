@@ -593,12 +593,35 @@ rpt_internal_GetDouble(pRptData inf, pStructInf config, char* attr, double* val,
     }
 
 
+/*** rpt_internal_GetBorderColor - gets the color of an object's borders from
+ *** its bordercolor property ("#rrggbb"), or black if it is not given or is
+ *** not in that format.
+ ***/
+int
+rpt_internal_GetBorderColor(pRptData inf, pStructInf config)
+    {
+    char* ptr;
+
+	if (rpt_internal_GetString(inf, config, "bordercolor", &ptr, NULL, 0) < 0)
+	    return 0x000000;
+
+	/** Check the format **/
+	if (ptr[0] != '#' || strlen(ptr) != 7 || strspn(ptr+1, "0123456789abcdefABCDEF") != 6)
+	    {
+	    mssWarn("RPT", "bordercolor '%s' on object '%s' is not in \"#rrggbb\" format; using black.", ptr, config->Name);
+	    return 0x000000;
+	    }
+
+    return strtoi(ptr+1, NULL, 16);
+    }
+
+
 /*** rpt_internal_GetSideBorder - gets one side's border from its width property.
  *** Returns NULL if the property is not given, or a border with no lines if it
  *** is null or zero, so that it clears the side.
  ***/
 pPrtBorder
-rpt_internal_GetSideBorder(pRptData inf, pStructInf config, char* attr)
+rpt_internal_GetSideBorder(pRptData inf, pStructInf config, char* attr, int color)
     {
     double width;
 
@@ -610,7 +633,7 @@ rpt_internal_GetSideBorder(pRptData inf, pStructInf config, char* attr)
 	if (rpt_internal_GetDouble(inf, config, attr, &width, NAN, 0) < 0 || width <= RPT_FP_FUDGE)
 	    return prtAllocBorder(0, 0.0, 0.0);
 
-    return prtAllocBorder(1, 0.0, 0.0, width, 0x000000);
+    return prtAllocBorder(1, 0.0, 0.0, width, color);
     }
 
 
@@ -1595,7 +1618,7 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, int con
 	/** Check for border **/
 	if (rpt_internal_GetDouble(inf, section, "border", &bw, NAN, 0) >= 0)
 	    {
-	    bdr = prtAllocBorder(1, 0.0, 0.0, bw, 0x000000);
+	    bdr = prtAllocBorder(1, 0.0, 0.0, bw, rpt_internal_GetBorderColor(inf, section));
 	    }
 
 	/** Create the section **/
@@ -2005,6 +2028,7 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
     int is_cellrow, is_generalrow;
     int rval;
     pPrtBorder tb,bb,lb,rb,ib,ob;
+    int border_color;
     double dbl;
     int colspan;
     int context_pushed = 0;
@@ -2026,14 +2050,15 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 
 	/** Border settings? **/
 	tb=bb=lb=rb=ib=ob=NULL;
+	border_color = rpt_internal_GetBorderColor(inf, tablerow);
 	if (rpt_internal_GetDouble(inf, tablerow, "outerborder", &dbl, NAN, 0) >= 0)
-	    ob = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	    ob = prtAllocBorder(1,0.0,0.0, dbl,border_color);
 	if (rpt_internal_GetDouble(inf, tablerow, "innerborder", &dbl, NAN, 0) >= 0)
-	    ib = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	tb = rpt_internal_GetSideBorder(inf, tablerow, "topborder");
-	bb = rpt_internal_GetSideBorder(inf, tablerow, "bottomborder");
-	lb = rpt_internal_GetSideBorder(inf, tablerow, "leftborder");
-	rb = rpt_internal_GetSideBorder(inf, tablerow, "rightborder");
+	    ib = prtAllocBorder(1,0.0,0.0, dbl,border_color);
+	tb = rpt_internal_GetSideBorder(inf, tablerow, "topborder", border_color);
+	bb = rpt_internal_GetSideBorder(inf, tablerow, "bottomborder", border_color);
+	lb = rpt_internal_GetSideBorder(inf, tablerow, "leftborder", border_color);
+	rb = rpt_internal_GetSideBorder(inf, tablerow, "rightborder", border_color);
 
 	/** Row geometry? **/
 	rpt_internal_GetDouble(inf, tablerow, "height", &h, -1.0, 0);
@@ -2242,6 +2267,7 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
     int numcols;
     pPrtBorder outerborder=NULL, innerborder=NULL, shadow=NULL;
     pPrtBorder tb=NULL, bb=NULL, lb=NULL, rb=NULL;
+    int border_color;
     pStructInf rowinf, summarize_for_inf, cellinf;
     pRptUserData ud;
     int changed;
@@ -2336,16 +2362,17 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
 
 	/** Check for borders / shadow **/
 	outerborder = innerborder = shadow = tb = bb = lb = rb = NULL;
+	border_color = rpt_internal_GetBorderColor(inf, table);
 	if (rpt_internal_GetDouble(inf, table, "outerborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
-	    outerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	    outerborder = prtAllocBorder(1,0.0,0.0, dbl,border_color);
 	if (rpt_internal_GetDouble(inf, table, "innerborder", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
-	    innerborder = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
+	    innerborder = prtAllocBorder(1,0.0,0.0, dbl,border_color);
 	if (rpt_internal_GetDouble(inf, table, "shadow", &dbl, NAN, 0) >= 0 && dbl > RPT_FP_FUDGE)
 	    shadow = prtAllocBorder(1,0.0,0.0, dbl,0x000000);
-	tb = rpt_internal_GetSideBorder(inf, table, "topborder");
-	bb = rpt_internal_GetSideBorder(inf, table, "bottomborder");
-	lb = rpt_internal_GetSideBorder(inf, table, "leftborder");
-	rb = rpt_internal_GetSideBorder(inf, table, "rightborder");
+	tb = rpt_internal_GetSideBorder(inf, table, "topborder", border_color);
+	bb = rpt_internal_GetSideBorder(inf, table, "bottomborder", border_color);
+	lb = rpt_internal_GetSideBorder(inf, table, "leftborder", border_color);
+	rb = rpt_internal_GetSideBorder(inf, table, "rightborder", border_color);
 
 	/** Create the table **/
 	table_handle = prtAddObject(container_handle, PRT_OBJ_T_TABLE, x,y,w,h, flags,
@@ -5110,7 +5137,7 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pRptSource th
 	/** Check for border **/
 	if (stGetAttrValue(stLookup(area, "border"), DATA_T_DOUBLE, POD(&bw), 0) == 0)
 	    {
-	    bdr = prtAllocBorder(1,0.0,0.0, bw,0x000000);
+	    bdr = prtAllocBorder(1,0.0,0.0, bw, rpt_internal_GetBorderColor(inf, area));
 	    }
 
 	/** Create the area **/
