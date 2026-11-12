@@ -1028,15 +1028,30 @@ int
 prtSetMargins(int handle_id, double t, double b, double l, double r)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    double mt, mb, ml, mr;
 
 	if (!obj) return -1;
 	ASSERTMAGIC(obj,MGK_PRTOBJSTRM);
 
+	/** Resolve the new margins **/
+	mt = (t >= 0.0) ? t : obj->MarginTop;
+	mb = (b >= 0.0) ? b : obj->MarginBottom;
+	ml = (l >= 0.0) ? l : obj->MarginLeft;
+	mr = (r >= 0.0) ? r : obj->MarginRight;
+
+	/** Pages need room inside their margins **/
+	if (obj->ObjType->TypeID == PRT_OBJ_T_PAGE && (ml + mr >= obj->Width || mt + mb >= obj->Height))
+	    {
+	    mssError(1,"PRT","Failed to set page margins: left %.2f + right %.2f must be less than width %.2f, and top %.2f + bottom %.2f less than height %.2f",
+		    ml, mr, obj->Width, mt, mb, obj->Height);
+	    return -1;
+	    }
+
 	/** Set the appropriate values. **/
-	if (t >= 0.0) obj->MarginTop = t;
-	if (b >= 0.0) obj->MarginBottom = b;
-	if (l >= 0.0) obj->MarginLeft = l;
-	if (r >= 0.0) obj->MarginRight = r;
+	obj->MarginTop = mt;
+	obj->MarginBottom = mb;
+	obj->MarginLeft = ml;
+	obj->MarginRight = mr;
 
     return 0;
     }
