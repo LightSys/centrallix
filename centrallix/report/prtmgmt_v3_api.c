@@ -750,7 +750,7 @@ prtWriteString(int handle_id, char* str)
 	    string_obj->ConfigHeight = string_obj->Height;
 	    string_obj->YBase = prt_internal_GetFontBaseline(string_obj);
 	    rval = obj->LayoutMgr->AddObject(obj,string_obj);
-	    if (rval < 0)
+	    if (UNLIKELY(rval < 0))
 		{
 		/** Free the string, if we still own it **/
 		if (!string_obj->Parent)

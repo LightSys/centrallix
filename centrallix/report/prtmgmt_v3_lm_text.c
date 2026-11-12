@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
+
 #include "barcode.h"
 #include "report.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/xarray.h"
@@ -1143,9 +1145,12 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	        objptr->X == 0.0 && objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
 		/** Already on its own line with nothing wrapped off: it can never fit. **/
-		if (at_line_start && objptr->Width >= unwrapped_width)
+		if (UNLIKELY(at_line_start && objptr->Width >= unwrapped_width))
 		    {
-		    mssError(1,"PRT","Failed to fit text '%s' into a layout area %.2f wide", (char*)objptr->Content, prtInnerWidth(this));
+		    mssError(1, "PRT",
+			"Failed to fit text '%s' into a layout area %.2f wide",
+			(char*)objptr->Content, prtInnerWidth(this)
+		    );
 		    goto error;
 		    }
 
