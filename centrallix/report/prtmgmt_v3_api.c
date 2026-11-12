@@ -753,8 +753,9 @@ prtWriteString(int handle_id, char* str)
 	    if (UNLIKELY(rval < 0))
 		{
 		/** Free the string, if we still own it **/
-		if (!string_obj->Parent)
+		if (rval == -1)
 		    prt_internal_FreeTree(string_obj);
+		rval = -1;
 		break;
 		}
 

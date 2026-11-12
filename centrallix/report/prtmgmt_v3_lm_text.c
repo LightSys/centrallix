@@ -992,8 +992,9 @@ prt_textlm_Rescale(pPrtObjStream container, pPrtObjStream newobj)
  ***
  *** Currently, FLOWAROUND and NOLINESEQ are not fully implemented.
  ***
- *** On failure, new_child_obj is never freed.  If no part of it was placed,
- *** its Parent is NULL, and the caller still owns it.
+ *** Returns 0 on success.  On failure, returns -1 if no part of new_child_obj
+ *** was placed, so the caller still owns it, or -2 if part of it was placed,
+ *** so the container owns it and may already have freed it.
  ***/
 int
 prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
@@ -1009,6 +1010,7 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     int handle_id;
     bool is_marker;
     bool at_line_start;
+    bool original_placed = false;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
@@ -1208,6 +1210,8 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Now add the object to the container **/
 	    prt_internal_Add(this, objptr);
+	    if (objptr == new_child_obj)
+		original_placed = true;
 
 	    /** Repeat the procedure for the split-off part of the object **/
 	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
@@ -1216,16 +1220,16 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	return 0;
 
     error:
-	/** Free the unplaced pieces, but leave new_child_obj for the caller **/
+	/** Free the unplaced pieces, but leave an unplaced new_child_obj for the caller **/
 	while (objptr)
 	    {
-	    if (objptr == new_child_obj)
+	    if (!original_placed && objptr == new_child_obj)
 		objptr->Parent = NULL;
 	    else
 		prt_textlm_FreeObjects(objptr);
 	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
 	    }
-	return -1;
+	return original_placed ? -2 : -1;
     }
 
 
