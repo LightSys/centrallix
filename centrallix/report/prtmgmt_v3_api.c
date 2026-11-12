@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdarg.h>
+
 #include "barcode.h"
 #include "report.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/xarray.h"
@@ -1042,16 +1044,20 @@ prtSetMargins(int handle_id, double t, double b, double l, double r)
 	/** Pages need room inside their margins **/
 	if (obj->ObjType->TypeID == PRT_OBJ_T_PAGE)
 	    {
-	    if (ml + mr >= obj->Width)
+	    if (UNLIKELY(ml + mr >= obj->Width))
 		{
-		mssError(1,"PRT","Failed to set page margins: left %.2f + right %.2f must be less than page width %.2f",
-			ml, mr, obj->Width);
+		mssError(1, "PRT",
+		    "Failed to set page margins: left %.2f + right %.2f must be less than page width %.2f",
+		    ml, mr, obj->Width
+		);
 		return -1;
 		}
-	    if (mt + mb >= obj->Height)
+	    if (UNLIKELY(mt + mb >= obj->Height))
 		{
-		mssError(1,"PRT","Failed to set page margins: top %.2f + bottom %.2f must be less than page height %.2f",
-			mt, mb, obj->Height);
+		mssError(1, "PRT",
+		    "Failed to set page margins: top %.2f + bottom %.2f must be less than page height %.2f",
+		    mt, mb, obj->Height
+		);
 		return -1;
 		}
 	    }
