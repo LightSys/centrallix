@@ -95,13 +95,6 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
     int n_rows = 0, n_cols = 0, cur_row = 0, cur_col = 0;
     pPrtTabLMData lm_data = (pPrtTabLMData)(table->LMData);
 
-	/** Check recursion **/
-	if (UNLIKELY(thExcessiveRecursion()))
-	    {
-	    mssError(1, "PRT", "Failed to generate table: resource exhaustion occurred.");
-	    return -1;
-	    }
-
 	/** Write the table prologue **/
 	if (UNLIKELY(prt_htmlfm_SaveStyle(context, &oldstyle) < 0))
 	    {
