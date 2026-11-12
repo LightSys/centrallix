@@ -1,6 +1,6 @@
 ##NAME Text Mining String Similarity
 
-query select sw1 = (cos_compare('hello', 'hello')          >= 0.999) and (cos_compare('hello', 'hello')          <= 1)
-query select sw1 = (cos_compare('hello', 'goodbye')        >= 0)     and (cos_compare('hello', 'goodbye')        <= 0.001)
-query select sw1 = (cos_compare('hello', 'helo')           >= 0.900) and (cos_compare('hello', 'helo')           <= 0.950)
-query select sw1 = (cos_compare('hellow', 'hello world')   >= 0.800) and (cos_compare('hellow', 'hello world')   <= 0.900)
+query select identical   = (cos_compare('hello', 'hello')          >= 0.999) and (cos_compare('hello', 'hello')          <= 1)
+query select distant     = (cos_compare('hello', 'goodbye')        >= 0)     and (cos_compare('hello', 'goodbye')        <= 0.001)
+query select hello       = (cos_compare('hello', 'helo')           >= 0.900) and (cos_compare('hello', 'helo')           <= 0.950)
+query select hello_world = (cos_compare('hellow', 'hello world')   >= 0.800) and (cos_compare('hellow', 'hello world')   <= 0.900)
