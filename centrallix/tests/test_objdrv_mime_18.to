@@ -1,0 +1,3 @@
+##NAME Part name sources and default names
+
+query select :name, :inner_type from /tests/MimePartNames.eml

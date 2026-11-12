@@ -1,0 +1,3 @@
+##NAME Annotation, content type, and Content-Length
+
+query select :annotation, :content_type, length = :"Content-Length" from object /tests/MimeSpecialAttrs.eml

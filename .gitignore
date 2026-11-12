@@ -91,5 +91,6 @@ perf.data.old
 # IDE Files
 .idea
 .vscode
+*.swp
 */nbproject/
 *~

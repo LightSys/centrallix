@@ -1,0 +1,4 @@
+##NAME MimeTest base64 text
+
+query select :name, start = substring(:objcontent, 1, 4), len = octet_length(:objcontent), md5 = hash('md5', :objcontent) from object /tests/mimetest/M2.eml
+query select :name, start = substring(:objcontent, 1, 4), len = octet_length(:objcontent), md5 = hash('md5', :objcontent) from object /tests/mimetest/M4.4.1.eml

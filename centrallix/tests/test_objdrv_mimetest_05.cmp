@@ -1,0 +1,33 @@
+Attribute [name]:   string   "M4.3.1.eml" 
+Attribute [inner_type]:   string   "multipart/mixed" 
+Attribute [name]:   string   "attachment1.txt" 
+Attribute [inner_type]:   string   "text/plain" 
+Attribute [start]:   string   "  (This is the first part out of three)" 
+Attribute [name]:   string   "attachment2.txt" 
+Attribute [inner_type]:   string   "text/plain" 
+Attribute [start]:   string   "  (This is the second part out of three" 
+Attribute [name]:   string   "attachment3.txt" 
+Attribute [inner_type]:   string   "text/plain" 
+Attribute [start]:   string   "  (This is the third part out of three)" 
+Attribute [name]:   string   "M4.3.2.eml" 
+Attribute [inner_type]:   string   "multipart/alternative" 
+Attribute [name]:   string   "attachment1" 
+Attribute [inner_type]:   string   "application/x-unknown" 
+Attribute [start]:   string   "  (This is the first part out of two)
+
+" 
+Attribute [name]:   string   "attachment2.txt" 
+Attribute [inner_type]:   string   "text/plain" 
+Attribute [start]:   string   "  (This is the second part out of two)
+" 
+Attribute [name]:   string   "M4.3.3.eml" 
+Attribute [inner_type]:   string   "multipart/x-foo" 
+Attribute [name]:   string   "attachment1.txt" 
+Attribute [inner_type]:   string   "text/plain" 
+Attribute [start]:   string   "  (This is the first part out of two)
+
+" 
+Attribute [name]:   string   "attachment2.txt" 
+Attribute [inner_type]:   string   "text/plain" 
+Attribute [start]:   string   "  (This is the second part out of two)
+" 
