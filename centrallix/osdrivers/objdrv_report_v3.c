@@ -595,7 +595,7 @@ rpt_internal_GetDouble(pRptData inf, pStructInf config, char* attr, double* val,
 
 
 /*** rpt_internal_GetBorderColor - gets the color of an object's borders from
- *** its bordercolor property (any format prtLookupColor() accepts), or black
+ *** its border_color property (any format prtLookupColor() accepts), or black
  *** if it is not given or is not a valid color.
  ***/
 int
@@ -604,8 +604,8 @@ rpt_internal_GetBorderColor(pRptData inf, pStructInf config)
     char* ptr;
     int color;
 
-	/** Check for a valid 'bordercolor' value. **/
-	if (rpt_internal_GetString(inf, config, "bordercolor", &ptr, NULL, 0) < 0
+	/** Check for a valid 'border_color' value. **/
+	if (rpt_internal_GetString(inf, config, "border_color", &ptr, NULL, 0) < 0
 	    || (color = prtLookupColor(ptr)) < 0
 	)   {
 	    /** Fall back to default color: Black. **/

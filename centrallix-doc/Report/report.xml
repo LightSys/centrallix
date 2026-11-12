@@ -8,14 +8,14 @@
 			<p>Formatting settings such as style, font, fontsize, fontcolor, align, and lineheight are shared by nearly all objects except for images and queries.</p>
 			<p>Data output properties, including dateformat, moneyformat, and nullformat, are shared by all objects except for images and queries.</p>
 			<p>The 'condition' property is available on all objects except for system/report and report/table-cell.</p>
-			<p>Border properties are available on areas, tables, and table-rows.  Table-cells support only bordercolor and the side borders (topborder, bottomborder, leftborder, and rightborder).</p>
+			<p>Border properties are available on areas, tables, and table-rows.  Table-cells support only border_color and the side borders (topborder, bottomborder, leftborder, and rightborder).</p>
 		</overview>
 		<usage>
 		</usage>
 		<properties>
 			<property name="align" type="string">The text alignment to use - either "left" (default), "center", "right", or "full".  Available on all objects except image, query, and parameter.</property>
 			<property name="bgcolor" type="string">The background color of a table, table row, table cell, or area.</property>
-			<property name="bordercolor" type="string">The color of the object's borders, in HTML RGB format such as "#999999" for gray.  Default black.</property>
+			<property name="border_color" type="string">The color of the object's borders, in HTML RGB format such as "#999999" for gray.  Default black.</property>
 			<property name="bottomborder" type="double">Width of the outside border at the bottom of the table, table-row, table-cell, or area.</property>
 			<property name="condition" type="integer">Typically an expression that evaluates to an integer/boolean type.  If true, the area, table, table-row, image, or data element is displayed, otherwise the object (and any contents) are ignored.</property>
 			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.  Available on all objects except image, query, and parameter.</property>
