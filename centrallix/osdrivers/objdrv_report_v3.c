@@ -607,10 +607,7 @@ rpt_internal_GetBorderColor(pRptData inf, pStructInf config)
 
 	/** Check the format **/
 	if (ptr[0] != '#' || strlen(ptr) != 7 || strspn(ptr+1, "0123456789abcdefABCDEF") != 6)
-	    {
-	    mssWarn("RPT", "bordercolor '%s' on object '%s' is not in \"#rrggbb\" format; using black.", ptr, config->Name);
 	    return 0x000000;
-	    }
 
     return strtoi(ptr+1, NULL, 16);
     }
@@ -6949,4 +6946,3 @@ rptInitialize()
 
     return 0;
     }
-
