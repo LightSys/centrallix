@@ -1,0 +1,12 @@
+Line 00 of a file longer than one 256-byte read chunk.
+Line 01 of a file longer than one 256-byte read chunk.
+Line 02 of a file longer than one 256-byte read chunk.
+Line 03 of a file longer than one 256-byte read chunk.
+Line 04 of a file longer than one 256-byte read chunk.
+Line 05 of a file longer than one 256-byte read chunk.
+Line 06 of a file longer than one 256-byte read chunk.
+Line 07 of a file longer than one 256-byte read chunk.
+Line 08 of a file longer than one 256-byte read chunk.
+Line 09 of a file longer than one 256-byte read chunk.
+Line 10 of a file longer than one 256-byte read chunk.
+Line 11 of a file longer than one 256-byte read chunk!

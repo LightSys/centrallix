@@ -1,0 +1,3 @@
+##NAME Message name with a Message-ID
+
+query select :name from object /tests/MimeMessageId.eml

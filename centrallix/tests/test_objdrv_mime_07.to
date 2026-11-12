@@ -1,0 +1,4 @@
+##NAME Header names that contain dots
+
+query select * from /tests/MimeDottedHeader.eml
+query select tag = :"X.Tag", opts = :"X.Opts", level = :"X.Opts.level", charset = :"Content-Type.charset" from /tests/MimeDottedHeader.eml

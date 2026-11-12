@@ -1,0 +1,4 @@
+Attribute [name]:   string   "Deferred.eml" 
+Attribute [status]:   string   "Pending" 
+Attribute [last_try_status]:   string   "TempFail" 
+Attribute [last_try_msg]:   string   "Sent to 0 of 1 recipients. c@defer.test: deferred: connect to mx.defer.test[192.0.2.3]:25: Connection timed out" 

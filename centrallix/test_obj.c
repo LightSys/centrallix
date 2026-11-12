@@ -247,6 +247,7 @@ testobj_show_attr(pObject obj, char* attrname)
     pIntVec iv;
     Binary bn;
     pObjPresentationHints hints;
+    int rval;
 
 	if (!TESTOBJ.Output)
 	    return -1;
@@ -267,8 +268,8 @@ testobj_show_attr(pObject obj, char* attrname)
 		break;
 
 	    case DATA_T_STRING:
-		if (objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval)) == 1)
-		    fdPrintf(TESTOBJ.Output,"  %20.20s: NULL",attrname);
+		if ((rval = objGetAttrValue(obj,attrname,DATA_T_STRING,POD(&stringval))) != 0)
+		    fdPrintf(TESTOBJ.Output,"  %20.20s: %s",attrname, (rval==1)?"NULL":"Error");
 		else
 		    fdPrintf(TESTOBJ.Output,"  %20.20s: \"%s\"",attrname, stringval);
 		break;
@@ -1238,7 +1239,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		    mlxCloseSession(ls);
 		    return -1;
 		    }
-		if (!strcmp(ptr,"*"))
+		if (strstr(ptr,"*") && strlen(strstr(ptr,"*")) == 1)
 		    obj = objOpen(s, ptr, O_RDWR | O_CREAT | OBJ_O_AUTONAME, 0600, "system/object");
 		else
 		    obj = objOpen(s, ptr, O_RDWR | O_CREAT, 0600, "system/object");

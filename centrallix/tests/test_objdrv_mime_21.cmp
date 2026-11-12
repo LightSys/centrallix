@@ -1,0 +1,4 @@
+Attribute [name]:   string   "attachment1.txt" 
+Attribute [inner_type]:   string   "text/plain" 
+Attribute [before]:   string   "before" 
+Attribute [after]:   string   "after" 

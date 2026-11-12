@@ -1,0 +1,30 @@
+##NAME path_params() function
+
+query select text='Valid Parameters:'
+query select path_params()
+query select path_params(NULL)
+query select path_params(NULL, NULL)
+query select path_params('test')
+query select path_params('test', NULL)
+query select path_params('test', 'string')
+query select path_params('test', 123)
+query select path_params('test', -123)
+query select path_params('test', $123.45)
+query select path_params('test', $-123.45)
+query select path_params('test', 123.45)
+query select path_params('test', -123.45)
+query select path_params('test', convert(datetime, '1/2/2034 5:06pm'))
+query select path_params('test1', 'string1', 'test2', 'string2')
+query select path_params(NULL, NULL, 'test1', 'string1')
+query select path_params('test1', 'string1', 'test2', 'string2', 'test3. +', '%?&=+ /.')
+query select path_params('test1', 'string1', 'test2')
+query select path_params('test1', 'string1', 'test2', NULL)
+query select path_params('test1', 'string1', NULL)
+
+query select text='Invalid Parameters:'
+query select path_params('', NULL)
+query select path_params(1, NULL)
+query select path_params('test?', 'string')
+query select path_params('test&', 'string')
+query select path_params('test=', 'string')
+query select path_params('test/', 'string')

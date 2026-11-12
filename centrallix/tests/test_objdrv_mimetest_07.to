@@ -1,0 +1,4 @@
+##NAME MimeTest message/partial parameters
+
+query select :name, id = :"Content-Type.id", number = :"Content-Type.number", total = :"Content-Type.total" from object /tests/mimetest/EM6.1-1.eml
+query select :name, id = :"Content-Type.id", number = :"Content-Type.number", total = :"Content-Type.total" from object /tests/mimetest/EM6.1-2.eml
