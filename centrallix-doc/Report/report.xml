@@ -8,7 +8,7 @@
 			<p>Formatting settings such as style, font, fontsize, fontcolor, align, and lineheight are shared by nearly all objects except for images and queries.</p>
 			<p>Data output properties, including dateformat, moneyformat, and nullformat, are shared by all objects except for images and queries.</p>
 			<p>The 'condition' property is available on all objects except for system/report and report/table-cell.</p>
-			<p>Border properties are available on areas, tables, table-rows, and table-cells.</p>
+			<p>Border properties are available on areas, tables, and table-rows.  Table-cells support only bordercolor and the side borders (topborder, bottomborder, leftborder, and rightborder).</p>
 		</overview>
 		<usage>
 		</usage>
