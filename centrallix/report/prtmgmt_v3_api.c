@@ -1053,7 +1053,7 @@ prtSetMargins(int handle_id, double t, double b, double l, double r)
 	    if (UNLIKELY(ml + mr >= obj->Width))
 		{
 		mssError(1, "PRT",
-		    "Failed to set page margins: left %.2f + right %.2f must be less than page width %.2f",
+		    "Failed to set page margins: left %.2f + right %.2f must be less than page width %.2f (in tenths of an inch)",
 		    ml, mr, obj->Width
 		);
 		return -1;
@@ -1061,7 +1061,7 @@ prtSetMargins(int handle_id, double t, double b, double l, double r)
 	    if (UNLIKELY(mt + mb >= obj->Height))
 		{
 		mssError(1, "PRT",
-		    "Failed to set page margins: top %.2f + bottom %.2f must be less than page height %.2f",
+		    "Failed to set page margins: top %.2f + bottom %.2f must be less than page height %.2f (in sixths of an inch)",
 		    mt, mb, obj->Height
 		);
 		return -1;
