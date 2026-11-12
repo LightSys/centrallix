@@ -5454,7 +5454,8 @@ rpt_internal_Run(pRptData inf, pFile out_fd, pPrtSession ps)
 	inf->RSess = rsess;
 	rsess->PageHandle = prtGetPageRef(ps);
 	prtSetPageNumber(rsess->PageHandle, 1);
-	rpt_internal_SetMargins(inf, req, rsess->PageHandle, 3.0, 3.0, 0, 0);
+	if (rpt_internal_SetMargins(inf, req, rsess->PageHandle, 3.0, 3.0, 0, 0) < 0)
+	    err = 1;
 
 	/** Build the object list. **/
 	for(i=0;i<req->nSubInf;i++) if (stStructType(req->SubInf[i]) == ST_T_SUBGROUP && !strcmp(req->SubInf[i]->UsrType,"report/query"))
