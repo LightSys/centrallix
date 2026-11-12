@@ -750,7 +750,13 @@ prtWriteString(int handle_id, char* str)
 	    string_obj->ConfigHeight = string_obj->Height;
 	    string_obj->YBase = prt_internal_GetFontBaseline(string_obj);
 	    rval = obj->LayoutMgr->AddObject(obj,string_obj);
-	    if (rval < 0) break;
+	    if (rval < 0)
+		{
+		/** Free the string, if we still own it **/
+		if (!string_obj->Parent)
+		    prt_internal_FreeTree(string_obj);
+		break;
+		}
 
 	    /** Handle might have changed - check it **/
 	    obj = prtHandlePtr(handle_id);

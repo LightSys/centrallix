@@ -1208,7 +1208,15 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	return 0;
 
     error:
-	prt_textlm_FreeObjects(split_obj_list);
+	/** Free the unplaced pieces, but leave new_child_obj for the caller **/
+	while (objptr)
+	    {
+	    if (objptr == new_child_obj)
+		objptr->Parent = NULL;
+	    else
+		prt_textlm_FreeObjects(objptr);
+	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
+	    }
 	return -1;
     }
 
