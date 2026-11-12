@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
+
 #include "barcode.h"
 #include "report.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/xarray.h"
@@ -989,6 +991,10 @@ prt_textlm_Rescale(pPrtObjStream container, pPrtObjStream newobj)
  *** the object.
  ***
  *** Currently, FLOWAROUND and NOLINESEQ are not fully implemented.
+ ***
+ *** Returns 0 on success.  On failure, returns -1 if no part of new_child_obj
+ *** was placed, so the caller still owns it, or -2 if part of it was placed,
+ *** so the container owns it and may already have freed it.
  ***/
 int
 prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
@@ -1000,8 +1006,11 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream new_parent;
     pPrtObjStream search;
     double x,y;
+    double unwrapped_width;
     int handle_id;
     bool is_marker;
+    bool at_line_start;
+    bool original_placed = false;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
@@ -1092,6 +1101,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    if (objptr->Height < 0)
 		objptr->Height = 0;
 
+	    /** Note the pre-wrap state, to detect a wrap that makes no progress **/
+	    at_line_start = (objptr->X == 0.0);
+	    unwrapped_width = objptr->Width;
+
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
@@ -1136,6 +1149,16 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && !split_obj && 
 	        objptr->X == 0.0 && objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
+		/** Already on its own line with nothing wrapped off: it can never fit. **/
+		if (UNLIKELY(at_line_start && objptr->Width >= unwrapped_width))
+		    {
+		    mssError(1, "PRT",
+			"Failed to fit text '%s' into a layout area %.2f wide (in tenths of an inch)",
+			(char*)objptr->Content, prtInnerWidth(this)
+		    );
+		    goto error;
+		    }
+
 		/** It's on its own line now, so we can try splitting it again. **/
 		continue;
 		}
@@ -1187,6 +1210,8 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 
 	    /** Now add the object to the container **/
 	    prt_internal_Add(this, objptr);
+	    if (objptr == new_child_obj)
+		original_placed = true;
 
 	    /** Repeat the procedure for the split-off part of the object **/
 	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
@@ -1195,8 +1220,16 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	return 0;
 
     error:
-	prt_textlm_FreeObjects(split_obj_list);
-	return -1;
+	/** Free the unplaced pieces, but leave an unplaced new_child_obj for the caller **/
+	while (objptr)
+	    {
+	    if (!original_placed && objptr == new_child_obj)
+		objptr->Parent = NULL;
+	    else
+		prt_textlm_FreeObjects(objptr);
+	    objptr = prt_textlm_GetSplitObj(&split_obj_list);
+	    }
+	return original_placed ? -2 : -1;
     }
 
 
