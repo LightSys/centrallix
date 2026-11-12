@@ -177,7 +177,9 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 		    if (cell->ObjType->TypeID == PRT_OBJ_T_TABLECELL)
 			{
 			cur_col++;
-			const int colspan = ((pPrtTabLMData)(cell->LMData))->ColSpan;
+			const pPrtTabLMData cell_inf = (pPrtTabLMData)(cell->LMData);
+			const pPrtTabLMData row_inf = (pPrtTabLMData)(row->LMData);
+			const int colspan = cell_inf->ColSpan;
 			if (UNLIKELY(prt_htmlfm_OutputPrintf(context, "<td width=\"%d\"",
 				(int)(cell->Width*PRT_HTMLFM_XPIXEL)) < 0
 			    || (colspan > 1 && prt_htmlfm_OutputPrintf(context, " colspan=\"%d\"", colspan) < 0)))
@@ -199,32 +201,32 @@ prt_htmlfm_GenerateTable(pPrtHTMLfmInf context, pPrtObjStream table)
 			/* top border */
 			if (cell->BorderTop != 0 || row->BorderTop != 0) {
 			    if (cell->BorderTop != 0) {
-				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", cell->BorderTop, -1) < 0)) goto err_cell;
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", cell->BorderTop, cell_inf->TopBorder.Color[0]) < 0)) goto err_cell;
 			    } else {
-				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", row->BorderTop, -1) < 0)) goto err_cell;
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "top", row->BorderTop, row_inf->TopBorder.Color[0]) < 0)) goto err_cell;
 			    }
 			}
 			/* bottom border */
 			if (cell->BorderBottom != 0 || row->BorderBottom != 0) {
 			    if (cell->BorderBottom != 0) {
-				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", cell->BorderBottom, -1) < 0)) goto err_cell;
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", cell->BorderBottom, cell_inf->BottomBorder.Color[0]) < 0)) goto err_cell;
 			    } else {
-				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", row->BorderBottom, -1) < 0)) goto err_cell;
+				if (UNLIKELY(prt_htmlfm_OutputBorder(context, "bottom", row->BorderBottom, row_inf->BottomBorder.Color[0]) < 0)) goto err_cell;
 			    }
 			} 
 			/* left border */
 			if (cell->BorderLeft != 0) {
-			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", cell->BorderLeft, -1) < 0)) goto err_cell;
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", cell->BorderLeft, cell_inf->LeftBorder.Color[0]) < 0)) goto err_cell;
 			} else if(cur_col != 1) {
 			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", lm_data->InnerBorder.Width[0], lm_data->InnerBorder.Color[0]) < 0)) goto err_cell;
 			} else if (row->BorderLeft != 0) {
-			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", row->BorderLeft, -1) < 0)) goto err_cell;
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "left", row->BorderLeft, row_inf->LeftBorder.Color[0]) < 0)) goto err_cell;
 			}
 			/* right border */
 			if (cell->BorderRight != 0) {
-			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, -1) < 0)) goto err_cell;
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", cell->BorderRight, cell_inf->RightBorder.Color[0]) < 0)) goto err_cell;
 			} else if (cur_col == n_cols && row->BorderRight != 0) {
-			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", row->BorderRight, -1) < 0)) goto err_cell;
+			    if (UNLIKELY(prt_htmlfm_OutputBorder(context, "right", row->BorderRight, row_inf->RightBorder.Color[0]) < 0)) goto err_cell;
 			}
 			if (UNLIKELY(prt_htmlfm_OutputStrLiteral(context, "\"") < 0)) goto err_cell;
 
