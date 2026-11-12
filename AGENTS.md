@@ -28,13 +28,13 @@ Use `rg` (if available) instead of `grep`. It's faster, but skips gitignored, hi
 
 # Terms
 
-- **Centrallix** - An open-source web application server and data management engine developed by LightSys. It provides data abstraction, structural embedding, and dynamic widget-based HTML generation (DHTML), serving as the platform on which apps like Kardia are built.
+- **Centrallix**: An open-source web application server and data management engine developed by LightSys. It provides data abstraction, structural embedding, and dynamic widget-based HTML generation (DHTML), serving as the platform on which apps like Kardia are built.
 
-- **Kardia** - A web-based system built on the Centrallix platform.
+- **Kardia**: A web-based system built on the Centrallix platform.
 
-- **Object System (ObjectSystem)** - Centrallix's high-level filesystem analog: a tree of typed objects that allows read/write access to files, database rows, APIs, reports, etc. through a consistent path-based API (the OSML). ObjectSystem Drivers (OSDs) provide the interface to handle these diverse data sources in a single, coherent hierarchy. On dev machines, the `centrallix-os` folder in this project is the object system root node so the path `/samples` is `centrallix-os/samples`.
+- **Object System (ObjectSystem)**: Centrallix's high-level filesystem analog: a tree of typed objects that allows read/write access to files, database rows, APIs, reports, etc. through a consistent path-based API (the OSML). ObjectSystem Drivers (OSDs) provide the interface to handle these diverse data sources in a single, coherent hierarchy. On dev machines, the `centrallix-os` folder in this project is the object system root node so the path `/samples` is `centrallix-os/samples`.
 
-- **Widget** - A UI component in Centrallix DHTML, either visual (e.g. buttons, tables) or nonvisual (e.g. forms, connectors), defined as objects in the ObjectSystem and rendered to HTML/JavaScript by widget drivers.
+- **Widget**: A UI component in Centrallix DHTML, either visual (e.g. buttons, tables) or nonvisual (e.g. forms, connectors), defined as objects in the ObjectSystem and rendered to HTML/JavaScript by widget drivers.
 
 For other terminology or to find more detailed info, read `centrallix-sysdoc/Terminology.md`.
 
