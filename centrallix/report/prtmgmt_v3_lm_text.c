@@ -1000,8 +1000,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
     pPrtObjStream new_parent;
     pPrtObjStream search;
     double x,y;
+    double unwrapped_width;
     int handle_id;
     bool is_marker;
+    bool at_line_start;
 
 	/** Space removed from object previously (e.g., linewrap)? **/
 	prt_textlm_UndoWrap(new_child_obj);
@@ -1092,6 +1094,10 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    if (objptr->Height < 0)
 		objptr->Height = 0;
 
+	    /** Note the pre-wrap state, to detect a wrap that makes no progress **/
+	    at_line_start = (objptr->X == 0.0);
+	    unwrapped_width = objptr->Width;
+
 	    /** Need to break this into two parts to wrap it? **/
 	    if (objptr->X + objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
@@ -1136,6 +1142,13 @@ prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
 	    if (objptr->ObjType->TypeID == PRT_OBJ_T_STRING && !split_obj && 
 	        objptr->X == 0.0 && objptr->Width - PRT_FP_FUDGE > prtInnerWidth(this))
 	        {
+		/** Already on its own line with nothing wrapped off: it can never fit. **/
+		if (at_line_start && objptr->Width >= unwrapped_width)
+		    {
+		    mssError(1,"PRT","Failed to fit text '%s' into a layout area %.2f wide", (char*)objptr->Content, prtInnerWidth(this));
+		    goto error;
+		    }
+
 		/** It's on its own line now, so we can try splitting it again. **/
 		continue;
 		}
