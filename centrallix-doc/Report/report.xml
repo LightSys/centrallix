@@ -83,7 +83,7 @@ myreport "system/report"
 		<overview>
 			<p>The query is used to define a SQL statement that will be used to obtain data from the ObjectSystem.  It in and of itself does not actually run the query, but must be invoked by a table or form elsewhere in the report.</p>
 			<p>Queries can be linked to each other in order to depend on each others' data results.</p>
-			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as a the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
+			<p>Queries can also contain aggregate definitions, which are similar to 'COMPUTE BY' statements in other SQL languages, and calculate aggregate values as the report progresses.  These aggregates are normally used to provide summary data at the end of the query or at the end of a part of the query.</p>
 		</overview>
 		<usage>
 			<p>Queries can only be contained within a 'system/report'.  They can only contain 'report/aggregate' components.</p>
@@ -290,7 +290,7 @@ outerForm "report/form"
 			<property name="outerborder" type="double">Width of the outside border around the table.  This sets topborder, leftborder, bottomborder, and rightborder simultaneously (see Common Properties).  Setting one of those to null or 0 removes that side.</property>
 			<property name="reclimit" type="integer">Sets a limit on the number of records the table is to print.</property>
 			<property name="shadow" type="double">Width of the drop-shadow to the right and bottom of the table.</property>
-			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
+			<property name="source" type="stringvec">A list of one or more query(ies) to run for this table.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
 			<property name="widths" type="intvec">A list of numbers giving the widths of the columns.  This MUST match the number of columns specified with the 'columns' setting.  As an alternative, widths may be specified in the column header cells, see below.</property>
 		</properties>
 		<children>
@@ -348,18 +348,18 @@ myTable "report/table"
 			<property name="box" type="yes/no">Whether to draw a box around the chart's data area (the box is drawn just around the graph or chart itself, not around the axis and tick labels and titles).  Default "no".</property>
 			<property name="chart_type" type="string">The type of chart:  bar, line, or pie.</property>
 			<property name="color" type="string">The default color to be used for the chart. If nothing is specified elsewhere, all series will be made this color. If a palette is also specified, this color will replace any invalid colors.</property>
-			<property name="palette" type="string">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of to map to series, it loops through the colors again. Example: "green", "fake", "#014421" (or "green,fake,#014421", or any mixture of the two) would have series colored a bright green, the default, and then a dark green.  </property>
+			<property name="palette" type="string">A comma separated list of colors to be used by charts with dynamic series. This takes priority over the color property and the default palette. Once the palette runs out of colors to map to series, it loops through the colors again. Example: "green", "fake", "#014421" (or "green,fake,#014421", or any mixture of the two) would have series colored a bright green, the default, and then a dark green.  </property>
 			<property name="mode" type="string">The mode of the chart (see overview).  'normal' is the default.</property>
 			<property name="multimode" type="string">How the chart handles multiple queries (see overview).  'nested' is the default.</property>
 			<property name="scale" type="yes/no">Whether to automatically scale axis tick labels using scientific notation and a multiplier (default "no").</property>
-			<property name="source" type="stringvec">A list of one or more query(ies) to run for this form.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
+			<property name="source" type="stringvec">A list of one or more query(ies) to run for this chart.  If more than one is specified, use the 'multimode' to determine how they are combined.</property>
 			<property name="text_rotation" type="yes/no">Whether to rotate tick labels to allow them to better fit on the chart.  Default "no".</property>
 			<property name="title" type="string">The chart's title, to be printed above the chart.</property>
 			<property name="show_legend" type="yes/no">Whether or not to display the legend. Default "no".</property>
 			<property name="zoom" type="double">The chart zoom; use values less than 1.0 to give the chart more whitespace, and values greater than 1.0 to eliminate whitespace.  Default 1.0.</property>
 			<property name="x_value" type="expression">The X value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
 			<property name="y_value" type="expression">The Y value for the series, specified here when using dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
-			<property name="series_value" type="expression">The value used to differentiate series. This in only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
+			<property name="series_value" type="expression">The value used to differentiate series. This is only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
 			<property name="legend_value" type="expression">The value to be displayed when the series name appears in a legend.  This is only used by charts with dynamic series.  This should normally be an expression referencing the data source(s) for the chart; for such an expression, use the runserver() domain-declaration function (see SQL Language / Functions and Operators for more details).</property>
 		</properties>
 		<children>

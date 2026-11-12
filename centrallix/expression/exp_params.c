@@ -439,7 +439,7 @@ expModifyParamByID(pParamObjects this, int slot_id, pObject replace_obj)
 /*** expSyncModified - synchronizes the status indicators in a tree
  *** to a possibly modified object list structure.  Sets the flags
  *** field to EXPR_F_NEW if the object has a status of EXPR_O_CHANGED,
- *** and propogates the stale flags up the tree to parent items.  This
+ *** and propagates the stale flags up the tree to parent items.  This
  *** way, a minimum of the tree is recalculated when only one of several
  *** objects are modified.
  ***/

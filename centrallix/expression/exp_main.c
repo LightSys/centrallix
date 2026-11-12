@@ -976,7 +976,7 @@ exp_internal_SetupControl(pExpression exp)
     }
 
 
-/*** exp_internal_LinkControl() - link to a expression eval control
+/*** exp_internal_LinkControl() - link to an expression eval control
  *** structure.
  ***/
 pExpControl
@@ -988,7 +988,7 @@ exp_internal_LinkControl(pExpControl ctl)
     }
 
 
-/*** exp_internal_UnlinkContrl() - unlink from an exp eval ctl struct
+/*** exp_internal_UnlinkControl() - unlink from an exp eval ctl struct
  ***/
 int
 exp_internal_UnlinkControl(pExpControl ctl)
@@ -1136,7 +1136,7 @@ expSetString(pExpression this, char* str)
     }
 
 
-/*** expSetBinary - set a string value in an expression node
+/*** expSetBinary - set a binary value in an expression node
  ***/
 int
 expSetBinary(pExpression this, unsigned char* str, int len)

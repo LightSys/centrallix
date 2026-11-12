@@ -172,7 +172,7 @@ prt_fxod_Output(pPrtFXodInf context, char* str, int len)
     }
 
 
-/*** prt_fxod_Open() - open a new printing session with this driver.
+/*** prt_fxod_Open24() - open a new printing session with this driver.
  ***/
 void*
 prt_fxod_Open24(pPrtSession s)
@@ -188,7 +188,7 @@ prt_fxod_Open24(pPrtSession s)
 	/*context->Quality = PRT_QUALITY_T_NORMAL;*/
 	xaInit(&(context->SupportedResolutions), 16);
 
-	/** Right now, just support 75, 100, 150, and 300 dpi **/
+	/** Right now, just support the resolutions in prt_fxod_resolutions24 **/
 	xaAddItem(&(context->SupportedResolutions), (void*)(prt_fxod_resolutions24+0));
 	xaAddItem(&(context->SupportedResolutions), (void*)(prt_fxod_resolutions24+1));
 	xaAddItem(&(context->SupportedResolutions), (void*)(prt_fxod_resolutions24+2));
@@ -321,7 +321,7 @@ prt_fxod_GetNearestFontSize(void* context_v, double req_size)
 
 /*** prt_fxod_GetCharacterMetric() - return the width of a printed character
  *** in a given font size, attributes, etc., in 10ths of an inch (relative to
- *** 10cpi, or 12point, fonts.
+ *** 10cpi, or 12point, fonts).
  ***/
 void
 prt_fxod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style, double* width, double* height)

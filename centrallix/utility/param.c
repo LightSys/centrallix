@@ -151,7 +151,7 @@ paramCreateFromInf(pStructInf inf)
     }
 
 
-/*** paramCreatefromObject() - using an open object, query for parameter
+/*** paramCreateFromObject() - using an open object, query for parameter
  *** settings and build a Param structure.
  ***/
 pParam

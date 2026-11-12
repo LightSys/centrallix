@@ -94,7 +94,7 @@ The connector nonvisual widget also generates page-dependent script functions in
 
 Most widget drivers install one or more event handlers.  These event handlers, for those who are familiar with the way DHTML event handling is performed, operate entirely at the top-level "document" and do not rely on the browser's idea of a "trickle-down" or "trickle-up" event processing model.  The event handlers are snippets of javascript code (not complete functions) which are grouped together when the final page is generated (i.e., all of the "mousemove" event handlers are put into a single javascript function).
 
-Widget driver code in the event handlers will have to be able to in some way "recognize" if the event occured on a widget that the driver manages.  This is normally done by "tagging" the widget's layers with a "kind" attribute containing a short string identifying the type of widget (e.g., "eb" for the editbox widget, "tb" for the text button widget, etc.)
+Widget driver code in the event handlers will have to be able to in some way "recognize" if the event occurred on a widget that the driver manages.  This is normally done by "tagging" the widget's layers with a "kind" attribute containing a short string identifying the type of widget (e.g., "eb" for the editbox widget, "tb" for the text button widget, etc.)
 
 ### E.	Initialization
 
@@ -194,7 +194,7 @@ The 'parentobj' parameter is the name of the "layer" object that will contain th
 The following list of functions are used by widget drivers to actually generate the DHTML and scripting needed to support widget instances.
 
 #### htrAddStylesheetItem(pHtSession s, char* html_text) returns int
-This functions adds a stylesheet definition to the header between the tags `<STYLE TYPE="text/css"></STYLE>`.  It is recommended to maintain a consistant indention style (using a tab '\t' character) at the beginning of these lines.
+This function adds a stylesheet definition to the header between the tags `<STYLE TYPE="text/css"></STYLE>`.  It is recommended to maintain a consistent indention style (using a tab '\t' character) at the beginning of these lines.
 
 Example:
 
@@ -298,7 +298,7 @@ htrAddEventHandler(s, "document", "MOUSEOVER", "lb",
 ```
 
 #### htrDisableBody(pHtSession s) returns int
-This function is used to disable the output of the `<BODY>` and `</BODY>` tags, including any body parameters added with the API function htrAddBodyParam().  This is primarly used by the frameset widget driver to suppress the output of the body in favor of the frameset declarations.  Note that it probably does not make sense to call htrRenderSubwidgets() when the body has been disabled :)
+This function is used to disable the output of the `<BODY>` and `</BODY>` tags, including any body parameters added with the API function htrAddBodyParam().  This is primarily used by the frameset widget driver to suppress the output of the body in favor of the frameset declarations.  Note that it probably does not make sense to call htrRenderSubwidgets() when the body has been disabled :)
 
 #### htrRenderWidget(pHtSession s, pObject widget_obj, int z, char* parentname, char* parentobj) returns int
 This function is used to render a subwidget within the current widget.  In order to use this function, the calling driver most likely will have done an objOpenQuery() operation, fetching any subwidgets with objQueryFetch(), and then proceeding to call this function with the pObject returned from the fetch operation.  Note that this function does *not* close the open widget object; if the widget driver opens an object with objOpen or objQueryFetch, it must also close that object with objClose.
@@ -434,7 +434,7 @@ This function is used for error reporting.  It adds an error to the error stack 
 
 Set 'reset' to 1 if the error is being "discovered" entirely by this module.  Set it to 0 if the error is in response to an error status being returned from another API function, such as NULL being returned from nmMalloc() or -1 being returned by the objGetAttrValue function.  Note that most modules don't add another message to the error stack upon detecting a memory allocation failure, since the nmMalloc() routine would have already added a generic 'memory allocation failed' message.
 
-'modname' is an abbreviation for the module generating the error. For the HTML widget drivers, this is normall of the form "HTxx" where "xx" is the abbreviation of the module.
+'modname' is an abbreviation for the module generating the error. For the HTML widget drivers, this is normally of the form "HTxx" where "xx" is the abbreviation of the module.
 
 'fmt' is a format string that can contain '%d' and '%s' in order to substitute integer and string values, respectively from the variable argument list.
 
@@ -444,7 +444,7 @@ Probably one of the easiest ways of developing a new widget for Centrallix is vi
 ### A.	Designing your Widget
 The first step is normally to, either formally or informally, decide on a basic design for the widget.  One should consider some of the below issues when considering a design:
 
-1.	What and how many layers should be used?  Enough layers should be used to make the widget function smoothly, but layer must be kept to a minimum, as they do use browser resources.  A widget that is absolutely positioned (via X and Y) MUST have at least one layer.  Nonvisual widgets typically do not have any layers.
+1.	What and how many layers should be used?  Enough layers should be used to make the widget function smoothly, but layers must be kept to a minimum, as they do use browser resources.  A widget that is absolutely positioned (via X and Y) MUST have at least one layer.  Nonvisual widgets typically do not have any layers.
 
 2.	How will the widget look?  How will it interact with the user?
 

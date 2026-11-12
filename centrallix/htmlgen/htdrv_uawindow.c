@@ -97,7 +97,7 @@ htuawinRender(pHtSession s, pWgtrNode tree, int z)
 	/** object linkages **/
 	htrAddWgtrCtrLinkage(s, tree, "_parentctr");
 
-	/** Check for more sub-widgets within the vbl entity. **/
+	/** Check for more sub-widgets within the window. **/
 	htrRenderSubwidgets(s, tree, z+2);
 
     return 0;

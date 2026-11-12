@@ -104,7 +104,7 @@ mergesort_r(void** arr1, void** arr2, int cnt, int okleaf, int (*compare_fn)())
  *** (once the array size gets down to 16-32 items) is done via a selection
  *** sort.  The mergesort is double-buffering internally.
  ***
- *** compare_fn should take two argments, item1 and item2, and return a value
+ *** compare_fn should take two arguments, item1 and item2, and return a value
  *** less than, equal to, or greater than 0, based on whether item1 is less
  *** than, equal to, or greater than item2, respectively.  See qsort(3).
  ***/

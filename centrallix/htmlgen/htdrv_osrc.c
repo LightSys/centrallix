@@ -184,7 +184,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
    if(scrollahead<1) scrollahead=1;
    if(replicasize<1 || readahead<1)
       {
-      mssError(1,"HTOSRC","You must give positive integer for replicasize and readahead");
+      mssError(1,"HTOSRC","You must give a positive integer for replicasize and readahead");
       return -1;
       }
 

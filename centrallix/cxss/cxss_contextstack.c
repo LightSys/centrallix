@@ -46,7 +46,7 @@
 /************************************************************************/
 
 
-/*** cxss_internal_FreeCtxStack() - deinitalize and free memory used by
+/*** cxss_internal_FreeCtxStack() - deinitialize and free memory used by
  *** an auth stack item.
  ***/
 int

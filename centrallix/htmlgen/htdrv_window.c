@@ -334,7 +334,7 @@ htwinRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	htrAddBodyItem_va(s,"<DIV class=\"wnborder\"><DIV ID=\"wn%POSmain\">\n",id);
 
-	/** Check for more sub-widgets within the page. **/
+	/** Check for more sub-widgets within the window. **/
 	for (i=0;i<xaCount(&(tree->Children));i++)
 	    {
 	    sub_tree = xaGetItem(&(tree->Children), i);

@@ -5,11 +5,11 @@ Author: Jason Yip
 Date: 2/27/2004
 *********************************************************************
 
-Since IE doesn't support DOM2 CSS, neither does it supports the NS-specific javascript, a lot of changes are made in the page widget:
+Since IE doesn't support DOM2 CSS, neither does it support the NS-specific javascript, a lot of changes are made in the page widget:
 
 pg_get_style
--To minimize the necessary changes to the code, it is OK to call pg_get_style with "pg_get_style(layer, 'clip.width)", etc.
- They clip values are handled in the block if (cx__capabilities.Dom0IE).
+-To minimize the necessary changes to the code, it is OK to call pg_get_style with "pg_get_style(layer, 'clip.width')", etc.
+ The clip values are handled in the block if (cx__capabilities.Dom0IE).
 -Other attributes are also added, they include:
  width, height, top, visibility, zIndex.
 -Whenever you see an alert box saying "attr xxx needs to be implemented in pg_get_style in htdrv_page.js" in IE, you will have to handle this new attribute in the function. Since there are numerous attributes for a layer, the alert message makes sure that the future developer will know where the problem is.
@@ -44,7 +44,7 @@ pg_mkbox
 -I have also used the geometry library here to support cross-browser.
 
 pg_hidebox
--Since IE is using DOM1 HTML to get the layer reference, I used an if-else statement to make the hidbox happen
+-Since IE is using DOM1 HTML to get the layer reference, I used an if-else statement to make the hidebox happen
 
 pg_resize_area
 -Once again, geometry library functions are used here for cross-browser support
@@ -54,7 +54,7 @@ pg_addarea
 
 pg_resize
 -Again, geometry libraries are used to handle the clipping values. Use getClipHeight(layer) instead of layer.clip.height!! (width, top, right, bottom, left as well!)
--Otherwise, IE will gives an error
+-Otherwise, IE will give an error
 
 pg_togglecursor
 -Try to use the cross-browser functions pg_set_style/pg_set_style all the time.

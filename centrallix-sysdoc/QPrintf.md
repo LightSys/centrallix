@@ -73,7 +73,7 @@ Please check the end of this document for information on which of these specifie
 | &DB64             | Base64-decodes the entire string.
 | &RF/reg/          | Filters string value through regular expression, and if it does not match in its entirety, causes an error.
 | &RR/reg/rep/      | Filters string value through regular expression and replaces occurrences of 'reg' with 'rep'.  It is not an error if the regular expression does not match at all.
-| &HTE              | Converts special HTML characters to HTML entities (includes &, <, >, ', and ".
+| &HTE              | Converts special HTML characters to HTML entities (includes &, <, >, ', and ").
 | &DHTE             | Converts the above HTML entities back to normal characters.
 | &URL              | Converts any special characters other than [A-Za-z0-9] into %nn where nn is the hex value of the character.
 | &DURL             | Converts any %nn back to normal characters.

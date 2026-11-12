@@ -6,7 +6,7 @@ Date: 2/27/2004
 *********************************************************************
 
 tb_init
--The original code will pass null into the initializer in non-NS browser. By using the geometry library, it is possible to make the code originally written for NS works in IE.
+-The original code will pass null into the initializer in non-NS browser. By using the geometry library, it is possible to make the code originally written for NS work in IE.
 -IE doesn't support watch method, onpropertychange is used for IE support.
 
 tb_setenable

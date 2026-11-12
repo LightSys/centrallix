@@ -1543,7 +1543,7 @@ function htr_mousemovehandler_cb()
     }
 
 
-// Universal event handler script. Recieves a browser event variable
+// Universal event handler script. Receives a browser event variable
 // and converts different browsers' events into a Centrallix
 // event. Also, because IE and FF manage default_action manipulation
 // differently, this function ensures correct manipulation of
@@ -1644,7 +1644,7 @@ document.addEventListener('DOMContentLoaded', () =>
      ***/
     if (hash)
 	console.warn(
-	    `cx__geom remover: #${hash} is not supported in URLs.` +
+	    `cx__geom remover: #${hash} is not supported in URLs. ` +
 	    "Please find and update this code if you intend to use #s."
 	);
 

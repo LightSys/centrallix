@@ -54,7 +54,7 @@ static struct
     HTCA;
 
 
-/*** htcaRender - generate the HTML code for the editbox widget.
+/*** htcaRender - generate the HTML code for the calendar widget.
  ***/
 int
 htcaRender(pHtSession s, pWgtrNode tree, int z)

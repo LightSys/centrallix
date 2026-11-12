@@ -68,7 +68,7 @@ II  DEFINITION
     64 characters, but there is no maximum length for strings.  Integers are
     32-bit, and so can range from -(2^31) to +(2^31) - 1.
 
-    Starting with the 0.7.1 release, there is no limit the number of comma-
+    Starting with the 0.7.1 release, there is no limit on the number of comma-
     separated values in an attributes' list.  Also, starting with version
     0.7.1, the limit on the number of attributes/subgroups within a group has
     been raised from 64 to 65535.
@@ -133,7 +133,7 @@ III EXAMPLE #1 - REPORT (.RPT) FILES
     text of the comment to be inserted.  The value of this 'text' attribute is
     a string.  This group may also contain a 'style' attribute, which can 
     contain a list of styles, including bold, italic, compressed, underline,
-    center, expanded, and barcode.  This group may contain a 'autonewline'
+    center, expanded, and barcode.  This group may contain an 'autonewline'
     attribute, which can be set to its default 'yes' or to 'no' to prevent
     a newline \n from automatically being issued after the comment line.  The
     'text' attribute is, as mentioned earlier, subject to parameter

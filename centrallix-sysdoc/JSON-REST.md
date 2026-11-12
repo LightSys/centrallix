@@ -70,7 +70,7 @@ Data from the Centrallix OSML will be represented in JSON in a format described 
 An additional recommended standard, called JSON-LD (for "JSON Linked Data") is used to specify the links required by the REST architecture.  JSON-LD properties can be identified by starting with an "@" character.
 
 ## OSML JSON Data Format
-Data will be represented in one of two possible formats, a basic format, and an full format containing metadata.
+Data will be represented in one of two possible formats, a basic format, and a full format containing metadata.
 
 ### A.	Basic Format:
 
@@ -201,7 +201,7 @@ To select the Basic or Full attribute format, include the following URI paramete
     cx__res_attrs=full	
     cx__res_attrs=none		(omit attrs: default for Collection)
 
-In a Collection document, the default is "none", which means to only include the names of the elements in the collection, but not any added information about them.  If the entire set of attributes is desired, then cx__attr_format can be used on a collection request to include them.
+In a Collection document, the default is "none", which means to only include the names of the elements in the collection, but not any added information about them.  If the entire set of attributes is desired, then cx__res_attrs can be used on a collection request to include them.
 
 If attributes are not being returned, then cx__res_attrs is ignored.
 
@@ -274,7 +274,7 @@ To prevent the session and token from expiring, the client should send "ping" or
 
 For example, if the value of "watchdogtimer" retrieved from the server is 180 (a typical default), then the client should ping the server every 90 seconds to ensure the session is kept alive.
 
-The server will reply with an HTML document containing the server's current time if the session and token are still valid.  The time is supplied in a format compatible with Javascript's Date() funtion.
+The server will reply with an HTML document containing the server's current time if the session and token are still valid.  The time is supplied in a format compatible with Javascript's Date() function.
 
 ## Response Mime Types
 If a response contains content (for an element), then the content type of the response will be the content type of the object's content, such as a PNG image or an HTML file.

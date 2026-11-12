@@ -62,7 +62,7 @@ stFreeInf(pStructInf this)
 	/** Free any subinfs first **/
 	for(i=0;i<ST_MAX_SUBINF;i++) if (this->SubInf[i]) stFreeInf(this->SubInf[i]);
 
-	/** String need to be deallocated? **/
+	/** Strings need to be deallocated? **/
 	for(i=0;i<this->nVal;i++) if (this->StrVal[i] && this->StrAlloc[i]) 
 	    nmSysFree(this->StrVal[i]);
 
@@ -430,7 +430,7 @@ st_internal_IsDblClose(char* str)
 	/** Skip whitespace **/
 	while(*str == ' ' || *str == '\t' || *str == '\r' || *str == '\n') str++;
 
-	/** Double open? **/
+	/** Double close? **/
 	if (str[0] != '}' || str[1] != '}') return 0;
 
 	/** Skip whitespace **/

@@ -205,7 +205,7 @@ mqu_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     }
 
 
-/*** mquStart - for an update query, much as for a insert query, we will
+/*** mquStart - for an update query, much as for an insert query, we will
  *** run the entire operation within mquStart() and return no rows for
  *** mquNextItem.
  ***/

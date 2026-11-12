@@ -113,10 +113,10 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z) {
    if (wgtrGetPropertyValue(tree,"title",DATA_T_STRING,POD(&ptr)) != 0) return -1;
    strtcpy(title,ptr,sizeof(title));
 
-   /** User requesting expression for selected tab? **/
+   /** User requesting expression for selected radio button? **/
    htrCheckAddExpression(s, tree, name, "value");
 
-   /** User requesting expression for selected tab using integer index value? **/
+   /** User requesting expression for selected radio button using integer index value? **/
    htrCheckAddExpression(s, tree, name, "value_index");
 
    /** Get fieldname **/

@@ -157,7 +157,7 @@ def run_test():
             text_after_clear = text_area.get_attribute('value')
             main_test.add_check("Text area cleared successfully", text_after_clear == "")
 
-            #Check 6: Check that the button text has reset, and that the the text area is empty. 
+            #Check 6: Check that the button text has reset, and that the text area is empty. 
             print("      Waiting for button to reset...")
             reset_button_xpath = "//div[.//span[text()='Click Me Again']]"
             WebDriverWait(driver, 6).until(EC.presence_of_element_located((By.XPATH, reset_button_xpath)))

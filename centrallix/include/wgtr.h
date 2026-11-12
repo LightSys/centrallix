@@ -112,7 +112,7 @@ typedef struct _WN
     XArray	Children;			/** Array of child widgets **/
     struct _WN* Parent;
     struct _WN*	Root;
-    int		CurrProperty;			/** Property to return on next call to wgtNextProperty **/
+    int		CurrProperty;			/** Property to return on next call to wgtrNextPropertyName **/
     int		CurrChild;			/** Child to return on next call to wgtrNextChild **/
     int		Verified;			/** Was the node verified? **/
     XArray	Interfaces;			/** Array of supported interface handles **/
@@ -180,7 +180,7 @@ int wgtrMergeOverlays(pWgtrNode node, char* objpath, char* app_path, char* overl
 /** wgtr iterator functions **/
 pWgtrIterator wgtrGetIterator(pWgtrNode tree, int traversal_type);	/** returns an iterator for the tree **/
 pWgtrNode wgtrNext(pWgtrIterator itr);	/** return next node in tree **/
-void wgtrFreeIterator(pWgtrIterator itr);	/** frees memory associated with a widget tree **/
+void wgtrFreeIterator(pWgtrIterator itr);	/** frees memory associated with an iterator **/
 
 /** accessors **/
 int wgtrGetPropertyType(pWgtrNode widget, char* name);	/** get the type of the given property **/

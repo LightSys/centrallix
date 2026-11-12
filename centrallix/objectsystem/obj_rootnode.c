@@ -142,7 +142,7 @@ rootWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree
     }
 
 
-/*** rootGetFirstAttr - no attributes in root node, so return NULL.
+/*** rootGetFirstAttr - return the name of the first attribute of the root node.
  ***/
 char*
 rootGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
@@ -153,7 +153,7 @@ rootGetFirstAttr(void* inf_v, pObjTrxTree* oxt)
     }
 
 
-/*** rootGetNextAttr - no attributes in root node, so return NULL.
+/*** rootGetNextAttr - return the name of the next attribute of the root node.
  ***/
 char*
 rootGetNextAttr(void* inf_v, pObjTrxTree* oxt)

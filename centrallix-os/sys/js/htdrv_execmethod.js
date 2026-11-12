@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 
-/** Set timer **/
+/** Execute method **/
 function ex_action_domethod(aparam)
     {
     var o = aparam.Objname?aparam.Objname:this.Objname;
@@ -21,7 +21,7 @@ function ex_action_domethod(aparam)
     return true;
     }
 
-/** Timer initializer **/
+/** Execmethod initializer **/
 function ex_init(param)
     {
     var ex = param.node;

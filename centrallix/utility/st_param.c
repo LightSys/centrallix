@@ -39,7 +39,7 @@
 /* Module:      st_param.c						*/
 /* Author:      Tim Young (TCY)                                         */
 /* Creation:    February 18, 2000                                       */
-/* Description: Functions to parse a parametarized structure file.      */
+/* Description: Functions to parse a parameterized structure file.      */
 /*              These functions will allow variable substitution via    */
 /*              parameters within the structure file, parameters in     */
 /*              the path, and setattr calls.  It will return an         */
@@ -58,10 +58,10 @@
  *** 	Add an attribute to the override structure
  *** stpAddValue?
  *** stpAttrValue
- *** 	Look at the current atribute, return value
+ *** 	Look at the current attribute, return value
  ***		Evaluate if needed
  *** stpAttrType
- *** 	Look at the current atribute, return type
+ *** 	Look at the current attribute, return type
  ***		Type may change after evaluating
  *** stpUpdateNode?
  *** 	Update the node data with the override data?  Set as dirty
@@ -71,7 +71,7 @@
  *** 	Parse PathPart and do overrides
  *** stpMakeWhereTree ??
  ***	Make a whereclause tree from override struct, pathpart and pObj Struct
- ***	SHould this be done on individual basis, in this lib, or elsewhere? 
+ ***	Should this be done on individual basis, in this lib, or elsewhere? 
  *** stpFreeInf
  ***	DeAlloc the structure
  ***/
@@ -101,7 +101,7 @@ stp_internal_evaluate_parameter(pStpInf inf, pStructInf attr, pObject obj)
    	if (attr->StrVal[0] != 0)
 	    {
 
-	    /* Parametarize */
+	    /* Parameterize */
 	    tmpxstring = stpSubstParam(inf, attr->StrVal[0]);
 	    memccpy(tstr, tmpxstring->String, '\0', 254);
 	    tstr[254] = '\0'; 
@@ -230,7 +230,7 @@ stpAllocInf(pSnNode node, pStruct openctl, pObject obj, int DefaultVersion)
                 {
                 if (inf->Node->Data->SubInf[i]->Type == ST_T_ATTRIB)
                     {
-                    /** parametarize and evaluate **/
+                    /** parameterize and evaluate **/
 		    if (inf->Node->Data->SubInf[i]->StrVal[0] &&
 			strcmp(inf->Node->Data->SubInf[i]->Name,"primarykey") &&
 		        strcmp(inf->Node->Data->SubInf[i]->Name,"sql") &&
@@ -370,7 +370,7 @@ pStructInf
 stpAddAttr(pStpInf inf, char* name)
     {
     pStructInf newinf, tmp_inf;
-	/** Things in the override structure are only Verision 1 **/
+	/** Things in the override structure are only Version 1 **/
         tmp_inf = stAddAttr(inf->OverrideInf, name);
         stp_internal_register_attrib(inf, tmp_inf);
     return tmp_inf;

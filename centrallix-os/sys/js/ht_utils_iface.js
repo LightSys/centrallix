@@ -32,7 +32,7 @@
 
 // also, some code implementation of asynchronous request
 // overhead/management (for interfaces) seem to occur here. I don't
-// think it would be needed if it's ever refactered to use AJAX.
+// think it would be needed if it's ever refactored to use AJAX.
 
 
 
@@ -81,7 +81,7 @@ function ifc_internal_LoadFinished()
 	    return;
 	    }
 	
-	pg_debug("IFC: Loaded '"+def_ref+"'interface successfully\n");
+	pg_debug("IFC: Loaded '"+def_ref+"' interface successfully\n");
 
 	// now start parsing the structure
 	i=0;
@@ -154,7 +154,7 @@ function ifc_internal_LoadFinished()
 	    }
 	pg_debug("IFC: Done parsing interface definition\n");
 	IFC.Definitions[def_ref] = def;
-	IFC.Callbacks[def_ref] && IFC.Callbacks[def_ref](IFC.Params[def_ref]); //SETH: $$$callback$$$: should always call callback; but sometimes there'll be a blank callback //SETH: shouldn't these callbacks be handles by custom handlers?
+	IFC.Callbacks[def_ref] && IFC.Callbacks[def_ref](IFC.Params[def_ref]); //SETH: $$$callback$$$: should always call callback; but sometimes there'll be a blank callback //SETH: shouldn't these callbacks be handled by custom handlers?
 	delete IFC.Callbacks[def_ref];
 	delete IFC.Params[def_ref];
     }

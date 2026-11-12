@@ -18,7 +18,7 @@ Author: Greg Beeley (GRB)
 ## 3. Application Key - AppGroup Token
 - 64-bit hex-encoded secure PRNG value which identifies the App Group within a session
 - Present on the Location URL line
-- Received AJAX requests
+- Received with AJAX requests
 - Received when opening a new page in the current application group
 - Transmitted within an application when the app is generated
 

@@ -196,7 +196,7 @@ int sectCount;
     if(!(Parent->Flags & WGTR_F_NONVISUAL))
 	if(aposSetContainerFlex(Parent) < 0)
 	    {
-		mssError(0, "APOS", "aposPrepareTree: Couldn't set %s's flexibility", Parent->Name);
+		mssError(0, "APOS", "aposSetFlexibilities: Couldn't set %s's flexibility", Parent->Name);
 		return -1;
 	    }
 
@@ -300,7 +300,7 @@ pWgtrNode Child;
 }
 
 
-/** This function simply call the recursive version **/
+/** This function simply calls the recursive version **/
 int
 aposSetLimits(pWgtrNode Parent)
 {
@@ -452,7 +452,7 @@ ObjData val;
         {
 	    /**set isTopTab and isSideTab**/
 	    if(wgtrGetPropertyValue(W, "tab_location", DATA_T_STRING, &val) < 0)
-	        *isTopTab = 1;	//if property not found, assume top tab**/
+	        *isTopTab = 1;	/* if property not found, assume top tab */
 	    else 
 		{
 		    *isTopTab = (!strcmp(val.String, "top") || !strcmp(val.String, "bottom"));
@@ -491,7 +491,7 @@ pAposGrid theGrid = NULL;
 		    theGrid = Parent->LayoutGrid = (pAposGrid)nmMalloc(sizeof(AposGrid));
 		    if (!Parent->LayoutGrid) goto error;
 
-		    /**initiallize the XArrays in the grid**/
+		    /**initialize the XArrays in the grid**/
 		    aposInitiallizeGrid(theGrid);
 
 		    /**Add the lines to the grid**/
@@ -799,7 +799,7 @@ pAposLine Line = aposExistingLine(Lines, Loc);
 		    return -1;
 		}
 	    
-	    /**initiallize new line**/
+	    /**initialize new line**/
 	    memset(Line, 0, sizeof(AposLine));
 	    xaInit(&(Line->SWidgets),16);
 	    xaInit(&(Line->EWidgets),16);
@@ -927,7 +927,7 @@ aposCreateSection(pXArray Sections, pAposLine StartL, pAposLine EndL, int Diff, 
 {
 pAposSection NewSect;
     
-    /**Allocate and initiallize a new section**/
+    /**Allocate and initialize a new section**/
     if((NewSect = (pAposSection)(nmMalloc(sizeof(AposSection)))) < 0)
 	{
 	    mssError(1, "APOS", "nmMalloc(): Couldn't allocate memory for new row or column");
@@ -1123,7 +1123,7 @@ float TotalSum=0;
 		}
 	}
     
-    /** if there is no flexibility for expansion or contraction return 0**/
+    /** if there is no flexibility for expansion or contraction return Diff**/
     if(TotalFlex == 0) return Diff;
     
     /** sets each line's location equal to the previous line's location

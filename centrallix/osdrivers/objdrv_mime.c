@@ -54,7 +54,7 @@
 
 
 /* ***********************************************************************
-** DEFINITONS                                                           **
+** DEFINITIONS                                                          **
 ** **********************************************************************/
 
 /*** GLOBALS ***/
@@ -65,7 +65,7 @@ typedef struct
     pObject	Obj;
     int		Mask;
     char	Pathname[256];
-    char*	AttrValue; /* GetAttrValue has to return a refence to memory that won't be free()ed */
+    char*	AttrValue; /* GetAttrValue has to return a reference to memory that won't be free()ed */
     pMimeHeader	Header;
     pMimeData	MimeDat;
     int		NextAttr;

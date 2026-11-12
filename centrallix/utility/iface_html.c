@@ -26,7 +26,7 @@
 /* Module: 	Interface Module     					*/
 /* Author:	Matt McGill (MJM)					*/
 /* Creation:	July 26, 2004   					*/
-/* Description:	Provies the functionality for handling interfaces in a  */
+/* Description:	Provides the functionality for handling interfaces in a  */
 /*		general way, to be used by any Centrallix module that   */
 /*		has need of support for interfaces.                    	*/
 /************************************************************************/
@@ -46,7 +46,7 @@
 #include "ht_render.h"
 
 
-/*** ifc_internal_EncodeHtml - take an XString, and HTMLify it
+/*** ifc_internal_EncodeHTML - take an XString, and HTMLify it
  *** Same idea as nht_internal_EncodeHTML, but with an XString
  ***/
 int
@@ -224,7 +224,7 @@ ifcToHtml(pFile file, pObjSession s, char* def_str)
 	return 0;
     }
 
-/*** ifcHtmlInit_r - recursive function for adding as many interface definitions as
+/*** ifc_internal_HtmlInit_r - recursive function for adding as many interface definitions as
  *** we can to the client-side code, so they don't have to be loaded from the server
  *** dynamically
  ***/

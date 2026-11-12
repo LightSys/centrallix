@@ -451,7 +451,7 @@ nht_internal_GET(pNhtSessionData nsess, pFile conn, pStruct url_inf)
     char* bufptr;
 
     	/*printf("GET called, stack ptr = %8.8X\n",&cnt);*/
-        /** If we're opening the "errorstream", pass of processing to err handler **/
+        /** If we're opening the "errorstream", pass off processing to err handler **/
 	if (!strncmp(url_inf->StrVal,"/errorstream",12))
 	    {
 	    return nht_internal_ErrorHandler(nsess, conn);

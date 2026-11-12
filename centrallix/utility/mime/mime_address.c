@@ -278,7 +278,7 @@ libmime_HdrParseGroup(char *buf, pEmailAddr addr)
 **         (EmailAddr*) addr
 **                         An email address data structure that will be filled in 
 **                         by this function.  These properties will be stripped of
-**                         all their quotes and extranious whitespace.--
+**                         all their quotes and extraneous whitespace.
 **     Returns:
 **         This function returns -1 on failure and 0 on success.  It will split an
 **         individual email address or a group of addresses up into their various
@@ -309,7 +309,7 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 	{
 	libmime_ParseAddressElements(buf, addr); /* set Host and Mailbox */
 	}
-    /** If this address DOES have <>'s, then treat it like anormal address **/
+    /** If this address DOES have <>'s, then treat it like a normal address **/
     else
 	{
 	/** First, get the <mailbox@host> part parsed out of there **/
@@ -377,7 +377,7 @@ libmime_ParseAddress(char *buf, pEmailAddr addr)
 **  int
 **  libmime_ParseAddressElements(char *buf, EmailAddr *addr)
 **     Parameters:
-**         (char*) buf    A string that reperess a single mailbox@host address.
+**         (char*) buf    A string that represents a single mailbox@host address.
 **         (EmailAddr*) addr
 **                        An email address data structure that will be filled in
 **                        by this function.  This function will set the Host and

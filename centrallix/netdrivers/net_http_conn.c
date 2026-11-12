@@ -241,7 +241,7 @@ nht_i_CheckLoginHashCookie(pNhtConn conn)
     }
 
 
-/*** nht_i_AddHeaderNonce - attaches a X-Nonce: header to the response,
+/*** nht_i_AddHeaderNonce - attaches an X-Nonce: header to the response,
  *** which perturbs the order of things in the header which could make
  *** some types of cryptographic attacks harder to carry out.
  ***/

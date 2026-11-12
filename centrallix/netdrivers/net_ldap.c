@@ -329,7 +329,7 @@ nldap_i_FreeConn(pNldapConn conn)
     return 0;
     }
 
-/*** nldap_i_TLSHandler - manages incoming TLS-encrypted HTTP
+/*** nldap_i_TLSHandler - manages incoming TLS-encrypted LDAP
  *** connections.
  ***/
 void
@@ -505,8 +505,8 @@ nldap_i_TLSHandler(void* v)
     }
 
 
-/*** nldap_i_Handler - manages incoming HTTP connections and sends
- *** the appropriate documents/etc to the requesting client.
+/*** nldap_i_Handler - manages incoming LDAP connections and starts
+ *** a handler thread for each one.
  ***/
 void
 nldap_i_Handler(void* v)

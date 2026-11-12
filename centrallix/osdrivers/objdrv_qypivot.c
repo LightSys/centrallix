@@ -1217,7 +1217,7 @@ qypRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     }
 
 
-/*** qypWrite - As above, attempt to read if we found an actual object.
+/*** qypWrite - As above, attempt to write if we found an actual object.
  ***/
 int
 qypWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
@@ -1248,7 +1248,7 @@ qypOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->ObjInf = inf;
 	qy->Query = query;
 
-	/** Build the order by list, so we get objects grouped by entitiy **/
+	/** Build the order by list, so we get objects grouped by entity **/
 	xsInit(&orderby);
 	for(i=0;i<inf->Node->nKeys;i++)
 	    {

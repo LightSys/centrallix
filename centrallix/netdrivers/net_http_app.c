@@ -33,7 +33,7 @@
 /************************************************************************/
 
 
-/* This file will eventually contain much of the application logic from the GET and OSML fucntions */
+/* This file will eventually contain much of the application logic from the GET and OSML functions */
 /* 11:38 AM 6/25/2008 jncraton */
 
 

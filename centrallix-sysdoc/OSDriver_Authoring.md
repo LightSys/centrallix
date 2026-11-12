@@ -116,7 +116,7 @@ License:  Copyright (C) 2001-2011 LightSys Technology Services. See LICENSE.txt 
     - [C.	Object querying (for subobjects)](#cobject-querying-for-subobjects)
 
 ## I Introduction
-An objectsystem driver's purpose is to provide access to a particular type of local or network data/resource, and to organize that data in a tree- structured heirarchy that can be integrated into the Centrallix's ObjectSystem.  This tree structure will vary based on the data being presented, but will fit the basic ObjectSystem model of a heirarchy of objects, each having attributes, perhaps some methods, and possibly content.  
+An objectsystem driver's purpose is to provide access to a particular type of local or network data/resource, and to organize that data in a tree- structured hierarchy that can be integrated into the Centrallix's ObjectSystem.  This tree structure will vary based on the data being presented, but will fit the basic ObjectSystem model of a hierarchy of objects, each having attributes, perhaps some methods, and possibly content.  
 
 Each objectsystem driver will implement this subtree structure rooted at what is called the "node" object.  The node has a specifically recognizable object type which the ObjectSystem Management Layer uses to determine which OS Driver to pass control to.  Normally, the 'node' object is a UNIX file either with a particular extension registered with the OSML, or a UNIX file residing in a directory containing a '.type' file, which contains the explicit object type for all objects in that directory without recognizable extensions.
 
@@ -251,13 +251,13 @@ As a part of the Open process, the OS driver will normally allocate an internal 
 The Open() routine is called with five parameters:
 
 - obj (pObject)
-    This is a pointer to the Object sturcture maintained by the OSML.  This structure will contain some important fields for processing the open() request.
+    This is a pointer to the Object structure maintained by the OSML.  This structure will contain some important fields for processing the open() request.
 
     obj->Mode is a bitmask of the O_* flags, which include O_RDONLY, O_WRONLY, O_RDWR, O_CREAT, O_TRUNC, and O_EXCL.
 
     obj->Pathname is a Pathname structure which contains the complete parsed pathname for the object.  This structure is defined in the file include/obj.h, and has a buffer for the pathname as well as an array of pointers to the pathname's components.  The function obj_internal_PathPart() can be used to obtain at will any component or series of components of the pathname.
 
-    obj->Pathname->OpenCtl[] contains parameters to the open() operation.  Frequently these params provide additional information on how to open the object.  The use of these parameters is determined by the author of the objectsystem driver.  The parameters are those passed in normal URL fasion (?param=value, etc.). Typically, the only OpenCtl of interest is going to be obj->Pathname->OpenCtl[obj->SubPtr] (see below for SubPtr meaning).
+    obj->Pathname->OpenCtl[] contains parameters to the open() operation.  Frequently these params provide additional information on how to open the object.  The use of these parameters is determined by the author of the objectsystem driver.  The parameters are those passed in normal URL fashion (?param=value, etc.). Typically, the only OpenCtl of interest is going to be obj->Pathname->OpenCtl[obj->SubPtr] (see below for SubPtr meaning).
 
     obj->SubPtr is the number of components in the path that are a part of the node object's path.  For example, in the above path of '/datasources/OMSS_DB', the path would be internally represented as './datasources/ OMSS_DB', and the SubPtr would be 3.
 
@@ -445,7 +445,7 @@ Note that the Node object will technically ALREADY BE OPEN as an object in the o
 
 An objectsystem driver will commonly configure itself by reading a text file at the root of its object subtree.  There are two main modules available for making this easier.  
 
-The normal way to manage object parameters is to use a structure file. Structure files are a little more complicated, but allow for arrays of values for a given attribute name, as well as allowing for tree- structured hierarchies of attributes and values.  Structure files are accessed via the stparse and st_node modules.  The stparse module provides access to the individual attributes and groups of attributes, and the st_node module loads and saves the structure file heirarchies as a whole. The st_node module also provides node caching to reduce disk activity and eliminate repeated parsing of one file.
+The normal way to manage object parameters is to use a structure file. Structure files are a little more complicated, but allow for arrays of values for a given attribute name, as well as allowing for tree- structured hierarchies of attributes and values.  Structure files are accessed via the stparse and st_node modules.  The stparse module provides access to the individual attributes and groups of attributes, and the st_node module loads and saves the structure file hierarchies as a whole. The st_node module also provides node caching to reduce disk activity and eliminate repeated parsing of one file.
 
 For example, if two sessions open two files, '/test1.rpt' and '/test2.rpt' the st_node (SN) module will cache the internal representations of these node object files, and for successive uses of these node objects, the physical file will not be re-parsed.  The file will be re-parsed if its timestamp changes.
 
@@ -529,7 +529,7 @@ By following this method (making a copy of the string and then setting the StrAl
 This routine examines all sub-tree-nodes, both group and attribute nodes, for a group or attribute with the given name.  If it finds one, it returns a pointer to the sub-node, otherwise NULL.
 
 ### int stAttrValue(pStructInf inf, int* intval, char** strval, int nval)
-This function returns the value of the given attribute in an ST_T_ATTRIB tree node.  If a string value is being returned, pass a pointer to the string pointer.  If an integer value is being returned, pass a pointer to an integer.  The pointer not being used must be left NULL.  'nval' can normally be 0, but if the attribute has several values, setting nval to 1,2,3, etc., returns the 2nd, 3rd, 4th item, respectively.  This routing returns -1 if the attribute value did not exist or if the wrong type was requested. It also returns -1 if 'inf' was NULL.
+This function returns the value of the given attribute in an ST_T_ATTRIB tree node.  If a string value is being returned, pass a pointer to the string pointer.  If an integer value is being returned, pass a pointer to an integer.  The pointer not being used must be left NULL.  'nval' can normally be 0, but if the attribute has several values, setting nval to 1,2,3, etc., returns the 2nd, 3rd, 4th item, respectively.  This routine returns -1 if the attribute value did not exist or if the wrong type was requested. It also returns -1 if 'inf' was NULL.
 
 It is common practice to use the stLookup and stAttrValue functions together to retrieve values, and search for an attribute StructInf and retrieve its value in one operation:
 
@@ -647,13 +647,13 @@ This function removes an item from the xarray at the given index.
 The xhash module provides an extensible hashing table interface.  The hash table is a table of linked lists of items, so collisions and overflows are not a problem as in conventional hash tables.
 
 ### int xhInit(pXHashTable this, int rows, int keylen)
-This initializes a hash table, giving it the given number of rows, and setting the key length.  For variable length keys (null- terminated strings), use a key length of 0 (zero).  The 'rows' should be an odd number, preferably prime, but does not need to be. It SHOULD NOT be a power of 2.  It's value is an optimization depending on how much data you expect to be in the hash table.  If its value is set to 1, the hash search degenerates to a linear array search.  The value should be large enough to comfortably accomodate the elements.  Typical values might be 31 or 255 (though 255 is not prime).
+This initializes a hash table, giving it the given number of rows, and setting the key length.  For variable length keys (null- terminated strings), use a key length of 0 (zero).  The 'rows' should be an odd number, preferably prime, but does not need to be. It SHOULD NOT be a power of 2.  Its value is an optimization depending on how much data you expect to be in the hash table.  If its value is set to 1, the hash search degenerates to a linear array search.  The value should be large enough to comfortably accommodate the elements.  Typical values might be 31 or 255 (though 255 is not prime).
 
 #### int xhDeInit(pXHashTable this)
 De-initializes a hash table.
 
 #### int xhAdd(pXHashTable this, char* key, char* data)
-Adds an item to the hash table, with a given key value and data pointer.  Both data and key pointers must have a lifetime that exceeds the time that they item is hashed.
+Adds an item to the hash table, with a given key value and data pointer.  Both data and key pointers must have a lifetime that exceeds the time that the item is hashed.
 
 #### int xhRemove(pXHashTable this, char* key)
 Removes an item with the given key value from the hash table.
@@ -674,7 +674,7 @@ Initializes an XString structure, to an empty string.
 Deinitializes an XString structure.
 
 #### int xsConcatenate(pXString this, char* text, int len)
-Concatenates the string 'text' onto the end of the XString's value. If len is -1, all data up to the null terminater is copied.  If len is set, all data up to length 'len' is copied, including possible '\0' characters.
+Concatenates the string 'text' onto the end of the XString's value. If len is -1, all data up to the null terminator is copied.  If len is set, all data up to length 'len' is copied, including possible '\0' characters.
 
 #### int xsCopy(pXString this, char* text, int len)
 Copies the string 'text' into the XString.  Like xsConcatenate, except that the previous string contents are overwritten.
@@ -707,7 +707,7 @@ For example, this is WRONG:
     xsConcatenate(&xs, "This is the second sentence.", -1);
     printf("A pointer to the second sentence is '%s'\n", ptr);
 
-Instead, use pointer aritmetic and do this:
+Instead, use pointer arithmetic and do this:
 
     pXString xs;
     int offset;
@@ -881,7 +881,7 @@ Sometimes a driver will need to initiate a network connection.  This can be done
 This function connects to a server.  The host name or ascii string for its ip address is in 'host_name'.  The name of the service (from /etc/services) or its numeric representation in a string is the 'service_name'.  Flags can normally be left 0.
 
 ### int netCloseTCP(pFile net_filedesc, int linger_msec, int flags)
-This function closes a network connection, and optionally waits up to 'linger_msec' milliseconds (1/1000 seconds) for any data written to the connection to make it to the other end before performing the close.  If linger_msec is set to 0, the connection is aborted (reset).  The linger time can be set to 1000 msec or so if no writes were performed on the connection prior to the close.  If a large amount of writes were performed immediately perior to the close, offering to linger for a few more seconds (perhaps 5 or 10, 5000 or 10000 msec), might be a good idea.
+This function closes a network connection, and optionally waits up to 'linger_msec' milliseconds (1/1000 seconds) for any data written to the connection to make it to the other end before performing the close.  If linger_msec is set to 0, the connection is aborted (reset).  The linger time can be set to 1000 msec or so if no writes were performed on the connection prior to the close.  If a large amount of writes were performed immediately prior to the close, offering to linger for a few more seconds (perhaps 5 or 10, 5000 or 10000 msec), might be a good idea.
 
 ### int fdWrite(pFile filedesc, char* buffer, int length, int offset, int flags)
 This function writes data to a file descriptor, from a given buffer and length, and to an optional seek offset and with some optional flags.  Flags can be the following:

@@ -161,7 +161,7 @@ htformRender(pHtSession s, pWgtrNode tree, int z)
 	    strcpy(link_prev_within,"");
 	
 	/*** 
-	 *** (03/01/02) Jonathan Rupp -- added two new paramters
+	 *** (03/01/02) Jonathan Rupp -- added two new parameters
 	 ***      basequery -- the part of the SQL statement that is never
 	 ***        modified, even in QBF form (do not terminate with ';')
 	 ***      basewhere -- an initial WHERE clause (do not include WHERE)

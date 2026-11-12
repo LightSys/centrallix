@@ -13,7 +13,7 @@ Please edit this file if there are any mistakes.
 
 Also, online documentation can be found at http://www.centrallix.net/docs/docs.php.
 
-See `javascript.txt` for more information about the generated javascript that is generated.
+See `javascript.md` for more information about the generated javascript that is generated.
 
 ## Table of Contents
 - [Serverside HTML Generation](#Serverside-HTML-Generation)
@@ -81,11 +81,11 @@ First, the server-side code traverses the WgtrNode instance.
 
 For each widget, it runs the corresponding Render function (found in htmlgen/htdrv_*.c where * is the widget shorthand) which individually adds (to the HtPage instance) the needed information for each part for that particular widget. Thus, there are no html pages on the server, but just a bunch of *Render functions which have hardcoded in them what information to add.
 
-Also, because of the async-hack (see javascript.txt), every HTML request will run through the same algorithm which always generates an entire web-page, including global variables, even though that is not necessary.
+Also, because of the async-hack (see javascript.md), every HTML request will run through the same algorithm which always generates an entire web-page, including global variables, even though that is not necessary.
 
 ## Misc information
 
 ### Server-side "Classes"
-Centrallix has future support for what are called "classes". These "clases" are really just different data formats the client can request data to be sent as. There is a file where different 'classes' can be defined (centrallix/etc/useragent.cfg)
+Centrallix has future support for what are called "classes". These "classes" are really just different data formats the client can request data to be sent as. There is a file where different 'classes' can be defined (centrallix/etc/useragent.cfg)
 
 First of all, the functionality for returning widget-tree data in different formats is not even currently (2008-07-11) implemented. Second, if it ever does get implemented, some portions of code will have to be moved (marked in htrRender() as '$$$ MARK: server-side classes $$$').

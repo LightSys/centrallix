@@ -12,7 +12,7 @@
 #include "st_node.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
-/** module definintions **/
+/** module definitions **/
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -53,7 +53,7 @@
 /* Module: 	XML Objectsystem driver					*/
 /* Author:	Jonathan Rupp						*/
 /* Creation:	July 28, 2002						*/
-/* Description:	This in an XML osdriver, using libxml2			*/
+/* Description:	This is an XML osdriver, using libxml2			*/
 /*									*/
 /************************************************************************/
 
@@ -64,12 +64,12 @@
 
     Here's where I claim everything is 'a feature, not a bug', and such.
 
-    Implimented:
+    Implemented:
 	Open
 	Query
 	Read
 
-    Unimplimented:
+    Unimplemented:
 	Write
 	Set
 	Create
@@ -191,7 +191,7 @@ typedef struct
     int		CurAttr;
     xmlAttrPtr	CurXmlAttr;
     xmlNodePtr	CurSubNode;
-    /** GetAttrValue has to return a refence to memory that won't be free()ed **/
+    /** GetAttrValue has to return a reference to memory that won't be free()ed **/
     char*	AttrValue;
     pXHashTable	Attributes;
     pXmlCacheObj    CacheObj;
@@ -300,7 +300,7 @@ xml_internal_IsObject(xmlNodePtr p)
 }
 
 /*** xml_internal_GetNode - given an inf->CurNode as root, 
- ***   heads down the path in obj to find the node refered to
+ ***   heads down the path in obj to find the node referred to
  *** returns 0 on success, -1 on failure -- fails only on regex failure
  ***/
 int
@@ -377,7 +377,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	    } while  ((p=p->next)!=NULL);
 	if( (flag==0) && (i==0 || target>=i) )
 	    {
-	    /** we couldn't find the node in quetion.
+	    /** we couldn't find the node in question.
 	     **   Maybe there's some content here for another osdriver
 	     **/
 	    if(XML_DEBUG) printf("There were children, but couldn't find any nodes, or a high enough one (%i < %i)\n",i-1,target);
@@ -431,7 +431,7 @@ xml_internal_GetNode(pXmlData inf,pObject obj)
 	}
     else
 	{
-	/** we couldn't find the node in quetion.
+	/** we couldn't find the node in question.
 	 **   Maybe there's some content here for another osdriver
 	 **/
 	if(XML_DEBUG) printf("no children found...\n");
@@ -470,7 +470,7 @@ xml_internal_ReadDoc(pObject obj)
     char hash[XML_HASH_SIZE];
 
 	/** Determine path of just the XML file itself **/
-	/** use the hash rather than the path for the chache lookup **/
+	/** use the hash rather than the path for the cache lookup **/
 	obj_internal_GetDCHash(obj->Pathname, obj->Mode, hash, XML_HASH_SIZE, obj->SubPtr);
 	/** Check cache for an existing copy already **/
 	if((cacheElem=xhqLookup(&XML_INF.cache, hash)))
@@ -667,7 +667,7 @@ xmlDelete(pObject obj, pObjTrxTree* oxt)
     int is_empty = 1;
     int i;
 
-    /** Unimplimented **/
+    /** Unimplemented **/
     return -1;
 #if 0
 
@@ -731,7 +731,7 @@ xmlRead(void* inf_v, char* buffer, int maxcnt, int offset, int flags, pObjTrxTre
     if(flags & FD_U_SEEK)
 	inf->Offset=offset;
 
-    /** calcuate length to use -- the smaller of the remaining buffer after offset or the maxlen **/
+    /** calculate length to use -- the smaller of the remaining buffer after offset or the maxlen **/
     if(maxcnt>strlen((char*)buf)-inf->Offset)
 	i=strlen((char*)buf)-inf->Offset;
     else
@@ -755,7 +755,7 @@ int
 xmlWrite(void* inf_v, char* buffer, int cnt, int offset, int flags, pObjTrxTree* oxt)
     {
     pXmlData inf = XML(inf_v);
-    /** Unimplimented **/
+    /** Unimplemented **/
     return -1;
     }
 
@@ -1039,7 +1039,7 @@ xml_internal_BuildAttributeHashTable(pXmlData inf)
 	    pHE=(pXmlAttrObj)malloc(sizeof(XmlAttrObj));
 	    if(!pHE)
 		{
-		mssWarn("XML", "nmMalloc failed!");
+		mssWarn("XML", "malloc failed!");
 		return;
 		}
 	    pHE->type=XML_ATTR;
@@ -1274,8 +1274,8 @@ xmlGetNextAttr(void* inf_v, pObjTrxTree oxt)
 	while(inf->CurSubNode)
 	    {
 	    if(inf->CurSubNode->name && inf->CurSubNode->name[0] && /** verify a valid name **/
-		/** _never_ return one of the 'special' attributes, even it it was overriden in the document **/
-		/** without this, connectors act wierd ... **/
+		/** _never_ return one of the 'special' attributes, even if it was overridden in the document **/
+		/** without this, connectors act weird ... **/
 		strcmp((char*)inf->CurSubNode->name,"outer_type") &&
 		strcmp((char*)inf->CurSubNode->name,"inner_type") &&
 		strcmp((char*)inf->CurSubNode->name,"content_type") &&

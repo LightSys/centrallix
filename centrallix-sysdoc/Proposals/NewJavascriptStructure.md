@@ -9,7 +9,7 @@ A need exists to update the object and widget model used by the Centrallix platf
 ## Global Object Model
 All Centrallix-specific functionality will be accessed through a global called $CX.  This top-level global will have the following members:
 
-- $CX.Widget - an object containing one object for each type of widget supported by the Centrallix platform.  Each of these sub- objects will be a constructor for the widget in question.
+- $CX.Widget - an object containing one object for each type of widget supported by the Centrallix platform.  Each of these sub-objects will be a constructor for the widget in question.
 
 - $CX.Util - an object containing a set of utility functions that widget modules can utilize.
 

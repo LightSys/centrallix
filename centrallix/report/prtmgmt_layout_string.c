@@ -83,7 +83,7 @@ prtStringInit(pPrtObjStream os)
     }
 
 
-/*** prtStringRelease - driver API routine which releases (oppposite of
+/*** prtStringRelease - driver API routine which releases (opposite of
  *** Init) a string element.  Doesn't actually free the element itself, that
  *** is done by the print management module's routines.
  ***/

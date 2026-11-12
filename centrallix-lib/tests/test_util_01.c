@@ -8,10 +8,10 @@
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
 /* included file "COPYING".						*/
 /* 									*/
-/* Module: 	test_util_00.c     					*/
+/* Module: 	test_util_01.c     					*/
 /* Author:	Micah Shennum 					        */
 /* Creation:	May 26th, 2011 					        */
-/* Description: Test strtoi                                             */
+/* Description: Test strtoui                                            */
 /************************************************************************/
 
 #include <string.h>
@@ -28,7 +28,7 @@ long long
 test(char** tname){
     int i;
     char text[TXT_SIZE]="";
-    *tname = "util-01 convertion from strings to unsigned integers";
+    *tname = "util-01 conversion from strings to unsigned integers";
          
     for(i=-RANGE; i<RANGE; i++){
         snprintf(text,TXT_SIZE,"%d",i);

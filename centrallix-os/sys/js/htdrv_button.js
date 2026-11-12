@@ -83,7 +83,7 @@ function gb_init(param)
     l.nofocus = true;
     l2.nofocus = true;
     
-    /*iniitalize image array */
+    /*initialize image array */
     if(cx__capabilities.Dom0NS)
         {
         l.img = l.document.images[0];

@@ -20,7 +20,7 @@ The autoform should query presentation hints for each field in order to determin
 The autoform will create labels, where desirable, for each form element generated.
 
 ### C.	Use Field Length to Size Editboxes and Textareas.
-Field lengths, from presentation hints, an be an important cue in the sizing of editboxes on screen.  However, this can't be followed exactly; a String(255) field would not necessitate an editbox that could display 255 characters all at once!
+Field lengths, from presentation hints, can be an important cue in the sizing of editboxes on screen.  However, this can't be followed exactly; a String(255) field would not necessitate an editbox that could display 255 characters all at once!
 
 ### D.	Keep Different Widget Sizes to a Minimum.
 When laying out the form, choose a minimum set of different widget widths (e.g., editbox widths).  This keeps the visual layout looking cleaner.

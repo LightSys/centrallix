@@ -664,7 +664,7 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     }
 
 
-/*** qpf_internal_hexdecode() - convert base 64 to a string representation
+/*** qpf_internal_hexdecode() - convert hex to a string representation
  ***/
 static inline int
 qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)

@@ -10,7 +10,7 @@
 // GNU Lesser General Public License for more details.
 
 
-/** Function that gets run when we got a block of cmds from the channel **/
+/** Function that gets run when we get a block of cmds from the channel **/
 function rc_loaded()
     {
     }

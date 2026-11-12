@@ -150,16 +150,16 @@ To expand/contract the grid, each section is allotted a fraction of the total ch
 ## HTML Windows
 The html windows are frequently designed to be invisible until a button is clicked or some similar action, and as such they often lay on top of all of their sibling widgets. For this reason they cannot be allowed to affect the resizing and repositioning of their siblings, and are left entirely out of the auto-positioning process until the end. At that time aposProcessWindows traverses the widget tree looking for windows that are exceeding the borders of their container. If such a window is found it is moved and resized until it fits, and then the top level function is run on the window as if it were an entirely separate widget tree. 
 
-Another oddity of the html window is that it's outside height is not the same as its inside height, due to the 24 pixel title bar. To compensate for this a number of functions use an "isWin" integer to toggle a subtraction of 24 from certain vertical dimensions. And just to make things interesting some windows opt to not have a titlebar, so that is also taken into account when setting isWin.
+Another oddity of the html window is that its outside height is not the same as its inside height, due to the 24 pixel title bar. To compensate for this a number of functions use an "isWin" integer to toggle a subtraction of 24 from certain vertical dimensions. And just to make things interesting some windows opt to not have a titlebar, so that is also taken into account when setting isWin.
 
 ## Scrollpanes
 Scrollpanes are another anomaly in that their exterior height is set, but their interior height is unlimited. This feature is handled by simply not auto-positioning the vertical aspect of scrollpanes. This is done by heading off the auto-positioning process in a few strategic places, such that no horizontal lines are ever created, and there is nothing there to auto-position when it tries. Everywhere you see a strcmp of a widget's type and "widget/scrollpane" this is what it is about. This method of handling scrollpanes may need to be tweaked, as they seem to work smoothly for treeviews and html widgets, but not much else; they won't scroll down to see the rest of a table or window that is hanging below the border. In addition, the space taken up by scrollbars on scrollpanes is accounted for in exactly the same way as the titlebar on windows, only the 18 pixel adjustment is made to horizontal dimensions instead of vertical.
 
 ## Tabs
-Tab widgets have a similar problem as windows and scrollpanes. Because of the tab buttons, the tab widget is not square like all the other widgets, however it is still described with an x, y, width and height. This causes problems because the auto-positioning algorithm assums that x + width is the far right border of a widget. But if the widget happens to be a tab widget with side mounted tabs, x + width is off by tab_width. This offset is handled by analyzing tabs in aposSetOffsetBools, and using the resulting flags to grid on the real border of the widget, and not just the border of its main body. The compensation takes place in both aposAddLinesForChildren and aposSnapWidgetsToGrid. This poses some difficulty to application authors who want to couch widgets in underneath side mounted tabs, because from the apos module's perspective those widgets are "underneath" the tab, and will share the tab's high flexibility.
+Tab widgets have a similar problem as windows and scrollpanes. Because of the tab buttons, the tab widget is not square like all the other widgets, however it is still described with an x, y, width and height. This causes problems because the auto-positioning algorithm assumes that x + width is the far right border of a widget. But if the widget happens to be a tab widget with side mounted tabs, x + width is off by tab_width. This offset is handled by analyzing tabs in aposSetOffsetBools, and using the resulting flags to grid on the real border of the widget, and not just the border of its main body. The compensation takes place in both aposAddLinesForChildren and aposSnapWidgetsToGrid. This poses some difficulty to application authors who want to couch widgets in underneath side mounted tabs, because from the apos module's perspective those widgets are "underneath" the tab, and will share the tab's high flexibility.
 
 ## Nonvisual Containers
-Yet another trouble widget is the nonvisual container, which can contain visual widgets but has no physical dimensions itself for the auto-positioning logic to get a foothold on. This is handled by virtually bypassing the nonvisual containers in the widget tree. When a grid is being set up in a container and a nonvisual container is found among the children, additional lines are added to the grid to account for the nonvisual container's children. Since the lines keep track of what widgets are associated with them, these "grandchildren" are treated exactly the same as the regular children when the grid is resizing. There are a several strategic places where nonvisual containers are sidestepped in this manner.
+Yet another trouble widget is the nonvisual container, which can contain visual widgets but has no physical dimensions itself for the auto-positioning logic to get a foothold on. This is handled by virtually bypassing the nonvisual containers in the widget tree. When a grid is being set up in a container and a nonvisual container is found among the children, additional lines are added to the grid to account for the nonvisual container's children. Since the lines keep track of what widgets are associated with them, these "grandchildren" are treated exactly the same as the regular children when the grid is resizing. There are several strategic places where nonvisual containers are sidestepped in this manner.
     
     
 ## Modifications to Components Exterior to the APOS Module
@@ -189,18 +189,18 @@ The initial width and height flexibility parameters passed to wgtNewNode from wg
 apos.h was #included in the wgtr module.
 
 ## Existing Difficulties and Proposed Fixes
-A problem occurs in aposSpaceOutLines when there is more space stored in Extra than the grid can surrender. After enough recursive calls, all of the sections will be rendered non-flexible spacers, and if there is still unhandled extra space it will be left unhandled, because TotalFlex will come up empty and 0 will be returned. At the core of this problem is the difficulty of calculating an exact flexibility for containers when preparing the tree. Because the aposAutoPositionContainers traverses the widget tree from the top down, if too high a flexibility is assigned, the container will go ahead and contract, only to find out later that it's contents can't go as small as it did, which leaves them hanging over the side. This could potentially be fixed by calculating minimum dimensions for each container while preparing the tree, and then taking them into account before resizing the container. This brings up the question of where to store such dimensions between the preparation process and the auto-positioning itself; perhaps the grids created during the preparation of the tree could be left in their containers, and when aposAutoPosition- Containers comes back down the tree it could reuse them for the actual auto-positioning. This would be more efficient and would provide a convenient place to store minimum coordinates.
+A problem occurs in aposSpaceOutLines when there is more space stored in Extra than the grid can surrender. After enough recursive calls, all of the sections will be rendered non-flexible spacers, and if there is still unhandled extra space it will be left unhandled, because TotalFlex will come up empty and 0 will be returned. At the core of this problem is the difficulty of calculating an exact flexibility for containers when preparing the tree. Because the aposAutoPositionContainers traverses the widget tree from the top down, if too high a flexibility is assigned, the container will go ahead and contract, only to find out later that its contents can't go as small as it did, which leaves them hanging over the side. This could potentially be fixed by calculating minimum dimensions for each container while preparing the tree, and then taking them into account before resizing the container. This brings up the question of where to store such dimensions between the preparation process and the auto-positioning itself; perhaps the grids created during the preparation of the tree could be left in their containers, and when aposAutoPosition- Containers comes back down the tree it could reuse them for the actual auto-positioning. This would be more efficient and would provide a convenient place to store minimum coordinates.
     
-A problem that could be fixed by adding minumum dimensions is the way the main body of a tab widget can shrink to the point that it doesn't have the surface area to accomodate the tabs, leaving them floating off in space; especially top and bottom mounted tabs.
+A problem that could be fixed by adding minimum dimensions is the way the main body of a tab widget can shrink to the point that it doesn't have the surface area to accommodate the tabs, leaving them floating off in space; especially top and bottom mounted tabs.
 
 Another problem arises due to the difference between APOS_MINWIDTH and APOS_MINSPACE. The former is the lowest acceptable height or width for a widget, and the latter is the lowest acceptable width for a row or column in a grid. The problem occurs when the row or column a widget is in contracts all the way down to the minimum, and then the widget displays at its slightly higher minimum, causing it to overflow onto other widgets (see Filemanager.app for an example). If ideal flexibilities could be calculated the row or column would never contract that far with a widget inside of it. The two minimums could be set to each other, but it would result in either very narrow widgets or awkwardly big spaces between widgets.
 
-Applications like duelform.app that are composed of windows tend not to resize very well due to the way the apos module handles windows separate from everything else. It may be desirable to distinguish between windows that are part of the standard interface and windows that pop up as the result a button click or other action. This could be done by adding another layer of conditional in all the places where windows have been screened out, that examines the visible property of each window. Then the standard interface windows could be auto-positioned with all the other widgets, and only the pop-up windows that lay behind everything would be screened out.
+Applications like duelform.app that are composed of windows tend not to resize very well due to the way the apos module handles windows separate from everything else. It may be desirable to distinguish between windows that are part of the standard interface and windows that pop up as the result of a button click or other action. This could be done by adding another layer of conditional in all the places where windows have been screened out, that examines the visible property of each window. Then the standard interface windows could be auto-positioned with all the other widgets, and only the pop-up windows that lay behind everything would be screened out.
 
 If the auto-positioning module is thought to be suspect for problems encountered while testing other parts of Centrallix, it can be entirely turned off for debugging purposes by commenting out the call to aposAutoPositionWidgetTree near the end of the wgtrVerify function in wgtr.c.
 
 ## Future Functionality
-At present the auto-positioning module only resizes an application once, right before the first time it renders. However, it would't be hard to coerce it to run every time the application window changes size, and dynamically resize the application. This would require making some browser specific modifications outside the apos module.
+At present the auto-positioning module only resizes an application once, right before the first time it renders. However, it wouldn't be hard to coerce it to run every time the application window changes size, and dynamically resize the application. This would require making some browser specific modifications outside the apos module.
 
 Another possibility that the auto-positioning module opens up is resizable window widgets. Once the windows have been modified to allow the user to request a new size, auto-positioning the contents would simply involve passing a pointer to the window to the toplevel function of the apos module. 
 
@@ -252,7 +252,7 @@ aposAutoPositionWidgetTree
 
 ### int aposInit()
 #### Description:
-Function called from wgtrInitilize() in wgtr.c to register the datatypes used in the auto-positioning module.
+Function called from wgtrInitialize() in wgtr.c to register the datatypes used in the auto-positioning module.
 
 #### Method:
 nmRegister is called for grids, sections, and lines.
@@ -268,7 +268,7 @@ A pointer to a widget with features that make offsets necessary, and five intege
 If the given widget is a scrollpane, window with titlebar, or tab, the appropriate integers are given values that will compensate throughout the auto-positioning process for the extra space they take up.
 
 #### Method:
-The integers used are declared in other functions and pointers to them passed to aposSetOffsetBools. If it is known at the point the call is being made from that not all five will be used, NULL can be passed in for the unused ones. isSP is set simple when the widget is a scrollpane. isWin is set when the widget is an html window, and either the titlebar property does not exist, or it does exist and is set to "yes". isTopTab is set when the widget is either a top OR bottom mounted tab widget (if someone can think of a less misleading name, they can change it). isSideTab is set when the widget is a left or right mounted tab widget. tabWidth is set to the tab_width property, unless it isn't found in which case it defaults to 80.
+The integers used are declared in other functions and pointers to them passed to aposSetOffsetBools. If it is known at the point the call is being made from that not all five will be used, NULL can be passed in for the unused ones. isSP is set simply when the widget is a scrollpane. isWin is set when the widget is an html window, and either the titlebar property does not exist, or it does exist and is set to "yes". isTopTab is set when the widget is either a top OR bottom mounted tab widget (if someone can think of a less misleading name, they can change it). isSideTab is set when the widget is a left or right mounted tab widget. tabWidth is set to the tab_width property, unless it isn't found in which case it defaults to 80.
 
 ### int aposAutoPositionWidgetTree(pWgtrNode)
 #### Description: 
@@ -282,7 +282,7 @@ After a few things in the tree are prepared, a call is made to a recursive funct
     
 ### int aposPrepareTree(pWgtrNode)
 #### Description:
-Recursively traverses the widget tree from the bottom up and sets the flexibility property of each containers according to the flexibility of its contents. Also patches any widgets with unspecified heights.
+Recursively traverses the widget tree from the bottom up and sets the flexibility property of each container according to the flexibility of its contents. Also patches any widgets with unspecified heights.
 
 #### Inputs: 
 A pointer to the container to be prepared, an XArray pointer to the PatchedWidgets array.
@@ -291,7 +291,7 @@ A pointer to the container to be prepared, an XArray pointer to the PatchedWidge
 All containers in the widget tree have a reasonable flexibility value based on their contents, and all widgets have a specified height.
 
 #### Method: 
-As all the children of the given node are looped through, each one is tested to see if its height is specified; if not it is passed to aposPatchNegativeHeight, with the exception of nonvisuals and scrollpanes. A recursive call is then made to prepare any container children, with the exception windows. After all children in the container have been addressed, the flexibility of the container is set using aposSetContainerFlex.
+As all the children of the given node are looped through, each one is tested to see if its height is specified; if not it is passed to aposPatchNegativeHeight, with the exception of nonvisuals and scrollpanes. A recursive call is then made to prepare any container children, with the exception of windows. After all children in the container have been addressed, the flexibility of the container is set using aposSetContainerFlex.
 
 ### int aposPatchNegativeHeights(pWgtrNode, pXArray)
 #### Description:
@@ -321,17 +321,17 @@ Auto-positions the widgets inside a container and all subsequent containers in t
 A pointer to the parent container.
 
 #### Method:  
-A grid object is declared and initiallized. All the necessary lines and sections are added to the grid. The lines are then spaced out, first the horizontal ones and then the vertical, and the widgets are snapped to the new locations of the lines they were associated with. Once the dimensions of all the children have been established, they are looped through and a recursive call is made on any visual container children, save window widgets. This includes visual containers found one level beneath nonvisual containers. Finally a function frees up all of the dynamically allocated memory in the grid object. 
+A grid object is declared and initialized. All the necessary lines and sections are added to the grid. The lines are then spaced out, first the horizontal ones and then the vertical, and the widgets are snapped to the new locations of the lines they were associated with. Once the dimensions of all the children have been established, they are looped through and a recursive call is made on any visual container children, save window widgets. This includes visual containers found one level beneath nonvisual containers. Finally a function frees up all of the dynamically allocated memory in the grid object. 
 
 ### int aposInitiallizeGrid (pAposGrid)
 #### Description:  
-Short function to initiallize the XArrays in the grid object.
+Short function to initialize the XArrays in the grid object.
 
 #### Inputs:  
 A pointer to the grid
 
 #### Results:  
-The Row, Col, HLines, and VLines are initiallized with length 16.
+The Row, Col, HLines, and VLines are initialized with length 16.
 
 #### Method:  
 xaInit is called on each XArray.
@@ -360,7 +360,7 @@ A pointer to a grid and a pointer to its container.
 All the lines needed to outline the children in a container are added.
 
 #### Method:
-The children of the given container are looped through, and for every one that is visual and not a window, four lines are created using aposCreatLine to outline its edges. aposSetOffsetBools sets the tab flags for each child to toggle the compensation for tabs. If a child is a nonvisual container, a recursive call is made to add all of its children to the same grid.
+The children of the given container are looped through, and for every one that is visual and not a window, four lines are created using aposCreateLine to outline its edges. aposSetOffsetBools sets the tab flags for each child to toggle the compensation for tabs. If a child is a nonvisual container, a recursive call is made to add all of its children to the same grid.
     
 ### int aposCreateLine(pWgtrNode, pXArray, int, int, int)
 #### Description:
@@ -373,7 +373,7 @@ A pointer to the widget whose edge the line is for, a pointer to *Lines array in
 A new line exists at the given location, or an existing line is updated. 
 
 #### Method: 
-First aposExistingLine is used to check for an existing line at the given location. If one is found the given widget is added to the array indicated by flag. If none is found, memory for a new line is allocated. The line object's arrays are initiallized and it's properties filled in, and it is added to the given *Lines array, sorted by location.
+First aposExistingLine is used to check for an existing line at the given location. If one is found the given widget is added to the array indicated by flag. If none is found, memory for a new line is allocated. The line object's arrays are initialized and its properties filled in, and it is added to the given *Lines array, sorted by location.
     
 ### pAposLine aposExistingLine(pXArray, int)
 #### Description: 
@@ -422,7 +422,7 @@ Creates a new row or column section using the two given lines as boundaries.
 A pointer to the array of sections to be added to (either Rows or Cols of the current grid), two pointers to the two lines that define the new section, an integer whose sign indicates whether the new section will be expanded or contracted, and a flag indicating if it is a row or column.
 
 #### Method: 
-Memory for a new section is allocated and initiallized. The properties are filled out using the given lines, aposNonFlexChildren, aposIsSpacer, and aposAverageChildFlex. If the section is a spacer or contains non-flexible children, its flexibility is set to 0; otherwise if it has flexible children its flexibility is set to their average. If neither of those apply it must be a wide, widgetless gap, and a default flexibility is assigned. Finally the new section is added to the given section array.
+Memory for a new section is allocated and initialized. The properties are filled out using the given lines, aposNonFlexChildren, aposIsSpacer, and aposAverageChildFlex. If the section is a spacer or contains non-flexible children, its flexibility is set to 0; otherwise if it has flexible children its flexibility is set to their average. If neither of those apply it must be a wide, widgetless gap, and a default flexibility is assigned. Finally the new section is added to the given section array.
     
 ### int aposIsSpacer(pAposLine, pAposLine, int, int)
 #### Description: 
@@ -452,7 +452,7 @@ The widgets that start on or cross the given line are looped through, and their 
 
 ### int aposSpaceOutLines(pXArray, pXArray, int)
 #### Description:
-Adjusts spaces between lines to expand or contract the current grid to fit it's container.
+Adjusts spaces between lines to expand or contract the current grid to fit its container.
 
 #### Inputs:
 A pointer to the set of lines to be spaced out (either HLines or VLines), a pointer to the corresponding set of sections, and the integer difference between the requested and actual geometry of the container the grid is resizing into.
@@ -461,7 +461,7 @@ A pointer to the set of lines to be spaced out (either HLines or VLines), a poin
 The spaces between the given lines add up to span the exact length of the container.
 
 #### Method:
-The flexibility of the given sections is summed; if it is 0 there is no flexibility for expansion or contraction, and 0 is returned. Otherwise, the given lines are looped through, from left to right or top to bottom, and each line's location is set equal to the previous line's location plus the adjusted width of the preceding section. If Diff is positive, the adjustment is simply a fraction of Diff that is proportional to the section's relative size and flexibility. If Diff is negative the same adjustment is calculated, but it is then tested to ensure that it is not too negative for the section to handle. If it is too negative and the section would be unacceptably narrow after adjustment, then as much of the adjustment as possible is given to the section, and the rest is stored in Extra. That section's flexability is then set to 0 and it is marked as a spacer to avoid further attempts of recursive calls to extract space from it. If the adjustment is not too negative, then the line is adjusted the same as when Diff was positive. After all the lines have been looped through and their locations adjusted, a recursive call is made on Extra in an attempt to spread the homeless extra space out over some of the more flexible sections. 
+The flexibility of the given sections is summed; if it is 0 there is no flexibility for expansion or contraction, and 0 is returned. Otherwise, the given lines are looped through, from left to right or top to bottom, and each line's location is set equal to the previous line's location plus the adjusted width of the preceding section. If Diff is positive, the adjustment is simply a fraction of Diff that is proportional to the section's relative size and flexibility. If Diff is negative the same adjustment is calculated, but it is then tested to ensure that it is not too negative for the section to handle. If it is too negative and the section would be unacceptably narrow after adjustment, then as much of the adjustment as possible is given to the section, and the rest is stored in Extra. That section's flexibility is then set to 0 and it is marked as a spacer to avoid further attempts of recursive calls to extract space from it. If the adjustment is not too negative, then the line is adjusted the same as when Diff was positive. After all the lines have been looped through and their locations adjusted, a recursive call is made on Extra in an attempt to spread the homeless extra space out over some of the more flexible sections. 
 
 ### int aposSnapWidgetsToGrid(pXArray, int)
 #### Description:
@@ -471,7 +471,7 @@ Called after the grid has been expanded or contracted out to make corresponding 
 A pointer to the array of lines being snapped to, and a flag indicating if they are vertical or horizontal.
 
 #### Results:
-The widgets' edges coincide once again with the their corresponding lines in the expanded or contracted grid.
+The widgets' edges coincide once again with their corresponding lines in the expanded or contracted grid.
 
 #### Method:
 Loops through all of the lines in the given array, and addresses the widgets stored in each line's SWidgets and EWidgets arrays; assigning the left/top edge of SWidgets and the right/bottom edge of EWidgets to the current line's location. Non-flexible widgets are not allowed to change width or height, although the logic in aposNonFlexChild should never allow this safety to be utilized. Tab widgets are snapped to points offset from their lines using flags set by aposSetOffsetBools, to countercompensate for the adjustment made in aposAddLinesForChildren.
@@ -482,13 +482,13 @@ Loops through all of the lines in the given array, and addresses the widgets sto
 After all of the underlying widgets in a container have been auto-positioned, this function makes a final pass through the children and ensures that any windows are within that container's bounds. If windows are resized in doing so, their contents are subsequently auto-positioned.
 
 #### Inputs:  
-A pointer to the the last visual container encountered when going recursively into nonvisual containers, and a pointer to the container whose windows are to be checked.
+A pointer to the last visual container encountered when going recursively into nonvisual containers, and a pointer to the container whose windows are to be checked.
 
 #### Results:  
 All windows in the given container are within that container's bounds, as well as any windows within those windows and any windows within nonvisual containers of the given container.
 
 #### Method:  
-isWin and isSp are set to help deal with any titlebars or scrollbars. The children are looped through and the windows examined. If a window is outside it's container's top or left border, it is moved in to a coordinate of (0,0); if it is bigger than its container, its size is decreased till it matches; and if it is hanging outside its container's bottom or right corner, it is moved up and to the left. Finally, if the window changed size, aposAutoPositionWidgetTree is called on the window to auto-position its contents accordingly. If any nonvisual containers are encountered, aposProcessWindows is called on them, but the original visual container is passed in to be used as a visual reference for windows found within the nonvisual container. 
+isWin and isSp are set to help deal with any titlebars or scrollbars. The children are looped through and the windows examined. If a window is outside its container's top or left border, it is moved in to a coordinate of (0,0); if it is bigger than its container, its size is decreased till it matches; and if it is hanging outside its container's bottom or right corner, it is moved up and to the left. Finally, if the window changed size, aposAutoPositionWidgetTree is called on the window to auto-position its contents accordingly. If any nonvisual containers are encountered, aposProcessWindows is called on them, but the original visual container is passed in to be used as a visual reference for windows found within the nonvisual container. 
 
 ### int aposFree(pAposGrid)
 #### Description:  
@@ -498,7 +498,7 @@ Short function that frees dynamically allocated memory and deInits XArrays in th
 A pointer to the grid object.
 
 #### Results:  
-All memory associated with the grid is freed and XArray deinitiallized.
+All memory associated with the grid is freed and XArray deinitialized.
 
 #### Method:  
 First all the row and column objects are freed with nmFree. Horizontal and vertical lines follow, after their *widget XArrays are deInit'ed. Finally the 4 XArrays in the grid are deInit'ed.

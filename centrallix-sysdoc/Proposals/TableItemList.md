@@ -6,7 +6,7 @@ Date:	February 3, 2026
 
 ## Overview
 
-An increasingly common need regarding the Centrallix Table widget is to display a list of items within a cell.  This could a list of tasks to be accomplished, a list of steps taken in an engagement, a list of recent gifts or months in which gifts happened, etc.
+An increasingly common need regarding the Centrallix Table widget is to display a list of items within a cell.  This could be a list of tasks to be accomplished, a list of steps taken in an engagement, a list of recent gifts or months in which gifts happened, etc.
 
 This document describes a new Table widget "itemlist" column type to facilitate this type of display without having to use less efficient or less user friendly techniques such as SVG images or unstructured text.
 

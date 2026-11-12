@@ -57,7 +57,7 @@
 
 
 /*** start - this function is called by the MTASK module once the 
- *** mtInitialize() routine is finished intializing the first thread.  This
+ *** mtInitialize() routine is finished initializing the first thread.  This
  *** is where processing really starts.  The purpose of this function is
  *** primarily to initialize the various modules and thus get things
  *** started.
@@ -147,7 +147,7 @@ void
 usage(char* name)
     {
 	fprintf(stderr,
-		"Usage: %s [-Vdqh] [-c configfile]\n\n"
+		"Usage: %s [-Vdqh] [-c configfile] [-p pidfile]\n\n"
 		"\t-V          print version number,\n"
 		"\t-d          become a service (fork into the background),\n"
 		"\t-q          initialize quietly,\n"

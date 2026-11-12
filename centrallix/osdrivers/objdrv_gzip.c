@@ -12,7 +12,7 @@
 #include "cxlib/mtsession.h"
 #include <zlib.h>
 #include <time.h>
-/** module definintions **/
+/** module definitions **/
 #include "centrallix.h"
 
 /************************************************************************/
@@ -88,7 +88,7 @@ typedef struct
 #define GZIP_FLAG_NAME 0x08
 #define GZIP_FLAG_COMMENT 0x10
 
-/** current mode (which type of session z_stream represents **/
+/** current mode (which type of session z_stream represents) **/
 #define GZIP_MODE_NONE 0
 #define GZIP_MODE_READ 1
 #define GZIP_MODE_WRITE 2
@@ -297,7 +297,7 @@ gzip_internal_ParseHeaders(pGzipData inf)
     else
 	{
 	i=inf->Header[4] | inf->Header[5]<<8 | inf->Header[6]<<16 | inf->Header[7]<<24;
-	/** use the reentrant version, incase we ever go to pthreads **/
+	/** use the reentrant version, in case we ever go to pthreads **/
 	if((ptime=gmtime_r(&i,&time)))
 	    {
 	    /** dates are relative to 1/1/1900, both in the DateTime and the struct tm**/
@@ -534,7 +534,7 @@ gzipQueryClose(void* qy_v, pObjTrxTree* oxt)
     return -1;
     }
 
-/*** gzipGetAttrType - get the type (DATA_T_gzip) of an attribute by name.
+/*** gzipGetAttrType - get the type (DATA_T_xxx) of an attribute by name.
  ***/
 int
 gzipGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)

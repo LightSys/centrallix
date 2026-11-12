@@ -315,7 +315,7 @@ typedef enum
 
 /*** Names and types of metadata attributes.
  *** While it is not necessary to include the idxtype id in the data of this
- *** table, we do it just for clarity, so its obvious which row is which.  It
+ *** table, we do it just for clarity, so it's obvious which row is which.  It
  *** may be advantageous in the Initialize() function to check the integrity
  *** of the ids vs. positions in the array for this table.
  ***/
@@ -518,7 +518,7 @@ idx_internal_GetTData(pObject obj)
 	    offset = ((int*)(tdata->RawHeader))[2+pagesread]*IDX_PAGESIZE;
 	    if (objRead(obj->Prev, tdata->RawHeader + pagesread*IDX_PAGESIZE, IDX_PAGESIZE, offset, OBJ_U_PACKET | OBJ_U_SEEK) != IDX_PAGESIZE)
 	        {
-	        mssError(0,"IDX","Could complete reading of indexed file header, offset %d",offset);
+	        mssError(0,"IDX","Could not complete reading of indexed file header, offset %d",offset);
 	        nmSysFree(tdata->RawHeader);
 	        nmFree(tdata,sizeof(IdxTableData));
 	        return NULL;
@@ -865,7 +865,7 @@ idx_internal_DiscardPage(pXHashQueue xhq, pXHQElement xe, int locked)
 
 /*** idx_internal_FlushCache - write any 'dirty' pages back to the node
  *** object's content, and mark the pages 'clean'.  If a TData is specified,
- *** then only object matching that tdata will be written.  Otherwise,
+ *** then only objects matching that tdata will be written.  Otherwise,
  *** TData should be null.
  ***/
 int

@@ -76,12 +76,12 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	if (wgtrGetPropertyValue(oc_node,"y",DATA_T_INTEGER,POD(&y)) != 0) y=0;
 	if (wgtrGetPropertyValue(oc_node,"width",DATA_T_INTEGER,POD(&w)) != 0) 
 	    {
-	    mssError(1,"HTOC","Pane widget must have a 'width' property");
+	    mssError(1,"HTOC","ObjCanvas widget must have a 'width' property");
 	    return -1;
 	    }
 	if (wgtrGetPropertyValue(oc_node,"height",DATA_T_INTEGER,POD(&h)) != 0)
 	    {
-	    mssError(1,"HTOC","Pane widget must have a 'height' property");
+	    mssError(1,"HTOC","ObjCanvas widget must have a 'height' property");
 	    return -1;
 	    }
 
@@ -132,7 +132,7 @@ htocRender(pHtSession s, pWgtrNode oc_node, int z)
 	if (!s->Capabilities.CSS2) 
 	    htrAddBodyItem_va(s,"<BODY %STR><table width=%POS><tr><td>&nbsp;</td></tr></table>\n",main_bg,w);
 
-	/** Check for objects within the pane. **/
+	/** Check for objects within the object canvas. **/
 	htrRenderSubwidgets(s, oc_node, z+2);
 
 	/** End the containing layer. **/

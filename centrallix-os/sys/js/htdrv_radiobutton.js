@@ -18,7 +18,7 @@ function rb_getvalue() {
 	    }
 	    return vals;
 	}
-	if (this.selectedOption) /* return "" if nothing is selected */
+	if (this.selectedOption) /* return null if nothing is selected */
 		return this.selectedOption.optionValue;
 	 else
 		return null;
@@ -27,7 +27,7 @@ function rb_getvalue() {
 // Luke (03/04/02) -
 // The behavior of this is in direct combination with the clearvalue function.
 // if set_value() gets called with a value that _is_ in the list of values, then
-/// obviously that button gets marked.  However, if the called parameter is not
+// obviously that button gets marked.  However, if the called parameter is not
 // in the list, an alert message pops up.  SEE ALSO:  Note on clearvalue()
 function rb_setvalue(v) {
 	for (var i=0; i < this.buttonList.length; i++) {

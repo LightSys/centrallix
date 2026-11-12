@@ -235,7 +235,7 @@ nht_i_WriteAttrs(pObject obj, pNhtConn conn, handle_t tgt, int put_meta)
 
 	conn->LastHandle = XHN_INVALID_HANDLE;
 
-	/** Loop throught the attributes. **/
+	/** Loop through the attributes. **/
 	if (put_meta)
 	    {
 	    nht_i_WriteOneAttr(obj, conn, tgt, "name");
@@ -374,7 +374,7 @@ nht_i_OSML_GetAttrValue(void* nhtqy_v, char* attrname, int datatype, pObjData va
     }
 
 
-/*** nht_i_CreateQuery() - create a NhtQuery object, filled in from the
+/*** nht_i_CreateQuery() - create an NhtQuery object, filled in from the
  *** request data.
  ***/
 pNhtQuery
@@ -430,7 +430,7 @@ nht_i_WriteHandle(pNhtConn conn, handle_t handle)
 
 /*** nht_i_OSML - direct OSML access from the client.  This will take
  *** the form of a number of different OSML operations available seemingly
- *** seamlessly (hopefully) from within the JavaScript functionality in an
+ *** seamlessly (hopefully) from within the JavaScript functionality in a
  *** DHTML document.
  ***/
 int
@@ -1105,7 +1105,7 @@ nht_i_OSML(pNhtConn conn, pObject target_obj, char* request, pStruct req_inf, pN
 			    xsInit(reopen_str);
 			    nht_query = nht_i_CreateQuery(req_inf);
 
-			    /** note - it is possible for autoname to fail, thus name == NULL.  IT
+			    /** note - it is possible for autoname to fail, thus name == NULL.  It
 			     ** is also possible for a poorly constructed SQL query to result in
 			     ** NULL name values (for doing setattr on multiquery result set
 			     ** objects).  So we must check.

@@ -421,7 +421,7 @@ prt_psod_Open(pPrtSession s)
 	context->TransRPipe = NULL;
 	context->TransWPipe = NULL;
 
-	/** Right now, just support 75, 100, 150, and 300 dpi **/
+	/** Support every resolution in prt_psod_resolutions **/
 	for(i=0;i<sizeof(prt_psod_resolutions)/sizeof(PrtResolution);i++)
 	    xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+i));
 	/*xaAddItem(&(context->SupportedResolutions), (void*)(prt_psod_resolutions+0));
@@ -570,7 +570,7 @@ prt_psod_Close(void* context_v)
     }
 
 
-/*** prt_psod_eetResolutions() - return the list of supported resolutions
+/*** prt_psod_GetResolutions() - return the list of supported resolutions
  *** for this printing session.
  ***/
 pXArray
@@ -630,7 +630,7 @@ prt_psod_GetNearestFontSize(void* context_v, double req_size)
 
 /*** prt_psod_GetCharacterMetric() - return the width of a printed character
  *** in a given font size, attributes, etc., in 10ths of an inch (relative to
- *** 10cpi, or 12point, fonts.
+ *** 10cpi, or 12point, fonts).
  ***/
 void
 prt_psod_GetCharacterMetric(void* context_v, unsigned char* str, pPrtTextStyle style, double* width, double* height)
