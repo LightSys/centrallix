@@ -2114,7 +2114,24 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
 		colspan = 1;
 		rpt_internal_GetInteger(inf, subinf, "colspan", &colspan, 1, 0);
 		if (colspan <= 0) colspan=1;
-		tablecell_handle = prtAddObject(tablerow_handle, PRT_OBJ_T_TABLECELL, -1,-1,-1,-1, flags, "colspan", colspan, NULL);
+		border_color = rpt_internal_GetBorderColor(inf, subinf);
+		tb = rpt_internal_GetSideBorder(inf, subinf, "topborder", border_color);
+		bb = rpt_internal_GetSideBorder(inf, subinf, "bottomborder", border_color);
+		lb = rpt_internal_GetSideBorder(inf, subinf, "leftborder", border_color);
+		rb = rpt_internal_GetSideBorder(inf, subinf, "rightborder", border_color);
+		tablecell_handle = prtAddObject(
+		    tablerow_handle, PRT_OBJ_T_TABLECELL, -1,-1,-1,-1, flags,
+		    "colspan", colspan,
+		    "topborder", tb,
+		    "bottomborder", bb,
+		    "leftborder", lb,
+		    "rightborder", rb,
+		    NULL
+		);
+		if (tb != NULL) prtFreeBorder(tb);
+		if (bb != NULL) prtFreeBorder(bb);
+		if (lb != NULL) prtFreeBorder(lb);
+		if (rb != NULL) prtFreeBorder(rb);
 		if (tablecell_handle < 0)
 		    {
 		    mssError(0,"RPT","could not build table cell object '%s'", subinf->Name);

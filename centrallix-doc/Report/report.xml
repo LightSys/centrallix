@@ -8,7 +8,7 @@
 			<p>Formatting settings such as style, font, fontsize, fontcolor, align, and lineheight are shared by nearly all objects except for images and queries.</p>
 			<p>Data output properties, including dateformat, moneyformat, and nullformat, are shared by all objects except for images and queries.</p>
 			<p>The 'condition' property is available on all objects except for system/report and report/table-cell.</p>
-			<p>Border properties are available on areas, tables, and table-rows.</p>
+			<p>Border properties are available on areas, tables, table-rows, and table-cells.</p>
 		</overview>
 		<usage>
 		</usage>
@@ -16,14 +16,14 @@
 			<property name="align" type="string">The text alignment to use - either "left" (default), "center", "right", or "full".  Available on all objects except image, query, and parameter.</property>
 			<property name="bgcolor" type="string">The background color of a table, table row, table cell, or area.</property>
 			<property name="bordercolor" type="string">The color of the object's borders, in HTML RGB format such as "#999999" for gray.  Default black.</property>
-			<property name="bottomborder" type="double">Width of the outside border at the bottom of the table, table-row, or area.</property>
+			<property name="bottomborder" type="double">Width of the outside border at the bottom of the table, table-row, table-cell, or area.</property>
 			<property name="condition" type="integer">Typically an expression that evaluates to an integer/boolean type.  If true, the area, table, table-row, image, or data element is displayed, otherwise the object (and any contents) are ignored.</property>
 			<property name="dateformat" type="string">If the field has a date/time data type, this allows the format to be specified.  See the introduction to the reporting system documentation for date/time format information.  Available on all objects except image, query, and parameter.</property>
 			<property name="font" type="string">The font to use.  Available fonts are "times", "helvetica", and "courier".  Available on all objects except image, query, and parameter.</property>
 			<property name="fontsize" type="integer">The font size in points.  Available on all objects except image, query, and parameter.</property>
 			<property name="fontcolor" type="string">The color to use for the font, in HTML RGB format such as "#FF0000" for Red.  Available on all objects except image, query, and parameter.</property>
 			<property name="height" type="double">The height of the area, image, or table.  If "fixedsize" is set to "no" (false), then the object is allowed to grow beyond this height.</property>
-			<property name="leftborder" type="double">Width of the outside border at the left side of the table, table-row, or area.</property>
+			<property name="leftborder" type="double">Width of the outside border at the left side of the table, table-row, table-cell, or area.</property>
 			<property name="lineheight" type="double">The line height (and thus line spacing) to use.  Normally this is set when "fontsize" is set, but can be manually set.  Units are standard "y" units, so setting this to 2.0 will not result in double-spaced lines.  Available on all objects except image, query, and parameter.</property>
 			<property name="margintop" type="double">The height of the top margin of the object.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
 			<property name="marginbottom" type="double">The height of the bottom margin.  Default 0.  Available on report, area, table, table-row, and table-cell.</property>
@@ -32,9 +32,9 @@
 			<property name="min_fontsize" type="double">The smallest font size in points that text may shrink to when it does not fit in an area, table cell, or row that cannot grow.  If unset, text never shrinks.  Available on all objects except image, query, and parameter.</property>
 			<property name="moneyformat" type="string">If the field has a money data type, this allows the format to be specified.  See the introduction to the reporting system documentation for money format information.  Available on all objects except image, query, and parameter.</property>
 			<property name="nullformat" type="string">Sets the text to use if the data is NULL.  Normally "NULL" is displayed.  Available on all objects except image, query, and parameter.</property>
-			<property name="rightborder" type="double">Width of the outside border at the right side of the table, table-row, or area.</property>
+			<property name="rightborder" type="double">Width of the outside border at the right side of the table, table-row, table-cell, or area.</property>
 			<property name="style" type="stringvec">A list of styles, separated by commas.  Values include "bold", "italic", "underline", or "plain".  Available on all objects except image, query, and parameter.</property>
-			<property name="topborder" type="double">Width of the outside border at the top of the table, table-row, or area.</property>
+			<property name="topborder" type="double">Width of the outside border at the top of the table, table-row, table-cell, or area.</property>
 			<property name="width" type="double">The width of the table, area, or image.</property>
 			<property name="x" type="double">The X coordinate of the upper left corner of the table, area, or image, relative to the container.  Defaults to 0.0.</property>
 			<property name="y" type="double">The Y coordinate of the upper left corner of the table, area, or image, relative to the container.  Defaults to 0.0.</property>
