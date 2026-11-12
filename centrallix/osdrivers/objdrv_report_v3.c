@@ -23,6 +23,7 @@
 #include <mgl2/mgl_cf.h>
 #endif
 #include "obj.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -1589,6 +1590,13 @@ rpt_internal_DoSection(pRptData inf, pStructInf section, pRptSession rs, int con
     int is_balanced;
     int n_cols;
 
+	/** Check recursion **/
+	if (UNLIKELY(thExcessiveRecursion()))
+	    {
+	    mssError(1, "RPT", "Failed to generate report section: resource exhaustion occurred.");
+	    return -1;
+	    }
+
 	rval = rpt_internal_CheckCondition(inf,section);
 	if (rval < 0)
 	    goto error;
@@ -2036,6 +2044,13 @@ rpt_internal_DoTableRow(pRptData inf, pStructInf tablerow, pRptSession rs, int n
     int context_pushed = 0;
     double h = -1;
 
+	/** Check recursion **/
+	if (UNLIKELY(thExcessiveRecursion()))
+	    {
+	    mssError(1, "RPT", "Failed to generate report table row: resource exhaustion occurred.");
+	    return -1;
+	    }
+
 	/** conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,tablerow);
 	if (rval < 0) 
@@ -2295,6 +2310,13 @@ rpt_internal_DoTable(pRptData inf, pStructInf table, pRptSession rs, int contain
     int context_pushed = 0;
     int is_autowidth = 0;
 	
+	/** Check recursion **/
+	if (UNLIKELY(thExcessiveRecursion()))
+	    {
+	    mssError(1, "RPT", "Failed to generate report table: resource exhaustion occurred.");
+	    return -1;
+	    }
+
 	/** conditional rendering **/
 	rval = rpt_internal_CheckCondition(inf,table);
 	if (rval < 0) return rval;
@@ -4951,7 +4973,7 @@ rpt_internal_DoContainer(pRptData inf, pStructInf container, pRptSession rs, int
     pStructInf subobj;
 
 	/** Check recursion **/
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1,"RPT","Could not generate report: resource exhaustion occurred");
 	    return -1;
@@ -5136,6 +5158,13 @@ rpt_internal_DoArea(pRptData inf, pStructInf area, pRptSession rs, pRptSource th
     pPrtBorder bdr = NULL;
     int rval = 0;
 
+	/** Check recursion **/
+	if (UNLIKELY(thExcessiveRecursion()))
+	    {
+	    mssError(1, "RPT", "Failed to generate report area: resource exhaustion occurred.");
+	    return -1;
+	    }
+
 	rval = rpt_internal_CheckCondition(inf,area);
 	if (rval < 0) return rval;
 	if (rval == 0) return 0;
@@ -5264,7 +5293,7 @@ rpt_internal_PreProcess(pRptData inf, pStructInf object, pRptSession rs, pParamO
     pStructInf attr;
 
 	/** Check recursion **/
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1,"RPT","Could not generate report: resource exhaustion occurred");
 	    goto error;
@@ -5333,7 +5362,7 @@ rpt_internal_UnPreProcess(pRptData inf, pStructInf object, pRptSession rs)
     pRptUserData ud;
 
 	/** Check recursion **/
-	if (thExcessiveRecursion())
+	if (UNLIKELY(thExcessiveRecursion()))
 	    {
 	    mssError(1,"RPT","Could not generate report: resource exhaustion occurred");
 	    return -1;
