@@ -991,6 +991,9 @@ prt_textlm_Rescale(pPrtObjStream container, pPrtObjStream newobj)
  *** the object.
  ***
  *** Currently, FLOWAROUND and NOLINESEQ are not fully implemented.
+ ***
+ *** On failure, new_child_obj is never freed.  If no part of it was placed,
+ *** its Parent is NULL, and the caller still owns it.
  ***/
 int
 prt_textlm_AddObject(pPrtObjStream this, pPrtObjStream new_child_obj)
