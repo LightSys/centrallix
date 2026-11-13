@@ -89,6 +89,29 @@ mq_internal_CheckYield(pMultiQuery mq)
     }
 
 
+/*** mq_internal_FreeOpenParams - release an EXPRESSION source's parameter
+ *** list.
+ ***/
+int
+mq_internal_FreeOpenParams(pXArray list)
+    {
+    int i;
+    pQueryOpenParam param;
+
+	for(i=0; i<list->nItems; i++)
+	    {
+	    param = (pQueryOpenParam)list->Items[i];
+	    if (param->Token) nmSysFree(param->Token);
+	    if (param->RawText) nmSysFree(param->RawText);
+	    if (param->Expr) expFreeExpression(param->Expr);
+	    nmFree(param, sizeof(QueryOpenParam));
+	    }
+	xaFree(list);
+
+    return 0;
+    }
+
+
 /*** mq_internal_FreeQS - releases memory used by the query syntax tree.
  ***/
 int 
@@ -108,6 +131,8 @@ mq_internal_FreeQS(pQueryStructure qstree)
 	xsDeInit(&qstree->AssignRawData);
 	if (qstree->Expr) expFreeExpression(qstree->Expr);
 	if (qstree->AssignExpr) expFreeExpression(qstree->AssignExpr);
+	if (qstree->OpenParamList) mq_internal_FreeOpenParams(qstree->OpenParamList);
+	if (qstree->ParamDisplay) nmSysFree(qstree->ParamDisplay);
 
 	/** Free this structure **/
 	nmFree(qstree,sizeof(QueryStructure));
@@ -397,11 +422,11 @@ mq_internal_SetDependencies(pQueryStatement stmt, pQueryElement tree, pQueryElem
 /*** mq_qdo_GetAttrType() - get the type of a declared object's attribute.
  ***/
 int
-mq_qdo_GetAttrType(pQueryDeclaredObject qdo, char* attrname)
+mq_qdo_GetAttrType(pObjDataItem qdo, char* attrname)
     {
     pStructInf attr;
 
-	attr = stLookup(qdo->Data, attrname);
+	attr = stLookup((pStructInf)qdo->Data, attrname);
 	if (!attr)
 	    return DATA_T_UNAVAILABLE; /* null / unset */
 
@@ -412,11 +437,11 @@ mq_qdo_GetAttrType(pQueryDeclaredObject qdo, char* attrname)
 /*** mq_qdo_GetAttrValue() - get the value of a declared object's attribute.
  ***/
 int
-mq_qdo_GetAttrValue(pQueryDeclaredObject qdo, char* attrname, int data_type, pObjData val)
+mq_qdo_GetAttrValue(pObjDataItem qdo, char* attrname, int data_type, pObjData val)
     {
     pStructInf attr;
 
-	attr = stLookup(qdo->Data, attrname);
+	attr = stLookup((pStructInf)qdo->Data, attrname);
 	if (!attr)
 	    return 1; /* null / unset */
 
@@ -427,7 +452,7 @@ mq_qdo_GetAttrValue(pQueryDeclaredObject qdo, char* attrname, int data_type, pOb
 /*** mq_qdo_SetAttrValue() - does nothing at present.
  ***/
 int
-mq_qdo_SetAttrValue(pQueryDeclaredObject qdo, char* attrname, int data_type, pObjData val)
+mq_qdo_SetAttrValue(pObjDataItem qdo, char* attrname, int data_type, pObjData val)
     {
     return -1;
     }
@@ -436,7 +461,7 @@ mq_qdo_SetAttrValue(pQueryDeclaredObject qdo, char* attrname, int data_type, pOb
 /*** mq_internal_AddDeclaredObject() - make a declared object available in the object list
  ***/
 int
-mq_internal_AddDeclaredObject(pMultiQuery query, pQueryDeclaredObject qdo)
+mq_internal_AddDeclaredObject(pMultiQuery query, pObjDataItem qdo)
     {
 
 	/** Add to master object list too **/
@@ -468,85 +493,74 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
     pQueryStructure orderby_item, last_orderby;
     char* ptr;
     int has_identity;
-    pQueryDeclaredObject qdo;
-    pQueryDeclaredCollection qdc;
-    pQueryAppData appdata;
+    pObjDataScope app_scope, target_scope;
+    pObjDataItem item;
+    int item_type;
+    handle_t collection;
+    pStructInf obj_data;
+    int saved_current_id;
 
 	/** Set up a declared object or collection? **/
 	if (dec)
 	    {
 	    stmt->Flags |= MQ_TF_IMMEDIATE;
+	    app_scope = objScopeGetAppScope();
+	    item_type = (dec->Flags & MQ_SF_COLLECTION)?OBJ_DI_T_COLLECTION:OBJ_DI_T_OBJECT;
 
-	    /** Lookup application scope data **/
-	    appdata = appLookupAppData("MQ:appdata");
-
-	    /** Object vs Collection **/
-	    if (dec->Flags & MQ_SF_COLLECTION)
+	    /** A collection parameter cannot be redeclared **/
+	    item = objScopeLookup(stmt->Query->Scope, dec->Name, item_type, 1);
+	    if (item && (item->Flags & OBJ_DI_F_PARAM))
 		{
-		/** Check to see if it already exists **/
-		exists = 0;
-		for(i=0; i<appdata->DeclaredCollections.nItems; i++)
-		    {
-		    qdc = (pQueryDeclaredCollection)appdata->DeclaredCollections.Items[i];
-		    if (!strcmp(qdc->Name, dec->Name))
-			exists = 1;
-		    }
+		mssError(1, "MQ", "DECLARE: '%s' is a collection parameter and cannot be declared", dec->Name);
+		return -1;
+		}
 
-		if (!exists)
+	    /** Already declared at application scope, or (for collections) in this query? **/
+	    exists = (objScopeLookupLocal(app_scope, dec->Name, item_type) != NULL);
+	    if (item_type == OBJ_DI_T_COLLECTION && objScopeLookupLocal(stmt->Query->Scope, dec->Name, item_type))
+		exists = 1;
+
+	    if (!exists)
+		{
+		/** Query vs application scope; no application context means query scope **/
+		target_scope = (app_scope && (dec->Flags & MQ_SF_APPSCOPE))?app_scope:stmt->Query->Scope;
+
+		if (item_type == OBJ_DI_T_COLLECTION)
 		    {
-		    /** New Collection **/
-		    qdc = (pQueryDeclaredCollection)nmMalloc(sizeof(QueryDeclaredCollection));
-		    if (qdc)
+		    /** New collection **/
+		    collection = objCreateTempObject(stmt->Query->SessionID);
+		    if (collection == XHN_INVALID_HANDLE)
 			{
-			/** Create it **/
-			strtcpy(qdc->Name, dec->Name, sizeof(qdc->Name));
-			qdc->Collection = objCreateTempObject(stmt->Query->SessionID);
-			if (qdc->Collection == XHN_INVALID_HANDLE)
-			    {
-			    mssError(1, "MQ", "DECLARE COLLECTION: could not allocate temporary collection '%s'", qdc->Name);
-			    nmFree(qdc, sizeof(QueryDeclaredCollection));
-			    return -1;
-			    }
-
-			/** Query vs Application scope **/
-			if (dec->Flags & MQ_SF_APPSCOPE)
-			    xaAddItem(&appdata->DeclaredCollections, (void*)qdc);
-			else
-			    xaAddItem(&stmt->Query->DeclaredCollections, (void*)qdc);
+			mssError(1, "MQ", "DECLARE COLLECTION: could not allocate temporary collection '%s'", dec->Name);
+			return -1;
+			}
+		    if (!objScopeAdd(target_scope, dec->Name, OBJ_DI_T_COLLECTION, OBJ_DI_F_OWNED, collection, NULL, NULL))
+			{
+			objDeleteTempObject(collection);
+			return -1;
 			}
 		    }
-		}
-	    else
-		{
-		/** Check to see if the object already exists **/
-		exists = 0;
-		for(i=0; i<appdata->DeclaredObjects.nItems; i++)
-		    {
-		    qdo = (pQueryDeclaredObject)appdata->DeclaredObjects.Items[i];
-		    if (!strcmp(qdo->Name, dec->Name))
-			exists = 1;
-		    }
-
-		if (!exists)
+		else
 		    {
 		    /** New object **/
-		    qdo = (pQueryDeclaredObject)nmMalloc(sizeof(QueryDeclaredObject));
-		    if (qdo)
+		    if (expLookupParam(stmt->Query->ObjList, dec->Name, 0) >= 0)
 			{
-			/** Create it **/
-			strtcpy(qdo->Name, dec->Name, sizeof(qdo->Name));
-			qdo->Data = stAllocInf();
-			if (mq_internal_AddDeclaredObject(stmt->Query, qdo) < 0)
-			    {
-			    mssError(1, "MQ", "DECLARE OBJECT: '%s' already exists in query or query parameter", qdo->Name);
-			    return -1;
-			    }
-
-			/** Query vs App scope **/
-			if (appdata && (dec->Flags & MQ_SF_APPSCOPE))
-			    xaAddItem(&appdata->DeclaredObjects, (void*)qdo);
-			else
-			    xaAddItem(&stmt->Query->DeclaredObjects, (void*)qdo);
+			mssError(1, "MQ", "DECLARE OBJECT: '%s' already exists in query or query parameter", dec->Name);
+			return -1;
+			}
+		    obj_data = stAllocInf();
+		    if (!obj_data)
+			return -1;
+		    item = objScopeAdd(target_scope, dec->Name, OBJ_DI_T_OBJECT, OBJ_DI_F_OWNED, XHN_INVALID_HANDLE, NULL, obj_data);
+		    if (!item)
+			{
+			stFreeInf(obj_data);
+			return -1;
+			}
+		    if (mq_internal_AddDeclaredObject(stmt->Query, item) < 0)
+			{
+			mssError(1, "MQ", "DECLARE OBJECT: '%s' already exists in query or query parameter", dec->Name);
+			return -1;
 			}
 		    }
 		}
@@ -562,6 +576,10 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		return -1;
 		}
 	    }
+
+	/** INSERT destination parameters **/
+	if (ins && mq_internal_SetupOpenParams(stmt, ins, -1) < 0)
+	    return -1;
 
     	/** First, build the object list from the FROM clause **/
 	has_identity = 0;
@@ -590,17 +608,29 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    return -1;
 		    }
 		subtree->ObjID = expAddParamToList(stmt->Query->ObjList, ptr, NULL, ((i==0 && !has_identity) || (subtree->Flags & MQ_SF_IDENTITY))?(EXPR_O_CURRENT | EXPR_O_PRESERVEPARENT):0);
+		}
 
-		/** Compile FROM clause expression if needed **/
+	    /** With all sources in the object list, compile FROM clause expressions
+	     ** and source parameters.  Unqualified references in them mean the
+	     ** source itself.
+	     **/
+	    for(i=0;i<from->Children.nItems;i++)
+		{
+		subtree = (pQueryStructure)(from->Children.Items[i]);
 		if (subtree->Flags & MQ_SF_EXPRESSION)
 		    {
+		    saved_current_id = stmt->Query->ObjList->CurrentID;
+		    expSetCurrentID(stmt->Query->ObjList, subtree->ObjID);
 		    subtree->Expr = expCompileExpression(subtree->RawData.String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+		    stmt->Query->ObjList->CurrentID = saved_current_id;
 		    if (!subtree->Expr) 
 			{
 			mssError(0,"MQ","Error in FROM list expression <%s>", subtree->RawData.String);
 			return -1;
 			}
 		    }
+		if (mq_internal_SetupOpenParams(stmt, subtree, subtree->ObjID) < 0)
+		    return -1;
 		}
 	    if (from->Children.nItems > 1 && !has_identity && up)
 		{
@@ -1380,12 +1410,13 @@ mq_internal_ParseUpdateItem(pQueryStructure item_qs, pLxSession lxs)
     }
 
 
-/*** mq_internal_CopyLiteral() - copy lexer data to a string raw, for later
+/*** mq_internal_CopyLiteralEx() - copy lexer data to a string raw, for later
  *** analysis or compilation.  Returns the token type of the last token
- *** encountered (i.e., the token that terminated the copy operation).
+ *** encountered (i.e., the token that terminated the copy operation).  With
+ *** stop_at_paren set, an unmatched close paren also terminates the copy.
  ***/
 int
-mq_internal_CopyLiteral(pLxSession lxs, pXString xs)
+mq_internal_CopyLiteralEx(pLxSession lxs, pXString xs, int stop_at_paren)
     {
     int t, parenlevel;
     char* ptr;
@@ -1397,6 +1428,8 @@ mq_internal_CopyLiteral(pLxSession lxs, pXString xs)
 	    if (t == MLX_TOK_ERROR || t == MLX_TOK_EOF)
 		break;
 	    if ((t == MLX_TOK_RESERVEDWD || t == MLX_TOK_SEMICOLON || t == MLX_TOK_COMMA) && parenlevel <= 0)
+		break;
+	    if (stop_at_paren && t == MLX_TOK_CLOSEPAREN && parenlevel <= 0)
 		break;
 	    if (t == MLX_TOK_OPENPAREN) parenlevel++;
 	    if (t == MLX_TOK_CLOSEPAREN) parenlevel--;
@@ -1420,6 +1453,16 @@ mq_internal_CopyLiteral(pLxSession lxs, pXString xs)
 	    }
 
     return t;
+    }
+
+
+/*** mq_internal_CopyLiteral() - copy lexer data to a string raw; see
+ *** mq_internal_CopyLiteralEx().
+ ***/
+int
+mq_internal_CopyLiteral(pLxSession lxs, pXString xs)
+    {
+    return mq_internal_CopyLiteralEx(lxs, xs, 0);
     }
 
 
@@ -1456,6 +1499,427 @@ mq_internal_ParseExpressionSource(pLxSession lxs, pQueryStructure new_qs)
     }
 
 
+/*** mq_internal_ParseOpenParams() - parse a list of name = value parameters
+ *** for an object path, as used by EXEC and by a parenthesized list after a
+ *** path in FROM or INSERT.  Each parameter is added to list.  An ordinary
+ *** value is kept as expression text, compiled later with the source (see
+ *** mq_internal_CompileOpenParams()).  A value of "collection <name>" or
+ *** "path <path>" is published now as a data scope token owned by the
+ *** statement, so that the opened object can resolve it.  A readable form
+ *** without tokens is appended to display.  With parenthesized set, the open
+ *** paren must already be consumed and the close paren ends the list.  If
+ *** first_name is set, the first parameter's name and equals sign were
+ *** already consumed.  Returns the number of tokens published, or -1 on error.
+ ***/
+int
+mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesized, char* first_name, pXString display, pXArray list)
+    {
+    int t;
+    int cnt = 0;
+    int n_tokens = 0;
+    int is_coll;
+    char* ptr;
+    char name[64];
+    char token[33];
+    char pathbuf[OBJSYS_MAX_PATH + 1];
+    int sep;
+    int len;
+    pXString value = NULL;
+    pObjDataItem item;
+    ObjDataItem path_item;
+    pQueryOpenParam param = NULL;
+
+	while(1)
+	    {
+	    /** Parameter name and equals sign **/
+	    if (cnt == 0 && first_name)
+		{
+		strtcpy(name, first_name, sizeof(name));
+		}
+	    else
+		{
+		t = mlxNextToken(lxs);
+		if (parenthesized && cnt == 0 && t == MLX_TOK_CLOSEPAREN)
+		    break;
+		if (t != MLX_TOK_STRING && t != MLX_TOK_RESERVEDWD && t != MLX_TOK_KEYWORD)
+		    {
+		    if (parenthesized)
+			{
+			mssError(1, "MQ", "Expected parameter name in parameter list");
+			goto error;
+			}
+		    mlxHoldToken(lxs);
+		    break;
+		    }
+		ptr = mlxStringVal(lxs, NULL);
+		if (!ptr || strlen(ptr) >= sizeof(name))
+		    {
+		    mssError(1, "MQ", "Invalid parameter name in parameter list");
+		    goto error;
+		    }
+		strtcpy(name, ptr, sizeof(name));
+		if (mlxNextToken(lxs) != MLX_TOK_EQUALS)
+		    {
+		    mssError(1, "MQ", "Expected equals after parameter '%s'", name);
+		    goto error;
+		    }
+		}
+	    if (cnt > 0 && xsConcatenate(display, ", ", 2) < 0)
+		goto nomem;
+	    cnt++;
+	    if (xsConcatQPrintf(display, "%STR=", name) < 0)
+		goto nomem;
+	    param = (pQueryOpenParam)nmMalloc(sizeof(QueryOpenParam));
+	    if (!param)
+		goto nomem;
+	    memset(param, 0, sizeof(QueryOpenParam));
+	    strtcpy(param->Name, name, sizeof(param->Name));
+
+	    /** Parameter value **/
+	    t = mlxNextToken(lxs);
+	    ptr = (t == MLX_TOK_KEYWORD)?mlxStringVal(lxs, NULL):NULL;
+	    if (ptr && (!strcasecmp(ptr, "collection") || !strcasecmp(ptr, "path")))
+		{
+		is_coll = !strcasecmp(ptr, "collection");
+		t = mlxNextToken(lxs);
+		if (is_coll && t != MLX_TOK_KEYWORD && t != MLX_TOK_STRING)
+		    {
+		    mssError(1, "MQ", "Expected collection name after COLLECTION in parameter '%s'", name);
+		    goto error;
+		    }
+		if (!is_coll && t != MLX_TOK_FILENAME && t != MLX_TOK_STRING)
+		    {
+		    mssError(1, "MQ", "Expected path after PATH in parameter '%s'", name);
+		    goto error;
+		    }
+		ptr = mlxStringVal(lxs, NULL);
+		if (!ptr)
+		    goto error;
+
+		/** An unquoted path runs to whitespace, so it can end with the separator **/
+		sep = 0;
+		if (!is_coll && t == MLX_TOK_FILENAME)
+		    {
+		    if (strlen(ptr) >= sizeof(pathbuf))
+			{
+			mssError(1, "MQ", "Path for parameter '%s' is too long", name);
+			goto error;
+			}
+		    strtcpy(pathbuf, ptr, sizeof(pathbuf));
+		    len = strlen(pathbuf);
+		    if (len > 1 && pathbuf[len-1] == ',')
+			sep = MLX_TOK_COMMA;
+		    else if (len > 1 && pathbuf[len-1] == ')' && parenthesized)
+			sep = MLX_TOK_CLOSEPAREN;
+		    if (sep)
+			pathbuf[len-1] = '\0';
+		    ptr = pathbuf;
+		    }
+
+		if (is_coll)
+		    {
+		    item = mq_internal_FindCollection(stmt->Query, ptr);
+		    if (!item)
+			{
+			mssError(1, "MQ", "Collection '%s' for parameter '%s' does not exist", ptr, name);
+			goto error;
+			}
+		    }
+		else
+		    {
+		    memset(&path_item, 0, sizeof(path_item));
+		    strtcpy(path_item.Name, name, sizeof(path_item.Name));
+		    path_item.Type = OBJ_DI_T_COLLECTION;
+		    path_item.Flags = OBJ_DI_F_PATH;
+		    path_item.TempObj = XHN_INVALID_HANDLE;
+		    path_item.Path = ptr;
+		    item = &path_item;
+		    }
+		if (objScopePublish(stmt->Query->Scope, item, (void*)stmt, token, sizeof(token)) < 0)
+		    {
+		    mssError(1, "MQ", "Could not pass collection for parameter '%s'", name);
+		    goto error;
+		    }
+		n_tokens++;
+		param->Token = nmSysStrdup(token);
+		if (!param->Token)
+		    goto nomem;
+		if (xsConcatQPrintf(display, "%STR %STR", is_coll?"collection":"path", ptr) < 0)
+		    goto nomem;
+		t = sep?sep:mlxNextToken(lxs);
+		}
+	    else
+		{
+		/** Ordinary value: kept as text, compiled with the source **/
+		mlxHoldToken(lxs);
+		value = xsNew();
+		if (!value)
+		    goto nomem;
+		t = mq_internal_CopyLiteralEx(lxs, value, parenthesized);
+		if (t < 0)
+		    {
+		    mssError(1, "MQ", "Error in value for parameter '%s'", name);
+		    goto error;
+		    }
+		param->RawText = nmSysStrdup(value->String);
+		if (!param->RawText)
+		    goto nomem;
+		len = strlen(value->String);
+		while (len > 0 && value->String[len-1] == ' ')
+		    len--;
+		if (xsConcatenate(display, value->String, len) < 0)
+		    goto nomem;
+		xsFree(value);
+		value = NULL;
+		}
+
+	    if (xaAddItem(list, (void*)param) < 0)
+		goto nomem;
+	    param = NULL;
+
+	    /** Separator or end of list **/
+	    if (t == MLX_TOK_COMMA)
+		continue;
+	    if (parenthesized)
+		{
+		if (t == MLX_TOK_CLOSEPAREN)
+		    break;
+		mssError(1, "MQ", "Expected comma or close parenthesis in parameter list");
+		goto error;
+		}
+	    mlxHoldToken(lxs);
+	    break;
+	    }
+
+	return n_tokens;
+
+    nomem:
+	mssError(1, "MQ", "Out of memory parsing parameter list");
+
+    error:
+	mlxNoteError(lxs);
+	if (value)
+	    xsFree(value);
+	if (param)
+	    {
+	    if (param->Token) nmSysFree(param->Token);
+	    if (param->RawText) nmSysFree(param->RawText);
+	    nmFree(param, sizeof(QueryOpenParam));
+	    }
+	return -1;
+    }
+
+
+/*** mq_internal_AppendOpenParams() - append URL parameters to a source path,
+ *** using '?' or '&' as needed.  Returns -1 if the result does not fit.
+ ***/
+int
+mq_internal_AppendOpenParams(char* source, int source_size, char* params)
+    {
+    int len = strlen(source);
+    int rval;
+
+	if (!params || !*params)
+	    return 0;
+	rval = snprintf(source + len, source_size - len, "%s%s", strchr(source, '?')?"&":"?", params);
+	if (rval < 0 || rval >= source_size - len)
+	    {
+	    source[len] = '\0';
+	    mssError(1, "MQ", "Source path with parameters exceeds internal limits");
+	    return -1;
+	    }
+
+    return 0;
+    }
+
+
+/*** mq_internal_CompileOpenParams() - compile the parameter values of an
+ *** EXPRESSION source, against the same object list as its path expression,
+ *** and record the objects they reference.
+ ***/
+int
+mq_internal_CompileOpenParams(pQueryStatement stmt, pQueryStructure qs)
+    {
+    int i;
+    pQueryOpenParam param;
+
+	if (!qs->OpenParamList)
+	    return 0;
+	for(i=0; i<qs->OpenParamList->nItems; i++)
+	    {
+	    param = (pQueryOpenParam)qs->OpenParamList->Items[i];
+	    if (!param->RawText)
+		continue;
+	    param->Expr = expCompileExpression(param->RawText, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!param->Expr)
+		{
+		mssError(0, "MQ", "Error in value for parameter '%s' <%s>", param->Name, param->RawText);
+		return -1;
+		}
+	    qs->ParamCoverageMask |= param->Expr->ObjCoverageMask;
+	    }
+
+    return 0;
+    }
+
+
+/*** mq_internal_EvalOpenParams() - evaluate the parameter list of an
+ *** EXPRESSION source into URL form ("a=1&b=2"), appended to params.  The
+ *** caller evaluates it where it evaluates the path expression, so the values
+ *** see the same objects, including :cx__page for a paged source.
+ ***/
+int
+mq_internal_EvalOpenParams(pQueryStatement stmt, pQueryStructure qs, pXString params)
+    {
+    int i;
+    pQueryOpenParam param;
+    pTObjData ptod = NULL;
+    char* value;
+
+	if (!qs->OpenParamList)
+	    return 0;
+	for(i=0; i<qs->OpenParamList->nItems; i++)
+	    {
+	    param = (pQueryOpenParam)qs->OpenParamList->Items[i];
+	    if (param->Token)
+		{
+		value = param->Token;
+		}
+	    else
+		{
+		if (expEvalTree(param->Expr, stmt->Query->ObjList) < 0)
+		    {
+		    mssError(0, "MQ", "Error evaluating value for parameter '%s'", param->Name);
+		    goto error;
+		    }
+		ptod = expExpressionToPtod(param->Expr);
+		if (!ptod)
+		    goto error;
+		value = ptodToStringTmp(ptod);
+		}
+	    if (xsConcatQPrintf(params, "%STR%STR&URL=%STR&URL", (i > 0)?"&":"", param->Name, value) < 0)
+		goto error;
+	    if (ptod)
+		{
+		ptodFree(ptod);
+		ptod = NULL;
+		}
+	    }
+
+	return 0;
+
+    error:
+	if (ptod)
+	    ptodFree(ptod);
+	return -1;
+    }
+
+
+/*** mq_internal_SetupOpenParams() - compile a source's parameter values once
+ *** the source is in the object list.  If they reference a FROM source
+ *** (including this one, e.g. :cx__page), contain a subquery, or belong to an
+ *** EXPRESSION source, mark them MQ_SF_DEFERPARAMS so they are evaluated each
+ *** time the source is opened.  Otherwise evaluate them now and append them
+ *** to the path.  self_id is the source's object id, which unqualified
+ *** references resolve to, or -1 (INSERT destination; only EXPRESSION defers).
+ ***/
+int
+mq_internal_SetupOpenParams(pQueryStatement stmt, pQueryStructure qs, int self_id)
+    {
+    pXString params = NULL;
+    int saved_current_id;
+    int rval;
+    unsigned int source_mask;
+
+	if (!qs->OpenParamList)
+	    return 0;
+
+	/** Compile with this source as the current object **/
+	saved_current_id = stmt->Query->ObjList->CurrentID;
+	if (self_id >= 0)
+	    expSetCurrentID(stmt->Query->ObjList, self_id);
+	rval = mq_internal_CompileOpenParams(stmt, qs);
+	stmt->Query->ObjList->CurrentID = saved_current_id;
+	if (rval < 0)
+	    goto error;
+
+	/** Evaluate with the source, or now? **/
+	source_mask = qs->ParamCoverageMask & EXPR_MASK_ALLOBJECTS & ~stmt->Query->ProvidedObjMask;
+	if ((qs->Flags & MQ_SF_EXPRESSION) || (self_id >= 0 && (source_mask || (qs->ParamCoverageMask & EXPR_MASK_INDETERMINATE))))
+	    {
+	    qs->Flags |= MQ_SF_DEFERPARAMS;
+	    return 0;
+	    }
+	params = xsNew();
+	if (!params)
+	    goto error;
+	if (mq_internal_EvalOpenParams(stmt, qs, params) < 0)
+	    goto error;
+	qs->ParamOffset = strlen(qs->Source);
+	if (mq_internal_AppendOpenParams(qs->Source, sizeof(qs->Source), xsString(params)) < 0)
+	    goto error;
+	xsFree(params);
+
+	return 0;
+
+    error:
+	if (params)
+	    xsFree(params);
+	return -1;
+    }
+
+
+/*** mq_internal_ParseSourceParams() - parse a parameter list for a source
+ *** (see mq_internal_ParseOpenParams()) and attach it to the source's QS.
+ *** The values are compiled and either evaluated or deferred later, once the
+ *** source is in the object list (see mq_internal_SetupOpenParams()).
+ *** Returns 0 on success or -1 on error.
+ ***/
+int
+mq_internal_ParseSourceParams(pLxSession lxs, pQueryStatement stmt, pQueryStructure qs, int parenthesized, char* first_name)
+    {
+    pXString display = NULL;
+    int n_tokens;
+
+	display = xsNew();
+	if (!display)
+	    goto error;
+
+	/** Attached now so that mq_internal_FreeQS() releases it on error **/
+	qs->OpenParamList = xaNew(4);
+	if (!qs->OpenParamList)
+	    goto error;
+	n_tokens = mq_internal_ParseOpenParams(lxs, stmt, parenthesized, first_name, display, qs->OpenParamList);
+	if (n_tokens < 0)
+	    goto error;
+
+	/** Nothing in the list? **/
+	if (qs->OpenParamList->nItems == 0)
+	    {
+	    mq_internal_FreeOpenParams(qs->OpenParamList);
+	    qs->OpenParamList = NULL;
+	    }
+	else
+	    {
+	    if (n_tokens > 0)
+		qs->Flags |= MQ_SF_SCOPEDOPEN;
+	    if (!(qs->Flags & MQ_SF_EXPRESSION))
+		qs->ParamOffset = strlen(qs->Source);
+	    qs->ParamDisplay = nmSysStrdup(display->String);
+	    if (!qs->ParamDisplay)
+		goto error;
+	    }
+
+	xsFree(display);
+	return 0;
+
+    error:
+	if (display)
+	    xsFree(display);
+	return -1;
+    }
+
+
 /*** mq_internal_SyntaxParse - parse the syntax of the SQL used for this
  *** query.
  ***/
@@ -1471,6 +1935,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
     int t,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom,nonempty,paged,onerow;
+    int rval;
     int is_object;
     char* ptr;
     char* str;
@@ -2049,6 +2514,44 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				}
 			    strtcpy(insert_cls->SourceType, sourcetype, sizeof(insert_cls->SourceType));
 
+			    /** Optional parameter list for the destination: "( name = ..." **/
+			    if (t == MLX_TOK_OPENPAREN && !(insert_cls->Flags & MQ_SF_COLLECTION))
+				{
+				t = mlxNextToken(lxs);
+				ptr = NULL;
+				if (t == MLX_TOK_STRING || t == MLX_TOK_RESERVEDWD || t == MLX_TOK_KEYWORD)
+				    {
+				    ptr = mlxStringVal(lxs, NULL);
+				    if (ptr)
+					{
+					ptr = nmSysStrdup(ptr);
+					if (!ptr)
+					    {
+					    next_state = ParseError;
+					    break;
+					    }
+					}
+				    t = mlxNextToken(lxs);
+				    }
+				if (!ptr || t != MLX_TOK_EQUALS)
+				    {
+				    if (ptr) nmSysFree(ptr);
+				    next_state = ParseError;
+				    mssError(1,"MQ","INSERT: expected a parameter list (name = value, ...) after the destination; column lists are not supported");
+				    mlxNoteError(lxs);
+				    break;
+				    }
+				rval = mq_internal_ParseSourceParams(lxs, stmt, insert_cls, 1, ptr);
+				nmSysFree(ptr);
+				if (rval < 0)
+				    {
+				    next_state = ParseError;
+				    mssError(0,"MQ","Error in INSERT destination parameters");
+				    break;
+				    }
+				t = mlxNextToken(lxs);
+				}
+
 			    /** Check for a keyword, which provides an identifier for the insert path **/
 			    if (t == MLX_TOK_KEYWORD || t == MLX_TOK_STRING)
 				{
@@ -2212,69 +2715,26 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				new_qs->Parent = from_cls;
 				new_qs->Presentation[0] = 0;
 				new_qs->Name[0] = 0;
-				xs = xsNew();
-				xsCopy(xs, ptr, -1);
-
-				/** Check for parameters **/
-				int paramcnt = 0;
-				while(1)
+				if (strlen(ptr) >= sizeof(new_qs->Source))
 				    {
-				    t = mlxNextToken(lxs);
-				    if (t != MLX_TOK_STRING && t != MLX_TOK_RESERVEDWD && t != MLX_TOK_KEYWORD)
-					{
-					mlxHoldToken(lxs);
-					break;
-					}
-				    paramcnt++;
-				    ptr = mlxStringVal(lxs, NULL);
-				    xsConcatQPrintf(xs, "%STR%STR&URL", (paramcnt == 1)?"?":"&", ptr);
-				    t = mlxNextToken(lxs);
-				    if (t != MLX_TOK_EQUALS)
-					{
-					next_state = ParseError;
-					mssError(1,"MQ","Expected equals after EXEC parameter");
-					mlxNoteError(lxs);
-					xsFree(xs);
-					xs = NULL;
-					break;
-					}
-
-				    /** Parameter value **/
-				    param = xsNew();
-				    t = mq_internal_CopyLiteral(lxs, param);
-				    if (t < 0)
-					{
-					next_state = ParseError;
-					mssError(1,"MQ","Error in EXEC parameter");
-					mlxNoteError(lxs);
-					xsFree(xs);
-					xs = NULL;
-					xsFree(param);
-					break;
-					}
-				    ptod = expCompileAndEval(param->String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
-				    if (!ptod)
-					{
-					next_state = ParseError;
-					mssError(1,"MQ","Could not evaluate EXEC parameter");
-					mlxNoteError(lxs);
-					xsFree(xs);
-					xs = NULL;
-					xsFree(param);
-					break;
-					}
-				    ptr = ptodToStringTmp(ptod);
-				    xsConcatQPrintf(xs, "=%STR&URL", ptr);
-				    if (t != MLX_TOK_COMMA)
-					{
-					mlxHoldToken(lxs);
-					break;
-					}
+				    next_state = ParseError;
+				    mssError(1,"MQ","EXEC path name is too long");
+				    mlxNoteError(lxs);
+				    break;
 				    }
+				strtcpy(new_qs->Source, ptr, sizeof(new_qs->Source));
 
-				if (xs != NULL)
+				/** Parameters, either in parentheses or in the older unparenthesized form **/
+				t = mlxNextToken(lxs);
+				if (t != MLX_TOK_OPENPAREN)
+				    mlxHoldToken(lxs);
+				if (mq_internal_ParseSourceParams(lxs, stmt, new_qs, t == MLX_TOK_OPENPAREN, NULL) < 0)
 				    {
-				    strtcpy(new_qs->Source, xs->String, sizeof(new_qs->Source));
+				    next_state = ParseError;
+				    mssError(0,"MQ","Error in EXEC parameters");
+				    }
+				else
+				    {
 				    next_state = LookForClause;
 				    }
 				}
@@ -2718,6 +3178,26 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 			mlxCopyToken(lxs,new_qs->Source,256);
 			t = mlxNextToken(lxs);
 			}
+
+		    /** Optional parameter list for the source **/
+		    if (t == MLX_TOK_OPENPAREN)
+			{
+			if (collfrom)
+			    {
+			    next_state = ParseError;
+			    mssError(1,"MQ","In FROM clause: a COLLECTION source does not take parameters");
+			    mlxNoteError(lxs);
+			    break;
+			    }
+			if (mq_internal_ParseSourceParams(lxs, stmt, new_qs, 1, NULL) < 0)
+			    {
+			    next_state = ParseError;
+			    mssError(0,"MQ","Error in FROM clause source parameters");
+			    break;
+			    }
+			t = mlxNextToken(lxs);
+			}
+
 		    if (t == MLX_TOK_KEYWORD)
 		        {
 			mlxCopyToken(lxs,new_qs->Presentation,32);
@@ -2894,7 +3374,12 @@ mq_internal_DumpQS(pQueryStructure tree, int level)
 	    case MQ_T_QUERY: printf("%*.*sQUERY:\n",level*4,level*4,""); break;
 	    case MQ_T_SELECTCLAUSE: printf("%*.*sSELECT:\n",level*4,level*4,""); break;
 	    case MQ_T_FROMCLAUSE: printf("%*.*sFROM:\n",level*4,level*4,""); break;
-	    case MQ_T_FROMSOURCE: printf("%*.*s%s (%s)\n",level*4,level*4,"",tree->Source,tree->Presentation); break;
+	    case MQ_T_FROMSOURCE:
+		if (tree->ParamDisplay)
+		    printf("%*.*s%.*s [%s] (%s)\n",level*4,level*4,"",tree->ParamOffset,tree->Source,tree->ParamDisplay,tree->Presentation);
+		else
+		    printf("%*.*s%s (%s)\n",level*4,level*4,"",tree->Source,tree->Presentation);
+		break;
 	    case MQ_T_SELECTITEM: printf("%*.*s%s (%s)\n",level*4,level*4,"",tree->RawData.String,tree->Presentation); break;
 	    case MQ_T_WHERECLAUSE: printf("%*.*sWHERE: %s\n",level*4,level*4,"",tree->RawData.String); break;
 	    case MQ_T_UPDATECLAUSE: printf("%*.*sUPDATE:\n",level*4,level*4,""); break;
@@ -2905,6 +3390,26 @@ mq_internal_DumpQS(pQueryStructure tree, int level)
 	/** Print child items **/
 	for(i=0;i<tree->Children.nItems;i++) 
 	    mq_internal_DumpQS((pQueryStructure)(tree->Children.Items[i]),level+1);
+
+    return 0;
+    }
+
+
+/*** mq_internal_PrintSource - print a projection's source for showplan,
+ *** showing a parameter list in readable form rather than as encoded
+ *** open-ctl parameters, which can contain data scope tokens.
+ ***/
+int
+mq_internal_PrintSource(pQueryElement tree)
+    {
+    pQueryStructure qs = (pQueryStructure)tree->QSLinkage;
+
+	if (qs->ParamDisplay && !(qs->Flags & MQ_SF_EXPRESSION))
+	    printf(", IDX=%d, REF=%s, SRC=%.*s [%s]", tree->SrcIndex, qs->Presentation, qs->ParamOffset, qs->Source, qs->ParamDisplay);
+	else if (qs->ParamDisplay)
+	    printf(", IDX=%d, REF=%s, SRC=%s [%s]", tree->SrcIndex, qs->Presentation, qs->RawData.String, qs->ParamDisplay);
+	else
+	    printf(", IDX=%d, REF=%s, SRC=%s", tree->SrcIndex, qs->Presentation, qs->Source);
 
     return 0;
     }
@@ -2923,7 +3428,7 @@ mq_internal_DumpQE(pQueryElement tree, int level)
 	    tree->Constraint?tree->Constraint->ObjCoverageMask:0);
 
 	if (strncmp(tree->Driver->Name, "MQP", 3) == 0 && tree->QSLinkage)
-	    printf(", IDX=%d, REF=%s, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Presentation, ((pQueryStructure)tree->QSLinkage)->Source);
+	    mq_internal_PrintSource(tree);
 
 	printf("\n");
 
@@ -2948,7 +3453,7 @@ mq_internal_DumpQEWithExpr(pQueryElement tree, int level)
 	    tree->Constraint?tree->Constraint->ObjCoverageMask:0);
 
 	if (strncmp(tree->Driver->Name, "MQP", 3) == 0 && tree->QSLinkage)
-	    printf(", IDX=%d, REF=%s, SRC=%s", tree->SrcIndex, ((pQueryStructure)tree->QSLinkage)->Presentation, ((pQueryStructure)tree->QSLinkage)->Source);
+	    mq_internal_PrintSource(tree);
 
 	printf("\n");
 	if (tree->Constraint)
@@ -3143,6 +3648,10 @@ mq_internal_FreeStatement(pQueryStatement stmt)
 	if (stmt->Tree)
 	    mq_internal_FreeQE(stmt->Tree);
 	stmt->Tree = NULL;
+
+	/** Revoke data scope tokens this statement passed in parameters **/
+	if (stmt->Query->Scope)
+	    objScopeRevoke(stmt->Query->Scope, (void*)stmt);
 
 	/** Free the query-structure tree. **/
 	if (stmt->QTree)
@@ -3394,42 +3903,6 @@ mq_internal_NextStatement(pMultiQuery this)
     }
 
 
-/*** mq_internal_FinalizeAppData - this is called when the application context
- *** closes and we need to release any application-scope objects or collections.
- ***/
-int
-mq_internal_FinalizeAppData(void* appdata_v)
-    {
-    pQueryAppData appdata = (pQueryAppData)appdata_v;
-    int i;
-    pQueryDeclaredObject qdo;
-    pQueryDeclaredCollection qdc;
-
-	/** Free the objects **/
-	for(i=0; i<appdata->DeclaredObjects.nItems; i++)
-	    {
-	    qdo = (pQueryDeclaredObject)appdata->DeclaredObjects.Items[i];
-	    stFreeInf(qdo->Data);
-	    nmFree(qdo, sizeof(QueryDeclaredObject));
-	    }
-	xaDeInit(&appdata->DeclaredObjects);
-
-	/** Free collections **/
-	for(i=0; i<appdata->DeclaredCollections.nItems; i++)
-	    {
-	    qdc = (pQueryDeclaredCollection)appdata->DeclaredCollections.Items[i];
-	    objDeleteTempObject(qdc->Collection);
-	    nmFree(qdc, sizeof(QueryDeclaredCollection));
-	    }
-	xaDeInit(&appdata->DeclaredCollections);
-
-	/** Free the appdata structure itself **/
-	nmFree(appdata, sizeof(QueryAppData));
-
-    return 0;
-    }
-
-
 /*** mqStartQuery - starts a new MultiQuery.  The function of this routine
  *** is similar to the objOpenQuery; but this is called from objMultiQuery,
  *** and is not associated with any given object when it is opened.  Returns
@@ -3439,20 +3912,9 @@ void*
 mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int flags)
     {
     pMultiQuery this = NULL;
-    pQueryAppData appdata;
+    pObjDataScope scope;
+    pObjDataItem item;
     int i;
-
-	/** Ensure the application-scope data is initialized **/
-	appdata = appLookupAppData("MQ:appdata");
-	if (!appdata)
-	    {
-	    appdata = (pQueryAppData)nmMalloc(sizeof(QueryAppData));
-	    if (!appdata)
-		goto error;
-	    xaInit(&appdata->DeclaredObjects, 8);
-	    xaInit(&appdata->DeclaredCollections, 8);
-	    appRegisterAppData("MQ:appdata", appdata, mq_internal_FinalizeAppData);
-	    }
 
     	/** Allocate the multiquery structure itself. **/
 	this = (pMultiQuery)nmMalloc(sizeof(MultiQuery));
@@ -3470,8 +3932,9 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	this->QueryCnt = 0;
 	this->YieldMsec = 0;
 	this->StartMsec = mtRealTicks() * 1000 / CxGlobals.ClkTck;
-	xaInit(&this->DeclaredObjects, 8);
-	xaInit(&this->DeclaredCollections, 8);
+	this->Scope = objScopeCreate(session, objlist?objlist->DataScope:NULL);
+	if (!this->Scope)
+	    goto error;
 	if (flags & OBJ_MQ_F_ONESTATEMENT)
 	    {
 	    this->Flags = MQ_F_ONESTATEMENT; /* multi statements disabled, cannot be enabled */
@@ -3504,12 +3967,29 @@ mqStartQuery(pObjSession session, char* query_text, pParamObjects objlist, int f
 	    this->nProvidedObjects = this->ObjList->nObjects;
 	    }
 	this->ObjList->Session = this->SessionID;
+	this->ObjList->DataScope = this->Scope;
 
-	/** Import any declared objects at the application scope **/
-	for(i=0; i<appdata->DeclaredObjects.nItems; i++)
+	/** Import declared objects from enclosing scopes, then the application scope.
+	 ** Ignore failure to import (return == -1) due to scope shadowing.
+	 **/
+	for(scope = this->Scope->Parent; scope; scope = scope->Parent)
 	    {
-	    /** Ignore failure to import (return == -1) due to scope shadowing **/
-	    mq_internal_AddDeclaredObject(this, (pQueryDeclaredObject)appdata->DeclaredObjects.Items[i]);
+	    for(i=0; i<scope->Items.nItems; i++)
+		{
+		item = (pObjDataItem)scope->Items.Items[i];
+		if (item->Type == OBJ_DI_T_OBJECT)
+		    mq_internal_AddDeclaredObject(this, item);
+		}
+	    }
+	scope = objScopeGetAppScope();
+	if (scope)
+	    {
+	    for(i=0; i<scope->Items.nItems; i++)
+		{
+		item = (pObjDataItem)scope->Items.Items[i];
+		if (item->Type == OBJ_DI_T_OBJECT)
+		    mq_internal_AddDeclaredObject(this, item);
+		}
 	    }
 
 	/** Add the __inserted object **/
@@ -3764,14 +4244,12 @@ int
 mq_internal_HandleAssignments(pMultiQuery qy, pPseudoObject p)
     {
     pQueryStructure select_qs, item_qs;
-    int i,j;
+    int i;
     int t;
     ObjData val;
-    pQueryDeclaredObject qdo;
-    pQueryDeclaredObject found_qdo;
+    pObjDataItem found_qdo;
     pStructInf attr;
     int rval;
-    pQueryAppData appdata;
 
 	/** Find the select items **/
 	select_qs = mq_internal_FindItem(qy->CurStmt->QTree, MQ_T_SELECTCLAUSE, NULL);
@@ -3790,39 +4268,14 @@ mq_internal_HandleAssignments(pMultiQuery qy, pPseudoObject p)
 			if (rval >= 0)
 			    {
 			    /** Got type and value, now find it in the StructInf **/
-			    found_qdo = NULL;
-			    for(j=0;j<qy->DeclaredObjects.nItems;j++)
-				{
-				qdo = (pQueryDeclaredObject)qy->DeclaredObjects.Items[j];
-				if (!strcmp(item_qs->Name, qdo->Name))
-				    {
-				    found_qdo = qdo;
-				    break;
-				    }
-				}
-			    if (!found_qdo)
-				{
-				appdata = appLookupAppData("MQ:appdata");
-				if (appdata)
-				    {
-				    for(j=0;j<appdata->DeclaredObjects.nItems;j++)
-					{
-					qdo = (pQueryDeclaredObject)appdata->DeclaredObjects.Items[j];
-					if (!strcmp(item_qs->Name, qdo->Name))
-					    {
-					    found_qdo = qdo;
-					    break;
-					    }
-					}
-				    }
-				}
+			    found_qdo = objScopeLookup(qy->Scope, item_qs->Name, OBJ_DI_T_OBJECT, 1);
 
 			    if (found_qdo)
 				{
 				/** Existing or created attribute? **/
-				attr = stLookup(found_qdo->Data, item_qs->Presentation);
+				attr = stLookup((pStructInf)found_qdo->Data, item_qs->Presentation);
 				if (!attr && rval == 0)
-				    attr = stAddAttr(found_qdo->Data, item_qs->Presentation);
+				    attr = stAddAttr((pStructInf)found_qdo->Data, item_qs->Presentation);
 
 				/** set it or delete it **/
 				if (attr && rval == 0)
@@ -4066,9 +4519,7 @@ mqQueryClose(void* qy_v, pObjTrxTree* oxt)
 int
 mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
     {
-    int i, id;
-    pQueryDeclaredObject qdo;
-    pQueryDeclaredCollection qdc;
+    int id;
 
 	if (qy == NULL) return 0;
 
@@ -4104,20 +4555,8 @@ mq_internal_QueryClose(pMultiQuery qy, pObjTrxTree* oxt)
 	    mlxCloseSession(qy->LexerSession);
 
 	/** Declared objects and collections **/
-	for(i=0;i<qy->DeclaredObjects.nItems;i++)
-	    {
-	    qdo = (pQueryDeclaredObject)(qy->DeclaredObjects.Items[i]);
-	    stFreeInf(qdo->Data);
-	    nmFree(qdo, sizeof(QueryDeclaredObject));
-	    }
-	xaDeInit(&qy->DeclaredObjects);
-	for(i=0;i<qy->DeclaredCollections.nItems;i++)
-	    {
-	    qdc = (pQueryDeclaredCollection)(qy->DeclaredCollections.Items[i]);
-	    objDeleteTempObject(qdc->Collection);
-	    nmFree(qdc, sizeof(QueryDeclaredCollection));
-	    }
-	xaDeInit(&qy->DeclaredCollections);
+	if (qy->Scope)
+	    objScopeRelease(qy->Scope);
 
 	/** Free the qy itself **/
 	nmFree(qy,sizeof(MultiQuery));
@@ -4846,40 +5285,28 @@ mqGetQueryIdentityPath(void* qy_v, char* pathbuf, int maxlen)
     }
 
 
-/*** mq_internal_FindCollection() - search both the query scope and app scope
- *** collections lists to find a collection by name.  Returns the handle to the
- *** OSML temporary object containing the collection.
+/*** mq_internal_FindCollection() - find a collection by name in the query's
+ *** scope, its enclosing scopes (such as .qy collection parameters or an outer
+ *** query), and then the application scope.  Returns the data item, or NULL.
  ***/
-handle_t
+pObjDataItem
 mq_internal_FindCollection(pMultiQuery mq, char* collection)
     {
-    pQueryAppData appdata;
-    pQueryDeclaredCollection qdc;
-    int i;
+    return objScopeLookup(mq->Scope, collection, OBJ_DI_T_COLLECTION, 1);
+    }
 
-	/** First, search the query scope collection list **/
-	for(i=0; i<mq->DeclaredCollections.nItems; i++)
-	    {
-	    qdc = (pQueryDeclaredCollection)mq->DeclaredCollections.Items[i];
-	    if (!strcmp(qdc->Name, collection))
-		return qdc->Collection;
-	    }
 
-	/** Lookup the application scope data **/
-	appdata = appLookupAppData("MQ:appdata");
+/*** mq_internal_OpenCollection() - open a collection's data: the temporary
+ *** collection, or for a path-bound collection, the path as a directory.
+ ***/
+pObject
+mq_internal_OpenCollection(pMultiQuery mq, pObjDataItem item, int mode)
+    {
 
-	/** Next, search the query scope collection list **/
-	if (appdata)
-	    {
-	    for(i=0; i<appdata->DeclaredCollections.nItems; i++)
-		{
-		qdc = (pQueryDeclaredCollection)appdata->DeclaredCollections.Items[i];
-		if (!strcmp(qdc->Name, collection))
-		    return qdc->Collection;
-		}
-	    }
+	if (item->Flags & OBJ_DI_F_PATH)
+	    return objOpen(mq->SessionID, item->Path, mode, 0600, "system/directory");
 
-    return XHN_INVALID_HANDLE;
+    return objOpenTempObject(mq->SessionID, item->TempObj, mode);
     }
 
 /*** mqRedirectPrint - redirect the output of the print command to a file.

@@ -113,6 +113,7 @@ typedef struct _MPI
     int		    PageRecCnt;	/* count of records returned from this page */
     int		    RowsReturned;	/* rows returned since mqpStart, for onerow limit */
     int		    Remapping;	/* if expression obj id remapping is in effect */
+    pObject	    LastRow;	/* paged source: last row fetched, read by next page's params */
     }
     MqpInf, *pMqpInf;
 
@@ -927,7 +928,7 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    orig_len = cur_len;
 
 	    /** Open path so far and query for matching objects **/
-	    obj = objOpen(stmt->Query->SessionID, pathbuf, mi->ObjMode, 0600, "system/directory");
+	    obj = objOpenWithScope(stmt->Query->SessionID, pathbuf, mi->ObjMode, 0600, "system/directory", (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_SCOPEDOPEN)?stmt->Query->Scope:NULL);
 	    if (!obj)
 		goto finished;
 	    info = objInfo(obj);
@@ -1085,8 +1086,39 @@ mqp_internal_GetVirtAttrValue(pObjSession sess, pObject obj, char* attrname, pMq
     }
 
 
+/*** mqp_internal_GetPageAttrType() - while a paged source's path and
+ *** parameters are evaluated for the next page, return the type of cx__page
+ *** or of an attribute of the last row fetched on the previous page.
+ ***/
+int
+mqp_internal_GetPageAttrType(pMqpInf mi, char* attrname)
+    {
+    if (!strcmp(attrname, "cx__page"))
+	return DATA_T_INTEGER;
+    if (!mi->LastRow)
+	return DATA_T_UNAVAILABLE;
+    return objGetAttrType(mi->LastRow, attrname);
+    }
+
+
+/*** mqp_internal_GetPageAttrValue() - value counterpart to
+ *** mqp_internal_GetPageAttrType().  With no previous row, values are NULL.
+ ***/
+int
+mqp_internal_GetPageAttrValue(pMqpInf mi, char* attrname, int datatype, pObjData val)
+    {
+    if (!strcmp(attrname, "cx__page"))
+	return mqp_internal_GetAttrValue(mi, attrname, datatype, val);
+    if (!mi->LastRow)
+	return 1;
+    return objGetAttrValue(mi->LastRow, attrname, datatype, val);
+    }
+
+
 /*** mqp_internal_EvaluateSource() - do expression evaluation and wildcard
- *** expansion on a source, to generate the source list.
+ *** expansion on a source, to generate the source list.  A source whose
+ *** parameters are deferred (MQ_SF_DEFERPARAMS) also gets its parameters
+ *** evaluated and appended to the path here.
  ***/
 int
 mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
@@ -1094,9 +1126,12 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
     pExpression source_exp;
     int rval;
     pObject oldobj = NULL;
+    pQueryStructure qs = (pQueryStructure)qe->QSLinkage;
+    pXString params = NULL;
+    int saved_current_id;
 
-	/** Evaluate source expression? **/
-	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
+	/** Evaluate source expression or deferred parameters? **/
+	if (qs->Flags & (MQ_SF_EXPRESSION | MQ_SF_DEFERPARAMS))
 	    {
 	    /** Remove previous source list if necessary, since it will likely
 	     ** be different this time.
@@ -1110,51 +1145,85 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 		    }
 		mi->Flags &= ~MQP_MI_F_SOURCELIST;
 		}
+	    if (qs->Flags & MQ_SF_DEFERPARAMS)
+		{
+		params = xsNew();
+		if (!params)
+		    goto error;
+		}
 
-	    /** Evalute.  We swap the NULL object for the evaluation so the expression
-	     ** can contain the :cx__page property for paginated sources.
+	    /** Evaluate with this source as the current object.  For a paged
+	     ** source we swap in an object providing :cx__page and the values of
+	     ** the previous page's last row.
 	     **/
-	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
+	    saved_current_id = stmt->Query->ObjList->CurrentID;
+	    expSetCurrentID(stmt->Query->ObjList, qe->SrcIndex);
 	    if ((mi->Flags & MQP_MI_F_PAGED))
 		{
 		oldobj = (pObject)stmt->Query->ObjList->Objects[qe->SrcIndex];
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, (void*)mi);
-		expSetParamFunctionsByID(stmt->Query->ObjList, qe->SrcIndex, mqp_internal_GetAttrType, mqp_internal_GetAttrValue, NULL);
+		expSetParamFunctionsByID(stmt->Query->ObjList, qe->SrcIndex, mqp_internal_GetPageAttrType, mqp_internal_GetPageAttrValue, NULL);
 		}
-	    rval = expEvalTree(source_exp, stmt->Query->ObjList);
+	    source_exp = qs->Expr;
+	    rval = 0;
+	    if (qs->Flags & MQ_SF_EXPRESSION)
+		rval = expEvalTree(source_exp, stmt->Query->ObjList);
+	    if (rval >= 0 && params)
+		rval = mq_internal_EvalOpenParams(stmt, qs, params);
 	    if ((mi->Flags & MQP_MI_F_PAGED))
 		{
 		expSetParamFunctionsByID(stmt->Query->ObjList, qe->SrcIndex, NULL, NULL, NULL);
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, oldobj);
 		}
+	    stmt->Query->ObjList->CurrentID = saved_current_id;
 	    if (rval < 0)
 		{
-		mssError(0, "MQP", "Error in expression for FROM clause item");
-		return -1;
+		mssError(0, "MQP", "Error in expression or parameters for FROM clause item");
+		goto error;
 		}
 
-	    /** If NULL, this source is valid but returns no rows **/
-	    if (source_exp->Flags & EXPR_F_NULL)
+	    if (qs->Flags & MQ_SF_EXPRESSION)
 		{
-		mi->Flags |= MQP_MI_F_SOURCELIST;
-		return 0;
-		}
+		/** If NULL, this source is valid but returns no rows **/
+		if (source_exp->Flags & EXPR_F_NULL)
+		    {
+		    mi->Flags |= MQP_MI_F_SOURCELIST;
+		    if (params)
+			xsFree(params);
+		    return 0;
+		    }
 
-	    /** If non-string, error. **/
-	    if (source_exp->DataType != DATA_T_STRING)
+		/** If non-string, error. **/
+		if (source_exp->DataType != DATA_T_STRING)
+		    {
+		    mssError(1, "MQP", "Expression for FROM clause item must be a string");
+		    goto error;
+		    }
+
+		/** If too long, error **/
+		if (strlen(source_exp->String) >= sizeof(qs->Source))
+		    {
+		    mssError(1, "MQP", "Expression for FROM clause item resulted in an over-long string");
+		    goto error;
+		    }
+
+		strtcpy(qs->Source, source_exp->String, sizeof(qs->Source));
+		qs->ParamOffset = strlen(qs->Source);
+		}
+	    else
 		{
-		mssError(1, "MQP", "Expression for FROM clause item must be a string");
-		return -1;
+		/** Back to the path as written, without last time's parameters **/
+		qs->Source[qs->ParamOffset] = '\0';
 		}
 
-	    /** If too long, error **/
-	    if (strlen(source_exp->String) >= sizeof(((pQueryStructure)qe->QSLinkage)->Source))
+	    /** Add the parameters **/
+	    if (params)
 		{
-		mssError(1, "MQP", "Expression for FROM clause item resulted in an over-long string");
-		return -1;
+		if (mq_internal_AppendOpenParams(qs->Source, sizeof(qs->Source), xsString(params)) < 0)
+		    goto error;
+		xsFree(params);
+		params = NULL;
 		}
-
-	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
 	    }
 
 	/** Wildcard processing needed? **/
@@ -1172,7 +1241,12 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 	    mi->Flags |= MQP_MI_F_SOURCELIST;
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	if (params)
+	    xsFree(params);
+	return -1;
     }
 
 
@@ -1185,7 +1259,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     pMqpRowCache rc;
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
-    handle_t collection;
+    pObjDataItem collection;
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -1248,16 +1322,16 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
 		{
 		collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
-		if (collection == XHN_INVALID_HANDLE)
+		if (!collection)
 		    {
 		    mssError(0,"MQP","Could not find source collection '%s' for SQL projection", ((pQueryStructure)qe->QSLinkage)->Source);
 		    return -1;
 		    }
-		qe->LLSource = objOpenTempObject(stmt->Query->SessionID, collection, mi->ObjMode);
+		qe->LLSource = mq_internal_OpenCollection(stmt->Query, collection, mi->ObjMode);
 		}
 	    else
 		{
-		qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+		qe->LLSource = objOpenWithScope(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory", (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_SCOPEDOPEN)?stmt->Query->Scope:NULL);
 		}
 	    if (!qe->LLSource) 
 		{
@@ -1396,6 +1470,14 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		if (qe->LLQuery && qe->IterCnt == 2 && !(qe->Flags & MQ_EF_FROMSUBTREE) && !(qe->Flags & MQ_EF_WILDCARD))
 		    saved_obj = objLinkTo(stmt->Query->ObjList->Objects[qe->SrcIndex]);
 
+		/** A paged source keeps its last row for the next page's parameters **/
+		if (mi->Flags & MQP_MI_F_PAGED)
+		    {
+		    if (mi->LastRow)
+			objClose(mi->LastRow);
+		    mi->LastRow = objLinkTo(stmt->Query->ObjList->Objects[qe->SrcIndex]);
+		    }
+
 		/** "close" it **/
 		objClose(stmt->Query->ObjList->Objects[qe->SrcIndex]);
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, NULL);
@@ -1436,7 +1518,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		}
 	    else
 		{
-		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & MQ_EF_WILDCARD) && !(qe->Flags & MQ_EF_EXPRESSION))
+		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & (MQ_EF_WILDCARD | MQ_EF_EXPRESSION | MQ_EF_PAGED)))
 		    {
 		    /** empty or single-row result set.  Save the saved_obj in the cache **/
 		    mqp_internal_CacheRow(stmt, qe, qe->Constraint, saved_obj);
@@ -1470,6 +1552,11 @@ mqpStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	mi->AddlExp = additional_expr;
 	mi->Flags &= ~(MQP_MI_F_USINGCACHE | MQP_MI_F_SOURCEOPEN);
 	mi->Page = 0;
+	if (mi->LastRow)
+	    {
+	    objClose(mi->LastRow);
+	    mi->LastRow = NULL;
+	    }
 	mi->RowsReturned = 0;
 	mi->Remapping = 0;
 
@@ -1598,6 +1685,13 @@ mqpFinish(pQueryElement qe, pQueryStatement stmt)
 	/** Close the source **/
 	mqp_internal_CloseSource(qe);
 
+	/** Previous-page row for paged source parameters **/
+	if (mi->LastRow)
+	    {
+	    objClose(mi->LastRow);
+	    mi->LastRow = NULL;
+	    }
+
     return 0;
     }
 
@@ -1615,6 +1709,10 @@ mqpRelease(pQueryElement qe, pQueryStatement stmt)
 
 	/** Analyze can free a query element before its private data exists **/
 	if (!mi) return 0;
+
+	/** Previous-page row for paged source parameters **/
+	if (mi->LastRow)
+	    objClose(mi->LastRow);
 
 	/** Clean up the list of sources **/
 	for (i=0; i<mi->SourceList.nItems; i++)

@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2008 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -68,6 +68,7 @@ typedef struct _MQUS
     char	InsertPath[OBJSYS_MAX_PATH+1];
     pObject	InsertPathObj;
     int		IsCollection;
+    int		IsScoped;
     XArray	ToBeUpdated; /* of pParamObjects */
     }
     MqusData, *pMqusData;
@@ -140,6 +141,7 @@ mqusAnalyze(pQueryStatement stmt)
 	pdata = (pMqusData)nmMalloc(sizeof(MqusData));
 	pdata->nCriteria = 0;
 	pdata->IsCollection = 0;
+	pdata->IsScoped = 0;
 	qe->PrivateData = pdata;
 
 	/** Handle the ON DUPLICATE keying items **/
@@ -184,9 +186,16 @@ mqusAnalyze(pQueryStatement stmt)
 	    }
 
 	/** What path are we inserting into (and thus potentially updating)? **/
+	if (strlen(insert_qs->Source) >= sizeof(pdata->InsertPath))
+	    {
+	    mssError(1,"MQUS","Destination path for SQL upsert is too long");
+	    return -1;
+	    }
 	strtcpy(pdata->InsertPath, insert_qs->Source, sizeof(pdata->InsertPath));
 	if (insert_qs->Flags & MQ_SF_COLLECTION)
 	    pdata->IsCollection = 1;
+	if (insert_qs->Flags & MQ_SF_SCOPEDOPEN)
+	    pdata->IsScoped = 1;
 
 	/** Link the qe into the multiquery **/
 	xaAddItem(&stmt->Trees, qe);
@@ -236,7 +245,7 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pQueryElement cld;
     int rval = -1;
     int is_started = 0;
-    handle_t collection;
+    pObjDataItem collection;
 
 	pdata = (pMqusData)qe->PrivateData;
 	xaInit(&pdata->ToBeUpdated, 16);
@@ -257,12 +266,12 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	if (pdata->IsCollection)
 	    {
 	    collection = mq_internal_FindCollection(stmt->Query, pdata->InsertPath);
-	    if (collection == XHN_INVALID_HANDLE)
+	    if (!collection)
 		{
 		mssError(1,"MQUS","Could not find destination collection '%s' for SQL upsert", pdata->InsertPath);
 		goto error;
 		}
-	    pdata->InsertPathObj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    pdata->InsertPathObj = mq_internal_OpenCollection(stmt->Query, collection, (collection->Flags & OBJ_DI_F_PATH)?O_RDWR:OBJ_O_RDONLY);
 	    if (!pdata->InsertPathObj)
 		{
 		mssError(1,"MQUS","Could not open destination collection '%s' for SQL upsert", pdata->InsertPath);
@@ -271,7 +280,7 @@ mqusStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    }
 	else
 	    {
-	    pdata->InsertPathObj = objOpen(stmt->Query->SessionID, pdata->InsertPath, O_RDWR, 0600, "system/directory");
+	    pdata->InsertPathObj = objOpenWithScope(stmt->Query->SessionID, pdata->InsertPath, O_RDWR, 0600, "system/directory", pdata->IsScoped?stmt->Query->Scope:NULL);
 	    if (!pdata->InsertPathObj)
 		goto error;
 	    }
@@ -459,7 +468,7 @@ mqusFinish(pQueryElement qe, pQueryStatement stmt)
 			if (info && !(info->Flags & OBJ_INFO_F_TEMPORARY))
 			    {
 			    path = objGetPathname(upd_obj);
-			    refresh_obj = objOpen(stmt->Query->SessionID, path, OBJ_O_RDWR, 0600, "system/object");
+			    refresh_obj = objOpenWithScope(stmt->Query->SessionID, path, OBJ_O_RDWR, 0600, "system/object", pdata->IsScoped?stmt->Query->Scope:NULL);
 			    if (refresh_obj)
 				{
 				expModifyParamByID(objlist, id, refresh_obj);

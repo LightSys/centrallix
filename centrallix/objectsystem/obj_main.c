@@ -458,6 +458,9 @@ objInitialize()
 	nmRegister(sizeof(ObjSession),"ObjSession");
 	nmRegister(sizeof(DirectoryCache),"DirectoryCache");
 	nmRegister(sizeof(ObjParam),"ObjParam");
+	nmRegister(sizeof(ObjDataScope),"ObjDataScope");
+	nmRegister(sizeof(ObjDataItem),"ObjDataItem");
+	nmRegister(sizeof(ObjDataToken),"ObjDataToken");
 
     return 0;
     }

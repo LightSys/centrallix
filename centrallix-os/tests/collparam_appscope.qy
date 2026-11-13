@@ -1,0 +1,5 @@
+$Version=2$
+collparam_appscope "system/query"
+    {
+    sql = "select cnt = count(1) from collection appcoll";
+    }

@@ -329,6 +329,50 @@ typedef struct _OVA
     ObjVirtualAttr, *pObjVirtualAttr;
 
 
+/** data scope item: a named collection or declared object **/
+typedef struct _ODI
+    {
+    char		Name[32];	/* name of the item */
+    int			Type;		/* OBJ_DI_T_xxx */
+    int			Flags;		/* OBJ_DI_F_xxx */
+    handle_t		TempObj;	/* collection data, if a temp collection */
+    char*		Path;		/* source path, if OBJ_DI_F_PATH */
+    void*		Data;		/* pStructInf, if OBJ_DI_T_OBJECT */
+    }
+    ObjDataItem, *pObjDataItem;
+
+#define OBJ_DI_T_COLLECTION	1	/* a collection (table) */
+#define OBJ_DI_T_OBJECT		2	/* a declared object */
+
+#define OBJ_DI_F_PATH		1	/* collection is an OSML path, not a temp collection */
+#define OBJ_DI_F_OWNED		2	/* free TempObj/Data when the item is freed */
+#define OBJ_DI_F_PARAM		4	/* bound from a .qy parameter */
+#define OBJ_DI_F_READONLY	8	/* reserved: no writes through this item */
+
+/** data scope token: a published reference to an item **/
+typedef struct _ODT
+    {
+    char		Token[33];	/* hex token string */
+    void*		Owner;		/* publisher, for revocation */
+    pObjDataItem	Item;		/* copy of the published item */
+    }
+    ObjDataToken, *pObjDataToken;
+
+/** data scope: named data items visible to queries, with a parent chain **/
+typedef struct _ODS
+    {
+    int			LinkCnt;
+    int			Flags;		/* OBJ_DS_F_xxx */
+    pObjSession		Session;	/* owning session, NULL for app scope */
+    struct _ODS*	Parent;		/* enclosing scope, or NULL */
+    XArray		Items;		/* of pObjDataItem */
+    XArray		Tokens;		/* of pObjDataToken */
+    }
+    ObjDataScope, *pObjDataScope;
+
+#define OBJ_DS_F_APPSCOPE	1	/* this is an application's root scope */
+
+
 /** objectsystem open fd **/
 typedef struct _OF
     {
@@ -358,6 +402,7 @@ typedef struct _OF
     char*	AttrExpName;	/* Name of attr for above expression */
     DateTime	CacheExpire;	/* Date/time after which cached data is no longer valid */
     int		RowID;
+    pObjDataScope DataScope;	/* scope for resolving open-ctl tokens, or NULL */
     }
     Object, *pObject;
 
@@ -799,5 +844,18 @@ int objUnRegisterEvent(char* class_code, char* xdata);
 handle_t objCreateTempObject();
 pObject objOpenTempObject(pObjSession session, handle_t tempobj, int mode);
 int objDeleteTempObject(handle_t tempobj);
+
+/** data scopes **/
+pObjDataScope objScopeCreate(pObjSession session, pObjDataScope parent);
+pObjDataScope objScopeLink(pObjDataScope scope);
+int objScopeRelease(pObjDataScope scope);
+pObjDataScope objScopeGetAppScope();
+pObjDataItem objScopeAdd(pObjDataScope scope, char* name, int type, int flags, handle_t tempobj, char* path, void* data);
+pObjDataItem objScopeLookup(pObjDataScope scope, char* name, int type, int follow_parents);
+pObjDataItem objScopeLookupLocal(pObjDataScope scope, char* name, int type);
+int objScopePublish(pObjDataScope scope, pObjDataItem item, void* owner, char* token, int token_len);
+int objScopeRevoke(pObjDataScope scope, void* owner);
+pObjDataItem objScopeResolveToken(pObjDataScope scope, pObjSession session, char* token);
+pObject objOpenWithScope(pObjSession session, char* path, int mode, int permission_mask, char* type, pObjDataScope scope);
 
 #endif /*_OBJ_H*/
