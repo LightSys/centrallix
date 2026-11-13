@@ -997,6 +997,9 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 		img_row[x*3+2] = pix & 0xFF;
 		}
 	    if (UNLIKELY(prt_psod_Compress(&zs, img_row, cols*3, Z_NO_FLUSH, zdata) < 0)) goto end;
+
+	    /** Let other threads run between rows. **/
+	    thYield();
 	    }
 	if (UNLIKELY(prt_psod_Compress(&zs, NULL, 0, Z_FINISH, zdata) < 0)) goto end;
 
