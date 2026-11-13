@@ -11,3 +11,11 @@ csv select :q:rowid, :s:abbrev from /tests/testquery.qy (id = 2) q, /tests/State
 csv select :q:rowid, :q:color from paged expression ('/tests/testquery.qy') (id = :cx__page) q
 csv select :q:rowid, :q:color from paged expression ('/tests/testquery.qy') (id = :cx__page * 2) q
 csv select :s:abbrev, :q:color from /tests/States.csv/rows s, expression ('/tests/testquery.qy') (id = :s:id) q where :s:id <= 3
+csv select :q:rowid, :q:color from paged /tests/testquery.qy (id = :cx__page) q
+csv select :q:rowid, :q:color from paged "/tests/testquery.qy" (id = :cx__page * 2) q
+csv select :s:abbrev, :q:color from /tests/States.csv/rows s, /tests/testquery.qy (id = :s:id) q where :s:id <= 3
+csv select :s:abbrev, :q:color from /tests/testquery.qy (id = :s:id) q, /tests/States.csv/rows s where :s:id <= 3
+csv select :s:abbrev, :q:color from /tests/States.csv/rows s, paged /tests/testquery.qy (id = :cx__page) q where :s:id = 1
+csv select :s:abbrev, :q:color from /tests/States.csv/rows s, paged expression ('/tests/testquery.qy?id=' + :cx__page) q where :s:id = 1
+csv select :q:rowid, :q:color from paged /tests/testquery.qy (id = isnull(:rowid + 1, 1)) q
+csv select :q:rowid, :q:color from paged /tests/testquery.qy (id = isnull(:q:rowid + 1, 1)) q

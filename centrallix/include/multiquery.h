@@ -167,6 +167,7 @@ typedef struct _QS
 #define MQ_SF_DEFAULTORDER	65536		/* ORDER BY DEFAULT (dropped/overridden by a following ORDER BY) */
 #define MQ_SF_ONEROW		131072		/* SELECT ... FROM ONEROW ... (restrict from source to one row) */
 #define MQ_SF_SCOPEDOPEN	262144		/* source params contain data scope tokens */
+#define MQ_SF_DEFERPARAMS	524288		/* source params are evaluated each time the source is opened */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -301,6 +302,7 @@ pObjDataItem mq_internal_FindCollection(pMultiQuery mq, char* collection);
 pObject mq_internal_OpenCollection(pMultiQuery mq, pObjDataItem item, int mode);
 int mq_internal_AppendOpenParams(char* source, int source_size, char* params);
 int mq_internal_CompileOpenParams(pQueryStatement stmt, pQueryStructure qs);
+int mq_internal_SetupOpenParams(pQueryStatement stmt, pQueryStructure qs, int self_id);
 int mq_internal_EvalOpenParams(pQueryStatement stmt, pQueryStructure qs, pXString params);
 void mq_internal_CheckYield(pMultiQuery mq);
 
