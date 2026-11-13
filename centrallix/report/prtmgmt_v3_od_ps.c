@@ -934,8 +934,6 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
     bool zs_initialized = false;
     XString zdata_buf;
     pXString zdata = NULL;
-    char drawcmd[256];
-    int drawcmd_len;
     long long hex_len;
     char hexline[PRT_PSOD_HEX_LINE*2 + 1];
     unsigned char* zbytes;
@@ -1002,41 +1000,33 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    }
 	if (UNLIKELY(prt_psod_Compress(&zs, NULL, 0, Z_FINISH, zdata) < 0)) goto end;
 
-	/** Build the drawing command, which reads the data after it and
-	 ** then skips to the data's end marker.
-	 **/
-	drawcmd_len = snprintf(drawcmd, sizeof(drawcmd),
-	    "{ /rasterdata currentfile /ASCIIHexDecode filter def "
-	    "%d %d 8 [ %d %d %d %d %d %d ] rasterdata /FlateDecode filter false 3 colorimage "
-	    "rasterdata flushfile } exec\n",
-	    cols, rows,
-	    cols, 0, 0, -rows, 0, rows
-	    );
-	if (UNLIKELY(drawcmd_len < 0 || (size_t)drawcmd_len >= sizeof(drawcmd)))
-	    {
-	    mssError(1, "PRT", "Failed to build the drawing command for a %dx%d image.", cols, rows);
-	    goto end;
-	    }
-
 	/** Hex data: two digits per byte, a newline per line, then ">\n". **/
 	n = zdata->Length;
 	hex_len = 2LL*n + (n + PRT_PSOD_HEX_LINE - 1)/PRT_PSOD_HEX_LINE + 2;
 
-	/** save graphics context before beginning, 
-	 ** then emit the image header.
+	/** Save graphics context before beginning, then emit the image
+	 ** header.  drawraster reads the data after it, then skips to the
+	 ** data's end marker.
 	 **/
 	prt_psod_Output_va(context,
 	    "gsave\n"
 	    "%.1f %.1f translate\n"
 	    "%.1f %.1f scale\n"
-	    "%%%%BeginData: %lld Hex Bytes\n",
+	    "/drawraster { "
+		"/rasterdata currentfile /ASCIIHexDecode filter def "
+		"%d %d 8 [ %d %d %d %d %d %d ] rasterdata /FlateDecode filter false 3 colorimage "
+		"rasterdata flushfile "
+	    "} def\n"
+	    "%%%%BeginData: %lld Hex Bytes\n"
+	    "drawraster\n",
 	    context->CurHPos*7.2 + 0.000001, 
 	    context->PageHeight - (context->CurVPos*12.0 + height*12.0 + 0.000001),
 	    width*7.2 + 0.000001,
 	    height*12.0 + 0.000001,
-	    drawcmd_len + hex_len
+	    cols, rows,
+	    cols, 0, 0, -rows, 0, rows,
+	    (long long)strlen("drawraster\n") + hex_len
 	    );
-	prt_psod_Output(context, drawcmd, drawcmd_len);
 
 	/** Output the compressed data, in hexadecimal **/
 	zbytes = (unsigned char*)zdata->String;
