@@ -138,7 +138,7 @@ typedef struct _PPS
 #define PRT_PSOD_F_SENTPAGE	2	/* sent PageSetup */
 #define PRT_PSOD_F_USEGS	4	/* send content through GhostScript */
 
-#define PRT_PSOD_HEX_LINE	64	/* number of compressed image bytes per line of hex */
+#define PRT_PSOD_HEX_LINE	64	/* max compressed image bytes per line of hex */
 
 
 /*** prt_psod_Output() - outputs the given snippet of text or PS code
@@ -870,26 +870,29 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
     }
 
 
-/*** prt_psod_Compress() - compresses data into a zlib stream and append the
- *** compressed bytes to the provided string.
+/*** prt_psod_OutputCompressed() - compresses data into a zlib stream and
+ *** outputs the compressed bytes in hexadecimal.
  ***
+ *** @param context The printing session.
  *** @param zs The zlib stream, initialized with deflateInit().
  *** @param data The data to compress, or NULL when len is 0.
  *** @param len The length of data.
  *** @param flush Z_NO_FLUSH, or Z_FINISH to end the stream.
- *** @param out The string where compressed bytes are written.
  *** @returns 0 on success, or -1 with mssError() on failure.
  ***/
 static int
-prt_psod_Compress(z_stream* zs, unsigned char* data, int len, int flush, pXString out)
+prt_psod_OutputCompressed(pPrtPsodInf context, z_stream* zs, unsigned char* data, int len, int flush)
     {
+    char* hexdigit = "0123456789abcdef";
+    int i;
+
 	/*** Compress until zlib consumes the entire input and doesn't fill
 	 *** the output buffer.
 	 ***/
 	zs->next_in = data;
 	zs->avail_in = len;
 	do  {
-	    unsigned char chunk[4096];
+	    unsigned char chunk[PRT_PSOD_HEX_LINE];
 	    zs->next_out = chunk;
 	    zs->avail_out = sizeof(chunk);
 
@@ -903,13 +906,18 @@ prt_psod_Compress(z_stream* zs, unsigned char* data, int len, int flush, pXStrin
 		return -1;
 		}
 
-	    if (UNLIKELY(xsConcatenate(out, (char*)chunk, sizeof(chunk) - zs->avail_out) < 0))
+	    /** Output the compressed bytes as one line of hex. **/
+	    const int n = sizeof(chunk) - zs->avail_out;
+	    if (n > 0)
 		{
-		mssError(1, "PRT",
-		    "Failed to store %zu bytes of compressed data.",
-		    sizeof(chunk) - zs->avail_out
-		);
-		return -1;
+		char hexline[PRT_PSOD_HEX_LINE*2 + 1];
+		for(i=0;i<n;i++)
+		    {
+		    hexline[i*2+0] = hexdigit[chunk[i] >> 4];
+		    hexline[i*2+1] = hexdigit[chunk[i] & 0xF];
+		    }
+		hexline[n*2] = '\n';
+		prt_psod_Output(context, hexline, n*2+1);
 		}
 	    } while (zs->avail_out == 0);
 
@@ -927,17 +935,12 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
     double rval = -1;
-    int rows,cols,x,y,pix,i,n;
+    int rows,cols,x,y,pix;
     int direct_map = 0;
     unsigned char* img_row = NULL;
     z_stream zs;
     bool zs_initialized = false;
-    XString zdata_buf;
-    pXString zdata = NULL;
-    long long hex_len;
-    char hexline[PRT_PSOD_HEX_LINE*2 + 1];
-    unsigned char* zbytes;
-    char* hexdigit = "0123456789abcdef";
+    bool data_started = false;
 
 	if (context->PageNum >= context->MaxPages) return 0;
 
@@ -966,12 +969,6 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    }
 
 	/** Start the zlib compression. **/
-	if (UNLIKELY(xsInit(&zdata_buf) < 0))
-	    {
-	    mssError(1, "PRT", "Failed to initialize the compressed image buffer.");
-	    goto end;
-	    }
-	zdata = &zdata_buf;
 	memset(&zs, 0, sizeof(zs));
 	if (UNLIKELY(deflateInit(&zs, Z_DEFAULT_COMPRESSION) != Z_OK))
 	    {
@@ -982,30 +979,6 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    goto end;
 	    }
 	zs_initialized = true;
-
-	/** Compress the pixels as RGB bytes. **/
-	for(y=0;y<rows;y++)
-	    {
-	    for(x=0;x<cols;x++)
-		{
-		if (direct_map)
-		    pix = img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF;
-		else
-		    pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
-		img_row[x*3+0] = (pix >> 16) & 0xFF;
-		img_row[x*3+1] = (pix >> 8) & 0xFF;
-		img_row[x*3+2] = pix & 0xFF;
-		}
-	    if (UNLIKELY(prt_psod_Compress(&zs, img_row, cols*3, Z_NO_FLUSH, zdata) < 0)) goto end;
-
-	    /** Let other threads run between rows. **/
-	    thYield();
-	    }
-	if (UNLIKELY(prt_psod_Compress(&zs, NULL, 0, Z_FINISH, zdata) < 0)) goto end;
-
-	/** Hex data: two digits per byte, a newline per line, then ">\n". **/
-	n = zdata->Length;
-	hex_len = 2LL*n + (n + PRT_PSOD_HEX_LINE - 1)/PRT_PSOD_HEX_LINE + 2;
 
 	/** Save graphics context before beginning, then emit the image
 	 ** header.  drawraster reads the data after it, then skips to the
@@ -1020,42 +993,48 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 		"%d %d 8 [ %d %d %d %d %d %d ] rasterdata /FlateDecode filter false 3 colorimage "
 		"rasterdata flushfile "
 	    "} def\n"
-	    "%%%%BeginData: %lld Hex Bytes\n"
 	    "drawraster\n",
-	    context->CurHPos*7.2 + 0.000001, 
+	    context->CurHPos*7.2 + 0.000001,
 	    context->PageHeight - (context->CurVPos*12.0 + height*12.0 + 0.000001),
 	    width*7.2 + 0.000001,
 	    height*12.0 + 0.000001,
 	    cols, rows,
-	    cols, 0, 0, -rows, 0, rows,
-	    (long long)strlen("drawraster\n") + hex_len
+	    cols, 0, 0, -rows, 0, rows
 	    );
+	data_started = true;
 
-	/** Output the compressed data, in hexadecimal **/
-	zbytes = (unsigned char*)zdata->String;
-	for(i=0;i<n;i+=PRT_PSOD_HEX_LINE)
+	/** Output image pixels as compressed RGB bytes. **/
+	for(y=0;y<rows;y++)
 	    {
-	    for(x=0;x<PRT_PSOD_HEX_LINE && i+x<n;x++)
+	    for(x=0;x<cols;x++)
 		{
-		hexline[x*2+0] = hexdigit[zbytes[i+x] >> 4];
-		hexline[x*2+1] = hexdigit[zbytes[i+x] & 0xF];
+		if (direct_map)
+		    pix = img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF;
+		else
+		    pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
+		img_row[x*3+0] = (pix >> 16) & 0xFF;
+		img_row[x*3+1] = (pix >> 8) & 0xFF;
+		img_row[x*3+2] = pix & 0xFF;
 		}
-	    hexline[x*2] = '\n';
-	    prt_psod_Output(context, hexline, x*2+1);
-	    }
+	    if (UNLIKELY(prt_psod_OutputCompressed(context, &zs, img_row, cols*3, Z_NO_FLUSH) < 0)) goto end;
 
-	/** Restore graphics context when done **/
-	prt_psod_Output_va(context,
-	    ">\n"
-	    "%%%%EndData\n"
-	    "grestore\n"
-	    );
+	    /** Let other threads run between rows. **/
+	    thYield();
+	    }
+	if (UNLIKELY(prt_psod_OutputCompressed(context, &zs, NULL, 0, Z_FINISH) < 0)) goto end;
 
 	rval = context->CurVPos + height;
 
     end:
+	/** End the data and restore the graphics context, even after a failure. **/
+	if (data_started)
+	    {
+	    prt_psod_Output_va(context,
+		">\n"
+		"grestore\n"
+		);
+	    }
 	if (zs_initialized) deflateEnd(&zs);
-	if (zdata != NULL) xsDeInit(zdata);
 	if (img_row != NULL) nmSysFree(img_row);
 
     return rval;
