@@ -1,0 +1,8 @@
+$Version=2$
+collparam "system/query"
+    {
+    src "query/parameter" { type = collection; }
+    prefix "query/parameter" { type = string; }
+
+    sql = "select :s:abbrev, :s:full_name from collection src s where (:parameters:prefix is null or substring(:s:abbrev, 1, 1) = :parameters:prefix) order by :s:abbrev";
+    }

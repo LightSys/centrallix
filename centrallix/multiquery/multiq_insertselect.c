@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2008 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -127,7 +127,10 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int t;
     //int use_attrid;
     int hc_rval;
-    handle_t collection;
+    pObjDataItem collection = NULL;
+    pObjDataScope scope;
+    int is_tempcoll = 0;
+    char* dest_path;
     char* sourcetype;
     pExpression source_exp;
     int sprval;
@@ -164,16 +167,45 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		}
 
 	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+
+	    /** Add any parameter list given after the expression **/
+	    if (((pQueryStructure)qe->QSLinkage)->OpenParams)
+		{
+		((pQueryStructure)qe->QSLinkage)->ParamOffset = strlen(((pQueryStructure)qe->QSLinkage)->Source);
+		if (mq_internal_AppendOpenParams(((pQueryStructure)qe->QSLinkage)->Source, sizeof(((pQueryStructure)qe->QSLinkage)->Source), ((pQueryStructure)qe->QSLinkage)->OpenParams) < 0)
+		    return -1;
+		}
+	    }
+
+	/** Data scope for resolving tokens in the destination's parameters **/
+	scope = (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_SCOPEDOPEN)?stmt->Query->Scope:NULL;
+
+	/** A collection is either a temp collection or bound to a path, which
+	 ** is inserted into like any other path.
+	 **/
+	dest_path = ((pQueryStructure)qe->QSLinkage)->Source;
+	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+	    {
+	    collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
+	    if (!collection)
+		{
+		mssError(1,"MQIS","Could not find destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
+		goto error;
+		}
+	    if (collection->Flags & OBJ_DI_F_PATH)
+		dest_path = collection->Path;
+	    else
+		is_tempcoll = 1;
 	    }
 
 	/** Prepare for the inserts **/
 	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_FROMOBJECT)
 	    {
-	    strtcpy(pathname, ((pQueryStructure)qe->QSLinkage)->Source, sizeof(pathname));
+	    strtcpy(pathname, dest_path, sizeof(pathname));
 	    }
 	else
 	    {
-	    sprval = snprintf(pathname, sizeof(pathname), "%s/*", ((pQueryStructure)qe->QSLinkage)->Source);
+	    sprval = snprintf(pathname, sizeof(pathname), "%s/*", dest_path);
 	    if (sprval < 0 || sprval >= sizeof(pathname))
 		{
 		mssError(1, "MQIS", "Pathname too long for INSERT destination");
@@ -203,15 +235,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	/** If we're working with a collection, open its parent so we can
 	 ** later do objOpenChild() calls to create the child objects.
 	 **/
-	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+	if (is_tempcoll)
 	    {
-	    collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
-	    if (collection == XHN_INVALID_HANDLE)
-		{
-		mssError(1,"MQIS","Could not find destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
-		goto error;
-		}
-	    parent_obj = objOpenTempObject(stmt->Query->SessionID, collection, OBJ_O_RDONLY);
+	    parent_obj = mq_internal_OpenCollection(stmt->Query, collection, OBJ_O_RDONLY);
 	    if (!parent_obj)
 		{
 		mssError(1,"MQIS","Could not open destination collection '%s' for SQL insert", ((pQueryStructure)qe->QSLinkage)->Source);
@@ -230,13 +256,13 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		continue;
 
 	    /** open a new object **/
-	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
+	    if (is_tempcoll)
 		{
 		new_obj = objOpenChild(parent_obj, "*", OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
 		}
 	    else
 		{
-		new_obj = objOpen(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype);
+		new_obj = objOpenWithScope(stmt->Query->SessionID, pathname, OBJ_O_RDWR | OBJ_O_CREAT | OBJ_O_AUTONAME, 0666, sourcetype, scope);
 		}
 	    if (!new_obj)
 		goto error;
@@ -294,7 +320,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    mssError(0, "MQIS", "Could not INSERT new object");
 		    goto error;
 		    }
-		sprval = snprintf(new_pathname, sizeof(new_pathname), "%s/%s", ((pQueryStructure)qe->QSLinkage)->Source, new_objname);
+		sprval = snprintf(new_pathname, sizeof(new_pathname), "%s/%s", dest_path, new_objname);
 		if (sprval < 0 || sprval >= sizeof(pathname))
 		    {
 		    mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
@@ -306,9 +332,9 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    if (!(stmt->Query->Flags & MQ_F_NOINSERTED))
 		{
 		/** Don't reopen for inserts into collections (won't find it) **/
-		if (!(((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION))
+		if (!is_tempcoll)
 		    {
-		    reopen_obj = objOpen(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object");
+		    reopen_obj = objOpenWithScope(stmt->Query->SessionID, new_pathname, OBJ_O_RDONLY, 0600, "system/object", scope);
 		    if (reopen_obj)
 			{
 			objUnmanageObject(stmt->Query->SessionID, reopen_obj);

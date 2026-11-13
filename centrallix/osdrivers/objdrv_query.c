@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2012 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -75,6 +75,8 @@ typedef struct
     char*	SQL;
     char*	NameExpression;
     pParamObjects   ObjList;
+    pObjDataScope Scope;	/* collection parameters, visible to the query */
+    XArray	HeldCollections; /* opens that keep passed temp collections alive */
     }
     QyData, *pQyData;
 
@@ -188,6 +190,11 @@ qy_internal_Close(pQyData inf)
 		inf->Node->OpenCnt--;
 	    if (inf->ObjList)
 		expFreeParamList(inf->ObjList);
+	    for(i=0;i<inf->HeldCollections.nItems;i++)
+		objClose((pObject)inf->HeldCollections.Items[i]);
+	    xaDeInit(&inf->HeldCollections);
+	    if (inf->Scope)
+		objScopeRelease(inf->Scope);
 	    if (inf->Name)
 		{
 		nmSysFree(inf->Name);
@@ -270,6 +277,111 @@ qy_internal_SetParamValue(void* inf_v, char* attrname, int datatype, pObjData va
     }
 
 
+/*** qy_internal_FindOpenCtlValue() - get the string value supplied for a
+ *** parameter in the open-ctl of the .qy's path element, or NULL.
+ ***/
+char*
+qy_internal_FindOpenCtlValue(pObject obj, char* name)
+    {
+    pStruct open_ctl, one_open_ctl;
+    char* str;
+    int j;
+
+	open_ctl = obj->Pathname->OpenCtl[obj->SubPtr-1];
+	if (!open_ctl)
+	    return NULL;
+	for(j=0; j<open_ctl->nSubInf; j++)
+	    {
+	    one_open_ctl = open_ctl->SubInf[j];
+	    if (!strcmp(one_open_ctl->Name, name))
+		{
+		str = NULL;
+		stAttrValue_ne(one_open_ctl, &str);
+		return str;
+		}
+	    }
+
+    return NULL;
+    }
+
+
+/*** qy_internal_SetupCollectionParam() - set up a parameter of type
+ *** "collection".  Its value must be a data scope token passed by the
+ *** caller (see EXEC and FROM parameter lists in multiquery), which is
+ *** resolved in the scope the .qy was opened with.  Without a value, a
+ *** nullable parameter gets an empty collection.  The collection is added
+ *** to the .qy's own scope under the parameter's name.
+ ***/
+int
+qy_internal_SetupCollectionParam(pQyData inf, pObject obj, pStructInf param_inf)
+    {
+    char* name;
+    char* value;
+    int notnull;
+    pObjPresentationHints hints;
+    pObjDataItem item;
+    pObject held;
+    handle_t tempobj;
+
+	/** Name and nullability **/
+	if (stGetAttrValue(stLookup(param_inf, "name"), DATA_T_STRING, POD(&name), 0) != 0)
+	    name = param_inf->Name;
+	hints = objInfToHints(param_inf, DATA_T_STRING);
+	notnull = (hints && (hints->Style & OBJ_PH_STYLE_NOTNULL));
+	if (hints)
+	    objFreeHints(hints);
+
+	value = qy_internal_FindOpenCtlValue(obj, name);
+	if (value && *value)
+	    {
+	    /** Passed collection or path **/
+	    item = objScopeResolveToken(obj->DataScope, obj->Session, value);
+	    if (!item || item->Type != OBJ_DI_T_COLLECTION)
+		{
+		mssError(1, "QY", "Invalid collection binding for parameter '%s'", name);
+		return -1;
+		}
+	    if (item->Flags & OBJ_DI_F_PATH)
+		{
+		if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | (item->Flags & (OBJ_DI_F_PATH | OBJ_DI_F_READONLY)), XHN_INVALID_HANDLE, item->Path, NULL))
+		    return -1;
+		}
+	    else
+		{
+		held = objOpenTempObject(obj->Session, item->TempObj, OBJ_O_RDONLY);
+		if (!held)
+		    {
+		    mssError(1, "QY", "Could not open collection for parameter '%s'", name);
+		    return -1;
+		    }
+		objUnmanageObject(obj->Session, held);
+		xaAddItem(&inf->HeldCollections, (void*)held);
+		if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | (item->Flags & OBJ_DI_F_READONLY), item->TempObj, NULL, NULL))
+		    return -1;
+		}
+	    }
+	else if (notnull)
+	    {
+	    mssError(1, "QY", "Collection parameter '%s' requires a collection", name);
+	    return -1;
+	    }
+	else
+	    {
+	    /** No collection passed: use an empty one **/
+	    tempobj = objCreateTempObject();
+	    if (tempobj == XHN_INVALID_HANDLE)
+		return -1;
+	    if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | OBJ_DI_F_OWNED, tempobj, NULL, NULL))
+		{
+		objDeleteTempObject(tempobj);
+		return -1;
+		}
+	    }
+
+    return 0;
+    }
+
+
 /*** qyOpen - open an object.
  ***/
 void*
@@ -285,6 +397,8 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
     pStruct one_open_ctl, open_ctl;
     pObjQuery lookup_qy;
     char* endorsement_name;
+    char* type_str;
+    char* value;
 
 	/** Allocate the structure **/
 	inf = (pQyData)nmMalloc(sizeof(QyData));
@@ -293,6 +407,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Zero out the structure **/
 	memset(inf,0,sizeof(QyData));
 	xaInit(&inf->Parameters, 16);
+	xaInit(&inf->HeldCollections, 4);
 
 	/** Set the parent Object **/
 	inf->Obj = obj;
@@ -311,6 +426,12 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
 	expAddParamToList(inf->ObjList,"parameters",(void*)inf,0);
 	expSetParamFunctions(inf->ObjList, "parameters", qy_internal_GetParamType, qy_internal_GetParamValue, qy_internal_SetParamValue);
+
+	/** The query sees collection parameters, but not the caller's scope **/
+	inf->Scope = objScopeCreate(obj->Session, NULL);
+	if (!inf->Scope)
+	    goto error;
+	inf->ObjList->DataScope = inf->Scope;
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -369,6 +490,14 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    param_inf = inf->Node->Data->SubInf[i];
 	    if (stStructType(param_inf) == ST_T_SUBGROUP && !strcmp(param_inf->UsrType,"query/parameter"))
 		{
+		/** Collection parameters are handled separately **/
+		if (stGetAttrValue(stLookup(param_inf, "type"), DATA_T_STRING, POD(&type_str), 0) == 0 && !strcmp(type_str, "collection"))
+		    {
+		    if (qy_internal_SetupCollectionParam(inf, obj, param_inf) < 0)
+			goto error;
+		    continue;
+		    }
+
 		/** Found a parameter.  Now set it up **/
 		one_param = paramCreateFromInf(param_inf);
 		if (!one_param) goto error;
@@ -383,6 +512,14 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 			one_open_ctl = open_ctl->SubInf[j];
 			if (!strcmp(one_open_ctl->Name, one_param->Name))
 			    {
+			    /** A passed collection never becomes a scalar value **/
+			    value = NULL;
+			    stAttrValue_ne(one_open_ctl, &value);
+			    if (value && objScopeResolveToken(obj->DataScope, obj->Session, value))
+				{
+				mssError(1, "QY", "Parameter '%s' is not a collection", one_param->Name);
+				goto error;
+				}
 			    paramSetValueFromInfNe(one_param, one_open_ctl, 0, NULL, obj->Session);
 			    break;
 			    }
@@ -597,6 +734,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (!inf) return NULL;
 	memset(inf, 0, sizeof(QyData));
 	xaInit(&inf->Parameters, 16);
+	xaInit(&inf->HeldCollections, 4);
 	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
 	inf->Node = qy->Data->Node;
 	inf->Mode = mode;
