@@ -1668,35 +1668,61 @@ mq_internal_AppendOpenParams(char* source, int source_size, char* params)
     }
 
 
-/*** mq_internal_SetOpenParams() - attach a parsed parameter list to a source.
+/*** mq_internal_ParseSourceParams() - parse a parameter list for a source
+ *** (see mq_internal_ParseOpenParams()) and attach it to the source's QS.
  *** For a literal path the parameters are appended to the path now; for an
- *** EXPRESSION source they are kept and appended after evaluation.
+ *** EXPRESSION source they are kept and appended after evaluation.  Returns
+ *** 0 on success or -1 on error.
  ***/
 int
-mq_internal_SetOpenParams(pQueryStructure qs, int n_tokens, pXString params, pXString display)
+mq_internal_ParseSourceParams(pLxSession lxs, pQueryStatement stmt, pQueryStructure qs, int parenthesized, char* first_name)
     {
+    pXString params = NULL;
+    pXString display = NULL;
+    int n_tokens;
 
-	if (!params->String[0])
-	    return 0;
-	if (n_tokens > 0)
-	    qs->Flags |= MQ_SF_SCOPEDOPEN;
-	qs->ParamDisplay = nmSysStrdup(display->String);
-	if (!qs->ParamDisplay)
-	    return -1;
-	if (qs->Flags & MQ_SF_EXPRESSION)
+	params = xsNew();
+	if (!params)
+	    goto error;
+	display = xsNew();
+	if (!display)
+	    goto error;
+	n_tokens = mq_internal_ParseOpenParams(lxs, stmt, parenthesized, first_name, params, display);
+	if (n_tokens < 0)
+	    goto error;
+
+	/** Attach the parameters, if any **/
+	if (params->String[0])
 	    {
-	    qs->OpenParams = nmSysStrdup(params->String);
-	    if (!qs->OpenParams)
-		return -1;
-	    }
-	else
-	    {
-	    qs->ParamOffset = strlen(qs->Source);
-	    if (mq_internal_AppendOpenParams(qs->Source, sizeof(qs->Source), params->String) < 0)
-		return -1;
+	    if (n_tokens > 0)
+		qs->Flags |= MQ_SF_SCOPEDOPEN;
+	    qs->ParamDisplay = nmSysStrdup(display->String);
+	    if (!qs->ParamDisplay)
+		goto error;
+	    if (qs->Flags & MQ_SF_EXPRESSION)
+		{
+		qs->OpenParams = nmSysStrdup(params->String);
+		if (!qs->OpenParams)
+		    goto error;
+		}
+	    else
+		{
+		qs->ParamOffset = strlen(qs->Source);
+		if (mq_internal_AppendOpenParams(qs->Source, sizeof(qs->Source), params->String) < 0)
+		    goto error;
+		}
 	    }
 
-    return 0;
+	xsFree(params);
+	xsFree(display);
+	return 0;
+
+    error:
+	if (params)
+	    xsFree(params);
+	if (display)
+	    xsFree(display);
+	return -1;
     }
 
 
@@ -1715,7 +1741,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
     ParserState state = LookForClause;
     ParserState next_state = ParseError;
     int t,subtr,identity,inclsubtr,wildcard,fromobject,prunesubtr,expfrom,collfrom,nonempty,paged,onerow;
-    int n_tokens;
+    int rval;
     int is_object;
     char* ptr;
     char* str;
@@ -2321,28 +2347,14 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				    mlxNoteError(lxs);
 				    break;
 				    }
-				xs = xsNew();
-				param = xsNew();
-				if (!xs || !param)
-				    {
-				    nmSysFree(ptr);
-				    if (xs) xsFree(xs);
-				    if (param) xsFree(param);
-				    next_state = ParseError;
-				    break;
-				    }
-				n_tokens = mq_internal_ParseOpenParams(lxs, stmt, 1, ptr, xs, param);
+				rval = mq_internal_ParseSourceParams(lxs, stmt, insert_cls, 1, ptr);
 				nmSysFree(ptr);
-				if (n_tokens < 0 || mq_internal_SetOpenParams(insert_cls, n_tokens, xs, param) < 0)
+				if (rval < 0)
 				    {
-				    xsFree(xs);
-				    xsFree(param);
 				    next_state = ParseError;
 				    mssError(0,"MQ","Error in INSERT destination parameters");
 				    break;
 				    }
-				xsFree(xs);
-				xsFree(param);
 				t = mlxNextToken(lxs);
 				}
 
@@ -2522,17 +2534,7 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				t = mlxNextToken(lxs);
 				if (t != MLX_TOK_OPENPAREN)
 				    mlxHoldToken(lxs);
-				xs = xsNew();
-				param = xsNew();
-				if (!xs || !param)
-				    {
-				    if (xs) xsFree(xs);
-				    if (param) xsFree(param);
-				    next_state = ParseError;
-				    break;
-				    }
-				n_tokens = mq_internal_ParseOpenParams(lxs, stmt, t == MLX_TOK_OPENPAREN, NULL, xs, param);
-				if (n_tokens < 0 || mq_internal_SetOpenParams(new_qs, n_tokens, xs, param) < 0)
+				if (mq_internal_ParseSourceParams(lxs, stmt, new_qs, t == MLX_TOK_OPENPAREN, NULL) < 0)
 				    {
 				    next_state = ParseError;
 				    mssError(0,"MQ","Error in EXEC parameters");
@@ -2541,8 +2543,6 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				    {
 				    next_state = LookForClause;
 				    }
-				xsFree(xs);
-				xsFree(param);
 				}
 			    else
 				{
@@ -2995,26 +2995,12 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 			    mlxNoteError(lxs);
 			    break;
 			    }
-			xs = xsNew();
-			param = xsNew();
-			if (!xs || !param)
+			if (mq_internal_ParseSourceParams(lxs, stmt, new_qs, 1, NULL) < 0)
 			    {
-			    if (xs) xsFree(xs);
-			    if (param) xsFree(param);
-			    next_state = ParseError;
-			    break;
-			    }
-			n_tokens = mq_internal_ParseOpenParams(lxs, stmt, 1, NULL, xs, param);
-			if (n_tokens < 0 || mq_internal_SetOpenParams(new_qs, n_tokens, xs, param) < 0)
-			    {
-			    xsFree(xs);
-			    xsFree(param);
 			    next_state = ParseError;
 			    mssError(0,"MQ","Error in FROM clause source parameters");
 			    break;
 			    }
-			xsFree(xs);
-			xsFree(param);
 			t = mlxNextToken(lxs);
 			}
 

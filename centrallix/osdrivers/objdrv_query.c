@@ -326,8 +326,8 @@ qy_internal_SetupCollectionParam(pQyData inf, pObject obj, pStructInf param_inf)
     int notnull;
     pObjPresentationHints hints;
     pObjDataItem item;
-    pObject held;
-    handle_t tempobj;
+    pObject held = NULL;
+    handle_t tempobj = XHN_INVALID_HANDLE;
 
 	/** Name and nullability **/
 	if (stGetAttrValue(stLookup(param_inf, "name"), DATA_T_STRING, POD(&name), 0) != 0)
@@ -345,12 +345,12 @@ qy_internal_SetupCollectionParam(pQyData inf, pObject obj, pStructInf param_inf)
 	    if (!item || item->Type != OBJ_DI_T_COLLECTION)
 		{
 		mssError(1, "QY", "Invalid collection binding for parameter '%s'", name);
-		return -1;
+		goto error;
 		}
 	    if (item->Flags & OBJ_DI_F_PATH)
 		{
 		if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | (item->Flags & (OBJ_DI_F_PATH | OBJ_DI_F_READONLY)), XHN_INVALID_HANDLE, item->Path, NULL))
-		    return -1;
+		    goto error;
 		}
 	    else
 		{
@@ -358,37 +358,39 @@ qy_internal_SetupCollectionParam(pQyData inf, pObject obj, pStructInf param_inf)
 		if (!held)
 		    {
 		    mssError(1, "QY", "Could not open collection for parameter '%s'", name);
-		    return -1;
+		    goto error;
 		    }
 		objUnmanageObject(obj->Session, held);
 		if (xaAddItem(&inf->HeldCollections, (void*)held) < 0)
-		    {
-		    objClose(held);
-		    return -1;
-		    }
+		    goto error;
+		held = NULL; /* now closed by qy_internal_Close() */
 		if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | (item->Flags & OBJ_DI_F_READONLY), item->TempObj, NULL, NULL))
-		    return -1;
+		    goto error;
 		}
 	    }
 	else if (notnull)
 	    {
 	    mssError(1, "QY", "Collection parameter '%s' requires a collection", name);
-	    return -1;
+	    goto error;
 	    }
 	else
 	    {
 	    /** No collection passed: use an empty one **/
 	    tempobj = objCreateTempObject();
 	    if (tempobj == XHN_INVALID_HANDLE)
-		return -1;
+		goto error;
 	    if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | OBJ_DI_F_OWNED, tempobj, NULL, NULL))
-		{
-		objDeleteTempObject(tempobj);
-		return -1;
-		}
+		goto error;
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	if (held)
+	    objClose(held);
+	if (tempobj != XHN_INVALID_HANDLE)
+	    objDeleteTempObject(tempobj);
+	return -1;
     }
 
 

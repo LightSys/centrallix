@@ -83,16 +83,16 @@ obj_internal_FreeDataItem(pObjDataItem item)
 static pObjDataItem
 obj_internal_AllocDataItem(char* name, int type, int flags, handle_t tempobj, char* path, void* data)
     {
-    pObjDataItem item;
+    pObjDataItem item = NULL;
 
 	if (strlen(name) >= sizeof(item->Name))
 	    {
 	    mssError(1, "OSML", "Data item name '%s' is too long", name);
-	    return NULL;
+	    goto error;
 	    }
 	item = (pObjDataItem)nmMalloc(sizeof(ObjDataItem));
 	if (!item)
-	    return NULL;
+	    goto error;
 	memset(item, 0, sizeof(ObjDataItem));
 	strtcpy(item->Name, name, sizeof(item->Name));
 	item->Type = type;
@@ -103,13 +103,15 @@ obj_internal_AllocDataItem(char* name, int type, int flags, handle_t tempobj, ch
 	    {
 	    item->Path = nmSysStrdup(path);
 	    if (!item->Path)
-		{
-		nmFree(item, sizeof(ObjDataItem));
-		return NULL;
-		}
+		goto error;
 	    }
 
-    return item;
+	return item;
+
+    error:
+	if (item)
+	    nmFree(item, sizeof(ObjDataItem));
+	return NULL;
     }
 
 
@@ -120,28 +122,32 @@ obj_internal_AllocDataItem(char* name, int type, int flags, handle_t tempobj, ch
 pObjDataScope
 objScopeCreate(pObjSession session, pObjDataScope parent)
     {
-    pObjDataScope scope;
+    pObjDataScope scope = NULL;
 
 	scope = (pObjDataScope)nmMalloc(sizeof(ObjDataScope));
 	if (!scope)
-	    return NULL;
+	    goto error;
 	memset(scope, 0, sizeof(ObjDataScope));
 	scope->LinkCnt = 1;
 	scope->Session = session;
 	if (xaInit(&scope->Items, 8) < 0)
-	    {
-	    nmFree(scope, sizeof(ObjDataScope));
-	    return NULL;
-	    }
+	    goto error;
 	if (xaInit(&scope->Tokens, 8) < 0)
-	    {
-	    xaDeInit(&scope->Items);
-	    nmFree(scope, sizeof(ObjDataScope));
-	    return NULL;
-	    }
+	    goto error;
 	scope->Parent = parent?objScopeLink(parent):NULL;
 
-    return scope;
+	return scope;
+
+    error:
+	if (scope)
+	    {
+	    if (scope->Tokens.Items)
+		xaDeInit(&scope->Tokens);
+	    if (scope->Items.Items)
+		xaDeInit(&scope->Items);
+	    nmFree(scope, sizeof(ObjDataScope));
+	    }
+	return NULL;
     }
 
 
@@ -201,23 +207,25 @@ objScopeRelease(pObjDataScope scope)
 pObjDataScope
 objScopeGetAppScope()
     {
-    pObjDataScope scope;
+    pObjDataScope scope = NULL;
 
 	scope = (pObjDataScope)appLookupAppData("OSML:appscope");
 	if (!scope)
 	    {
 	    scope = objScopeCreate(NULL, NULL);
 	    if (!scope)
-		return NULL;
+		goto error;
 	    scope->Flags |= OBJ_DS_F_APPSCOPE;
 	    if (appRegisterAppData("OSML:appscope", (void*)scope, objScopeRelease) < 0)
-		{
-		objScopeRelease(scope);
-		return NULL;
-		}
+		goto error;
 	    }
 
-    return scope;
+	return scope;
+
+    error:
+	if (scope)
+	    objScopeRelease(scope);
+	return NULL;
     }
 
 
@@ -279,24 +287,29 @@ objScopeLookup(pObjDataScope scope, char* name, int type, int follow_parents)
 pObjDataItem
 objScopeAdd(pObjDataScope scope, char* name, int type, int flags, handle_t tempobj, char* path, void* data)
     {
-    pObjDataItem item;
+    pObjDataItem item = NULL;
 
 	if (objScopeLookupLocal(scope, name, type))
 	    {
 	    mssError(1, "OSML", "'%s' already exists in this scope", name);
-	    return NULL;
+	    goto error;
 	    }
 	item = obj_internal_AllocDataItem(name, type, flags, tempobj, path, data);
 	if (!item)
-	    return NULL;
+	    goto error;
 	if (xaAddItem(&scope->Items, (void*)item) < 0)
+	    goto error;
+
+	return item;
+
+    error:
+	if (item)
 	    {
+	    /** The caller keeps ownership of tempobj and data on failure **/
 	    item->Flags &= ~OBJ_DI_F_OWNED;
 	    obj_internal_FreeDataItem(item);
-	    return NULL;
 	    }
-
-    return item;
+	return NULL;
     }
 
 
@@ -307,43 +320,42 @@ objScopeAdd(pObjDataScope scope, char* name, int type, int flags, handle_t tempo
 int
 objScopePublish(pObjDataScope scope, pObjDataItem item, void* owner, char* token, int token_len)
     {
-    pObjDataToken tok;
+    pObjDataToken tok = NULL;
 
 	if (token_len < OBJ_DS_TOKEN_LEN + 1 || (scope->Flags & OBJ_DS_F_APPSCOPE))
-	    return -1;
+	    goto error;
 
 	if (!OBJDS.Keystream)
 	    {
 	    OBJDS.Keystream = cxssKeystreamNew(NULL, 0);
 	    if (!OBJDS.Keystream)
-		return -1;
+		goto error;
 	    }
 
 	tok = (pObjDataToken)nmMalloc(sizeof(ObjDataToken));
 	if (!tok)
-	    return -1;
+	    goto error;
 	memset(tok, 0, sizeof(ObjDataToken));
 	if (cxssKeystreamGenerateHex(OBJDS.Keystream, tok->Token, OBJ_DS_TOKEN_LEN) < 0)
-	    {
-	    nmFree(tok, sizeof(ObjDataToken));
-	    return -1;
-	    }
+	    goto error;
 	tok->Owner = owner;
 	tok->Item = obj_internal_AllocDataItem(item->Name, item->Type, item->Flags & ~OBJ_DI_F_OWNED, item->TempObj, item->Path, item->Data);
 	if (!tok->Item)
-	    {
-	    nmFree(tok, sizeof(ObjDataToken));
-	    return -1;
-	    }
+	    goto error;
 	if (xaAddItem(&scope->Tokens, (void*)tok) < 0)
-	    {
-	    obj_internal_FreeDataItem(tok->Item);
-	    nmFree(tok, sizeof(ObjDataToken));
-	    return -1;
-	    }
+	    goto error;
 	strtcpy(token, tok->Token, token_len);
 
-    return 0;
+	return 0;
+
+    error:
+	if (tok)
+	    {
+	    if (tok->Item)
+		obj_internal_FreeDataItem(tok->Item);
+	    nmFree(tok, sizeof(ObjDataToken));
+	    }
+	return -1;
     }
 
 
