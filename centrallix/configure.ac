@@ -30,8 +30,8 @@ dnl Replace `main' with a function in -ldl:
 AC_CHECK_LIB(dl, main)
 dnl Replace `main' with a function in -lm:
 AC_CHECK_LIB(m, main)
-dnl Replace `main' with a function in -lz:
-AC_CHECK_LIB(z, main)
+dnl Require zlib (-lz):
+AC_CHECK_LIB(z, deflate, [], [AC_MSG_ERROR([zlib is required; install zlib-devel.])])
 dnl Replace 'main with a function in -largon2 ADDED THIS EXPERIMENTALLY TRYING TO GET ARGON TO WORK
 AC_CHECK_LIB(argon2, main)
 
