@@ -65,7 +65,7 @@ static Chain chains[] =
 	    {"%s","dddd",0, 5,10}, {"%s","eeeee",0, 6,15} },
 	  "abbcccddddeeeee" },
 
-    /** Eight appends: fills the buffer exactly, then the last one overruns. **/
+    /** Eight appends, the last of which overruns. **/
 	{ "", AREA,
 	  { {"%s","abc",0, 4,3}, {"%s","abc",0, 4,6}, {"%s","abc",0, 4,9},
 	    {"%s","abc",0, 4,12}, {"%s","abc",0, 4,15}, {"%s","abc",0, 4,18},
