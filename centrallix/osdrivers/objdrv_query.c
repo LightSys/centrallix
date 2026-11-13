@@ -84,6 +84,7 @@ typedef struct
 /*** Flags for QyData and QyQuery ***/
 #define QY_F_USEHAVING_NAME		1	/* use HAVING clause when looking up by NAME */
 #define QY_F_USEHAVING_CRITERIA		2	/* use HAVING clause when applying additional criteria */
+#define QY_F_VOLATILE			4	/* results could differ if run again ("volatile" attribute) */
 
 
 #define QY(x) ((pQyData)(x))
@@ -394,6 +395,28 @@ qy_internal_SetupCollectionParam(pQyData inf, pObject obj, pStructInf param_inf)
     }
 
 
+/*** qy_internal_IsVolatileNode() - check the .qy's "volatile" attribute
+ *** (yes, true, or 1).
+ ***/
+int
+qy_internal_IsVolatileNode(pStructInf node)
+    {
+    pStructInf attr;
+    char* str;
+    int n;
+
+	attr = stLookup(node, "volatile");
+	if (!attr)
+	    return 0;
+	if (stGetAttrValue(attr, DATA_T_STRING, POD(&str), 0) == 0)
+	    return (!strcasecmp(str, "yes") || !strcasecmp(str, "true") || !strcmp(str, "1"));
+	if (stGetAttrValue(attr, DATA_T_INTEGER, POD(&n), 0) == 0)
+	    return (n != 0);
+
+    return 0;
+    }
+
+
 /*** qyOpen - open an object.
  ***/
 void*
@@ -495,6 +518,10 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    name_expr = ":name";
 	    }
 	inf->NameExpression = nmSysStrdup(name_expr);
+
+	/** Volatile query?  Its results must not be cached for reuse. **/
+	if (qy_internal_IsVolatileNode(inf->Node->Data))
+	    inf->Flags |= QY_F_VOLATILE;
 
 	/** Get parameter list **/
 	for(i=0; i<inf->Node->Data->nSubInf; i++)
@@ -753,6 +780,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
 	inf->Node = qy->Data->Node;
 	inf->Mode = mode;
+	inf->Flags |= (qy->Data->Flags & QY_F_VOLATILE);
 
 	/** increase count of open objects to the node **/
 	inf->Node->OpenCnt++;
@@ -1046,8 +1074,17 @@ qyInfo(void* inf_v, pObjectInfo info)
 	    if (ll_info)
 		{
 		memcpy(info, ll_info, sizeof(ObjectInfo));
+		if (inf->Flags & QY_F_VOLATILE)
+		    info->Flags |= OBJ_INFO_F_VOLATILE;
 		return 0;
 		}
+	    }
+
+	/** A volatile .qy reports so even when it returns no rows **/
+	if (inf->Flags & QY_F_VOLATILE)
+	    {
+	    info->Flags |= OBJ_INFO_F_VOLATILE;
+	    return 0;
 	    }
 
     return -1;
