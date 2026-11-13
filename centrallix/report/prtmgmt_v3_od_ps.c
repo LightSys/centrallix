@@ -1006,12 +1006,12 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	 ** then skips to the data's end marker.
 	 **/
 	drawcmd_len = snprintf(drawcmd, sizeof(drawcmd),
-		"{ /rasterdata currentfile /ASCIIHexDecode filter def "
-		"%d %d 8 [ %d %d %d %d %d %d ] rasterdata /FlateDecode filter false 3 colorimage "
-		"rasterdata flushfile } exec\n",
-		cols, rows,
-		cols, 0, 0, -rows, 0, rows
-		);
+	    "{ /rasterdata currentfile /ASCIIHexDecode filter def "
+	    "%d %d 8 [ %d %d %d %d %d %d ] rasterdata /FlateDecode filter false 3 colorimage "
+	    "rasterdata flushfile } exec\n",
+	    cols, rows,
+	    cols, 0, 0, -rows, 0, rows
+	    );
 	if (UNLIKELY(drawcmd_len < 0 || (size_t)drawcmd_len >= sizeof(drawcmd)))
 	    {
 	    mssError(1, "PRT", "Failed to build the drawing command for a %dx%d image.", cols, rows);
@@ -1025,17 +1025,17 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	/** save graphics context before beginning, 
 	 ** then emit the image header.
 	 **/
-	prt_psod_Output_va(context,	"gsave\n"
-					"%.1f %.1f translate\n"
-					"%.1f %.1f scale\n"
-					"%%%%BeginData: %lld Hex Bytes\n"
-					,
-				context->CurHPos*7.2 + 0.000001, 
-				context->PageHeight - (context->CurVPos*12.0 + height*12.0 + 0.000001),
-				width*7.2 + 0.000001,
-				height*12.0 + 0.000001,
-				drawcmd_len + hex_len
-				);
+	prt_psod_Output_va(context,
+	    "gsave\n"
+	    "%.1f %.1f translate\n"
+	    "%.1f %.1f scale\n"
+	    "%%%%BeginData: %lld Hex Bytes\n",
+	    context->CurHPos*7.2 + 0.000001, 
+	    context->PageHeight - (context->CurVPos*12.0 + height*12.0 + 0.000001),
+	    width*7.2 + 0.000001,
+	    height*12.0 + 0.000001,
+	    drawcmd_len + hex_len
+	    );
 	prt_psod_Output(context, drawcmd, drawcmd_len);
 
 	/** Output the compressed data, in hexadecimal **/
@@ -1052,9 +1052,11 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    }
 
 	/** Restore graphics context when done **/
-	prt_psod_Output_va(context,	">\n"
-					"%%%%EndData\n"
-					"grestore\n");
+	prt_psod_Output_va(context,
+	    ">\n"
+	    "%%%%EndData\n"
+	    "grestore\n"
+	    );
 
 	rval = context->CurVPos + height;
 
