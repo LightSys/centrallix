@@ -891,17 +891,20 @@ prt_psod_OutputCompressed(pPrtPsodInf context, z_stream* zs, unsigned char* data
 	 ***/
 	zs->next_in = data;
 	zs->avail_in = len;
+	int z_rval;
 	do  {
 	    unsigned char chunk[PRT_PSOD_HEX_LINE];
 	    zs->next_out = chunk;
 	    zs->avail_out = sizeof(chunk);
 
-	    const int z_rval = deflate(zs, flush);
-	    if (UNLIKELY(z_rval == Z_STREAM_ERROR))
-		{
+	    /** Z_BUF_ERROR only means this call had nothing left to do. **/
+	    z_rval = deflate(zs, flush);
+	    if (UNLIKELY(z_rval != Z_OK && z_rval != Z_BUF_ERROR
+		&& !(z_rval == Z_STREAM_END && flush == Z_FINISH)
+	    ))	{
 		mssError(1, "PRT",
-		    "Failed to compress %d bytes: zlib error %d.",
-		    len, z_rval
+		    "Failed to compress %d bytes: %s.",
+		    len, zError(z_rval)
 		);
 		return -1;
 		}
@@ -920,6 +923,16 @@ prt_psod_OutputCompressed(pPrtPsodInf context, z_stream* zs, unsigned char* data
 		prt_psod_Output(context, hexline, n*2+1);
 		}
 	    } while (zs->avail_out == 0);
+
+	/** Finishing must end the stream, or the image was truncated. **/
+	if (UNLIKELY(flush == Z_FINISH && z_rval != Z_STREAM_END))
+	    {
+	    mssError(1, "PRT",
+		"Failed to finish compressing %lu bytes: zlib returned %d instead of Z_STREAM_END.",
+		(unsigned long)zs->total_in, z_rval
+	    );
+	    return -1;
+	    }
 
     return 0;
     }
