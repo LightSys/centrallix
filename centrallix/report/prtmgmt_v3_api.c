@@ -5,8 +5,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdarg.h>
+
 #include "barcode.h"
 #include "report.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/xarray.h"
@@ -748,7 +750,14 @@ prtWriteString(int handle_id, char* str)
 	    string_obj->ConfigHeight = string_obj->Height;
 	    string_obj->YBase = prt_internal_GetFontBaseline(string_obj);
 	    rval = obj->LayoutMgr->AddObject(obj,string_obj);
-	    if (rval < 0) break;
+	    if (UNLIKELY(rval < 0))
+		{
+		/** Free the string, if we still own it **/
+		if (rval == -1)
+		    prt_internal_FreeTree(string_obj);
+		rval = -1;
+		break;
+		}
 
 	    /** Handle might have changed - check it **/
 	    obj = prtHandlePtr(handle_id);
@@ -1028,15 +1037,43 @@ int
 prtSetMargins(int handle_id, double t, double b, double l, double r)
     {
     pPrtObjStream obj = (pPrtObjStream)prtHandlePtr(handle_id);
+    double mt, mb, ml, mr;
 
 	if (!obj) return -1;
 	ASSERTMAGIC(obj,MGK_PRTOBJSTRM);
 
+	/** Resolve the new margins **/
+	mt = (t >= 0.0) ? t : obj->MarginTop;
+	mb = (b >= 0.0) ? b : obj->MarginBottom;
+	ml = (l >= 0.0) ? l : obj->MarginLeft;
+	mr = (r >= 0.0) ? r : obj->MarginRight;
+
+	/** Pages need room inside their margins **/
+	if (obj->ObjType->TypeID == PRT_OBJ_T_PAGE)
+	    {
+	    if (UNLIKELY(ml + mr >= obj->Width))
+		{
+		mssError(1, "PRT",
+		    "Failed to set page margins: left %.2f + right %.2f must be less than page width %.2f (in tenths of an inch)",
+		    ml, mr, obj->Width
+		);
+		return -1;
+		}
+	    if (UNLIKELY(mt + mb >= obj->Height))
+		{
+		mssError(1, "PRT",
+		    "Failed to set page margins: top %.2f + bottom %.2f must be less than page height %.2f (in sixths of an inch)",
+		    mt, mb, obj->Height
+		);
+		return -1;
+		}
+	    }
+
 	/** Set the appropriate values. **/
-	if (t >= 0.0) obj->MarginTop = t;
-	if (b >= 0.0) obj->MarginBottom = b;
-	if (l >= 0.0) obj->MarginLeft = l;
-	if (r >= 0.0) obj->MarginRight = r;
+	obj->MarginTop = mt;
+	obj->MarginBottom = mb;
+	obj->MarginLeft = ml;
+	obj->MarginRight = mr;
 
     return 0;
     }

@@ -1,0 +1,2 @@
+##NAME Report with text too wide for its table cell
+print /tests/NarrowCell.rpt

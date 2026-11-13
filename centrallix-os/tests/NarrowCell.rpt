@@ -1,0 +1,38 @@
+$Version=2$
+NarrowCell "system/report"
+    {
+    title = "Test of Text Too Wide for Its Table Cell";
+
+    document_format="text/plain";
+
+    resolution = 300;
+    pagewidth=85;
+    pageheight=33;
+    marginleft=2.5;
+    marginright=2.5;
+    margintop=3;
+    marginbottom=3;
+
+    qy "report/query"
+	{
+	sql = "select * from /tests/TestLevel1.csv/rows limit 1";
+	}
+
+    // The middle column is a thin spacer, too narrow for any text.
+    spacer_table "report/table"
+	{
+	source = qy;
+	width=40;
+	height=0;
+	columns=3;
+	widths=20,0.3,19;
+	colsep=0.2;
+
+	month_row "report/table-row"
+	    {
+	    label "report/table-cell" { value="Color"; }
+	    spacer "report/table-cell" { value="Jul"; }
+	    color "report/table-cell" { value=runserver(:qy:Color); }
+	    }
+	}
+    }
