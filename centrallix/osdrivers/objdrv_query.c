@@ -181,9 +181,12 @@ qy_internal_Close(pQyData inf)
 	    {
 	    if (inf->MultiQueryObject)
 		objClose(inf->MultiQueryObject);
-	    for(i=0;i<inf->Parameters.nItems;i++)
-		paramFree((pParam)inf->Parameters.Items[i]);
-	    xaDeInit(&inf->Parameters);
+	    if (inf->Parameters.Items)
+		{
+		for(i=0;i<inf->Parameters.nItems;i++)
+		    paramFree((pParam)inf->Parameters.Items[i]);
+		xaDeInit(&inf->Parameters);
+		}
 	    if (inf->SQL)
 		nmSysFree(inf->SQL);
 	    if (inf->Node)
@@ -413,8 +416,7 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 
 	/** Zero out the structure **/
 	memset(inf,0,sizeof(QyData));
-	xaInit(&inf->Parameters, 16);
-	if (xaInit(&inf->HeldCollections, 4) < 0)
+	if (xaInit(&inf->Parameters, 16) < 0 || xaInit(&inf->HeldCollections, 4) < 0)
 	    goto error;
 
 	/** Set the parent Object **/
@@ -741,8 +743,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	inf = (pQyData)nmMalloc(sizeof(QyData));
 	if (!inf) return NULL;
 	memset(inf, 0, sizeof(QyData));
-	xaInit(&inf->Parameters, 16);
-	if (xaInit(&inf->HeldCollections, 4) < 0)
+	if (xaInit(&inf->Parameters, 16) < 0 || xaInit(&inf->HeldCollections, 4) < 0)
 	    {
 	    qy_internal_Close(inf);
 	    return NULL;
