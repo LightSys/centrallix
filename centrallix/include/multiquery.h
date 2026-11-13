@@ -127,6 +127,9 @@ typedef struct _QS
     pQueryElement	QELinkage;
     int			Specificity;		/* source specificity */
     int			Flags;
+    char*		OpenParams;		/* open-ctl params to append to an EXPRESSION source */
+    char*		ParamDisplay;		/* parameter list as shown in showplan */
+    int			ParamOffset;		/* length of Source before appended params */
     int			IntVals[2];		/* used by LIMIT clause */
     }
     QueryStructure, *pQueryStructure;
@@ -149,6 +152,7 @@ typedef struct _QS
 #define MQ_SF_PAGED		32768		/* SELECT ... FROM PAGED ... */
 #define MQ_SF_DEFAULTORDER	65536		/* ORDER BY DEFAULT (dropped/overridden by a following ORDER BY) */
 #define MQ_SF_ONEROW		131072		/* SELECT ... FROM ONEROW ... (restrict from source to one row) */
+#define MQ_SF_SCOPEDOPEN	262144		/* source params contain data scope tokens */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1
@@ -176,35 +180,6 @@ typedef struct _QS
 #define MQ_T_ONDUPITEM		23
 #define MQ_T_ONDUPUPDATEITEM	24
 #define MQ_T_DECLARECLAUSE	25
-
-
-/*** Structure for a declared object ***/
-typedef struct _QDO
-    {
-    char		Name[32];		/* Name of the object */
-    pStructInf		Data;			/* Object data */
-    }
-    QueryDeclaredObject, *pQueryDeclaredObject;
-
-
-/*** Similarly, this is for a declared collection (i.e. table). ***/
-typedef struct _QDC
-    {
-    char		Name[32];		/* Name of the collection */
-    handle_t		Collection;		/* Collection data */
-    }
-    QueryDeclaredCollection, *pQueryDeclaredCollection;
-
-
-/*** Data from end-user session/group/app.  This is for declared
- *** items with scope "application".
- ***/
-typedef struct _QAD
-    {
-    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
-    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
-    }
-    QueryAppData, *pQueryAppData;
 
 
 typedef struct _QST QueryStatement, *pQueryStatement;
@@ -258,12 +233,7 @@ struct _MQ /* MultiQuery */
     unsigned int	StartMsec;		/* msec value at start of query */
     unsigned int	YieldMsec;		/* msec value at last thYield() */
 
-    /*** the following are for declared objects and
-     *** collections with scope "query", the default
-     *** scope.
-     ***/
-    XArray		DeclaredObjects;	/* objects created with DECLARE OBJECT ... */
-    XArray		DeclaredCollections;	/* collections created with DECLARE COLLECTION ... */
+    pObjDataScope	Scope;			/* query-scope collections and declared objects */
     };
 
 #define MQ_F_ENDOFSQL		1		/* reached end of list of sql queries */
@@ -313,7 +283,8 @@ int mq_internal_nOrderBy(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
-handle_t mq_internal_FindCollection(pMultiQuery mq, char* collection);
+pObjDataItem mq_internal_FindCollection(pMultiQuery mq, char* collection);
+pObject mq_internal_OpenCollection(pMultiQuery mq, pObjDataItem item, int mode);
 void mq_internal_CheckYield(pMultiQuery mq);
 
 #endif  /* not defined _MULTIQUERY_H */

@@ -927,7 +927,7 @@ mqp_internal_SetupWildcard_r(pQueryElement qe, pQueryStatement stmt, char* orig_
 	    orig_len = cur_len;
 
 	    /** Open path so far and query for matching objects **/
-	    obj = objOpen(stmt->Query->SessionID, pathbuf, mi->ObjMode, 0600, "system/directory");
+	    obj = objOpenWithScope(stmt->Query->SessionID, pathbuf, mi->ObjMode, 0600, "system/directory", (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_SCOPEDOPEN)?stmt->Query->Scope:NULL);
 	    if (!obj)
 		goto finished;
 	    info = objInfo(obj);
@@ -1155,6 +1155,14 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 		}
 
 	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+
+	    /** Add any parameter list given after the expression **/
+	    if (((pQueryStructure)qe->QSLinkage)->OpenParams)
+		{
+		((pQueryStructure)qe->QSLinkage)->ParamOffset = strlen(((pQueryStructure)qe->QSLinkage)->Source);
+		if (mq_internal_AppendOpenParams(((pQueryStructure)qe->QSLinkage)->Source, sizeof(((pQueryStructure)qe->QSLinkage)->Source), ((pQueryStructure)qe->QSLinkage)->OpenParams) < 0)
+		    return -1;
+		}
 	    }
 
 	/** Wildcard processing needed? **/
@@ -1185,7 +1193,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
     pMqpRowCache rc;
     char* src;
     pMqpInf mi = (pMqpInf)(qe->PrivateData);
-    handle_t collection;
+    pObjDataItem collection;
 
 	mi->Flags &= ~MQP_MI_F_USINGCACHE;
 
@@ -1248,16 +1256,16 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_COLLECTION)
 		{
 		collection = mq_internal_FindCollection(stmt->Query, ((pQueryStructure)qe->QSLinkage)->Source);
-		if (collection == XHN_INVALID_HANDLE)
+		if (!collection)
 		    {
 		    mssError(0,"MQP","Could not find source collection '%s' for SQL projection", ((pQueryStructure)qe->QSLinkage)->Source);
 		    return -1;
 		    }
-		qe->LLSource = objOpenTempObject(stmt->Query->SessionID, collection, mi->ObjMode);
+		qe->LLSource = mq_internal_OpenCollection(stmt->Query, collection, mi->ObjMode);
 		}
 	    else
 		{
-		qe->LLSource = objOpen(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory");
+		qe->LLSource = objOpenWithScope(stmt->Query->SessionID, mi->CurrentSource, mi->ObjMode, 0600, (qe->Flags & MQ_EF_FROMOBJECT)?"system/object":"system/directory", (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_SCOPEDOPEN)?stmt->Query->Scope:NULL);
 		}
 	    if (!qe->LLSource) 
 		{

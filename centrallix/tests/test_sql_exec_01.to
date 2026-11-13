@@ -1,0 +1,10 @@
+##NAME EXEC and FROM parameter lists
+
+csv exec /tests/testquery.qy ()
+csv exec /tests/testquery.qy (id = 1 + 1)
+csv exec /tests/testquery.qy (color = "r" + "ed", id = sqrt(16))
+csv exec "/tests/testquery.qy" (color = "yellow", id = 5)
+csv select * from /tests/testquery.qy (id = 1)
+csv select :q:color from "/tests/testquery.qy" (color = "r" + "ed", id = 4) q
+csv select * from expression ("/tests/" + "testquery.qy") (id = 3) q
+csv select :q:rowid, :s:abbrev from /tests/testquery.qy (id = 2) q, /tests/States.csv/rows s where :s:id = :q:rowid

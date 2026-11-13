@@ -316,6 +316,7 @@ obj_internal_FreeObj(pObject this)
 		    }
 		if (del->AttrExpName) nmSysFree(del->AttrExpName);
 		if (del->AttrExp) expFreeExpression(del->AttrExp);
+		if (del->DataScope) objScopeRelease(del->DataScope);
 		xaDeInit(&(del->Attrs));
 	        nmFree(del,sizeof(Object));
 	    
@@ -594,10 +595,12 @@ obj_internal_OpenPermission(pPathname pathinfo, int pathcnt, int mode, char* out
  *** and process it into an open pObject pointer, with Prev and Next 
  *** links set to build a driver-chain and the various Driver fields set
  *** to the drivers handling each level of the open operation.  This 
- *** routine _does_ open the root object first.
+ *** routine _does_ open the root object first.  Each object created along
+ *** the path gets a link to the given data scope, if any, and is then not
+ *** placed in the directory cache.
  ***/
 pObject
-obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* usrtype)
+obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* usrtype, pObjDataScope scope)
     {
     pObject this,first_obj;
     pPathname pathinfo;
@@ -710,6 +713,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	if (!this)
 	    {
 	    this = obj_internal_AllocObj();
+	    if (scope)
+		{
+		this->DataScope = objScopeLink(scope);
+		this->Flags |= OBJ_F_NOCACHE;
+		}
 	    this->Data = OSYS.RootDriver->Open(this, 0, NULL, NULL, NULL);
 	    this->Pathname = pathinfo;
 	    pathinfo->LinkCnt++;
@@ -863,6 +871,11 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    this->Next->Pathname = pathinfo;
 	    pathinfo->LinkCnt++;
 	    this = this->Next;
+	    if (scope)
+		{
+		this->DataScope = objScopeLink(scope);
+		this->Flags |= OBJ_F_NOCACHE;
+		}
 	    this->Driver = drv;
 	    this->Session = s;
 	    this->Mode = mode;
@@ -1253,6 +1266,20 @@ obj_internal_RenamePath(pPathname path, int element_id, char* new_element)
 pObject 
 objOpen(pObjSession session, char* path, int mode, int permission_mask, char* type)
     {
+    return objOpenWithScope(session, path, mode, permission_mask, type, NULL);
+    }
+
+
+/*** Opens an object like objOpen(), but with a data scope that drivers along
+ *** the path can use to resolve tokens in their open-ctl parameters (see
+ *** objScopeResolveToken()).
+ ***
+ *** @param scope The data scope, or NULL to behave like objOpen().
+ *** @returns The open object, or NULL if an error occurs.
+ ***/
+pObject 
+objOpenWithScope(pObjSession session, char* path, int mode, int permission_mask, char* type, pObjDataScope scope)
+    {
     pObject this;
 
 	ASSERTMAGIC(session, MGK_OBJSESSION);
@@ -1260,7 +1287,7 @@ objOpen(pObjSession session, char* path, int mode, int permission_mask, char* ty
 	OSMLDEBUG(OBJ_DEBUG_F_APITRACE, "objOpen(%p, \"%s\") = ", session, path);
 
 	/** Lookup the path, etc. **/
-	this = obj_internal_ProcessOpen(session, path, mode, permission_mask, type);
+	this = obj_internal_ProcessOpen(session, path, mode, permission_mask, type, scope);
 	if (!this) return NULL;
 	this->Obj = NULL;
 	this->Session = session;
@@ -1376,7 +1403,7 @@ objCreate(pObjSession session, char* path, int permission_mask, char* type)
     pObject tmp;
 
 	/** Lookup the directory path. **/
-	tmp = obj_internal_ProcessOpen(session, path, O_WRONLY | O_CREAT | O_EXCL, permission_mask, type);
+	tmp = obj_internal_ProcessOpen(session, path, O_WRONLY | O_CREAT | O_EXCL, permission_mask, type, NULL);
 	if (!tmp) 
 	    {
 	    mssError(0,"OSML","Failed to create object - pathname invalid");
@@ -1409,7 +1436,7 @@ objDelete(pObjSession session, char* path)
     int rval;
 
 	/** Lookup the directory path. **/
-	tmp = obj_internal_ProcessOpen(session, path, O_RDWR, 0, "");
+	tmp = obj_internal_ProcessOpen(session, path, O_RDWR, 0, "", NULL);
 	if (!tmp) 
 	    {
 	    mssError(0,"OSML","Failed to delete object - pathname invalid");
