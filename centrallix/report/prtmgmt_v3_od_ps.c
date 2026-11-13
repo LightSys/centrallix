@@ -6,8 +6,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <stdbool.h>
+#include <zlib.h>
 #include "barcode.h"
 #include "report.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/magic.h"
 #include "cxlib/xarray.h"
@@ -24,7 +27,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2002 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -135,6 +138,8 @@ typedef struct _PPS
 #define PRT_PSOD_F_SENTPAGE	2	/* sent PageSetup */
 #define PRT_PSOD_F_USEGS	4	/* send content through GhostScript */
 
+#define PRT_PSOD_HEX_LINE	64	/* number of compressed image bytes per line of hex */
+
 
 /*** prt_psod_Output() - outputs the given snippet of text or PS code
  *** to the output channel for the printing session.  If length is set
@@ -183,7 +188,7 @@ prt_psod_OutputHeader(pPrtPsodInf context)
 				"%%Title: Centrallix/" PACKAGE_VERSION " Generated Document\n"
 				"%%Pages: (atend)\n"
 				"%%DocumentData: Clean7Bit\n"
-				"%%LanguageLevel: 2\n"
+				"%%LanguageLevel: 3\n"
 				"%%EndComments\n"
 				"/pdfmark where {pop} {userdict /pdfmark /cleartomark load put} ifelse\n"
 				"[ {Catalog} << /ViewerPreferences << /PrintScaling /None >> >> /PUT pdfmark\n"
@@ -865,17 +870,75 @@ prt_psod_WriteText(void* context_v, char* str, char* url, double width, double h
     }
 
 
+/*** prt_psod_Compress() - compresses data into a zlib stream and append the
+ *** compressed bytes to the provided string.
+ ***
+ *** @param zs The zlib stream, initialized with deflateInit().
+ *** @param data The data to compress, or NULL when len is 0.
+ *** @param len The length of data.
+ *** @param flush Z_NO_FLUSH, or Z_FINISH to end the stream.
+ *** @param out The string where compressed bytes are written.
+ *** @returns 0 on success, or -1 with mssError() on failure.
+ ***/
+static int
+prt_psod_Compress(z_stream* zs, unsigned char* data, int len, int flush, pXString out)
+    {
+	/*** Compress until zlib consumes the entire input and doesn't fill
+	 *** the output buffer.
+	 ***/
+	zs->next_in = data;
+	zs->avail_in = len;
+	do  {
+	    unsigned char chunk[4096];
+	    zs->next_out = chunk;
+	    zs->avail_out = sizeof(chunk);
+
+	    const int z_rval = deflate(zs, flush);
+	    if (UNLIKELY(z_rval == Z_STREAM_ERROR))
+		{
+		mssError(1, "PRT",
+		    "Failed to compress %d bytes: zlib error %d.",
+		    len, z_rval
+		);
+		return -1;
+		}
+
+	    if (UNLIKELY(xsConcatenate(out, (char*)chunk, sizeof(chunk) - zs->avail_out) < 0))
+		{
+		mssError(1, "PRT",
+		    "Failed to store %zu bytes of compressed data.",
+		    sizeof(chunk) - zs->avail_out
+		);
+		return -1;
+		}
+	    } while (zs->avail_out == 0);
+
+    return 0;
+    }
+
+
 /*** prt_psod_WriteRasterData() - outputs a block of raster (image) data
  *** at the current printing position on the page, given the selected
- *** pixel and color resolution.
+ *** pixel and color resolution.  The pixels are Flate-compressed and
+ *** hex-encoded, which requires PostScript Level 3.
  ***/
 double
 prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double height, double next_y)
     {
     pPrtPsodInf context = (pPrtPsodInf)context_v;
-    int rows,cols,x,y,pix;
+    double rval = -1;
+    int rows,cols,x,y,pix,i,n;
     int direct_map = 0;
-    unsigned char* imgrow;
+    unsigned char* img_row = NULL;
+    z_stream zs;
+    bool zs_initialized = false;
+    XString zdata_buf;
+    pXString zdata = NULL;
+    char drawcmd[256];
+    int drawcmd_len;
+    long long hex_len;
+    char hexline[PRT_PSOD_HEX_LINE*2 + 1];
+    unsigned char* zbytes;
     char* hexdigit = "0123456789abcdef";
 
 	if (context->PageNum >= context->MaxPages) return 0;
@@ -897,68 +960,110 @@ prt_psod_WriteRasterData(void* context_v, pPrtImage img, double width, double he
 	    direct_map = 1;
 
 	/** Allocate image data row **/
-	imgrow = (unsigned char*)nmSysMalloc(cols*6 + 1 + 1);
-	if (!imgrow)
-	    return -1;
+	img_row = (unsigned char*)nmSysMalloc(cols*3 + 1);
+	if (UNLIKELY(img_row == NULL))
+	    {
+	    mssError(1, "PRT", "Failed to allocate a %d-pixel image row.", cols);
+	    goto end;
+	    }
+
+	/** Start the zlib compression. **/
+	if (UNLIKELY(xsInit(&zdata_buf) < 0))
+	    {
+	    mssError(1, "PRT", "Failed to initialize the compressed image buffer.");
+	    goto end;
+	    }
+	zdata = &zdata_buf;
+	memset(&zs, 0, sizeof(zs));
+	if (UNLIKELY(deflateInit(&zs, Z_DEFAULT_COMPRESSION) != Z_OK))
+	    {
+	    mssError(1, "PRT",
+		"Failed to start compressing a %dx%d image: %s.",
+		cols, rows, (zs.msg != NULL) ? zs.msg : "unknown zlib error"
+	    );
+	    goto end;
+	    }
+	zs_initialized = true;
+
+	/** Compress the pixels as RGB bytes. **/
+	for(y=0;y<rows;y++)
+	    {
+	    for(x=0;x<cols;x++)
+		{
+		if (direct_map)
+		    pix = img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF;
+		else
+		    pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
+		img_row[x*3+0] = (pix >> 16) & 0xFF;
+		img_row[x*3+1] = (pix >> 8) & 0xFF;
+		img_row[x*3+2] = pix & 0xFF;
+		}
+	    if (UNLIKELY(prt_psod_Compress(&zs, img_row, cols*3, Z_NO_FLUSH, zdata) < 0)) goto end;
+	    }
+	if (UNLIKELY(prt_psod_Compress(&zs, NULL, 0, Z_FINISH, zdata) < 0)) goto end;
+
+	/** Build the drawing command, which reads the data after it and
+	 ** then skips to the data's end marker.
+	 **/
+	drawcmd_len = snprintf(drawcmd, sizeof(drawcmd),
+		"{ /rasterdata currentfile /ASCIIHexDecode filter def "
+		"%d %d 8 [ %d %d %d %d %d %d ] rasterdata /FlateDecode filter false 3 colorimage "
+		"rasterdata flushfile } exec\n",
+		cols, rows,
+		cols, 0, 0, -rows, 0, rows
+		);
+	if (UNLIKELY(drawcmd_len < 0 || (size_t)drawcmd_len >= sizeof(drawcmd)))
+	    {
+	    mssError(1, "PRT", "Failed to build the drawing command for a %dx%d image.", cols, rows);
+	    goto end;
+	    }
+
+	/** Hex data: two digits per byte, a newline per line, then ">\n". **/
+	n = zdata->Length;
+	hex_len = 2LL*n + (n + PRT_PSOD_HEX_LINE - 1)/PRT_PSOD_HEX_LINE + 2;
 
 	/** save graphics context before beginning, 
 	 ** then emit the image header.
 	 **/
 	prt_psod_Output_va(context,	"gsave\n"
-					"/getrasterdata %d string def\n"
 					"%.1f %.1f translate\n"
 					"%.1f %.1f scale\n"
-					"%d %d 8\n"
-					"[ %d %d %d %d %d %d ]\n"
-					"{ currentfile getrasterdata readhexstring pop }\n"
-					/*"{ currentfile rasterdata readhexstring pop }\n"*/
-					"false 3\n"
-					"%%%%BeginData: %d ASCII Bytes\n"
-					"colorimage\n"
+					"%%%%BeginData: %lld Hex Bytes\n"
 					,
-				cols*3,
 				context->CurHPos*7.2 + 0.000001, 
 				context->PageHeight - (context->CurVPos*12.0 + height*12.0 + 0.000001),
 				width*7.2 + 0.000001,
 				height*12.0 + 0.000001,
-				cols, rows,
-				cols, 0, 0, -rows, 0, rows,
-				((cols*6)+1)*rows+strlen("colorimage\n")
+				drawcmd_len + hex_len
 				);
+	prt_psod_Output(context, drawcmd, drawcmd_len);
 
-	/** Output the data, in hexadecimal **/
-	for(y=0;y<rows;y++)
+	/** Output the compressed data, in hexadecimal **/
+	zbytes = (unsigned char*)zdata->String;
+	for(i=0;i<n;i+=PRT_PSOD_HEX_LINE)
 	    {
-	    for(x=0;x<cols;x++)
+	    for(x=0;x<PRT_PSOD_HEX_LINE && i+x<n;x++)
 		{
-		/** We're doing the hex-number-to-ascii conversion manually because
-		 ** it is 4 times faster, and this loop is a bottleneck for reports
-		 ** with images, especially large images.
-		 **/
-		if (direct_map)
-		    pix = img->Data.Word[y*img->Hdr.Width + x] & 0x00FFFFFF;
-		    /*pix = prt_internal_GetPixelDirect(img, x, y);*/
-		else
-		    pix = prt_internal_GetPixel(img, ((double)x)/(cols), ((double)y)/(rows));
-		imgrow[x*6+0] = hexdigit[pix >> 20];
-		imgrow[x*6+1] = hexdigit[(pix >> 16) & 0xF];
-		imgrow[x*6+2] = hexdigit[(pix >> 12) & 0xF];
-		imgrow[x*6+3] = hexdigit[(pix >> 8) & 0xF];
-		imgrow[x*6+4] = hexdigit[(pix >> 4) & 0xF];
-		imgrow[x*6+5] = hexdigit[pix & 0xF];
+		hexline[x*2+0] = hexdigit[zbytes[i+x] >> 4];
+		hexline[x*2+1] = hexdigit[zbytes[i+x] & 0xF];
 		}
-	    imgrow[cols*6] = '\n';
-	    imgrow[cols*6+1] = '\0';
-	    prt_psod_Output(context, (char*)imgrow, cols*6+1);
+	    hexline[x*2] = '\n';
+	    prt_psod_Output(context, hexline, x*2+1);
 	    }
 
 	/** Restore graphics context when done **/
-	prt_psod_Output_va(context,	"%%%%EndData\n"
+	prt_psod_Output_va(context,	">\n"
+					"%%%%EndData\n"
 					"grestore\n");
 
-	nmSysFree(imgrow);
+	rval = context->CurVPos + height;
 
-    return context->CurVPos + height;
+    end:
+	if (zs_initialized) deflateEnd(&zs);
+	if (zdata != NULL) xsDeInit(zdata);
+	if (img_row != NULL) nmSysFree(img_row);
+
+    return rval;
     }
 
 
@@ -1136,4 +1241,3 @@ prt_psod_Initialize()
 
     return 0;
     }
-
