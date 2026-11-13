@@ -58,7 +58,6 @@ autom4te.cache
 
 # Test Files
 /centrallix-lib/tests/*.bin
-/centrallix-ui-test/tests/__pycache__
 /centrallix-ui-test/tests/config.toml
 /centrallix/tests/*.bin
 /centrallix/tests/*.out
@@ -73,6 +72,13 @@ autom4te.cache
 lcov.info
 perf.data
 perf.data.old
+
+# Python Files
+__pycache__/
+
+# Documentation Report Files
+/centrallix-doc/Widgets/doc-report/report.json
+/centrallix-doc/Widgets/doc-report/report.md
 
 # Local ObjectSystem Files
 /centrallix-os/apps/kardia
