@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -399,6 +399,7 @@ mqjAnalyze(pQueryStatement stmt)
 		    our_outer_mask = from_item->ParamCoverageMask;
 		    if (from_item->Expr)
 			our_outer_mask |= from_item->Expr->ObjCoverageMask;
+		    our_outer_mask &= ~(1<<(from_item->ObjID));
 		    our_mask = our_outer_mask | 1<<(from_item->ObjID);
 		    mask_objcnt = 0;
 		    n = our_mask & EXPR_MASK_ALLOBJECTS;

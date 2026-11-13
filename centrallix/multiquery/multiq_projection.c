@@ -1518,7 +1518,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		}
 	    else
 		{
-		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & MQ_EF_WILDCARD) && !(qe->Flags & MQ_EF_EXPRESSION))
+		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & (MQ_EF_WILDCARD | MQ_EF_EXPRESSION | MQ_EF_PAGED)))
 		    {
 		    /** empty or single-row result set.  Save the saved_obj in the cache **/
 		    mqp_internal_CacheRow(stmt, qe, qe->Constraint, saved_obj);

@@ -19,3 +19,6 @@ csv select :s:abbrev, :q:color from /tests/States.csv/rows s, paged /tests/testq
 csv select :s:abbrev, :q:color from /tests/States.csv/rows s, paged expression ('/tests/testquery.qy?id=' + :cx__page) q where :s:id = 1
 csv select :q:rowid, :q:color from paged /tests/testquery.qy (id = isnull(:rowid + 1, 1)) q
 csv select :q:rowid, :q:color from paged /tests/testquery.qy (id = isnull(:q:rowid + 1, 1)) q
+csv select :s:abbrev, :q:rowid from /tests/States.csv/rows s, paged /tests/testquery.qy (id = isnull(:rowid + 1, 1)) q where :s:id <= 2
+csv select :s:abbrev, :q:rowid from /tests/States.csv/rows s, paged /tests/testquery.qy (id = condition(:cx__page = 1, :s:id, -1)) q where :s:id <= 3 order by :q:rowid desc
+csv select :s:abbrev, :q:rowid from paged /tests/testquery.qy (id = condition(:cx__page = 1, :s:id, -1)) q, /tests/States.csv/rows s where :s:id <= 3 order by :q:rowid desc
