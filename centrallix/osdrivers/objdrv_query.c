@@ -190,9 +190,12 @@ qy_internal_Close(pQyData inf)
 		inf->Node->OpenCnt--;
 	    if (inf->ObjList)
 		expFreeParamList(inf->ObjList);
-	    for(i=0;i<inf->HeldCollections.nItems;i++)
-		objClose((pObject)inf->HeldCollections.Items[i]);
-	    xaDeInit(&inf->HeldCollections);
+	    if (inf->HeldCollections.Items)
+		{
+		for(i=0;i<inf->HeldCollections.nItems;i++)
+		    objClose((pObject)inf->HeldCollections.Items[i]);
+		xaDeInit(&inf->HeldCollections);
+		}
 	    if (inf->Scope)
 		objScopeRelease(inf->Scope);
 	    if (inf->Name)
@@ -355,7 +358,11 @@ qy_internal_SetupCollectionParam(pQyData inf, pObject obj, pStructInf param_inf)
 		    return -1;
 		    }
 		objUnmanageObject(obj->Session, held);
-		xaAddItem(&inf->HeldCollections, (void*)held);
+		if (xaAddItem(&inf->HeldCollections, (void*)held) < 0)
+		    {
+		    objClose(held);
+		    return -1;
+		    }
 		if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | (item->Flags & OBJ_DI_F_READONLY), item->TempObj, NULL, NULL))
 		    return -1;
 		}
@@ -407,7 +414,8 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	/** Zero out the structure **/
 	memset(inf,0,sizeof(QyData));
 	xaInit(&inf->Parameters, 16);
-	xaInit(&inf->HeldCollections, 4);
+	if (xaInit(&inf->HeldCollections, 4) < 0)
+	    goto error;
 
 	/** Set the parent Object **/
 	inf->Obj = obj;
@@ -734,7 +742,11 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (!inf) return NULL;
 	memset(inf, 0, sizeof(QyData));
 	xaInit(&inf->Parameters, 16);
-	xaInit(&inf->HeldCollections, 4);
+	if (xaInit(&inf->HeldCollections, 4) < 0)
+	    {
+	    qy_internal_Close(inf);
+	    return NULL;
+	    }
 	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
 	inf->Node = qy->Data->Node;
 	inf->Mode = mode;

@@ -5,6 +5,7 @@
 #include "stparse.h"
 #include "cxss/cxss.h"
 #include "cxlib/xarray.h"
+#include "cxlib/mtask.h"
 #include "cxlib/xhandle.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
@@ -127,9 +128,18 @@ objScopeCreate(pObjSession session, pObjDataScope parent)
 	memset(scope, 0, sizeof(ObjDataScope));
 	scope->LinkCnt = 1;
 	scope->Session = session;
+	if (xaInit(&scope->Items, 8) < 0)
+	    {
+	    nmFree(scope, sizeof(ObjDataScope));
+	    return NULL;
+	    }
+	if (xaInit(&scope->Tokens, 8) < 0)
+	    {
+	    xaDeInit(&scope->Items);
+	    nmFree(scope, sizeof(ObjDataScope));
+	    return NULL;
+	    }
 	scope->Parent = parent?objScopeLink(parent):NULL;
-	xaInit(&scope->Items, 8);
-	xaInit(&scope->Tokens, 8);
 
     return scope;
     }
@@ -155,6 +165,13 @@ objScopeRelease(pObjDataScope scope)
     {
     int i;
     pObjDataToken tok;
+
+	/** Releasing the parent recurses up the scope chain **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "OSML", "Could not release data scope: resource exhaustion occurred");
+	    return -1;
+	    }
 
 	if (--scope->LinkCnt > 0)
 	    return 0;
@@ -255,9 +272,9 @@ objScopeLookup(pObjDataScope scope, char* name, int type, int follow_parents)
 
 
 /*** objScopeAdd() - add an item to a scope.  If flags includes
- *** OBJ_DI_F_OWNED, the scope takes ownership of tempobj and data.  The
- *** path, if given, is copied.  Fails if the scope already has an item of
- *** that name and type.
+ *** OBJ_DI_F_OWNED, the scope takes ownership of tempobj and data, but only
+ *** on success; on failure the caller still owns them.  The path, if given,
+ *** is copied.  Fails if the scope already has an item of that name and type.
  ***/
 pObjDataItem
 objScopeAdd(pObjDataScope scope, char* name, int type, int flags, handle_t tempobj, char* path, void* data)
@@ -272,7 +289,12 @@ objScopeAdd(pObjDataScope scope, char* name, int type, int flags, handle_t tempo
 	item = obj_internal_AllocDataItem(name, type, flags, tempobj, path, data);
 	if (!item)
 	    return NULL;
-	xaAddItem(&scope->Items, (void*)item);
+	if (xaAddItem(&scope->Items, (void*)item) < 0)
+	    {
+	    item->Flags &= ~OBJ_DI_F_OWNED;
+	    obj_internal_FreeDataItem(item);
+	    return NULL;
+	    }
 
     return item;
     }
@@ -313,7 +335,12 @@ objScopePublish(pObjDataScope scope, pObjDataItem item, void* owner, char* token
 	    nmFree(tok, sizeof(ObjDataToken));
 	    return -1;
 	    }
-	xaAddItem(&scope->Tokens, (void*)tok);
+	if (xaAddItem(&scope->Tokens, (void*)tok) < 0)
+	    {
+	    obj_internal_FreeDataItem(tok->Item);
+	    nmFree(tok, sizeof(ObjDataToken));
+	    return -1;
+	    }
 	strtcpy(token, tok->Token, token_len);
 
     return 0;

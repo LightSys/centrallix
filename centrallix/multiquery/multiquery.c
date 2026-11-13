@@ -1512,12 +1512,12 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 		}
 	    if (cnt > 0)
 		{
-		xsConcatenate(params, "&", 1);
-		xsConcatenate(display, ", ", 2);
+		if (xsConcatenate(params, "&", 1) < 0 || xsConcatenate(display, ", ", 2) < 0)
+		    goto nomem;
 		}
 	    cnt++;
-	    xsConcatQPrintf(params, "%STR&URL=", name);
-	    xsConcatQPrintf(display, "%STR=", name);
+	    if (xsConcatQPrintf(params, "%STR&URL=", name) < 0 || xsConcatQPrintf(display, "%STR=", name) < 0)
+		goto nomem;
 
 	    /** Parameter value **/
 	    t = mlxNextToken(lxs);
@@ -1585,8 +1585,8 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 		    goto error;
 		    }
 		n_tokens++;
-		xsConcatQPrintf(params, "%STR&URL", token);
-		xsConcatQPrintf(display, "%STR %STR", is_coll?"collection":"path", ptr);
+		if (xsConcatQPrintf(params, "%STR&URL", token) < 0 || xsConcatQPrintf(display, "%STR %STR", is_coll?"collection":"path", ptr) < 0)
+		    goto nomem;
 		t = sep?sep:mlxNextToken(lxs);
 		}
 	    else
@@ -1594,7 +1594,7 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 		mlxHoldToken(lxs);
 		value = xsNew();
 		if (!value)
-		    goto error;
+		    goto nomem;
 		t = mq_internal_CopyLiteralEx(lxs, value, parenthesized);
 		if (t < 0)
 		    {
@@ -1608,8 +1608,11 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 		    goto error;
 		    }
 		ptr = ptodToStringTmp(ptod);
-		xsConcatQPrintf(params, "%STR&URL", ptr);
-		xsConcatQPrintf(display, "%STR", ptr);
+		if (xsConcatQPrintf(params, "%STR&URL", ptr) < 0 || xsConcatQPrintf(display, "%STR", ptr) < 0)
+		    {
+		    ptodFree(ptod);
+		    goto nomem;
+		    }
 		ptodFree(ptod);
 		xsFree(value);
 		value = NULL;
@@ -1630,6 +1633,9 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 	    }
 
 	return n_tokens;
+
+    nomem:
+	mssError(1, "MQ", "Out of memory parsing parameter list");
 
     error:
 	mlxNoteError(lxs);
@@ -1675,9 +1681,13 @@ mq_internal_SetOpenParams(pQueryStructure qs, int n_tokens, pXString params, pXS
 	if (n_tokens > 0)
 	    qs->Flags |= MQ_SF_SCOPEDOPEN;
 	qs->ParamDisplay = nmSysStrdup(display->String);
+	if (!qs->ParamDisplay)
+	    return -1;
 	if (qs->Flags & MQ_SF_EXPRESSION)
 	    {
 	    qs->OpenParams = nmSysStrdup(params->String);
+	    if (!qs->OpenParams)
+		return -1;
 	    }
 	else
 	    {
@@ -2293,7 +2303,14 @@ mq_internal_SyntaxParse(pLxSession lxs, pQueryStatement stmt, int allow_empty, p
 				    {
 				    ptr = mlxStringVal(lxs, NULL);
 				    if (ptr)
+					{
 					ptr = nmSysStrdup(ptr);
+					if (!ptr)
+					    {
+					    next_state = ParseError;
+					    break;
+					    }
+					}
 				    t = mlxNextToken(lxs);
 				    }
 				if (!ptr || t != MLX_TOK_EQUALS)
