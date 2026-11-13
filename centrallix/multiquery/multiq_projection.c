@@ -1094,9 +1094,11 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
     pExpression source_exp;
     int rval;
     pObject oldobj = NULL;
+    pQueryStructure qs = (pQueryStructure)qe->QSLinkage;
+    pXString params = NULL;
 
 	/** Evaluate source expression? **/
-	if (((pQueryStructure)qe->QSLinkage)->Flags & MQ_SF_EXPRESSION)
+	if (qs->Flags & MQ_SF_EXPRESSION)
 	    {
 	    /** Remove previous source list if necessary, since it will likely
 	     ** be different this time.
@@ -1112,9 +1114,16 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 		}
 
 	    /** Evalute.  We swap the NULL object for the evaluation so the expression
-	     ** can contain the :cx__page property for paginated sources.
+	     ** and its parameter values can contain the :cx__page property for
+	     ** paginated sources.
 	     **/
-	    source_exp = ((pQueryStructure)qe->QSLinkage)->Expr;
+	    source_exp = qs->Expr;
+	    if (qs->OpenParamList)
+		{
+		params = xsNew();
+		if (!params)
+		    goto error;
+		}
 	    if ((mi->Flags & MQP_MI_F_PAGED))
 		{
 		oldobj = (pObject)stmt->Query->ObjList->Objects[qe->SrcIndex];
@@ -1122,6 +1131,8 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 		expSetParamFunctionsByID(stmt->Query->ObjList, qe->SrcIndex, mqp_internal_GetAttrType, mqp_internal_GetAttrValue, NULL);
 		}
 	    rval = expEvalTree(source_exp, stmt->Query->ObjList);
+	    if (rval >= 0 && params)
+		rval = mq_internal_EvalOpenParams(stmt, qs, params);
 	    if ((mi->Flags & MQP_MI_F_PAGED))
 		{
 		expSetParamFunctionsByID(stmt->Query->ObjList, qe->SrcIndex, NULL, NULL, NULL);
@@ -1130,13 +1141,15 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 	    if (rval < 0)
 		{
 		mssError(0, "MQP", "Error in expression for FROM clause item");
-		return -1;
+		goto error;
 		}
 
 	    /** If NULL, this source is valid but returns no rows **/
 	    if (source_exp->Flags & EXPR_F_NULL)
 		{
 		mi->Flags |= MQP_MI_F_SOURCELIST;
+		if (params)
+		    xsFree(params);
 		return 0;
 		}
 
@@ -1144,24 +1157,26 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 	    if (source_exp->DataType != DATA_T_STRING)
 		{
 		mssError(1, "MQP", "Expression for FROM clause item must be a string");
-		return -1;
+		goto error;
 		}
 
 	    /** If too long, error **/
-	    if (strlen(source_exp->String) >= sizeof(((pQueryStructure)qe->QSLinkage)->Source))
+	    if (strlen(source_exp->String) >= sizeof(qs->Source))
 		{
 		mssError(1, "MQP", "Expression for FROM clause item resulted in an over-long string");
-		return -1;
+		goto error;
 		}
 
-	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
+	    strtcpy(qs->Source, source_exp->String, sizeof(qs->Source));
 
 	    /** Add any parameter list given after the expression **/
-	    if (((pQueryStructure)qe->QSLinkage)->OpenParams)
+	    if (params)
 		{
-		((pQueryStructure)qe->QSLinkage)->ParamOffset = strlen(((pQueryStructure)qe->QSLinkage)->Source);
-		if (mq_internal_AppendOpenParams(((pQueryStructure)qe->QSLinkage)->Source, sizeof(((pQueryStructure)qe->QSLinkage)->Source), ((pQueryStructure)qe->QSLinkage)->OpenParams) < 0)
-		    return -1;
+		qs->ParamOffset = strlen(qs->Source);
+		if (mq_internal_AppendOpenParams(qs->Source, sizeof(qs->Source), xsString(params)) < 0)
+		    goto error;
+		xsFree(params);
+		params = NULL;
 		}
 	    }
 
@@ -1180,7 +1195,12 @@ mqp_internal_EvaluateSource(pQueryElement qe, pQueryStatement stmt, pMqpInf mi)
 	    mi->Flags |= MQP_MI_F_SOURCELIST;
 	    }
 
-    return 0;
+	return 0;
+
+    error:
+	if (params)
+	    xsFree(params);
+	return -1;
     }
 
 

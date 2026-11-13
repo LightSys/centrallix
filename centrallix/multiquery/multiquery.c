@@ -89,6 +89,29 @@ mq_internal_CheckYield(pMultiQuery mq)
     }
 
 
+/*** mq_internal_FreeOpenParams - release an EXPRESSION source's parameter
+ *** list.
+ ***/
+int
+mq_internal_FreeOpenParams(pXArray list)
+    {
+    int i;
+    pQueryOpenParam param;
+
+	for(i=0; i<list->nItems; i++)
+	    {
+	    param = (pQueryOpenParam)list->Items[i];
+	    if (param->Token) nmSysFree(param->Token);
+	    if (param->RawText) nmSysFree(param->RawText);
+	    if (param->Expr) expFreeExpression(param->Expr);
+	    nmFree(param, sizeof(QueryOpenParam));
+	    }
+	xaFree(list);
+
+    return 0;
+    }
+
+
 /*** mq_internal_FreeQS - releases memory used by the query syntax tree.
  ***/
 int 
@@ -108,7 +131,7 @@ mq_internal_FreeQS(pQueryStructure qstree)
 	xsDeInit(&qstree->AssignRawData);
 	if (qstree->Expr) expFreeExpression(qstree->Expr);
 	if (qstree->AssignExpr) expFreeExpression(qstree->AssignExpr);
-	if (qstree->OpenParams) nmSysFree(qstree->OpenParams);
+	if (qstree->OpenParamList) mq_internal_FreeOpenParams(qstree->OpenParamList);
 	if (qstree->ParamDisplay) nmSysFree(qstree->ParamDisplay);
 
 	/** Free this structure **/
@@ -551,6 +574,8 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		mssError(0, "MQ", "Error in INSERT expression <%s>", ins->RawData.String);
 		return -1;
 		}
+	    if (mq_internal_CompileOpenParams(stmt, ins) < 0)
+		return -1;
 	    }
 
     	/** First, build the object list from the FROM clause **/
@@ -590,6 +615,8 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 			mssError(0,"MQ","Error in FROM list expression <%s>", subtree->RawData.String);
 			return -1;
 			}
+		    if (mq_internal_CompileOpenParams(stmt, subtree) < 0)
+			return -1;
 		    }
 		}
 	    if (from->Children.nItems > 1 && !has_identity && up)
@@ -1455,10 +1482,13 @@ mq_internal_ParseExpressionSource(pLxSession lxs, pQueryStructure new_qs)
  *** form without tokens to display.  With parenthesized set, the open paren
  *** must already be consumed and the close paren ends the list.  If
  *** first_name is set, the first parameter's name and equals sign were
- *** already consumed.  Returns the number of tokens published, or -1 on error.
+ *** already consumed.  If deferred is set (for an EXPRESSION source), each
+ *** parameter is added to that list instead of to params, with ordinary
+ *** values kept as expression text to be evaluated with the source path.
+ *** Returns the number of tokens published, or -1 on error.
  ***/
 int
-mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesized, char* first_name, pXString params, pXString display)
+mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesized, char* first_name, pXString params, pXString display, pXArray deferred)
     {
     int t;
     int cnt = 0;
@@ -1474,6 +1504,7 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
     pTObjData ptod;
     pObjDataItem item;
     ObjDataItem path_item;
+    pQueryOpenParam dparam = NULL;
 
 	while(1)
 	    {
@@ -1518,6 +1549,14 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 	    cnt++;
 	    if (xsConcatQPrintf(params, "%STR&URL=", name) < 0 || xsConcatQPrintf(display, "%STR=", name) < 0)
 		goto nomem;
+	    if (deferred)
+		{
+		dparam = (pQueryOpenParam)nmMalloc(sizeof(QueryOpenParam));
+		if (!dparam)
+		    goto nomem;
+		memset(dparam, 0, sizeof(QueryOpenParam));
+		strtcpy(dparam->Name, name, sizeof(dparam->Name));
+		}
 
 	    /** Parameter value **/
 	    t = mlxNextToken(lxs);
@@ -1587,6 +1626,12 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 		n_tokens++;
 		if (xsConcatQPrintf(params, "%STR&URL", token) < 0 || xsConcatQPrintf(display, "%STR %STR", is_coll?"collection":"path", ptr) < 0)
 		    goto nomem;
+		if (dparam)
+		    {
+		    dparam->Token = nmSysStrdup(token);
+		    if (!dparam->Token)
+			goto nomem;
+		    }
 		t = sep?sep:mlxNextToken(lxs);
 		}
 	    else
@@ -1601,21 +1646,44 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 		    mssError(1, "MQ", "Error in value for parameter '%s'", name);
 		    goto error;
 		    }
-		ptod = expCompileAndEval(value->String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
-		if (!ptod)
+		if (dparam)
 		    {
-		    mssError(1, "MQ", "Could not evaluate value for parameter '%s'", name);
-		    goto error;
+		    /** Evaluated later, with the source's path expression **/
+		    dparam->RawText = nmSysStrdup(value->String);
+		    if (!dparam->RawText)
+			goto nomem;
+		    len = strlen(value->String);
+		    while (len > 0 && value->String[len-1] == ' ')
+			len--;
+		    if (xsConcatenate(display, value->String, len) < 0)
+			goto nomem;
 		    }
-		ptr = ptodToStringTmp(ptod);
-		if (xsConcatQPrintf(params, "%STR&URL", ptr) < 0 || xsConcatQPrintf(display, "%STR", ptr) < 0)
+		else
 		    {
+		    ptod = expCompileAndEval(value->String, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+		    if (!ptod)
+			{
+			mssError(1, "MQ", "Could not evaluate value for parameter '%s'", name);
+			goto error;
+			}
+		    ptr = ptodToStringTmp(ptod);
+		    if (xsConcatQPrintf(params, "%STR&URL", ptr) < 0 || xsConcatQPrintf(display, "%STR", ptr) < 0)
+			{
+			ptodFree(ptod);
+			goto nomem;
+			}
 		    ptodFree(ptod);
-		    goto nomem;
 		    }
-		ptodFree(ptod);
 		xsFree(value);
 		value = NULL;
+		}
+
+	    /** Keep the deferred parameter **/
+	    if (dparam)
+		{
+		if (xaAddItem(deferred, (void*)dparam) < 0)
+		    goto nomem;
+		dparam = NULL;
 		}
 
 	    /** Separator or end of list **/
@@ -1641,6 +1709,12 @@ mq_internal_ParseOpenParams(pLxSession lxs, pQueryStatement stmt, int parenthesi
 	mlxNoteError(lxs);
 	if (value)
 	    xsFree(value);
+	if (dparam)
+	    {
+	    if (dparam->Token) nmSysFree(dparam->Token);
+	    if (dparam->RawText) nmSysFree(dparam->RawText);
+	    nmFree(dparam, sizeof(QueryOpenParam));
+	    }
 	return -1;
     }
 
@@ -1668,11 +1742,94 @@ mq_internal_AppendOpenParams(char* source, int source_size, char* params)
     }
 
 
+/*** mq_internal_CompileOpenParams() - compile the parameter values of an
+ *** EXPRESSION source, against the same object list as its path expression,
+ *** and record the objects they reference.
+ ***/
+int
+mq_internal_CompileOpenParams(pQueryStatement stmt, pQueryStructure qs)
+    {
+    int i;
+    pQueryOpenParam param;
+
+	if (!qs->OpenParamList)
+	    return 0;
+	for(i=0; i<qs->OpenParamList->nItems; i++)
+	    {
+	    param = (pQueryOpenParam)qs->OpenParamList->Items[i];
+	    if (!param->RawText)
+		continue;
+	    param->Expr = expCompileExpression(param->RawText, stmt->Query->ObjList, MLX_F_ICASER | MLX_F_FILENAMES, 0);
+	    if (!param->Expr)
+		{
+		mssError(0, "MQ", "Error in value for parameter '%s' <%s>", param->Name, param->RawText);
+		return -1;
+		}
+	    qs->ParamCoverageMask |= param->Expr->ObjCoverageMask;
+	    }
+
+    return 0;
+    }
+
+
+/*** mq_internal_EvalOpenParams() - evaluate the parameter list of an
+ *** EXPRESSION source into URL form ("a=1&b=2"), appended to params.  The
+ *** caller evaluates it where it evaluates the path expression, so the values
+ *** see the same objects, including :cx__page for a paged source.
+ ***/
+int
+mq_internal_EvalOpenParams(pQueryStatement stmt, pQueryStructure qs, pXString params)
+    {
+    int i;
+    pQueryOpenParam param;
+    pTObjData ptod = NULL;
+    char* value;
+
+	if (!qs->OpenParamList)
+	    return 0;
+	for(i=0; i<qs->OpenParamList->nItems; i++)
+	    {
+	    param = (pQueryOpenParam)qs->OpenParamList->Items[i];
+	    if (param->Token)
+		{
+		value = param->Token;
+		}
+	    else
+		{
+		if (expEvalTree(param->Expr, stmt->Query->ObjList) < 0)
+		    {
+		    mssError(0, "MQ", "Error evaluating value for parameter '%s'", param->Name);
+		    goto error;
+		    }
+		ptod = expExpressionToPtod(param->Expr);
+		if (!ptod)
+		    goto error;
+		value = ptodToStringTmp(ptod);
+		}
+	    if (xsConcatQPrintf(params, "%STR%STR&URL=%STR&URL", (i > 0)?"&":"", param->Name, value) < 0)
+		goto error;
+	    if (ptod)
+		{
+		ptodFree(ptod);
+		ptod = NULL;
+		}
+	    }
+
+	return 0;
+
+    error:
+	if (ptod)
+	    ptodFree(ptod);
+	return -1;
+    }
+
+
 /*** mq_internal_ParseSourceParams() - parse a parameter list for a source
  *** (see mq_internal_ParseOpenParams()) and attach it to the source's QS.
- *** For a literal path the parameters are appended to the path now; for an
- *** EXPRESSION source they are kept and appended after evaluation.  Returns
- *** 0 on success or -1 on error.
+ *** For a literal path the parameters are evaluated and appended to the path
+ *** now; for an EXPRESSION source they are evaluated and appended each time
+ *** the path expression is (see mq_internal_EvalOpenParams()).  Returns 0 on
+ *** success or -1 on error.
  ***/
 int
 mq_internal_ParseSourceParams(pLxSession lxs, pQueryStatement stmt, pQueryStructure qs, int parenthesized, char* first_name)
@@ -1687,25 +1844,26 @@ mq_internal_ParseSourceParams(pLxSession lxs, pQueryStatement stmt, pQueryStruct
 	display = xsNew();
 	if (!display)
 	    goto error;
-	n_tokens = mq_internal_ParseOpenParams(lxs, stmt, parenthesized, first_name, params, display);
+	if (qs->Flags & MQ_SF_EXPRESSION)
+	    {
+	    /** Attached now so that mq_internal_FreeQS() releases it on error **/
+	    qs->OpenParamList = xaNew(4);
+	    if (!qs->OpenParamList)
+		goto error;
+	    }
+	n_tokens = mq_internal_ParseOpenParams(lxs, stmt, parenthesized, first_name, params, display, qs->OpenParamList);
 	if (n_tokens < 0)
 	    goto error;
 
 	/** Attach the parameters, if any **/
-	if (params->String[0])
+	if (display->String[0])
 	    {
 	    if (n_tokens > 0)
 		qs->Flags |= MQ_SF_SCOPEDOPEN;
 	    qs->ParamDisplay = nmSysStrdup(display->String);
 	    if (!qs->ParamDisplay)
 		goto error;
-	    if (qs->Flags & MQ_SF_EXPRESSION)
-		{
-		qs->OpenParams = nmSysStrdup(params->String);
-		if (!qs->OpenParams)
-		    goto error;
-		}
-	    else
+	    if (!(qs->Flags & MQ_SF_EXPRESSION))
 		{
 		qs->ParamOffset = strlen(qs->Source);
 		if (mq_internal_AppendOpenParams(qs->Source, sizeof(qs->Source), params->String) < 0)
@@ -3210,7 +3368,7 @@ mq_internal_PrintSource(pQueryElement tree)
     {
     pQueryStructure qs = (pQueryStructure)tree->QSLinkage;
 
-	if (qs->ParamDisplay && !qs->OpenParams)
+	if (qs->ParamDisplay && !qs->OpenParamList)
 	    printf(", IDX=%d, REF=%s, SRC=%.*s [%s]", tree->SrcIndex, qs->Presentation, qs->ParamOffset, qs->Source, qs->ParamDisplay);
 	else if (qs->ParamDisplay)
 	    printf(", IDX=%d, REF=%s, SRC=%s [%s]", tree->SrcIndex, qs->Presentation, qs->RawData.String, qs->ParamDisplay);

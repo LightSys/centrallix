@@ -396,8 +396,8 @@ mqjAnalyze(pQueryStatement stmt)
 		from_item = (pQueryStructure)(from_qs->Children.Items[i]);
 		if (from_item->Flags & MQ_SF_EXPRESSION)
 		    {
-		    our_mask = from_item->Expr->ObjCoverageMask | 1<<(from_item->ObjID);
-		    our_outer_mask = from_item->Expr->ObjCoverageMask;
+		    our_mask = from_item->Expr->ObjCoverageMask | from_item->ParamCoverageMask | 1<<(from_item->ObjID);
+		    our_outer_mask = from_item->Expr->ObjCoverageMask | from_item->ParamCoverageMask;
 		    mask_objcnt = 0;
 		    n = our_mask & EXPR_MASK_ALLOBJECTS;
 		    n >>= min_objlist;

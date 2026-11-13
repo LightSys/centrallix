@@ -129,6 +129,8 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int hc_rval;
     pObjDataItem collection = NULL;
     pObjDataScope scope;
+    pXString params;
+    int append_rval;
     int is_tempcoll = 0;
     char* dest_path;
     char* sourcetype;
@@ -169,10 +171,20 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 	    strtcpy(((pQueryStructure)qe->QSLinkage)->Source, source_exp->String, sizeof(((pQueryStructure)qe->QSLinkage)->Source));
 
 	    /** Add any parameter list given after the expression **/
-	    if (((pQueryStructure)qe->QSLinkage)->OpenParams)
+	    if (((pQueryStructure)qe->QSLinkage)->OpenParamList)
 		{
+		params = xsNew();
+		if (!params)
+		    return -1;
+		if (mq_internal_EvalOpenParams(stmt, (pQueryStructure)qe->QSLinkage, params) < 0)
+		    {
+		    xsFree(params);
+		    return -1;
+		    }
 		((pQueryStructure)qe->QSLinkage)->ParamOffset = strlen(((pQueryStructure)qe->QSLinkage)->Source);
-		if (mq_internal_AppendOpenParams(((pQueryStructure)qe->QSLinkage)->Source, sizeof(((pQueryStructure)qe->QSLinkage)->Source), ((pQueryStructure)qe->QSLinkage)->OpenParams) < 0)
+		append_rval = mq_internal_AppendOpenParams(((pQueryStructure)qe->QSLinkage)->Source, sizeof(((pQueryStructure)qe->QSLinkage)->Source), xsString(params));
+		xsFree(params);
+		if (append_rval < 0)
 		    return -1;
 		}
 	    }

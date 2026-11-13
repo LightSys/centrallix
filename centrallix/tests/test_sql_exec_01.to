@@ -8,3 +8,6 @@ csv select * from /tests/testquery.qy (id = 1)
 csv select :q:color from "/tests/testquery.qy" (color = "r" + "ed", id = 4) q
 csv select * from expression ("/tests/" + "testquery.qy") (id = 3) q
 csv select :q:rowid, :s:abbrev from /tests/testquery.qy (id = 2) q, /tests/States.csv/rows s where :s:id = :q:rowid
+csv select :q:rowid, :q:color from paged expression ('/tests/testquery.qy') (id = :cx__page) q
+csv select :q:rowid, :q:color from paged expression ('/tests/testquery.qy') (id = :cx__page * 2) q
+csv select :s:abbrev, :q:color from /tests/States.csv/rows s, expression ('/tests/testquery.qy') (id = :s:id) q where :s:id <= 3
