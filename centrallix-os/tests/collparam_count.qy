@@ -1,0 +1,7 @@
+$Version=2$
+collparam_count "system/query"
+    {
+    src "query/parameter" { type = collection; }
+
+    sql = "select cnt = (select count(1) from collection src) from /tests/States.csv/rows s where :s:abbrev = 'TX'";
+    }

@@ -1,0 +1,7 @@
+$Version=2$
+collparam_sub "system/query"
+    {
+    src "query/parameter" { type = collection; }
+
+    sql = "select :s:abbrev, total = (select count(1) from collection src) from collection src s order by :s:abbrev limit 1";
+    }

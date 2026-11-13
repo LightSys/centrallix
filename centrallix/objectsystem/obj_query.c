@@ -511,7 +511,7 @@ objQueryFetch(pObjQuery this, int mode)
 		    mssError(1, "OSML", "Filename in query result exceeded internal limits");
 		    goto error;
 		    }
-		obj = objOpen(this->Obj->Session, buf, mode, 0400, "");
+		obj = objOpenWithScope(this->Obj->Session, buf, mode, 0400, "", this->Obj->DataScope);
 		if (!obj)
 		    mssError(1, "OSML", "Could not re-open sorted query item '%s'", sort_item->Name);
 		nmSysFree(sort_item->Name);
