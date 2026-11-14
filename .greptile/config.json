@@ -1,0 +1,75 @@
+{
+  "rules": [
+    {
+      "id": "errors-and-warnings",
+      "rule": "Errors and warnings in the codebase:\n\n1. Errors use `mssError()`. An error is a failure the function propagates by returning its failure value (-1, NULL, or another documented failure result). Flag a failure return that no `mssError()` explains, either raised here or already raised by the failing callee. Flag `mssError(1, ...)` on a path that already raised an error, since it clears the original error.\n\n2. Warnings use `mssWarn(module, format, ...)`, not `mssError()` and not `fprintf(stderr, ...)`. A warning is a condition the program continues past without switching to an error path that returns a failure value, such as a truncation, a fallback, or a skipped optional step. Flag `mssError()` used for a warning, and flag `fprintf(stderr, \"Warning: ...\")` or similar direct prints of warnings. The only exception is the error and warning machinery inside `centrallix-lib/src/mtsession.`c, because calling the normal error/warning functions there could recurse. Clean up failures on an error path may be either warnings or errors.\n\n3. A void function promises in its contract that it cannot fail. Flag any failure path in a void function (an `mssError()` call, or an early return that skips its work because something failed); it should return a failure value instead. Using `mssWarn()` for a condition the function continues past is fine. A recursive function can always fail on `thExcessiveRecursion()`, so flag a void recursive function: it must return a failure value that callers propagate.\n\n4. Resolving errors is required. When code goes from an error path back to a success path after a call that raised `mssError()` (e.g. a fallback after a failed attempt, a probe where failure was one of the expected possibilities, a best-effort loop that continues past a failure, or a tool that reports the error to the user and carries on), it must call `mssClearError()` at that point. Flag a recovery point that is missing `mssClearError()`: the stale error stack might otherwise be reported with a later, unrelated failure. Also flag code that ignores a callee's failure and continues as if it succeeded (this is a dropped error: always incorrect).\n\n5. Much of the existing codebase breaks some of these rules, especially dropped errors. Report violations in lines the PR adds or modifies. Report pre-existing violations in unchanged lines only when the PR's change depends on them or makes them worse, so a PR is not forced to expand its scope to fix adjacent, pre-existing issues.",
+      "scope": [
+        "**/*.c"
+      ]
+    },
+    {
+      "id": "goto-cleanup",
+      "rule": "Goto in error handling and cleanup:\n\n1. C functions handle failures by jumping forward to a cleanup label with goto. Goto is allowed in this situation and ONLY in this situation: it is the required pattern here, and not allowed anywhere else. Flag any backward goto used for error handling.\n\n2. A function normally has one cleanup label for the whole function. Name it `end` when cleanup runs on both success and failure, or `error` when it runs only on failure. Accept either name. Some functions also use a separate cleanup label inside a scope like a loop for per-iteration cleanup; do not flag that pattern or its label name.\n\n3. Prefer a single exit: initialize the result to failure (`int rval = -1;`), make every failure `goto end`, and set `rval = 0` only after the last step succeeds. A forgotten assignment then fails safely instead of silently reporting success.\n\n4. Flag a `return` that skips cleanup the label would have done, such as freeing memory, closing an object or file, or releasing a lock. A return before anything needs cleanup is fine.\n\n5. Cleanup at the label must be safe on every path that reaches it. Free, close, or deinitialize a resource only if it was acquired, using a sentinel such as a pointer that stays NULL until acquisition succeeds. Flag cleanup that a failure path can reach before the resource was initialized.\n\n6. Report violations only in lines the PR adds or modifies. When new lines follow the error-handling style already used by the surrounding function, do not ask for the function to be restructured, even if that style differs from this pattern. Flag only defects the new lines themselves introduce, such as a new return that skips cleanup.\n\nGood:\n```c\nint\nmod_internal_Load(char* path)\n    {\n    int rval = -1;\n    pFile fd = NULL;\n    char* buf = NULL;\n\n\t/** Open the file. **/\n\tfd = fdOpen(path, O_RDONLY, 0600);\n\tif (fd == NULL)\n\t    {\n\t    mssErrorErrno(1, \"MOD\", \"Failed to open '%s'.\", path);\n\t    goto end;\n\t    }\n\n\t/** Allocate the buffer. **/\n\tbuf = nmSysMalloc(BUF_SIZE);\n\tif (buf == NULL)\n\t    {\n\t    mssError(1, \"MOD\", \"Failed to allocate a buffer for '%s'.\", path);\n\t    goto end;\n\t    }\n\n\t/** Read the contents. **/\n\tif (fdRead(fd, buf, BUF_SIZE, 0, 0) < 0)\n\t    {\n\t    mssError(1, \"MOD\", \"Failed to read '%s'.\", path);\n\t    goto end;\n\t    }\n\n\trval = 0;\n\n    end:\n\tif (buf != NULL) nmSysFree(buf);\n\tif (fd != NULL) fdClose(fd, 0);\n\treturn rval;\n    }\n```\n\nBad (the second failure returns without closing fd):\n```c\nint\nmod_internal_Load(char* path)\n    {\n    pFile fd;\n    char* buf;\n\n\tfd = fdOpen(path, O_RDONLY, 0600);\n\tif (fd == NULL) return -1;\n\n\tbuf = nmSysMalloc(BUF_SIZE);\n\tif (buf == NULL) return -1;\n\n\t...\n    }\n```",
+      "scope": [
+        "**/*.c"
+      ]
+    },
+    {
+      "id": "print-return-values",
+      "rule": "Do not flag unchecked return values of printf/fprintf used for output or diagnostics. Flag unchecked `snprintf`/`vsnprintf` when the result is then used as a path, query, URL, or identifier, since truncation silently changes it.",
+      "scope": [
+        "**/*.c"
+      ]
+    },
+    {
+      "id": "recursion-guards",
+      "rule": "Recursion guards:\n\n1. Every recursion cycle (a function that calls itself, or a chain of calls that leads back to its start) must check `thExcessiveRecursion()` somewhere on the cycle before it recurses. Only one check per cycle is required: a check in a central function that every cycle passes through, such as a dispatcher, covers every function it calls. Flag a cycle with no check, even if callers appear to bound the depth today. Do not flag a function for lacking its own check when every cycle through it already has one.\n\n2. The check must raise `mssError(1, \"<MODULE>\", ...)` and return failure, and every function on the cycle must propagate that failure (see the error/warning rules). Flag a check that returns success, continues recursing, or only prints a warning, and flag any void function on a cycle, since it cannot report the failure.\n\n3. Report an unguarded cycle only when the PR adds or modifies a function or call on it, or removes its check. Do not flag a check that differs from the Good example only in wording or in omitting `UNLIKELY()` (from `cxlib/expect.h`). Do not flag functions outside the cycle for dropping an error from it (this is incorrect but too common to fix now, see the error/warning rules).\n\nGood (the check in `mod_internal_Eval()` covers `mod_internal_EvalList()`):\n```c\nint\nmod_internal_Eval(pNode node)\n    {\n    int rval = -1;\n\n\t/** Guard against excessive recursion. **/\n\tif (UNLIKELY(thExcessiveRecursion()))\n\t    {\n\t    mssError(1, \"MOD\", \"Failed to evaluate node: resource exhaustion occurred.\");\n\t    goto end;\n\t    }\n\n\t/** Dispatch on node type. **/\n\tif (node->Type == MOD_T_LIST && mod_internal_EvalList(node) < 0) goto end;\n\n\trval = 0;\n\n    end:\n\treturn rval;\n    }\n\nint\nmod_internal_EvalList(pNode node)\n    {\n    int rval = -1;\n    int i;\n\n\t/** Evaluate the children. **/\n\tfor (i = 0; i < node->nChildren; i++)\n\t    if (mod_internal_Eval(node->Children[i]) < 0) goto end;\n\n\trval = 0;\n\n    end:\n\treturn rval;\n    }\n```\n\nBad (no check on the cycle, and void so it cannot report failure):\n```c\nvoid\nmod_internal_Walk(pNode node)\n    {\n    int i;\n\n\tfor (i = 0; i < node->nChildren; i++)\n\t    mod_internal_Walk(node->Children[i]);\n    }\n```",
+      "scope": [
+        "**/*.c"
+      ]
+    },
+    {
+      "id": "strtcpy",
+      "rule": "What: Use `strtcpy()` instead of `strcpy()` or `strncpy()`.\n\nWhy: It respects the buffer size and guarantees null-termination.\n\nGood:\n```c\nchar dest[10];\nstrtcpy(dest, \"Hello\", sizeof(dest));\n```\n\nBad:\n```c\nchar dest[10];\nstrcpy(dest, \"Hello\");\n```",
+      "scope": [
+        "**/*.c"
+      ]
+    },
+    {
+      "id": "structure-file-version",
+      "rule": "A structure file that uses any expressions (e.g. `runclient()` or `runserver()` in connector params or widget properties) must have `$Version=2$` as its first line. Without it, all attribute values are treated as static. Version 2 also requires a semicolon after each attribute line.",
+      "scope": [
+        "**/*.app",
+        "**/*.cmp",
+        "**/*.tpl",
+        "**/*.struct",
+        "**/*.ifc",
+        "**/*.thm",
+        "**/*.qy",
+        "**/*.qyt",
+        "**/*.rpt",
+        "**/*.qyp",
+        "**/*.spec",
+        "**/*.http",
+        "**/*.uxu",
+        "**/*.pop3",
+        "**/*.sybdb",
+        "**/*.mysdb",
+        "**/*.prt",
+        "**/*.uxd",
+        "**/*.sch",
+        "**/*.dbl",
+        "**/*.fp"
+      ]
+    },
+    {
+      "id": "widget-placement",
+      "rule": "Many widget types are valid only inside a specific parent, and many parents accept only specific children. When a PR adds or moves a widget, check that its placement is supported, and flag a widget placed where no driver handles it: these usually fail silently. Where to check:\n- The parent's drivers. A wgtr driver (`centrallix/wgtr/wgtdrv_<name>.c`) that registers extra types with `wgtrAddType()` alongside its own usually handles them as children in its HTML driver (`centrallix/htmlgen/htdrv_<name>.c`). For example, `widget/component-decl-action` must be a direct child of `widget/component-decl`, which renders it inside its own loop; anywhere else it is silently ignored. Others include `widget/tabpage` in `widget/tab`, `widget/menuitem` in `widget/menu`, `widget/osrc-rule` in `widget/osrc`, and `widget/table-column` in `widget/table`.\n- `centrallix-doc/Widgets/widgets.xml`, which documents where each widget \"can be placed\" and what it \"may only contain\". For example, `widget/parameter` is valid only inside `widget/page`, `widget/component-decl`, or `widget/osrc`, and a `widget/component` instance may contain only connectors.",
+      "scope": [
+        "**/*.app",
+        "**/*.cmp",
+        "**/*.tpl"
+      ]
+    }
+  ]
+}
