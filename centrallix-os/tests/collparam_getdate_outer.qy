@@ -1,0 +1,5 @@
+$Version=2$
+collparam_getdate_outer "system/query"
+    {
+    sql = "select x = :q:x from /tests/collparam_getdate.qy q";
+    }
