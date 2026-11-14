@@ -226,6 +226,7 @@ struct _QST /* QueryStatement */
 #define MQ_TF_ONEASSIGN		32		/* At least one select item assigns */
 #define MQ_TF_IMMEDIATE		64		/* command already executed */
 #define MQ_TF_OBJCONTENT	128		/* "objcontent" is being explicitly named - mqRead from attr instead of content. */
+#define MQ_TF_VOLATILE		256		/* results may differ if run again (volatile functions, external refs, subqueries, volatile sources) */
 
 /*** Structure for managing the multiquery. ***/
 struct _MQ /* MultiQuery */
@@ -275,6 +276,8 @@ typedef struct
     int			RowIDThisQuery;
     int			RowIDBeforeLimit;
     int			Offset;			/* objcontent read offset */
+    pTObjData*		AggValues;		/* aggregate/window select item values, by item; NULL entries are evaluated on demand */
+    int			nAggValues;
     }
     PseudoObject, *pPseudoObject;
 
@@ -296,6 +299,8 @@ int mq_internal_AddOrderBy(pQueryElement qe, pExpression exp);
 int mq_internal_ClearOrderBy(pQueryElement qe);
 int mq_internal_nOrderBy(pQueryElement qe);
 pPseudoObject mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj);
+int mq_internal_SnapshotRow(pPseudoObject p);
+int mq_internal_FreeRowValues(pPseudoObject p);
 int mq_internal_FreePseudoObject(pPseudoObject p);
 int mq_internal_EvalHavingClause(pQueryStatement stmt, pPseudoObject p);
 pObjDataItem mq_internal_FindCollection(pMultiQuery mq, char* collection);

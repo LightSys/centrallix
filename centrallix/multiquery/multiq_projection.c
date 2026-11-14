@@ -679,6 +679,36 @@ mqp_internal_CheckConstraint(pQueryElement qe, pQueryStatement stmt)
     }
 
 
+/*** mqp_internal_IsVolatile() - check whether an object reports that its
+ *** values could differ if it were fetched again.
+ ***/
+int
+mqp_internal_IsVolatile(pObject obj)
+    {
+    pObjectInfo info;
+
+	if (!obj)
+	    return 0;
+	info = objInfo(obj);
+
+    return (info && (info->Flags & OBJ_INFO_F_VOLATILE))?1:0;
+    }
+
+
+/*** mqp_internal_NoteVolatile() - a volatile source object or row makes the
+ *** statement's own results volatile.
+ ***/
+void
+mqp_internal_NoteVolatile(pQueryStatement stmt, pObject obj)
+    {
+
+	if (!(stmt->Flags & MQ_TF_VOLATILE) && mqp_internal_IsVolatile(obj))
+	    stmt->Flags |= MQ_TF_VOLATILE;
+
+    return;
+    }
+
+
 /*** mqp_internal_CacheRow - add a row to the single-row result set cache
  ***/
 int
@@ -1347,6 +1377,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 		    }
 		}
 	    objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
+	    mqp_internal_NoteVolatile(stmt, qe->LLSource);
 	    break;
 	    }
 
@@ -1426,6 +1457,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    {
 	    obj = objLinkTo(qe->LLSource);
 	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
+	    mqp_internal_NoteVolatile(stmt, obj);
 	    if (qe->Flags & MQ_EF_PAGED)
 		objAddVirtualAttr(obj, "cx__page", (void*)mi, mqp_internal_GetVirtAttrType, mqp_internal_GetVirtAttrValue, NULL, NULL);
 
@@ -1496,6 +1528,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		{
 		/** Got one. **/
 		if (saved_obj) objClose(saved_obj);
+		mqp_internal_NoteVolatile(stmt, obj);
 		objUnmanageObject(stmt->Query->SessionID, obj);
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 		if (qe->Flags & MQ_EF_PAGED)
@@ -1518,7 +1551,8 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		}
 	    else
 		{
-		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & (MQ_EF_WILDCARD | MQ_EF_EXPRESSION | MQ_EF_PAGED)))
+		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & (MQ_EF_WILDCARD | MQ_EF_EXPRESSION | MQ_EF_PAGED))
+			&& !mqp_internal_IsVolatile(saved_obj) && !mqp_internal_IsVolatile(qe->LLSource))
 		    {
 		    /** empty or single-row result set.  Save the saved_obj in the cache **/
 		    mqp_internal_CacheRow(stmt, qe, qe->Constraint, saved_obj);

@@ -478,6 +478,39 @@ mq_internal_AddDeclaredObject(pMultiQuery query, pObjDataItem qdo)
     }
 
 
+/*** mq_internal_HasVolatileExpr() - check a query syntax tree for any
+ *** expression whose value could differ if the query were run again: one
+ *** with an external reference (e.g. getdate()) or a subquery.  Returns 1
+ *** if found, 0 if not.
+ ***/
+int
+mq_internal_HasVolatileExpr(pQueryStructure qs)
+    {
+    int i;
+    pQueryOpenParam param;
+    int volatile_mask = EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE;
+
+	if (qs->Expr && (qs->Expr->ObjCoverageMask & volatile_mask))
+	    return 1;
+	if (qs->AssignExpr && (qs->AssignExpr->ObjCoverageMask & volatile_mask))
+	    return 1;
+	if (qs->OpenParamList)
+	    {
+	    for(i=0; i<qs->OpenParamList->nItems; i++)
+		{
+		param = (pQueryOpenParam)qs->OpenParamList->Items[i];
+		if (param->Expr && (param->Expr->ObjCoverageMask & volatile_mask))
+		    return 1;
+		}
+	    }
+	for(i=0; i<qs->Children.nItems; i++)
+	    if (mq_internal_HasVolatileExpr((pQueryStructure)qs->Children.Items[i]))
+		return 1;
+
+    return 0;
+    }
+
+
 /*** mq_internal_PostProcess - performs some additional processing on the
  *** SELECT, FROM, ORDER-BY, and WHERE clauses after the initial parse has been
  *** completed.
@@ -942,6 +975,10 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 		    }
 		}
 	    }
+
+	/** Results that could differ if run again make the statement volatile **/
+	if (mq_internal_HasVolatileExpr(qs))
+	    stmt->Flags |= MQ_TF_VOLATILE;
 
     return 0;
     }
@@ -4027,6 +4064,7 @@ mqClose(void* inf_v, pObjTrxTree* oxt)
 	    }*/
 	expUnlinkParams(inf->ObjList, n, -1);
 	expFreeParamList(inf->ObjList);
+	mq_internal_FreeRowValues(inf);
 
 	/** Release the pseudo-object **/
 	nmFree(inf, sizeof(PseudoObject));
@@ -4099,6 +4137,69 @@ mqDeleteObj(void* inf_v, pObjTrxTree* oxt)
     }
 
 
+/*** mq_internal_SnapshotRow() - store the values of a row's aggregate and
+ *** window function select items in the row.  Those values live in shared
+ *** accumulators that change as the query proceeds, so they are captured
+ *** while the row is current.  Other select items are still evaluated on
+ *** demand from the row's own object list.
+ ***/
+int
+mq_internal_SnapshotRow(pPseudoObject p)
+    {
+    pXArray items = &p->Stmt->Tree->AttrCompiledExpr;
+    pExpression exp;
+    int i;
+
+	for(i=0; i<items->nItems; i++)
+	    {
+	    exp = (pExpression)items->Items[i];
+	    if (!exp || (exp->AggLevel == 0 && !(exp->Flags & EXPR_F_HASWINDOWFN)))
+		continue;
+	    if (!p->AggValues)
+		{
+		p->AggValues = (pTObjData*)nmSysMalloc(items->nItems * sizeof(pTObjData));
+		if (!p->AggValues)
+		    goto error;
+		memset(p->AggValues, 0, items->nItems * sizeof(pTObjData));
+		p->nAggValues = items->nItems;
+		}
+	    if (expEvalTree(exp, p->ObjList) < 0)
+		goto error;
+	    p->AggValues[i] = expExpressionToPtod(exp);
+	    if (!p->AggValues[i])
+		goto error;
+	    }
+
+	return 0;
+
+    error:
+	mq_internal_FreeRowValues(p);
+	return -1;
+    }
+
+
+/*** mq_internal_FreeRowValues() - release values stored by
+ *** mq_internal_SnapshotRow().
+ ***/
+int
+mq_internal_FreeRowValues(pPseudoObject p)
+    {
+    int i;
+
+	if (p->AggValues)
+	    {
+	    for(i=0; i<p->nAggValues; i++)
+		if (p->AggValues[i])
+		    ptodFree(p->AggValues[i]);
+	    nmSysFree(p->AggValues);
+	    p->AggValues = NULL;
+	    p->nAggValues = 0;
+	    }
+
+    return 0;
+    }
+
+
 pPseudoObject
 mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
     {
@@ -4113,6 +4214,8 @@ mq_internal_CreatePseudoObject(pMultiQuery qy, pObject hl_obj)
 	qy->CurStmt->LinkCnt++;
 	p->ObjList = expCreateParamList();
 	p->Offset = 0;
+	p->AggValues = NULL;
+	p->nAggValues = 0;
 
 	/** Record the Counters **/
 	p->QueryID = qy->QueryCnt - 1;
@@ -4153,6 +4256,7 @@ mq_internal_FreePseudoObject(pPseudoObject p)
 
 	expUnlinkParams(p->ObjList, qy->nProvidedObjects, -1);
 	expFreeParamList(p->ObjList);
+	mq_internal_FreeRowValues(p);
 
 	nmFree(p, sizeof(PseudoObject));
 
@@ -4355,6 +4459,12 @@ mqQueryFetch(void* qy_v, pObject highlevel_obj, int mode, pObjTrxTree* oxt)
 
 	    /** Create the pseudo object **/
 	    p = mq_internal_CreatePseudoObject(qy, highlevel_obj);
+	    if (!p || mq_internal_SnapshotRow(p) < 0)
+		{
+		if (p)
+		    mq_internal_FreePseudoObject(p);
+		return NULL;
+		}
 
 	    /** Update row serial # **/
 	    qy->CntSerial = qy->CurSerial;
@@ -4702,6 +4812,10 @@ mqGetAttrType(void* inf_v, char* attrname, pObjTrxTree* oxt)
 	    return -1;
 	    }
 
+	/** Stored value from when the row was current? **/
+	if (id < p->nAggValues && p->AggValues[id])
+	    return p->AggValues[id]->DataType;
+
 	/** Evaluate the expression to get the data type **/
 	if (expEvalTree((pExpression)p->Stmt->Tree->AttrCompiledExpr.Items[id],p->ObjList) < 0)
 	    return -1;
@@ -4723,6 +4837,7 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
     int id=-1,i, rval;
     pExpression exp;
     pQueryStructure from_qs;
+    pTObjData ptod;
 
     	/** Request for row id? **/
 	if (!strcmp(attrname,"ls__rowid") || !strcmp(attrname,"cx__rowid") ||
@@ -4799,6 +4914,22 @@ mqGetAttrValue(void* inf_v, char* attrname, int datatype, void* value, pObjTrxTr
 		mssError(1,"MQ","Unknown attribute '%s' for multiquery result set", attrname);
 		return -1;
 		}
+	    }
+
+	/** Stored value from when the row was current? **/
+	if (id < p->nAggValues && p->AggValues[id])
+	    {
+	    ptod = p->AggValues[id];
+	    if (ptod->Flags & DATA_TF_NULL)
+		return 1;
+	    if (ptod->DataType != datatype)
+		{
+		mssError(1,"MQ","Type mismatch getting attribute '%s' [requested=%s, actual=%s]", 
+			attrname,obj_type_names[datatype],obj_type_names[ptod->DataType]);
+		return -1;
+		}
+	    objCopyData(&(ptod->Data), (pObjData)value, datatype);
+	    return 0;
 	    }
 
 	/** Evaluate the expression to get the value **/
@@ -5303,6 +5434,21 @@ mqRedirectPrint(pFile outfile)
 	MQINF.Output = outfile;
     }
 
+/*** mqInfo - object information for a result set row.  A row from a
+ *** statement whose results could differ if run again is marked volatile.
+ ***/
+int
+mqInfo(void* inf_v, pObjectInfo info)
+    {
+    pPseudoObject p = (pPseudoObject)inf_v;
+
+	if (p->Stmt->Flags & MQ_TF_VOLATILE)
+	    info->Flags |= OBJ_INFO_F_VOLATILE;
+
+    return 0;
+    }
+
+
 /*** mqInitialize - initialize the multiquery module and link in with the
  *** objectsystem management layer, registering as the multiquery module.
  ***/
@@ -5349,6 +5495,7 @@ mqInitialize()
 	drv->PresentationHints = mqPresentationHints;
 	drv->Commit = mqCommit;
 	drv->GetQueryIdentityPath = mqGetQueryIdentityPath;
+	drv->Info = mqInfo;
 
 	nmRegister(sizeof(QueryElement),"QueryElement");
 	nmRegister(sizeof(QueryStructure),"QueryStructure");
