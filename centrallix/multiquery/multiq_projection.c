@@ -124,6 +124,7 @@ typedef struct _MPI
 #define MQP_MI_F_PAGED		16	/* paged (multi-part) source */
 #define	MQP_MI_F_ONEROW		32	/* only need first row of results */
 #define MQP_MI_F_ONEROWLIMIT	64	/* explicit onerow qualifier; enforce in NextItem */
+#define MQP_MI_F_VOLATILE	128	/* this source's rows or source object are volatile; don't row-cache */
 
 #define MQP_ONEROW_MET(mi)	(((mi)->Flags & MQP_MI_F_ONEROWLIMIT) && (mi)->RowsReturned > 0)
 
@@ -695,15 +696,19 @@ mqp_internal_IsVolatile(pObject obj)
     }
 
 
-/*** mqp_internal_NoteVolatile() - a volatile source object or row makes the
- *** statement's own results volatile.
+/*** mqp_internal_NoteVolatile() - a volatile source object or row marks
+ *** this source volatile (no row caching) and makes the statement's own
+ *** results volatile.
  ***/
 void
-mqp_internal_NoteVolatile(pQueryStatement stmt, pObject obj)
+mqp_internal_NoteVolatile(pQueryStatement stmt, pMqpInf mi, pObject obj)
     {
 
-	if (!(stmt->Flags & MQ_TF_VOLATILE) && mqp_internal_IsVolatile(obj))
+	if (!(mi->Flags & MQP_MI_F_VOLATILE) && mqp_internal_IsVolatile(obj))
+	    {
+	    mi->Flags |= MQP_MI_F_VOLATILE;
 	    stmt->Flags |= MQ_TF_VOLATILE;
+	    }
 
     return;
     }
@@ -1377,7 +1382,7 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 		    }
 		}
 	    objUnmanageObject(stmt->Query->SessionID, qe->LLSource);
-	    mqp_internal_NoteVolatile(stmt, qe->LLSource);
+	    mqp_internal_NoteVolatile(stmt, mi, qe->LLSource);
 	    break;
 	    }
 
@@ -1457,7 +1462,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    {
 	    obj = objLinkTo(qe->LLSource);
 	    expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
-	    mqp_internal_NoteVolatile(stmt, obj);
+	    mqp_internal_NoteVolatile(stmt, mi, obj);
 	    if (qe->Flags & MQ_EF_PAGED)
 		objAddVirtualAttr(obj, "cx__page", (void*)mi, mqp_internal_GetVirtAttrType, mqp_internal_GetVirtAttrValue, NULL, NULL);
 
@@ -1528,7 +1533,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 		{
 		/** Got one. **/
 		if (saved_obj) objClose(saved_obj);
-		mqp_internal_NoteVolatile(stmt, obj);
+		mqp_internal_NoteVolatile(stmt, mi, obj);
 		objUnmanageObject(stmt->Query->SessionID, obj);
 		expModifyParamByID(stmt->Query->ObjList, qe->SrcIndex, obj);
 		if (qe->Flags & MQ_EF_PAGED)
@@ -1552,7 +1557,7 @@ mqp_internal_NextItemFromSource(pQueryElement qe, pQueryStatement stmt)
 	    else
 		{
 		if ((qe->IterCnt == 1 || (qe->IterCnt == 2 && saved_obj)) && !(qe->Flags & (MQ_EF_WILDCARD | MQ_EF_EXPRESSION | MQ_EF_PAGED))
-			&& !mqp_internal_IsVolatile(saved_obj) && !mqp_internal_IsVolatile(qe->LLSource))
+			&& !(mi->Flags & MQP_MI_F_VOLATILE))
 		    {
 		    /** empty or single-row result set.  Save the saved_obj in the cache **/
 		    mqp_internal_CacheRow(stmt, qe, qe->Constraint, saved_obj);
