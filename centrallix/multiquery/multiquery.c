@@ -478,34 +478,52 @@ mq_internal_AddDeclaredObject(pMultiQuery query, pObjDataItem qdo)
     }
 
 
+/*** mq_internal_IsVolatileExpr() - check whether an expression's value
+ *** could differ if the query were run again: it has an external reference
+ *** (e.g. getdate()) or a subquery.
+ ***/
+int
+mq_internal_IsVolatileExpr(pExpression exp)
+    {
+    return (exp && (exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE)))?1:0;
+    }
+
+
 /*** mq_internal_HasVolatileExpr() - check a query syntax tree for any
- *** expression whose value could differ if the query were run again: one
- *** with an external reference (e.g. getdate()) or a subquery.  Returns 1
- *** if found, 0 if not.
+ *** volatile expression (see mq_internal_IsVolatileExpr()).  The WHERE and
+ *** HAVING clauses are not in the tree once compiled, and are checked where
+ *** they are compiled.  Returns 1 if found, 0 if not, or -1 on error.
  ***/
 int
 mq_internal_HasVolatileExpr(pQueryStructure qs)
     {
     int i;
+    int rval;
     pQueryOpenParam param;
-    int volatile_mask = EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE;
 
-	if (qs->Expr && (qs->Expr->ObjCoverageMask & volatile_mask))
-	    return 1;
-	if (qs->AssignExpr && (qs->AssignExpr->ObjCoverageMask & volatile_mask))
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "MQ", "Could not analyze query: resource exhaustion occurred");
+	    return -1;
+	    }
+
+	if (mq_internal_IsVolatileExpr(qs->Expr) || mq_internal_IsVolatileExpr(qs->AssignExpr))
 	    return 1;
 	if (qs->OpenParamList)
 	    {
 	    for(i=0; i<qs->OpenParamList->nItems; i++)
 		{
 		param = (pQueryOpenParam)qs->OpenParamList->Items[i];
-		if (param->Expr && (param->Expr->ObjCoverageMask & volatile_mask))
+		if (mq_internal_IsVolatileExpr(param->Expr))
 		    return 1;
 		}
 	    }
 	for(i=0; i<qs->Children.nItems; i++)
-	    if (mq_internal_HasVolatileExpr((pQueryStructure)qs->Children.Items[i]))
-		return 1;
+	    {
+	    rval = mq_internal_HasVolatileExpr((pQueryStructure)qs->Children.Items[i]);
+	    if (rval != 0)
+		return rval;
+	    }
 
     return 0;
     }
@@ -532,6 +550,7 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
     handle_t collection;
     pStructInf obj_data;
     int saved_current_id;
+    int rval;
 
 	/** Set up a declared object or collection? **/
 	if (dec)
@@ -977,7 +996,10 @@ mq_internal_PostProcess(pQueryStatement stmt, pQueryStructure qs, pQueryStructur
 	    }
 
 	/** Results that could differ if run again make the statement volatile **/
-	if (mq_internal_HasVolatileExpr(qs))
+	rval = mq_internal_HasVolatileExpr(qs);
+	if (rval < 0)
+	    return -1;
+	if (rval > 0)
 	    stmt->Flags |= MQ_TF_VOLATILE;
 
     return 0;
@@ -3806,6 +3828,8 @@ mq_internal_NextStatement(pMultiQuery this)
 	    mssError(0,"MQ","Error in query's WHERE clause");
 	    goto error;
 	    }
+	if (mq_internal_IsVolatileExpr(stmt->WhereClause))
+	    stmt->Flags |= MQ_TF_VOLATILE;
 	for(i=0;i<this->nProvidedObjects;i++)
 	    {
 	    if (expFreezeOne(stmt->WhereClause, this->ObjList, i) < 0)
@@ -3847,6 +3871,8 @@ mq_internal_NextStatement(pMultiQuery this)
 		}
 	    stmt->HavingClause = qs->Expr;
 	    qs->Expr = NULL;
+	    if (mq_internal_IsVolatileExpr(stmt->HavingClause))
+		stmt->Flags |= MQ_TF_VOLATILE;
 	    }
 
 	/** Limit clause? **/

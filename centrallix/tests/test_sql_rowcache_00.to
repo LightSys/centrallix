@@ -6,6 +6,8 @@ query select :s:abbrev, :q:cnt from /tests/States.csv/rows s, /tests/collparam_a
 query select :s:abbrev, :q:x from /tests/States.csv/rows s, /tests/collparam_getdate.qy q where :s:id <= 3
 query select :s:abbrev, :q:x from /tests/States.csv/rows s, /tests/collparam_getdate_outer.qy q where :s:id <= 3
 query select :s:abbrev, :q:x from /tests/States.csv/rows s, /tests/collparam_volatile.qy q where :s:id <= 3
+query select :s:abbrev, :q:x from /tests/States.csv/rows s, /tests/collparam_getdate_where.qy q where :s:id <= 3
+query select :s:abbrev, :q:cnt from /tests/States.csv/rows s, /tests/collparam_getdate_having.qy q where :s:id <= 3
 query select :s:abbrev, :q:rowid from /tests/States.csv/rows s, /tests/testquery.qy (id = 99) q where :s:id <= 3
 test
 query select :s:abbrev, :q:cnt from /tests/States.csv/rows s, /tests/collparam_strict.qy (src = path /tests/States.csv/rows) q where :s:id <= 3

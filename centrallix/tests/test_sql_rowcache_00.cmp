@@ -37,6 +37,21 @@ MQP: Cached '/tests/States.csv/rows :: :s:abbrev ==  "TX" ' => one row.
 MQP: Cached '/tests/States.csv/rows :: :s:abbrev ==  "ZZ" ' => no row.
 MQP: Cached '/tests/States.csv/rows :: :s:abbrev ==  "ZZ" ' => no row.
 MQP: Cached '/tests/States.csv/rows :: :s:abbrev ==  "ZZ" ' => no row.
+Attribute [abbrev]:   string   "AK" 
+Attribute [x]:  integer  1
+MQP: Cached '/tests/States.csv/rows :: :s:abbrev ==  "TX" ' => one row.
+Attribute [abbrev]:   string   "AL" 
+Attribute [x]:  integer  1
+MQP: Cached '/tests/States.csv/rows :: :s:abbrev ==  "TX" ' => one row.
+Attribute [abbrev]:   string   "AR" 
+Attribute [x]:  integer  1
+MQP: Cached '/tests/States.csv/rows :: :s:abbrev ==  "TX" ' => one row.
+Attribute [abbrev]:   string   "AK" 
+Attribute [cnt]:  integer  50
+Attribute [abbrev]:   string   "AL" 
+Attribute [cnt]:  integer  50
+Attribute [abbrev]:   string   "AR" 
+Attribute [cnt]:  integer  50
 MQP: Cached '/tests/test3.json :: (:/tests/test3.json:rowid == 99 OR 99 IS NULL) AND (:/tests/test3.json:color ==  NULL  OR  NULL  IS NULL)' => no row.
 MQP: Cached '/tests/testquery.qy?id=99 :: ' => no row.
 MQP: Returning cached result: no row.

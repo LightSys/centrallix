@@ -1,0 +1,5 @@
+$Version=2$
+collparam_getdate_having "system/query"
+    {
+    sql = "select cnt = count(1) from /tests/States.csv/rows s having getdate() is not null";
+    }
