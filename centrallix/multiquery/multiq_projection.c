@@ -1338,11 +1338,14 @@ mqp_internal_OpenNextSource(pQueryElement qe, pQueryStatement stmt)
 	    src = xaGetItem(&(mi->SourceList), mi->SourceIndex++);
 	    strtcpy(mi->CurrentSource, src, sizeof(mi->CurrentSource));
 
-	    /** Check for cached single row result set **/
+	    /** Check for cached single row result set, unless this source is volatile **/
 	    if (mi->RowCache)
 		{
 		rc = mi->RowCache;
-		rc->CurCached = mqp_internal_CheckCache(stmt, qe, mi->CurrentSource, qe->Constraint);
+		if (mi->Flags & MQP_MI_F_VOLATILE)
+		    rc->CurCached = -1;
+		else
+		    rc->CurCached = mqp_internal_CheckCache(stmt, qe, mi->CurrentSource, qe->Constraint);
 		if (rc->CurCached >= 0)
 		    {
 		    /** We're going from the cache this time **/
