@@ -5,7 +5,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -109,7 +109,7 @@ typedef struct
     long	InternalSeek;
     long	InternalChunkSeek;
     int		InternalChunkSize;
-    char	Buffer[MIME_BUF_SIZE];
+    char	Buffer[MIME_BUF_SIZE+1];
     char	EncBuffer[MIME_ENCBUF_SIZE+1];
     }
     MimeData, *pMimeData;
@@ -150,13 +150,10 @@ int libmime_StringTrim(char *str);
 int libmime_StringFirstCaseCmp(char *c1, char *c2);
 int libmime_PrintAddressList(pXArray ary, int level);
 char* libmime_StringUnquote(char *str);
-int libmime_B64Purify(char *str);
 int libmime_ContentExtension(char *str, int type, char *subtype);
 
 /** mime_encode.c **/
 int libmime_EncodeQP();
 int libmime_DecodeQP();
-int libmime_EncodeBase64();
-int libmime_DecodeBase64();
 
 #endif /** _MIME_H **/

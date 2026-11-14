@@ -43,6 +43,7 @@
 
 #include "barcode.h"
 #include "centrallix.h"
+#include "cxlib/base64.h"
 #include "cxlib/expect.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
@@ -726,20 +727,11 @@ prt_htmlfm_WriteImage(pPrtHTMLfmInf context, pPrtHTMLfmImage image)
 	    return -1;
 	    }
 
-	/** Write the base64 image with line wrap. **/
-	const size_t b64_len = image->Base64Size - 1;
-	for (size_t off = 0; off < b64_len; off += PRT_HTMLFM_B64_LINE_LEN)
+	/** Write the base64 image, which is already wrapped. **/
+	if (UNLIKELY(prt_htmlfm_Output(context, image->Base64, (int)(image->Base64Size - 1)) < 0))
 	    {
-	    const size_t line_len = min(b64_len - off, PRT_HTMLFM_B64_LINE_LEN);
-	    if (UNLIKELY(prt_htmlfm_Output(context, image->Base64 + off, line_len) < 0
-		|| prt_htmlfm_OutputStrLiteral(context, "\n") < 0
-	    ))  {
-		mssError(0, "PRT",
-		    "Failed to write base64 line at offset %zu/%zu of image %lu.",
-		    off, b64_len, image->ID
-		);
-		return -1;
-		}
+	    mssError(0, "PRT", "Failed to write base64 for image %lu.", image->ID);
+	    return -1;
 	    }
 
 	/** Write the part footer. **/
@@ -1488,17 +1480,23 @@ prt_htmlfm_Generate_r(pPrtHTMLfmInf context, pPrtObjStream obj)
 		    goto error_image;
 		    }
 
-		/** Encode the image to base64. **/
-		base64Size = 4 * ((imgBuf.size + 2) / 3) + 1;
+		/** Encode the image to base64, wrapped for email attachments. **/
+		const size_t line_len = (context->Flags & PRT_HTMLFM_F_EMAIL) ? PRT_HTMLFM_B64_LINE_LEN : 0;
+		base64Size = b64EncodedSize(imgBuf.size, line_len, B64_F_NONE);
+		if (UNLIKELY(base64Size == 0))
+		    {
+		    mssError(1, "PRT", "Failed to base64-encode %zu-byte image: too large.", imgBuf.size);
+		    goto error_image;
+		    }
 		base64Image = nmSysMalloc(base64Size);
 		if (UNLIKELY(base64Image == NULL))
 		    {
 		    mssError(1, "PRT", "nmSysMalloc(%zu) failed.", base64Size);
 		    goto error_image;
 		    }
-		if (UNLIKELY(qpfPrintf(NULL, base64Image, base64Size, "%*STR&B64", (int)imgBuf.size, imgBuf.buffer) < 0))
+		if (UNLIKELY(b64Encode(base64Image, base64Size, imgBuf.buffer, (ssize_t)imgBuf.size, line_len, B64_F_NONE) < 0))
 		    {
-		    mssError(1, "PRT", "Failed to base64-encode %zu-byte image.", imgBuf.size);
+		    mssError(0, "PRT", "Failed to base64-encode %zu-byte image.", imgBuf.size);
 		    goto error_image;
 		    }
 

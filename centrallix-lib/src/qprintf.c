@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
+#include "base64.h"
 #include "qprintf.h"
 #include "mtask.h"
 #include "newmalloc.h"
@@ -504,163 +505,72 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
     }
 
 
-/*** qpf_internal_base64encode() - convert string to base 64 representation
+/*** qpf_internal_Reserve() - make room for req bytes after dst_offset,
+ *** growing dst if needed.  Returns 0 on success, or -1 on failure.
  ***/
-int
-qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+static int
+qpf_internal_Reserve(pQPSession s, size_t req, char** dst, size_t* dst_size, size_t dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    static char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    const unsigned char* srcptr = (const unsigned char*)src;
-    const unsigned char* origsrc = (const unsigned char*)src;
-    char* dstptr;
-    int req_size = ((src_size+2) / 3) * 4 + *dst_offset;
 
-	/** Grow dstbuf if necessary and possible, otherwise return error **/
-	if (req_size > *dst_size)
+	/** The result is returned as an int. **/
+	if (req == 0 || dst_offset > INT_MAX || req > INT_MAX - dst_offset)
 	    {
-	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
-		{
-		QPERR(QPF_ERR_T_MEMORY);
-		return -1;
-		}
+	    QPERR(QPF_ERR_T_BUFOVERFLOW);
+	    return -1;
 	    }
 
-	dstptr = *dst + *dst_offset;
-	
-	/** Step through src 3 bytes at a time, generating 4 dst bytes for each 3 src **/
-	while(srcptr < origsrc + src_size)
+	/** Grow dstbuf if necessary and possible. **/
+	if (dst_offset + req > *dst_size && (grow_fn == NULL || !grow_fn(dst, dst_size, dst_offset, grow_arg, dst_offset + req)))
 	    {
-	    /** First 6 bits of source[0] --> first byte dst. **/
-	    dstptr[0] = b64[srcptr[0]>>2];
-
-	    /** Second dst byte from last 2 bits of src[0] and first 4 of src[1] **/
-	    if (srcptr+1 < origsrc + src_size)
-		dstptr[1] = b64[((srcptr[0]&0x03)<<4) | (srcptr[1]>>4)];
-	    else
-		{
-		dstptr[1] = b64[(srcptr[0]&0x03)<<4];
-		dstptr[2] = '=';
-		dstptr[3] = '=';
-		dstptr += 4;
-		break;
-		}
-
-	    /** Third dst byte from second 4 bits of src[1] and first 2 of src[2] **/
-	    if (srcptr+2 < origsrc + src_size)
-		dstptr[2] = b64[((srcptr[1]&0x0F)<<2) | (srcptr[2]>>6)];
-	    else
-		{
-		dstptr[2] = b64[(srcptr[1]&0x0F)<<2];
-		dstptr[3] = '=';
-		dstptr += 4;
-		break;
-		}
-
-	    /** Last dst byte from last 6 bits of src[2] **/
-	    dstptr[3] = b64[(srcptr[2]&0x3F)];
-
-	    /** Increment pointers **/
-	    dstptr += 4;
-	    srcptr += 3;
+	    QPERR(QPF_ERR_T_MEMORY);
+	    return -1;
 	    }
 
-	*dst_offset = *dst_offset + (dstptr - *dst);
-
-    return dstptr - *dst;
+    return 0;
     }
 
 
-/*** qpf_internal_base64decode() - convert base 64 to a string representation
+/*** qpf_internal_base64encode() - encode src as base64 at dst_offset.
+ *** Returns the number of characters written, or -1 on failure.
  ***/
-static inline int
+static int
+qpf_internal_base64encode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+    {
+    ssize_t n;
+
+	if (qpf_internal_Reserve(s, b64EncodedSize(src_size, 0, B64_F_NONE), dst, dst_size, *dst_offset, grow_fn, grow_arg) < 0)
+	    return -1;
+	n = b64Encode(*dst + *dst_offset, *dst_size - *dst_offset, src, (ssize_t)src_size, 0, B64_F_NONE);
+	if (n < 0)
+	    {
+	    QPERR(QPF_ERR_T_BUFOVERFLOW);
+	    return -1;
+	    }
+	*dst_offset += (size_t)n;
+
+    return (int)n;
+    }
+
+
+/*** qpf_internal_base64decode() - decode base64 src at dst_offset.
+ *** Returns the number of bytes written, or -1 on failure.
+ ***/
+static int
 qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    char b64[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    char* ptr;
-    char* cursor;
-    int ix;
-    int req_size = (.75 * src_size) + *dst_offset + 1; /** fmul could truncate when cast to int hence +1 **/
+    ssize_t n;
 
-	/** Verify source data is correct length for base 64 **/
-	if (src_size % 4 != 0)
+	if (qpf_internal_Reserve(s, b64DecodedSizeMax(src_size), dst, dst_size, *dst_offset, grow_fn, grow_arg) < 0)
+	    return -1;
+	n = b64Decode(*dst + *dst_offset, *dst_size - *dst_offset, src, (ssize_t)src_size, B64_F_REJECT_SPACE);
+	if (n < 0)
 	    {
 	    QPERR(QPF_ERR_T_BADCHAR);
 	    return -1;
 	    }
+	*dst_offset += (size_t)n;
 
-	/** Grow dstbuf if necessary and possible, otherwise return error **/
-	if (req_size > *dst_size)
-	    {
-	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
-		{
-		QPERR(QPF_ERR_T_MEMORY);
-		return -1;
-		}
-	    }
-
-	cursor = *dst + *dst_offset;
-	
-	/** Step through src 4 bytes at a time. **/
-	while(*src)
-	    {
-	    /** First 6 bits. **/
-	    ptr = strchr(b64,src[0]);
-	    if (!ptr || !*ptr)
-	        {
-		QPERR(QPF_ERR_T_BADCHAR);
-		return -1;
-		}
-	    ix = ptr-b64;
-	    cursor[0] = ix<<2;
-
-	    /** Second six bits are split between cursor[0] and cursor[1] **/
-	    ptr = strchr(b64,src[1]);
-	    if (!ptr || !*ptr)
-	        {
-		QPERR(QPF_ERR_T_BADCHAR);
-		return -1;
-		}
-	    ix = ptr-b64;
-	    cursor[0] |= ix>>4;
-	    cursor[1] = (ix<<4)&0xF0;
-
-	    /** Third six bits are nonmandatory and split between cursor[1] and [2] **/
-	    if (src[2] == '=' && src[3] == '=')
-	        {
-		cursor += 1;
-		break;
-		}
-	    ptr = strchr(b64,src[2]);
-	    if (!ptr || !*ptr)
-	        {
-		QPERR(QPF_ERR_T_BADCHAR);
-		return -1;
-		}
-	    ix = ptr-b64;
-	    cursor[1] |= ix>>2;
-	    cursor[2] = (ix<<6)&0xC0;
-
-	    /** Fourth six bits are nonmandatory and a part of cursor[2]. **/
-	    if (src[3] == '=')
-	        {
-		cursor += 2;
-		break;
-		}
-	    ptr = strchr(b64,src[3]);
-	    if (!ptr || !*ptr)
-	        {
-		QPERR(QPF_ERR_T_BADCHAR);
-		return -1;
-		}
-	    ix = ptr-b64;
-	    cursor[2] |= ix;
-	    src += 4;
-	    cursor += 3;
-	    }
-
-	*dst_offset = *dst_offset + cursor - *dst;
-
-    return cursor - *dst;
+    return (int)n;
     }
 
 
