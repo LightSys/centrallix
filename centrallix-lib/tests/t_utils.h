@@ -23,7 +23,6 @@
 #include <string.h>
 
 #include "cxlibconfig-internal.h"
-#include "expect.h"
 #include "range.h"
 #include "timer.h"
 
