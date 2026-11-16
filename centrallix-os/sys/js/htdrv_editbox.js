@@ -111,32 +111,62 @@ function eb_set_content(v)
 	}
     }
 
+function eb_setenable(v)
+    {
+    if (v != 'full' && v != 'readonly' && v != 'disabled')
+	return this.enabled;
+    this.enabled = v;
+    this.update_enabled();
+    return this.enabled;
+    }
+
+function eb_update_enabled()
+    {
+    var new_composite_enabled;
+    if (this.enabled == 'full' && this.user_enabled == 'full')
+	{
+	if (this.bg) htr_setbgcolor(this, this.bg);
+	if (this.bgi) htr_setbgimage(this, this.bgi);
+	$(this.ContentLayer).prop('disabled', false);
+	new_composite_enabled = 'full';
+	}
+    else if (this.enabled == 'disabled' || this.user_enabled == 'disabled')
+	{
+	if (this.bg) htr_setbgcolor(this, '#e0e0e0');
+	$(this.ContentLayer).prop('disabled', true);
+	if (eb_current == this)
+	    {
+	    eb_deselect();
+	    if(this.form) this.form.TabNotify(this);
+	    }
+	new_composite_enabled = 'disabled';
+	}
+    else
+	{
+	if (this.bg) htr_setbgcolor(this, this.bg);
+	if (this.bgi) htr_setbgimage(this, this.bgi);
+	$(this.ContentLayer).prop('disabled', true);
+	new_composite_enabled = 'readonly';
+	}
+    if (this.composite_enabled != new_composite_enabled)
+	{
+	this.composite_enabled = this.ifcProbe(ifValue).Changing('enabled', new_composite_enabled, true, this.composite_enabled, true);
+	}
+    }
+
 function eb_enable()
     {
-    if (this.bg) htr_setbgcolor(this, this.bg);
-    if (this.bgi) htr_setbgimage(this, this.bgi);
-    this.enabled='full';
-    $(this.ContentLayer).prop('disabled', false);
+    this.setenable('full');
     }
 
 function eb_disable()
     {
-    if (this.bg) htr_setbgcolor(this, '#e0e0e0');
-    this.enabled='disabled';
-    $(this.ContentLayer).prop('disabled', true);
-    if (eb_current == this)
-	{
-	eb_deselect();
-	if(this.form) this.form.TabNotify(this);
-	}
+    this.setenable('disabled');
     }
 
 function eb_readonly()
     {
-    if (this.bg) htr_setbgcolor(this, this.bg);
-    if (this.bgi) htr_setbgimage(this, this.bgi);
-    this.enabled='readonly';
-    $(this.ContentLayer).prop('disabled', true);
+    this.setenable('readonly');
     }
 
 function eb_inputwidth()
@@ -498,7 +528,7 @@ function eb_browserfocus(e)
 
 function eb_select(x,y,l,c,n,a,k)
     {
-    if(this.enabled != 'full') return 0;
+    if(this.composite_enabled != 'full') return 0;
     this.ContentLayer.focus();
     var got_focus = $(this.ContentLayer).is(':focus');
     if (!got_focus)
@@ -613,6 +643,39 @@ function eb_cb_reveal(e)
     return true;
     }
 
+// Getter and setter for client dynamic properties.  We allow setting a
+// 'user defined' enabled value but return a composite of that and the
+// form-driven enabled value.
+function eb_get_value(prop)
+    {
+    if (prop == 'enabled')
+	return this.composite_enabled;
+    else
+	return null;
+    }
+function eb_set_value(prop, v)
+    {
+    if (prop == 'enabled')
+	{
+	if (v == 'full' || v == 'readonly' || v == 'disabled')
+	    {
+	    this.user_enabled = v;
+	    this.update_enabled();
+	    }
+	return this.user_enabled;
+	}
+    }
+function eb_user_enable()
+    {
+    this.user_enabled = 'full';
+    this.update_enabled();
+    }
+function eb_user_disable()
+    {
+    this.user_enabled = 'disabled';
+    this.update_enabled();
+    }
+
 /**
 * l - base layer
 * c1 - content layer 1
@@ -686,16 +749,21 @@ function eb_init(param)
     l.disable = eb_disable;
     l.readonly = eb_readonly;
     l.enable = eb_enable;
+    l.setenable = eb_setenable;
+    l.update_enabled = eb_update_enabled;
+    l.user_enabled = 'full';
     if (param.isReadOnly)
 	{
 	l.enablemodify = eb_disable;
 	l.enabled = 'disable';
+	l.composite_enabled = 'disable';
 	$(l.ContentLayer).prop('disabled', true);
 	}
     else
 	{
 	l.enablemodify = eb_enable;
 	l.enabled = 'full';
+	l.composite_enabled = 'full';
 	$(l.ContentLayer).prop('disabled', false);
 	}
     l.isFormStatusWidget = false;
@@ -768,9 +836,16 @@ function eb_init(param)
     var ia = l.ifcProbeAdd(ifAction);
     ia.Add("SetValue", eb_actionsetvalue);
     ia.Add("SetValueDescription", eb_actionsetvaldesc);
-    ia.Add("Enable", eb_enable);
-    ia.Add("Disable", eb_disable);
+    ia.Add("Enable", eb_user_enable);
+    ia.Add("Disable", eb_user_disable);
     ia.Add("SetFocus", eb_action_set_focus);
+
+    // Values
+    var iv = l.ifcProbeAdd(ifValue);
+    iv.Add("enabled", eb_get_value, eb_set_value);
+    iv.Add("content", "content");
+    iv.Add("value", "value");
+    iv.Add("description", "description");
 
     if (l.empty_desc) l.Update('');
 

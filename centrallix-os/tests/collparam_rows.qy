@@ -1,0 +1,7 @@
+$Version=2$
+collparam_rows "system/query"
+    {
+    src "query/parameter" { type = collection; }
+
+    sql = "select :s:name, :s:abbrev from identity collection src s";
+    }

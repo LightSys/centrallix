@@ -164,6 +164,7 @@ typedef struct _PO
     pExpControl		CurControl;
     int			RandomInit;
     unsigned char	Random[SHA256_DIGEST_LENGTH];	/* current seed for rand() */
+    pObjDataScope	DataScope;			/* scope of collections/objects; not linked, copied by expCopyList */
     }
     ParamObjects, *pParamObjects;
 
