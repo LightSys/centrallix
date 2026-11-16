@@ -106,7 +106,7 @@ function ib_mouseup(e)
             e.pageY >= getPageY(ly) &&
             e.pageY < getPageY(ly) + getClipHeight(ly))*/
             {
-            cn_activate(e.mainlayer, 'Click');
+            cn_activate(e.mainlayer, 'Click', {X:e.pageX, Y:e.pageY});
             cn_activate(e.mainlayer, 'MouseUp');
 	    if (ly.curmode != 'd') ib_setmode(ly, 'p');
             }

@@ -1,0 +1,7 @@
+##NAME Subqueries see query-scope collections and declared objects
+
+query declare collection c; insert into collection c select a = 1; insert into collection c select a = 2; select :st:abbrev, cnt = (select count(1) from collection c) from /tests/States.csv/rows st limit 2
+query declare object o; select :o:x = 5; select :st:abbrev, v = (select :o:x) from /tests/States.csv/rows st limit 2
+query declare object o2 scope application; select :o2:y = 7
+query select :st:abbrev, v = (select :o2:y) from /tests/States.csv/rows st limit 1
+query declare collection c2 scope application; insert into collection c2 select a = 3; select :st:abbrev, v = (select max(:a) from collection c2) from /tests/States.csv/rows st limit 1

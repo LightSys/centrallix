@@ -1,0 +1,7 @@
+$Version=2$
+collparam_insert "system/query"
+    {
+    dst "query/parameter" { type = collection; }
+
+    sql = "insert into collection dst select abbrev = 'ZZ', full_name = 'Inserted by callee'; select cnt = count(1) from collection dst";
+    }

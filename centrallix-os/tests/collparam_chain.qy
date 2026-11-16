@@ -1,0 +1,7 @@
+$Version=2$
+collparam_chain "system/query"
+    {
+    src2 "query/parameter" { type = collection; }
+
+    sql = "exec /tests/collparam.qy (src = collection src2, prefix = 'N')";
+    }

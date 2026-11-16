@@ -298,7 +298,7 @@ typedef struct
     char	Method[16];
     char	HTTPVer[16];
     char	Cookie[160];
-    char	AllCookies[640];
+    char	AllCookies[4096];
     char	Auth[CX_USERNAME_SIZE + 1 + CX_PASSWORD_SIZE + 3];
     char	Destination[256];
     char	IfModifiedSince[64];

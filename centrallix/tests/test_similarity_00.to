@@ -1,7 +1,7 @@
 ##NAME Text Mining String Similarity
 
-query select sw1 = (cos_compare('hello', 'hello') >= 0.999) and (cos_compare('hello', 'hello') <= 1)
-query select sw1 = (cos_compare('hello', 'nancy') <= 0.001) and (cos_compare('hello', 'nancy') >= 0)
-query select sw1 = (cos_compare('hello', 'hello world') <= 0.891) and (cos_compare('hello', 'hello world') >= 0.890)
-query select sw1 = (cos_compare('hello', 'hellow') >= 0.935) and (cos_compare('hello', 'hellow') <= 0.936)
-query select sw1 = (cos_compare('hello', 'hellow', 1) >= 0.935) and (cos_compare('hello', 'hellow', 1) <= 0.936)
+query select identical   = (cos_compare('hello', 'hello')          >= 0.999) and (cos_compare('hello', 'hello')          <= 1)
+query select distant     = (cos_compare('hello', 'goodbye')        >= 0)     and (cos_compare('hello', 'goodbye')        <= 0.001)
+query select hello       = (cos_compare('hello', 'helo')           >= 0.900) and (cos_compare('hello', 'helo')           <= 0.950)
+query select hello_world = (cos_compare('hellow', 'hello world')   >= 0.800) and (cos_compare('hellow', 'hello world')   <= 0.900)
+query select jello_world = (cos_compare('jellow', 'hello world')   >= 0.500) and (cos_compare('jellow', 'hello world')   <= 0.750)

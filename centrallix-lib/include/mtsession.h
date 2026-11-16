@@ -92,11 +92,12 @@ void* mssGetParam(char* paramname);
 int mssLog(int level, char* msg);
 
 /*** Informs the compiler that message for errors and warnings is
- *** a printf() format so it can check them.
+ *** a printf() format so it can check them, and that code paths
+ *** reporting them are unlikely.
  ***/
 void mss_i_warn(char* module, char* file, int line, char* message, ...)
     #ifdef __GNUC__
-    __attribute__ ((format(printf, 4, 5)))
+    __attribute__ ((format(printf, 4, 5), cold))
     #endif
 ;
 void mss_i_warn_error(char* module, char* file, int line, char* message, ...)
@@ -106,7 +107,7 @@ void mss_i_warn_error(char* module, char* file, int line, char* message, ...)
 ;
 void mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
     #ifdef __GNUC__
-    __attribute__ ((format(printf, 5, 6)))
+    __attribute__ ((format(printf, 5, 6), cold))
     #endif
 ;
 
