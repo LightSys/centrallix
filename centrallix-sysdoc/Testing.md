@@ -24,8 +24,8 @@ Centrallix has various sets of tests and test suites for running them.  This fil
   - [Centrallix-lib Tests](#centrallix-lib-tests)
     - [Running Centrallix-lib Tests](#running-centrallix-lib-tests)
     - [Understanding Output](#understanding-output)
-    - [Centrallix-lib Test Case Format](#centrallix-lib-test-case-format)
     - [Code Coverage](#code-coverage)
+    - [Centrallix-lib Test Case Format](#centrallix-lib-test-case-format)
     - [More About Centrallix-lib Tests](#more-about-centrallix-lib-tests)
   - [CXJS Tests](#cxjs-tests)
     - [Running CXJS Tests](#running-cxjs-tests)
@@ -63,9 +63,8 @@ The `00baseline` tests are special sanity checks for the test system itself.  Th
 
 - 📖 **Note**:  Remember to pass `-E` to `sudo` when specifying the `TONLY` environment variable, otherwise the variable isn't copied into the root environment created by sudo, so the tests will not see it.
 
-
 ### Test Case Format: Standard
-Each test is composed of two or more files in the `centrallix/tests` directory, and each test has a category name (e.g. `objdrv_cluster` for testing the cluster driver) and a test case number (incrementing from `00`), which are used for naming test files.  The first test file is the `test_{category}_NN.to` script file which specifies a list of commands to be run in test-obj, each on their own line.  Lines starting with a `#` are treated as comments.  By convention, the first line of this file should be `##NAME <Test Name>`.  The second file is `test_{category}_NN.cmp`, which lists the expected output from running the specified commands.  Additional files used by the test (e.g. file accessed by the `.to` script file) should be placed in `centrallix-os/tests` so that they will be accessible to the object system from the script.  These files should follow the same naming convention as the test that uses them to avoid confusion.
+Each test is composed of two or more files in the `centrallix/tests` directory, and each test has a category name (e.g. `objdrv_cluster` for testing the cluster driver) and a test case number (incrementing from `00`), which are used for naming test files.  The first test file is the `test_{category}_NN.to` script file which specifies a list of commands to be run in test-obj, each on their own line.  Lines starting with a `#` are treated as comments.  By convention, the first line of this file should be `##NAME <Test Name>`.  The second file is `test_{category}_NN.cmp`, which lists the expected output from running the specified commands.  Additional files used by the test (e.g. files accessed by the `.to` script file) should be placed in `centrallix-os/tests` so that they will be accessible to the object system from the script.  These files should follow the same naming convention as the test that uses them to avoid confusion.
 
 When tests are run, the results are saved in a corresponding `.out` file of the same name as the test.
 
@@ -131,7 +130,7 @@ As with the normal test target, `TONLY` can be used to focus coverage on one cat
 Note: In my own testing, I could not get coverage to work.  I was able to generate a `lcov.info` file using lcov, but I couldn't get any tool to read it.
 
 ### Centrallix-lib Test Case Format
-Each test is a C source file in `centrallix-lib/tests` named `test_{category}_{NN}.c` (for example `test_qprintf_12.c` or `test_mtlexer_05.c`).  There are also a few category-wide baseline tests such as `test_00baseline.c`.
+Each test is a C source file in `centrallix-lib/tests` named `test_{category}_NN.c` (for example `test_qprintf_12.c` or `test_mtlexer_05.c`).  There are also a few category-wide baseline tests such as `test_00baseline.c`.
 
 Each test file should implement:
 
@@ -150,11 +149,11 @@ The test should:
 Tests may include and use any `centrallix-lib` headers and code.  Some tests also use companion data files kept in the same directory, such as `test_mtlexer_05.txt`, which are opened relative to the `centrallix-lib` directory when the suite runs.
 
 ### More About Centrallix-lib Tests
-For more information, see [centrallix-lib/tests/README](../centrallix-lib/tests/README).  You will likely want to include [t_utils.h](../centrallix-lib/tests/t_utils.h), see its implementation for details and other tests for usage examples.
+For more information, see [centrallix-lib/tests/README](../centrallix-lib/tests/README).  You will likely want to include [t_utils.h](../centrallix-lib/tests/t_utils.h); see its implementation for details and other tests for usage examples.
 
 
 ## CXJS Tests
-The cxjs test suite tests JS sent to the client, especially Centrallix functions when they are run on the client.  This test suite uses [`node:test`](https://nodejs.org/api/test.html) instead of a hand-written testing harness.
+The cxjs test suite tests JS sent to the client, especially Centrallix functions when they are run on the client.  This test suite uses [`node:test`](https://nodejs.org/api/test.html) instead of a handwritten testing harness.
 
 ### Running CXJS Tests
 The cxjs tests can be run by using `make test-js` in the `centrallix` directory.  This requires `node 20` or later to be installed, although `node 26` or later is recommended because that version was used when building these tests.  While this test suite does not support the `TONLY` environment variable for limiting tests, the [`--test-only`](https://nodejs.org/api/cli.html#--test-only) option can be used to limit tests, as documented in the `node:test` docs.
