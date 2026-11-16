@@ -579,7 +579,7 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
                 NPASS=$$((NPASS+1)); \
             else \
                 echo -n "$$CNORM"; \
-                diff --label EXPECTED -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed -e '1,2s/^/    /;t' -e "s/^@@.*/    $$CCYAN&$$CNORM/;t" -e "s/^-.*/    $$CRED&$$CNORM/;t" -e "s/^+.*/    $$CGREEN&$$CNORM/;t" -e 's/^/    /'; \
+                diff --label EXPECTED --label ACTUAL -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed -e "s/^@@.*/    $$CCYAN&$$CNORM/;t" -e "s/^-.*/    $$CGREEN&$$CNORM/;t" -e "s/^+.*/    $$CRED&$$CNORM/;t" -e 's/^/    /'; \
                 printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CRED}FAIL$$CNORM"; \
                 NFAIL=$$((NFAIL+1)); \
             fi; \
