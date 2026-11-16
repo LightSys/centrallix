@@ -1,0 +1,7 @@
+$Version=2$
+collparam_strict "system/query"
+    {
+    src "query/parameter" { type = collection; style = notnull; }
+
+    sql = "select cnt = count(1) from collection src";
+    }

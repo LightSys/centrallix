@@ -1,0 +1,7 @@
+$Version=2$
+collparam_string "system/query"
+    {
+    p "query/parameter" { type = string; }
+
+    sql = "select :s:abbrev, v = :parameters:p from /tests/States.csv/rows s where :s:abbrev = 'TX'";
+    }

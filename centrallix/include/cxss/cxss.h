@@ -167,6 +167,7 @@ int cxssStatTLS(pFile reporting_stream, char* status, int maxlen);
 /*** Keystream sequence functions ***/
 pCxssKeystreamState cxssKeystreamNew(unsigned char* key, int keylen);
 int cxssKeystreamGenerate(pCxssKeystreamState kstate, unsigned char* data, int datalen);
+int cxssKeystreamGenerateHex(pCxssKeystreamState kstate, char* hexdata, int hexdatalen);
 int cxssKeystreamFree(pCxssKeystreamState kstate);
 
 /*** Link signing functions ***/

@@ -903,15 +903,18 @@ pPrtObjStream
 prt_internal_AddEmptyObj(pPrtObjStream container)
     {
     pPrtObjStream obj;
+    int rval;
 
 	/** Is this an area? **/
 	if (container->ObjType->TypeID == PRT_OBJ_T_AREA)
 	    {
 	    /** yes - add an empty string object. **/
 	    obj = prt_internal_CreateEmptyObj(container);
-	    if (container->LayoutMgr->AddObject(container, obj) < 0)
+	    rval = container->LayoutMgr->AddObject(container, obj);
+	    if (rval < 0)
 		{
-		prt_internal_FreeTree(obj);
+		if (rval == -1)
+		    prt_internal_FreeTree(obj);
 		return NULL;
 		}
 	    }

@@ -1,0 +1,5 @@
+$Version=2$
+collparam_getdate "system/query"
+    {
+    sql = "select d = getdate(), x = 1 from /tests/States.csv/rows s where :s:abbrev = 'TX'";
+    }

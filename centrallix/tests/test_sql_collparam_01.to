@@ -1,0 +1,11 @@
+##NAME Collection parameters: writes, subqueries, defaults
+
+query declare collection c; exec /tests/collparam_insert.qy (dst = collection c); select :abbrev, :full_name from collection c
+query declare collection c; insert into collection c select :abbrev from /tests/States.csv/rows where :abbrev < 'C'; delete from /tests/collparam_rows.qy (src = collection c) where :abbrev = 'AL'; select :abbrev from collection c
+query declare collection c; insert into collection c select :abbrev from /tests/States.csv/rows where :abbrev < 'C'; update /tests/collparam_rows.qy (src = collection c) q set :abbrev = 'XX' where :q:abbrev = 'AK'; select :abbrev from collection c
+query exec /tests/collparam_sub.qy (src = path /tests/States.csv/rows)
+query declare collection c; insert into collection c select :abbrev from /tests/States.csv/rows where :abbrev < 'C'; exec /tests/collparam_sub.qy (src = collection c)
+query select * from /tests/collparam_count.qy
+query exec /tests/collparam_count.qy (src = path /tests/States.csv/rows)
+query exec /tests/collparam_strict.qy (src = path /tests/States.csv/rows)
+query declare collection appcoll scope application; insert into collection appcoll select a = 1; exec /tests/collparam_appscope.qy

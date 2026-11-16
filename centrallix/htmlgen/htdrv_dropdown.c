@@ -156,6 +156,9 @@ int htddRender(pHtSession s, pWgtrNode tree, int z) {
     if (wgtrGetPropertyValue(tree,"name",DATA_T_STRING,POD(&ptr)) != 0) goto end;
     strtcpy(name,ptr,sizeof(name));
 
+    /** Add the enabled expression. **/
+    if (htrCheckAddExpression(s, tree, name, "enabled") < 0) goto end;
+
     /** Write basic element CSS. **/
     if (htrAddStylesheetItem_va(s,
 	"\t\t#dd%POSbtn { "
