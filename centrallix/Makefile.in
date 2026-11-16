@@ -622,9 +622,9 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	TOSUM "Pass" "$$NPASS" "$$CGREEN"; \
 	[ "$$NSKIP" -gt 0 ] && TOSUM "Skipped" "$$NSKIP" "$$CYELLOW"; \
 	[ -n "$$TONLY" ] && TOSUM "Filtered (TONLY=$$TONLY)" "$$(($(words $(wildcard tests/test_*.to tests/test_*.c))-NRAN-NBASE))" "$$CYELLOW"; \
-	TOSUM "FAIL" "$$NFAIL" "$$CRED"; \
-	TOSUM "CRASH" "$$NCRASH" "$$CRED"; \
-	TOSUM "LOCKUP" "$$NLOCKUP" "$$CRED"; \
+	[ "$$NFAIL" -gt 0 ] && TOSUM "FAIL" "$$NFAIL" "$$CRED"; \
+	[ "$$NCRASH" -gt 0 ] && TOSUM "CRASH" "$$NCRASH" "$$CRED"; \
+	[ "$$NLOCKUP" -gt 0 ] && TOSUM "LOCKUP" "$$NLOCKUP" "$$CRED"; \
 	printf "%-62.62s  %s\n" "Total" "$$NRAN in $$((SECONDS-TOSTART))s"
 
 sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
