@@ -4,7 +4,7 @@ scope:
 ---
 Goto in error handling and cleanup:
 
-1. C functions handle failures by jumping forward to a cleanup label with goto. Goto is allowed in this situation and ONLY in this situation: it is the required pattern here, and not allowed anywhere else. Flag any backward goto used for error handling.
+1. C functions handle failures by jumping forward to a cleanup label with goto. Goto is allowed and required here. Flag any backward goto used for error handling.
 
 2. A function normally has one cleanup label for the whole function. Name it `end` when cleanup runs on both success and failure, or `error` when it runs only on failure. Accept either name. Some functions also use a separate cleanup label inside a scope like a loop for per-iteration cleanup; do not flag that pattern or its label name.
 
