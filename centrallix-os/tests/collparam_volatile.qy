@@ -1,0 +1,7 @@
+$Version=2$
+collparam_volatile "system/query"
+    {
+    volatile = yes;
+
+    sql = "select x = 1 from /tests/States.csv/rows s where :s:abbrev = 'ZZ'";
+    }
