@@ -8,7 +8,7 @@ Recursion guards:
 
 2. The check must raise `mssError(1, "<MODULE>", ...)` and return failure, and every function on the cycle must propagate that failure (see the error/warning rules). Flag a check that returns success, continues recursing, or only prints a warning, and flag any void function on a cycle, since it cannot report the failure.
 
-3. Report an unguarded cycle only when the PR adds or modifies a function or call on it, or removes its check. Do not flag a check that differs from the Good example only in wording or in omitting `UNLIKELY()` (from `cxlib/expect.h`). Do not flag functions outside the cycle for dropping an error from it (this is incorrect but too common to fix now, see the error/warning rules).
+3. Report an unguarded cycle only when the PR adds or modifies a function or call on it, or removes its check. Do not flag a check that differs from the Good example only in wording. Do not flag functions outside the cycle for dropping an error from it (this is incorrect but too common to fix now, see the error/warning rules).
 
 Good (the check in `mod_internal_Eval()` covers `mod_internal_EvalList()`):
 ```c
@@ -18,7 +18,7 @@ mod_internal_Eval(pNode node)
     int rval = -1;
 
 	/** Guard against excessive recursion. **/
-	if (UNLIKELY(thExcessiveRecursion()))
+	if (thExcessiveRecursion())
 	    {
 	    mssError(1, "MOD", "Failed to evaluate node: resource exhaustion occurred.");
 	    goto end;
