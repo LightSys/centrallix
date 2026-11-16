@@ -10,6 +10,8 @@
 #include "expression.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/expect.h"
+#include "cxlib/warn.h"
 #include "mergesort.h"
 
 /************************************************************************/
@@ -392,16 +394,122 @@ objOpenQuery(pObject obj, char* query, char* order_by, void* tree_v, void** orde
     }
 
 
-/*** Deletes every object in a query's results.
+/*** obj_internal_QueryDeleteEach - delete each object in a query's result
+ *** set, one at a time, for drivers that can't delete a whole query.
+ ***
+ *** @param this The query whose results to delete.
+ *** @returns 0 on success, or -1 on failure (some results may be deleted).
+ ***/
+static int
+obj_internal_QueryDeleteEach(pObjQuery this)
+    {
+    int rval = -1;
+    pObject obj = NULL;
+    XArray paths = {0};
+    pXString path_xs = NULL;
+    pStruct last_ctl;
+    char* path = NULL;
+    pObjectInfo info;
+
+	/** Deleting by path requires results with valid paths. **/
+	info = objInfo(this->Obj);
+	if (info != NULL && (info->Flags & OBJ_INFO_F_TEMPORARY))
+	    {
+	    mssError(1, "OSML",
+		"Failed to delete query results: \"%s\" is a temporary object without valid paths.",
+		objGetPathname(this->Obj)
+	    );
+	    goto end_free;
+	    }
+
+	/** Collect paths first: deleting mid-query can shift the driver's cursor. **/
+	if (xaInit(&paths, 16) != 0)
+	    {
+	    mssError(1, "OSML", "Failed to allocate an XArray of %d paths.", 16);
+	    goto end_free;
+	    }
+	path_xs = xsNew();
+	if (UNLIKELY(path_xs == NULL))
+	    {
+	    mssError(1, "OSML", "Failed to allocate an XString for paths.");
+	    goto end_free;
+	    }
+	while ((obj = objQueryFetch(this, O_WRONLY)) != NULL)
+	    {
+	    /** Path with each element's open params. **/
+	    if (UNLIKELY(xsCopy(path_xs, "", 0) < 0 || obj_internal_PathToText(obj->Pathname, obj->Pathname->nElements, path_xs) < 0))
+		{
+		mssError(1, "OSML", "Failed to build path for \"%s\".", objGetPathname(obj));
+		goto end_free;
+		}
+
+	    /** Open as system/object to stop at the fetched object's driver. **/
+	    last_ctl = obj->Pathname->OpenCtl[obj->Pathname->nElements - 1];
+	    if (UNLIKELY(xsConcatPrintf(path_xs, "%sls__type=system%%2fobject", (last_ctl != NULL && last_ctl->nSubInf > 0) ? "&" : "?") < 0))
+		{
+		mssError(1, "OSML", "Failed to add type to path \"%s\".", xsString(path_xs));
+		goto end_free;
+		}
+	    path = nmSysStrdup(xsString(path_xs));
+	    if (UNLIKELY(path == NULL))
+		{
+		mssError(1, "OSML", "nmSysStrdup(\"%s\") failed.", xsString(path_xs));
+		goto end_free;
+		}
+	    if (UNLIKELY(xaAddItem(&paths, (void*)path) < 0))
+		{
+		mssError(1, "OSML", "Failed to add path \"%s\" to XArray.", path);
+		goto end_free;
+		}
+	    path = NULL;
+	    warnFail(objClose(obj));
+	    obj = NULL;
+	    }
+
+	/** Delete each result, stopping at the first failure. **/
+	for (int i = 0; i < paths.nItems; i++)
+	    {
+	    if (objDelete(this->Obj->Session, (char*)paths.Items[i]) < 0)
+		{
+		mssError(0, "OSML",
+		    "Failed to delete \"%s\", result #%d/%d.",
+		    (char*)paths.Items[i], i + 1, paths.nItems
+		);
+		goto end_free;
+		}
+	    }
+
+	/** Success. **/
+	rval = 0;
+
+    end_free:
+	if (UNLIKELY(rval != 0))
+	    mssError(0, "OSML", "Failed to delete query results in \"%s\".", objGetPathname(this->Obj));
+
+	/** Clean up owned memory and objects. **/
+	if (UNLIKELY(path != NULL)) nmSysFree(path);
+	if (LIKELY(path_xs != NULL)) xsFree(path_xs);
+	if (UNLIKELY(obj != NULL)) warnFail(objClose(obj));
+	if (LIKELY(paths.Items != NULL))
+	    {
+	    for (int i = 0; i < paths.nItems; i++) nmSysFree(paths.Items[i]);
+	    warnFail(xaDeInit(&paths));
+	    }
+
+    return rval;
+    }
+
+
+/*** Deletes every object in a query's results.  If the driver does not
+ *** support this, falls back to fetching each path and deleting it.
  ***
  *** @param this The query.
  *** @returns 0 if successful, or -1 if an error occurs.
  ***/
-int 
+int
 objQueryDelete(pObjQuery this)
     {
     int rval = 0;
-    pObject obj;
 
 	ASSERTMAGIC(this, MGK_OBJQUERY);
 
@@ -419,11 +527,7 @@ objQueryDelete(pObjQuery this)
 	    }
 	else
 	    {
-	    while((obj = objQueryFetch(this,O_WRONLY)))
-		{
-		objDelete(this->Obj->Session, this->Obj->Pathname->Pathbuf);
-		objClose(obj);
-		}
+	    rval = obj_internal_QueryDeleteEach(this);
 	    }
 
     return rval;
