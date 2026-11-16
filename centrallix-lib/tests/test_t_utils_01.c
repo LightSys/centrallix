@@ -11,10 +11,11 @@
 /* Module:	test_t_utils_01.c					*/
 /* Author:	Israel Fuller						*/
 /* Creation:	October 14th, 2026					*/
-/* Description:	Test loopTest() from t_utils.h.			*/
+/* Description:	Test loopTest() and loopTestMin() from t_utils.h.	*/
 /************************************************************************/
 
 #include <stdbool.h>
+#include <unistd.h>
 
 /** Test dependencies. **/
 #include "timer.h"
@@ -32,13 +33,20 @@ static bool countCalls(void)
     return (calls != fail_at);
     }
 
+/** Count a call that takes a quarter of the time window. **/
+static bool countSlowCalls(void)
+    {
+    usleep(MIN_TEST_SECONDS * 1000000 / 4);
+    return countCalls();
+    }
+
 long long test(char** tname)
     {
     bool success = true;
     long long iterations;
     Timer timer_buf, *timer;
 
-	*tname = "t_utils-01 loopTest()";
+	*tname = "t_utils-01 loopTest() & loopTestMin()";
 
 	/** A passing test repeats until the time window has passed. **/
 	calls = 0ll;
@@ -58,6 +66,21 @@ long long test(char** tname)
 	calls = 0ll;
 	fail_at = 3ll;
 	success &= ASSERT_EQL(loopTest(countCalls), -1ll, "%lld");
+	success &= ASSERT_EQL(calls, 3ll, "%lld");
+
+	/** A slow test still runs the minimum number of times. **/
+	if (!ON_VALGRIND)
+	    {
+	    calls = 0ll;
+	    fail_at = 0ll;
+	    success &= ASSERT_EQL(loopTestMin(countSlowCalls, 8ll), 8ll, "%lld");
+	    success &= ASSERT_EQL(calls, 8ll, "%lld");
+	    }
+
+	/** A failure stops the test before the minimum. **/
+	calls = 0ll;
+	fail_at = 3ll;
+	success &= ASSERT_EQL(loopTestMin(countCalls, 8ll), -1ll, "%lld");
 	success &= ASSERT_EQL(calls, 3ll, "%lld");
 
     return (success) ? iterations : -1ll;

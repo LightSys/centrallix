@@ -22,6 +22,7 @@
 
 #include "cxlibconfig-internal.h"
 #include "mtask.h"
+#include "mtsession.h"
 #include "t_utils.h"
 #include "util.h"
 
@@ -58,6 +59,9 @@ start(void* v)
     clock_t start,end;
     long long rval;
 
+	/** Set up the session library for errors and warnings. **/
+	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
+
 	/** Set up handlers for signals that may occur during a test. **/
 	signal(SIGSEGV, segv_handler);
 	signal(SIGABRT, abort_handler);
@@ -82,7 +86,7 @@ start(void* v)
 	    if (duration == 0)
 		{
 		printf("%-62.62s  PASS ???\n", tname);
-		printf("Warning: Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTest() from t_utils.h.\n");
+		mssWarn("TEST", "Test ran too fast! Ops/sec could not be measured. Please run tests in a loop or use loopTest() from t_utils.h.");
 		return;
 		}
 	    double ops_per_second = rval * (100.0 / duration);

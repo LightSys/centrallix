@@ -48,19 +48,22 @@ static unsigned int seed_counter = 0;
 static bool doTest(void)
     {
     bool success = true;
+    bool finished = false;
+    bool hash_ready = false;
     XHashTable hash;
     unsigned int freed = 0;
 
 	/** Use a distinct seed each pass so the data varies. **/
 	srand(seed_counter++);
 
-	success &= ASSERT_EQL(xhInit(&hash, HASH_ROWS, 0), 0, "%d");
+	if (!ASSERT_EQL(xhInit(&hash, HASH_ROWS, 0), 0, "%d")) goto end;
+	hash_ready = true;
 
 	/** Fill the table with data that xhClear() has to free. **/
 	for (int i = 0; i < ITEM_COUNT; i++)
 	    {
 	    int* value = nmMalloc(DATA_SIZE);
-	    if (!ASSERT_NOT_NULL(value)) return false;
+	    if (!ASSERT_NOT_NULL(value)) goto end;
 	    *value = rand();
 	    success &= ASSERT_EQL(xhAdd(&hash, keys[i], (char*)value), 0, "%d");
 	    char* found = xhLookup(&hash, keys[i]);
@@ -110,16 +113,23 @@ static bool doTest(void)
 
 	/** A free function may be given a NULL argument. **/
 	int* value = nmMalloc(DATA_SIZE);
-	if (!ASSERT_NOT_NULL(value)) return false;
+	if (!ASSERT_NOT_NULL(value)) goto end;
 	success &= ASSERT_EQL(xhAdd(&hash, keys[0], (char*)value), 0, "%d");
 	success &= ASSERT_EQL(xhClear(&hash, test_free, NULL), 0, "%d");
 	success &= ASSERT_EQL(freed, (unsigned int)ITEM_COUNT + 1, "%u");
 	success &= ASSERT_EQL(hash.nItems, 0, "%d");
 
-	/** Clean up. **/
-	success &= ASSERT_EQL(xhDeInit(&hash), 0, "%d");
+	finished = true;
 
-    return success;
+    end:
+	/** Clean up, freeing any entries a failure left behind. **/
+	if (hash_ready)
+	    {
+	    if (!finished) xhClear(&hash, test_free, NULL);
+	    success &= ASSERT_EQL(xhDeInit(&hash), 0, "%d");
+	    }
+
+    return finished && success;
     }
 
 long long test(char** tname)

@@ -148,6 +148,7 @@ typedef struct _QS
 #define MQ_SF_NONEMPTY		16384		/* SELECT ... FROM NONEMPTY ... */
 #define MQ_SF_PAGED		32768		/* SELECT ... FROM PAGED ... */
 #define MQ_SF_DEFAULTORDER	65536		/* ORDER BY DEFAULT (dropped/overridden by a following ORDER BY) */
+#define MQ_SF_ONEROW		131072		/* SELECT ... FROM ONEROW ... (restrict from source to one row) */
 
 #define MQ_T_QUERY		0
 #define MQ_T_SELECTCLAUSE	1

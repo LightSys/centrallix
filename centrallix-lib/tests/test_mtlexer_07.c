@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "newmalloc.h"
-#include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -63,8 +62,6 @@ test(char** tname)
     long long rval;
 
 	*tname = "mtlexer-07 all tokens, space/tab/noifs with eol";
-
-	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	rval = loopTest(doTest);
 	if (rval > 0) rval *= (long long)n_tokens * n_iter;

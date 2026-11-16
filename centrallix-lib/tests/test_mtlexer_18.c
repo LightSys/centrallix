@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
 #include "t_utils.h"
@@ -59,6 +58,5 @@ long long
 test(char** tname)
     {
     *tname = "mtlexer-18 LINEONLY mode test - file ends in newline";
-    mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
     return loopTest(doTest) * N_FLAGTYPE * 7;
     }
