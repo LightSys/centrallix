@@ -150,7 +150,7 @@ The test should:
 Tests may include and use any `centrallix-lib` headers and code.  Some tests also use companion data files kept in the same directory, such as `test_mtlexer_05.txt`, which are opened relative to the `centrallix-lib` directory when the suite runs.
 
 ### More About Centrallix-lib Tests
-For more information, see [centrallix-lib/tests/README](../centrallix-lib/tests/README).
+For more information, see [centrallix-lib/tests/README](../centrallix-lib/tests/README).  You will likely want to include [t_utils.h](../centrallix-lib/tests/t_utils.h), see its implementation for details and other tests for usage examples.
 
 
 ## CXJS Tests
