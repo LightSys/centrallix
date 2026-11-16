@@ -4,7 +4,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "newmalloc.h"
-#include "mtsession.h"
 #include "mtlexer.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -82,8 +81,6 @@ test(char** tname)
 
 	*tname = "mtlexer-03 BID#156 - line length based failure";
 
-	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
-
 	/** Seed the input and the expected first token at their full length. **/
 	memset(str, 'a', MAX_LEN+1);
 	tokstr[0] = nmSysMalloc(MAX_LEN+2);
@@ -94,7 +91,7 @@ test(char** tname)
 	tokstr[2] = "thirdline";
 
 	/** Each pass lexes MAX_LEN / N_PASS of the line lengths. **/
-	rval = loopTest(doTest) * MAX_LEN / N_PASS;
+	rval = loopTestMin(doTest, N_PASS) * MAX_LEN / N_PASS;
 
 	nmSysFree(tokstr[0]);
 	tokstr[0] = NULL;

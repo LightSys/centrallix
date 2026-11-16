@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "memstr.h"
+#include "strtcpy.h"
 #include <assert.h>
 #include <stdbool.h>
 #include "t_utils.h"
@@ -31,20 +32,20 @@ doTest(void)
     char buffer2[20];
     char * ptr;
 
-	strcpy(buffer1, "this tests the boundary conditions.");
-	strcpy(buffer2, "tests the");
+	strtcpy(buffer1, "this tests the boundary conditions.", sizeof(buffer1));
+	strtcpy(buffer2, "tests the", sizeof(buffer2));
 	ptr = memstr(buffer1, buffer2, sizeof buffer1);
 	assert(ptr);
-	strcpy(buffer2, "this t");
+	strtcpy(buffer2, "this t", sizeof(buffer2));
 	ptr = memstr(buffer1, buffer2, sizeof buffer1);
 	assert(ptr);
-	strcpy(buffer2, "cond");
+	strtcpy(buffer2, "cond", sizeof(buffer2));
 	ptr = memstr(buffer1, buffer2, sizeof buffer1);
 	assert(ptr);
-	strcpy(buffer2, "s.");
+	strtcpy(buffer2, "s.", sizeof(buffer2));
 	ptr = memstr(buffer1, buffer2, sizeof buffer1);
 	assert(ptr);
-	strcpy(buffer2, "random");
+	strtcpy(buffer2, "random", sizeof(buffer2));
 	ptr = memstr(buffer1, buffer2, sizeof buffer1);
 	assert(!ptr);
 	ptr = memstr(buffer2, buffer1, sizeof buffer2);
