@@ -39,7 +39,6 @@
 
 #include "apos.h"
 #include "cxlib/datatypes.h"
-#include "cxlib/expect.h"
 #include "cxlib/magic.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
@@ -1608,7 +1607,7 @@ wgtrSetupNode(pWgtrNode node)
 void
 wgtrSetInsets(pWgtrNode node, int top, int bottom, int left, int right)
     {
-	if (UNLIKELY(node == NULL))
+	if (node == NULL)
 	    {
 	    fprintf(stderr,
 		"Warning: Call to wgtrSetInsets(null, %d, %d, %d, %d) with null widget tree node?!\n",
@@ -2306,7 +2305,7 @@ wgtrRenameProperty(pWgtrNode tree, char* oldname, char* newname)
 pWgtrNode
 wgtrGetHtmlContainer(pWgtrNode widget)
     {
-	if (UNLIKELY(widget == NULL)) return NULL;
+	if (widget == NULL) return NULL;
     
 	pWgtrNode parent = widget->Parent;
 	while (parent != NULL && parent->Parent != NULL && !(parent->Flags & WGTR_F_VISUAL_CONTAINER))
@@ -2320,7 +2319,7 @@ wgtrGetHtmlContainer(pWgtrNode widget)
 int
 wgtrGetContainerWidth(pWgtrNode tree)
     {
-	if (UNLIKELY(tree == NULL))
+	if (tree == NULL)
 	    {
 	    mssWarn("WGTR", "Call to wgtrGetContainerWidth(null) with null widget tree node?!");
 	    return -1;
@@ -2332,7 +2331,7 @@ wgtrGetContainerWidth(pWgtrNode tree)
 	while (container != NULL && container->width < 0);
 
 	/** Check for getter failure. **/
-	if (UNLIKELY(container == NULL))
+	if (container == NULL)
 	    {
 	    /*** We can't use mssError() here because, when the return value
 	     *** is passed to qprintf(), it reports a bad value and our error
@@ -2354,7 +2353,7 @@ wgtrGetContainerWidth(pWgtrNode tree)
 int
 wgtrGetContainerHeight(pWgtrNode tree)
     {
-	if (UNLIKELY(tree == NULL))
+	if (tree == NULL)
 	    {
 	    mssWarn("WGTR", "Call to wgtrGetContainerHeight(null) with null widget tree node?!");
 	    return -1;
@@ -2366,7 +2365,7 @@ wgtrGetContainerHeight(pWgtrNode tree)
 	while (container != NULL && container->height < 0);
 
 	/** Check for getter failure. **/
-	if (UNLIKELY(container == NULL))
+	if (container == NULL)
 	    {
 	    /*** We can't use mssError() here because, when the return value
 	     *** is passed to qprintf(), it reports a bad value and our error

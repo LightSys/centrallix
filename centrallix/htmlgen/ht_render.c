@@ -47,7 +47,6 @@
 
 #include "centrallix.h"
 #include "cxlib/datatypes.h"
-#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
@@ -383,14 +382,14 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	if (arr->nItems == 0)
 	    {
 	    ptr = (char*)nmMalloc(block_size);
-	    if (UNLIKELY(ptr == NULL))
+	    if (ptr == NULL)
 		{
 		mssError(1, "HTR", "nmMalloc(%zu) failed.", block_size);
 		goto err;
 		}
 	    *(int*)ptr = 0;
 	    l = 0;
-	    if (UNLIKELY(xaAddItem(arr, ptr) < 0))
+	    if (xaAddItem(arr, ptr) < 0)
 		{
 		mssError(1, "HTR", "Failed to add text block to XArray.");
 		nmFree(ptr, block_size);
@@ -417,14 +416,14 @@ htr_internal_AddTextToArray(pXArray arr, char* txt)
 	    if (n)
 	        {
 		ptr = (char*)nmMalloc(block_size);
-		if (UNLIKELY(ptr == NULL))
+		if (ptr == NULL)
 		    {
 		    mssError(1, "HTR", "nmMalloc(%zu) failed.", block_size);
 		    goto err;
 		    }
 		*(int*)ptr = 0;
 		l = 0;
-		if (UNLIKELY(xaAddItem(arr, ptr) < 0))
+		if (xaAddItem(arr, ptr) < 0)
 		    {
 		    mssError(1, "HTR", "Failed to add text block to XArray.");
 		    nmFree(ptr, block_size);
@@ -462,14 +461,14 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
     int rval = -1;
     
 	/** Guard segfault. **/
-	if (UNLIKELY(widget == NULL))
+	if (widget == NULL)
 	    {
 	    mssError(1, "HTR", "Failed to render NULL widget.");
 	    return -1;
 	    }
 
 	/** Check recursion **/
-	if (UNLIKELY(thExcessiveRecursion()))
+	if (thExcessiveRecursion())
 	    {
 	    mssError(1,"HTR","Could not render application: resource exhaustion occurred");
 	    goto end;
@@ -478,7 +477,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	/** Find the hashtable keyed with widget names for this combination of
 	 ** user-agent:style that contains pointers to the drivers to use.
 	 **/
-	if (UNLIKELY(session->Class == NULL))
+	if (session->Class == NULL)
 	    {
 	    mssError(1, "HTR", "Class not defined.");
 	    goto end;
@@ -486,7 +485,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	widget_drivers = &session->Class->WidgetDrivers;
 
 	/** Get the name of the widget.. **/
-	if (UNLIKELY(strncmp(widget->Type, "widget/", 7) != 0))
+	if (strncmp(widget->Type, "widget/", 7) != 0)
 	    {
 	    mssError(1,"HTR","Invalid content type for widget - must be widget/xxx");
 	    goto end;
@@ -494,7 +493,7 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 
 	/** Lookup the driver. These are what are defined in the various htdrv_* functions **/
 	drv = (pHtDriver)xhLookup(widget_drivers,widget->Type+7);
-	if (UNLIKELY(drv == NULL))
+	if (drv == NULL)
 	    {
 	    mssError(1,"HTR","Unknown widget object type '%s'", widget->Type);
 	    goto end;
@@ -503,12 +502,12 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	/** Has this driver been used this session yet? **/
 	if (xhLookup(&session->UsedDrivers, drv->WidgetName) == NULL)
 	    {
-	    if (UNLIKELY(xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv) != 0))
+	    if (xhAdd(&session->UsedDrivers, drv->WidgetName, (void*)drv) != 0)
 		{
 		mssError(1, "HTR", "Failed to add \"%s\" to used drivers.", drv->WidgetName);
 		goto end;
 		}
-	    if (drv->Setup != NULL && UNLIKELY(drv->Setup(session) < 0))
+	    if (drv->Setup != NULL && drv->Setup(session) < 0)
 		{
 		mssError(0, "HTR", "\"%s\" setup failed.", drv->Name);
 		goto end;
@@ -516,11 +515,11 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    }
 
 	/** Crossing a namespace boundary? **/
-	if (UNLIKELY(htrCheckNSTransition(session, widget->Parent, widget) != 0)) goto end;
+	if (htrCheckNSTransition(session, widget->Parent, widget) != 0) goto end;
 
 	/** will be a *Render function found in a htmlgen/htdrv_*.c file (eg htpageRender) **/
 	rval = drv->Render(session, widget, z);
-	if (UNLIKELY(rval != 0))
+	if (rval != 0)
 	    {
 	    char error_code[32] = {'\0'};
 	    if (rval != -1) snprintf(error_code, sizeof(error_code), " (error code: %d)", rval);
@@ -528,14 +527,14 @@ htrRenderWidget(pHtSession session, pWgtrNode widget, int z)
 	    }
 
 	/** Going back to previous namespace? (Even if rendering failed.) **/
-	if (UNLIKELY(htrCheckNSTransitionReturn(session, widget->Parent, widget) != 0))
+	if (htrCheckNSTransitionReturn(session, widget->Parent, widget) != 0)
 	    {
 	    rval = -1;
 	    goto end;
 	    }
 
     end:
-	if (UNLIKELY(rval != 0))
+	if (rval != 0)
 	    {
 	    mssError(0, "HTR",
 		"Failed to render \"%s\":\"%s\".",
@@ -563,7 +562,7 @@ htrCheckNSTransition(pHtSession s, pWgtrNode parent, pWgtrNode child)
 	if (child != NULL && parent != NULL &&
 	    strcmp(child->Namespace, parent->Namespace) != 0)
 	    {
-	    if (UNLIKELY(htrAddNamespace(s, NULL, child->Namespace, 1) != 0))
+	    if (htrAddNamespace(s, NULL, child->Namespace, 1) != 0)
 		{
 		mssError(0, "HTR",
 		    "Transition failed: \"%s\":\"%s\" (parent) --> \"%s\":\"%s\" (child).",
@@ -591,7 +590,7 @@ htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
 	if (child != NULL && parent != NULL &&
 	    strcmp(child->Namespace, parent->Namespace) != 0)
 	    {
-	    if (UNLIKELY(htrLeaveNamespace(s) != 0))
+	    if (htrLeaveNamespace(s) != 0)
 		{
 		mssError(0, "HTR",
 		    "Transition return failed: \"%s\":\"%s\" (parent) <-- \"%s\":\"%s\" (child).",
@@ -615,7 +614,7 @@ htrCheckNSTransitionReturn(pHtSession s, pWgtrNode parent, pWgtrNode child)
 int
 htrAddStylesheetItem(pHtSession s, char* html_text)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlStylesheet), html_text) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.HtmlStylesheet), html_text) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add style sheet item.");
 	    return -1;
@@ -634,7 +633,7 @@ htrAddStylesheetItem(pHtSession s, char* html_text)
 int
 htrAddHeaderItem(pHtSession s, char* html_text)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlHeader), html_text) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.HtmlHeader), html_text) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add header item.");
 	    return -1;
@@ -653,7 +652,7 @@ htrAddHeaderItem(pHtSession s, char* html_text)
 int
 htrAddBodyItem(pHtSession s, char* html_text)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlBody), html_text) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.HtmlBody), html_text) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add body item.");
 	    return -1;
@@ -673,7 +672,7 @@ htrAddBodyItem(pHtSession s, char* html_text)
 int
 htrAddExpressionItem(pHtSession s, char* html_text)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlExpressionInit), html_text) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.HtmlExpressionInit), html_text) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add expression item.");
 	    return -1;
@@ -694,7 +693,7 @@ htrAddExpressionItem(pHtSession s, char* html_text)
 int
 htrAddBodyParam(pHtSession s, char* html_param)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.HtmlBodyParams), html_param) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.HtmlBodyParams), html_param) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add body parameter.");
 	    return -1;
@@ -717,14 +716,14 @@ htr_internal_GrowFn(char** str, size_t* size, size_t offs, void* arg, size_t req
     char* new_buf;
     size_t new_buf_size;
 
-	if (UNLIKELY(*size >= req_size)) return 1;
+	if (*size >= req_size) return 1;
 
 	assert(*str == s->Tmpbuf);
 	assert(*size == s->TmpbufSize);
 	new_buf_size = s->TmpbufSize * 2;
 	while(new_buf_size < req_size) new_buf_size *= 2;
 	new_buf = nmSysRealloc(s->Tmpbuf, new_buf_size);
-	if (UNLIKELY(new_buf == NULL))
+	if (new_buf == NULL)
 	    {
 	    mssError(1, "HTR", "nmSysRealloc(%p, %zu) failed.", s->Tmpbuf, new_buf_size);
 	    return false;
@@ -759,7 +758,7 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 
 	/** Create a pQPSession to track errors from qpfPrintf. **/
 	error_session = qpfOpenSession();
-	if (UNLIKELY(error_session == NULL))
+	if (error_session == NULL)
 	    {
 	    mssError(1, "HTR", "qpfOpenSession() failed.");
 	    goto end;
@@ -767,13 +766,13 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 
 	/** Print text using qpfPrintf(). **/
 	tmp = qpfPrintf_va_internal(error_session, &(s->Tmpbuf), &(s->TmpbufSize), htr_internal_GrowFn, (void*)s, fmt, va);
-	if (UNLIKELY(tmp < 0))
+	if (tmp < 0)
 	    {
 	    mssError(1, "HTR", "QPAddText() failed to format: \"%s\"", fmt);
 	    qpfLogErrors(error_session);
 	    goto end;
 	    }
-	if (UNLIKELY(s->TmpbufSize - 1 < tmp))
+	if (s->TmpbufSize - 1 < tmp)
 	    {
 	    mssError(1, "HTR", "qpfPrintf() failed to write all the required text.");
 	    qpfLogErrors(error_session);
@@ -782,10 +781,10 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 
 	/** Add the text using the callback function. **/
 	tmp = fn(s, s->Tmpbuf);
-	if (UNLIKELY(tmp != 0))
+	if (tmp != 0)
 	    {
 	    char error_code[32] = {'\0'};
-	    if (UNLIKELY(tmp != -1)) snprintf(error_code, sizeof(error_code), " (error code: %d)", tmp);
+	    if (tmp != -1) snprintf(error_code, sizeof(error_code), " (error code: %d)", tmp);
 	    mssError(0, "HTR", "Provided callback function failed%s.", error_code);
 	    goto end;
 	    }
@@ -795,7 +794,7 @@ htr_internal_QPAddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	
     end:
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
+	if (error_session != NULL) warnFail(qpfCloseSession(error_session));
 
 	return rval;
     }
@@ -828,12 +827,12 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
     retry:
 	/** Attempt to print the thing to the tmpbuf. **/
 	tmp = vsnprintf(s->Tmpbuf, s->TmpbufSize, fmt, va);
-	if (UNLIKELY(tmp < 0))
+	if (tmp < 0)
 	    {
 	    mssError(1, "HTR", "vsnprintf() failed to format: \"%s\"", fmt);
 	    goto err;
 	    }
-	if (UNLIKELY(tmp > s->TmpbufSize - 1))
+	if (tmp > s->TmpbufSize - 1)
 	    {
 	    /** Increase buffer size, including space for the NUL-terminator. **/
 	    size_t new_buf_size = s->TmpbufSize * 2lu;
@@ -841,7 +840,7 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 	    
 	    /** Allocate the new buffer. **/
 	    void* new_buf = nmSysMalloc(new_buf_size);
-	    if (UNLIKELY(new_buf == NULL))
+	    if (new_buf == NULL)
 		{
 		mssError(1, "HTR", "nmSysMalloc(%zu) failed.", new_buf_size);
 		goto err;
@@ -859,10 +858,10 @@ htr_internal_AddText(pHtSession s, int (*fn)(), char* fmt, va_list va)
 
 	/** Add the text using the callback function. **/
 	tmp = fn(s, s->Tmpbuf);
-	if (UNLIKELY(tmp != 0))
+	if (tmp != 0)
 	    {
 	    char error_code[32] = {'\0'};
-	    if (UNLIKELY(tmp != -1)) snprintf(error_code, sizeof(error_code), " (error code: %d)", tmp);
+	    if (tmp != -1) snprintf(error_code, sizeof(error_code), " (error code: %d)", tmp);
 	    mssError(0, "HTR", "Provided callback function failed%s.", error_code);
 	    goto err;
 	    }
@@ -890,7 +889,7 @@ htrAddBodyItem_va(pHtSession s, char* fmt, ... )
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddBodyItem, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add HTML body item.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add HTML body item.");
 
     return ret;
     }
@@ -910,7 +909,7 @@ htrAddExpressionItem_va(pHtSession s, char* fmt, ... )
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddExpressionItem, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add expression item.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add expression item.");
 
     return ret;
     }
@@ -930,7 +929,7 @@ htrAddStylesheetItem_va(pHtSession s, char* fmt, ... )
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddStylesheetItem, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add CSS stylesheet item.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add CSS stylesheet item.");
 
     return ret;
     }
@@ -950,7 +949,7 @@ htrAddHeaderItem_va(pHtSession s, char* fmt, ... )
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddHeaderItem, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add HTML document header item.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add HTML document header item.");
 
     return ret;
     }
@@ -970,7 +969,7 @@ htrAddBodyParam_va(pHtSession s, char* fmt, ... )
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddBodyParam, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add body parameter.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add body parameter.");
 
     return ret;
     }
@@ -990,7 +989,7 @@ htrAddScriptWgtr_va(pHtSession s, char* fmt, ...)
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddScriptWgtr, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add JS code.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add JS code.");
 
     return ret;
     }
@@ -1028,7 +1027,7 @@ htrAddScriptInit_va(pHtSession s, char* fmt, ... )
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddScriptInit, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add JS init call.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add JS init call.");
 
     return ret;
     }
@@ -1048,7 +1047,7 @@ htrAddScriptCleanup_va(pHtSession s, char* fmt, ... )
 	va_start(va, fmt);
 	const int ret = htr_internal_QPAddText(s, htrAddScriptCleanup, fmt, va);
 	va_end(va);
-	if (UNLIKELY(ret != 0)) mssError(0, "HTR", "Failed to add JS clean up code.");
+	if (ret != 0) mssError(0, "HTR", "Failed to add JS clean up code.");
 
     return ret;
     }
@@ -1081,7 +1080,7 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
 
     	/** Alloc the string val. **/
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
-	if (UNLIKELY(sv == NULL))
+	if (sv == NULL)
 	    {
 	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
 	    goto err;
@@ -1092,12 +1091,12 @@ htrAddScriptInclude(pHtSession s, char* filename, int flags)
 	sv->Alloc = (flags & HTR_F_NAMEALLOC);
 
 	/** Add to the hash table and array **/
-	if (UNLIKELY(xhAdd(&(s->Page.NameIncludes), filename, (char*)sv) != 0))
+	if (xhAdd(&(s->Page.NameIncludes), filename, (char*)sv) != 0)
 	    {
 	    mssError(1, "HTR", "Failed to add \"%s\" to includes hash table.", filename);
 	    goto err;
 	    }
-	if (UNLIKELY(xaAddItem(&(s->Page.Includes), (char*)sv) < 0))
+	if (xaAddItem(&(s->Page.Includes), (char*)sv) < 0)
 	    {
 	    mssError(1, "HTR", "Failed to add \"%s\" to includes XArray.", filename);
 	    goto err;
@@ -1134,7 +1133,7 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
     	/** Alloc the string val. **/
 	if (xhLookup(&(s->Page.NameFunctions), fn_name)) return 0;
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
-	if (UNLIKELY(sv == NULL))
+	if (sv == NULL)
 	    {
 	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
 	    goto err;
@@ -1146,12 +1145,12 @@ htrAddScriptFunction(pHtSession s, char* fn_name, char* fn_text, int flags)
 	sv->Alloc = flags;
 
 	/** Add to the hash table and array **/
-	if (UNLIKELY(xhAdd(&(s->Page.NameFunctions), fn_name, (char*)sv) != 0))
+	if (xhAdd(&(s->Page.NameFunctions), fn_name, (char*)sv) != 0)
 	    {
 	    mssError(1, "HTR", "Failed to add \"%s\" to functions hash table.", fn_name);
 	    goto err;
 	    }
-	if (UNLIKELY(xaAddItem(&(s->Page.Functions), (char*)sv) < 0))
+	if (xaAddItem(&(s->Page.Functions), (char*)sv) < 0)
 	    {
 	    mssError(1, "HTR", "Failed to add \"%s\" to functions XArray.", fn_name);
 	    goto err;
@@ -1190,7 +1189,7 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 	
 	/** Alloc a new string val. **/
 	sv = (pStrValue)nmMalloc(sizeof(StrValue));
-	if (UNLIKELY(sv == NULL))
+	if (sv == NULL)
 	    {
 	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(StrValue));
 	    goto err;
@@ -1202,12 +1201,12 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 	sv->Alloc = flags;
 
 	/** Add to the hash table and array **/
-	if (UNLIKELY(xhAdd(&(s->Page.NameGlobals), var_name, (char*)sv) != 0))
+	if (xhAdd(&(s->Page.NameGlobals), var_name, (char*)sv) != 0)
 	    {
 	    mssError(1, "HTR", "Failed to add \"%s\" to globals hash table.", var_name);
 	    goto err;
 	    }
-	if (UNLIKELY(xaAddItem(&(s->Page.Globals), (char*)sv) < 0))
+	if (xaAddItem(&(s->Page.Globals), (char*)sv) < 0)
 	    {
 	    mssError(1, "HTR", "Failed to add \"%s\" to globals XArray.", var_name);
 	    goto err;
@@ -1242,7 +1241,7 @@ htrAddScriptGlobal(pHtSession s, char* var_name, char* initialization, int flags
 int
 htrAddScriptInit(pHtSession s, char* init_text)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.Inits), init_text) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.Inits), init_text) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add script init.");
 	    return -1;
@@ -1263,7 +1262,7 @@ htrAddScriptInit(pHtSession s, char* init_text)
 int
 htrAddScriptWgtr(pHtSession s, char* wgtr_text)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.Wgtr), wgtr_text) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.Wgtr), wgtr_text) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add to script in widget tree.");
 	    return -1;
@@ -1283,7 +1282,7 @@ htrAddScriptWgtr(pHtSession s, char* wgtr_text)
 int
 htrAddScriptCleanup(pHtSession s, char* init_text)
     {
-	if (UNLIKELY(htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text) != 0))
+	if (htr_internal_AddTextToArray(&(s->Page.Cleanups), init_text) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to add script clean up.");
 	    return -1;
@@ -1320,7 +1319,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	for (unsigned int i = 0u; i < n_event_handlers; i++)
 	    {
 	    pHtDomEvent event_handler = xaGetItem(&s->Page.EventHandlers, i);
-	    if (UNLIKELY(event_handler == NULL))
+	    if (event_handler == NULL)
 		{
 		mssError(1, "HTR", "Event handler #%u/%d is NULL.", i + 1u, n_event_handlers);
 		goto err;
@@ -1336,18 +1335,18 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	if (e == NULL)
 	    {
 	    e = (pHtDomEvent)nmMalloc(sizeof(HtDomEvent));
-	    if (UNLIKELY(e == NULL))
+	    if (e == NULL)
 		{
 		mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDomEvent));
 		goto err;
 		}
 	    strtcpy(e->DomEvent, event, sizeof(e->DomEvent));
-	    if (UNLIKELY(xaInit(&e->Handlers,64) != 0))
+	    if (xaInit(&e->Handlers,64) != 0)
 		{
 		mssError(1, "HTR", "xaInit(&e->Handlers, 64) failed.");
 		goto err;
 		}
-	    if (UNLIKELY(xaAddItem(&s->Page.EventHandlers, e) < 0))
+	    if (xaAddItem(&s->Page.EventHandlers, e) < 0)
 		{
 		mssError(1, "HTR", "Failed to add \"%s\" event to XArray.", event);
 		goto err;
@@ -1359,7 +1358,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	for (unsigned int i = 0u; i < n_handlers; i++)
 	    {
 	    char* handler = xaGetItem(&e->Handlers, i);
-	    if (UNLIKELY(handler == NULL))
+	    if (handler == NULL)
 		{
 		mssError(1, "HTR", "Handler #%u/%d is NULL.", i + 1u, n_handlers);
 		goto err;
@@ -1367,7 +1366,7 @@ htrAddEventHandlerFunction(pHtSession s, char* event_src, char* event, char* drv
 	    if (strcmp(function, handler) == 0)
 		return 0;
 	    }
-	if (UNLIKELY(xaAddItem(&e->Handlers, function) < 0))
+	if (xaAddItem(&e->Handlers, function) < 0)
 	    {
 	    mssError(1, "HTR", "Failed to add handler \"%s\" to XArray.", function);
 	    goto err;
@@ -1421,16 +1420,16 @@ htrAddBodyItemLayer_va(pHtSession s, int flags, char* id, int cnt, char* cls, co
     va_list va;
 
 	/** Add the opening tag **/
-	if (UNLIKELY(htrAddBodyItemLayerStart(s, flags, id, cnt, cls) != 0)) goto err;
+	if (htrAddBodyItemLayerStart(s, flags, id, cnt, cls) != 0) goto err;
 
 	/** Add the content **/
 	va_start(va, fmt);
 	const int rval = htr_internal_QPAddText(s, htrAddBodyItem, (char*)fmt, va);
 	va_end(va);
-	if (UNLIKELY(rval != 0)) goto err;
+	if (rval != 0) goto err;
 
 	/** Add the closing tag **/
-	if (UNLIKELY(htrAddBodyItemLayerEnd(s, flags) != 0)) goto err;
+	if (htrAddBodyItemLayerEnd(s, flags) != 0) goto err;
 
 	/** Success. **/
 	return 0;
@@ -1463,7 +1462,7 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 	
 	/** Create a pQPSession to track errors from qpfPrintf. **/
 	error_session = qpfOpenSession();
-	if (UNLIKELY(error_session == NULL))
+	if (error_session == NULL)
 	    {
 	    mssError(1, "HTR", "qpfOpenSession() failed.");
 	    goto end;
@@ -1474,16 +1473,16 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 	const char* start_tag = (use_iframe) ? "iframe style='border:0'" : "div";
 
 	/** Add the starting tag. **/
-	if (UNLIKELY(qpfPrintf(error_session, id_sbuf, sizeof(id_sbuf), id, cnt) < 0))
+	if (qpfPrintf(error_session, id_sbuf, sizeof(id_sbuf), id, cnt) < 0)
 	    {
 	    mssError(1, "HTR", "Failed to format \"%s\" with %d", id, cnt);
 	    qpfLogErrors(error_session);
 	    goto end;
 	    }
-	if (UNLIKELY(htrAddBodyItem_va(s,
+	if (htrAddBodyItem_va(s,
 	    "<%STR %[class='%STR&HTE' %]id='%STR&HTE'>",
 	    start_tag, (class != NULL), class, id_sbuf
-	) != 0))
+	) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to write HTML tag to start body item.");
 	    goto end;
@@ -1493,10 +1492,10 @@ htrAddBodyItemLayerStart(pHtSession s, int flags, char* id, int cnt, char* class
 	rval = 0;
 
 	end:
-	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add starting body item with id: %s.", id);
+	if (rval != 0) mssError(0, "HTR", "Failed to add starting body item with id: %s.", id);
 	
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
+	if (error_session != NULL) warnFail(qpfCloseSession(error_session));
 	
 	/** Done. **/
 	return rval;
@@ -1518,7 +1517,7 @@ htrAddBodyItemLayerEnd(pHtSession s, int flags)
 	const char* end_tag = (use_iframe) ? "iframe" : "div";
 	
 	/** Add it. **/
-	if (UNLIKELY(htrAddBodyItem_va(s, "</%STR>", end_tag) != 0))
+	if (htrAddBodyItem_va(s, "</%STR>", end_tag) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to write HTML tag to end body item.");
 	    return -1;
@@ -1543,26 +1542,26 @@ htrGetExpParams(pExpression exp, pXString xs)
     XArray objs = { nAlloc: 0 }, props = { nAlloc: 0 };
 
 	/** setup **/
-	if (UNLIKELY(xaInit(&objs, 16) != 0))
+	if (xaInit(&objs, 16) != 0)
 	    {
 	    mssError(1, "HTR", "xaInit(&objs, 16) failed.");
 	    goto end;
 	    }
-	if (UNLIKELY(xaInit(&props, 16) != 0))
+	if (xaInit(&props, 16) != 0)
 	    {
 	    mssError(1, "HTR", "xaInit(&props, 16) failed.");
 	    goto end;
 	    }
 
 	/** Find the properties accessed by the expression **/
-	if (UNLIKELY(expGetPropList(exp, &objs, &props) < 0))
+	if (expGetPropList(exp, &objs, &props) < 0)
 	    {
 	    mssError(1, "HTR", "expGetPropList() failed.");
 	    goto end;
 	    }
 
 	/** Build the list **/
-	if (UNLIKELY(xsCopy(xs, "[", 1) != 0))
+	if (xsCopy(xs, "[", 1) != 0)
 	    {
 	    mssError(1, "HTR", "xsCopy() failed.");
 	    goto end;
@@ -1572,14 +1571,14 @@ htrGetExpParams(pExpression exp, pXString xs)
 	    {
 	    const char* obj = objs.Items[i];
 	    const char* prop = props.Items[i];
-	    if (LIKELY(
+	    if (
 		obj  != NULL && obj[0]  != '\0' &&
 		prop != NULL && prop[0] != '\0'
-	    ))	{
-		if (UNLIKELY(xsConcatQPrintf(xs,
+	    )	{
+		if (xsConcatQPrintf(xs,
 		    "%[,%]{obj:'%STR&JSSTR',attr:'%STR&JSSTR'}",
 		    (!first), obj, prop
-		) < 0))
+		) < 0)
 		    {
 		    mssError(1, "HTR", "Failed to write property %s.%s.", obj, prop);
 		    goto end;
@@ -1587,7 +1586,7 @@ htrGetExpParams(pExpression exp, pXString xs)
 		first = false;
 		}
 	    }
-	if (UNLIKELY(xsConcatenate(xs, "]", 1) < 0))
+	if (xsConcatenate(xs, "]", 1) < 0)
 	    {
 	    mssError(1, "HTR", "xsConcatenate() failed.");
 	    goto end;
@@ -1597,16 +1596,16 @@ htrGetExpParams(pExpression exp, pXString xs)
 	rval = 0;
 
 	end:
-	if (UNLIKELY(rval != 0))
+	if (rval != 0)
 	    mssError(0, "HTR", "Failed to get params for expression: \"%s\".", exp->Name);
 	
 	/** Clean up. **/
 	for (unsigned int i = 0u; i < objs.nItems; i++)
-	    if (LIKELY(objs.Items[i] != NULL)) nmSysFree(objs.Items[i]);
-	if (LIKELY(objs.nAlloc != 0)) warnFail(xaDeInit(&objs));
+	    if (objs.Items[i] != NULL) nmSysFree(objs.Items[i]);
+	if (objs.nAlloc != 0) warnFail(xaDeInit(&objs));
 	for (unsigned int i = 0u; i < props.nItems; i++)
-	    if (LIKELY(props.Items[i] != NULL)) nmSysFree(props.Items[i]);
-	if (LIKELY(props.nAlloc != 0)) warnFail(xaDeInit(&props));
+	    if (props.Items[i] != NULL) nmSysFree(props.Items[i]);
+	if (props.nAlloc != 0) warnFail(xaDeInit(&props));
 	
 	/** Done. **/
 	return rval;
@@ -1631,34 +1630,34 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
     XString xs = { AllocLen: 0 }, exptxt = { AllocLen: 0 };
 
 	/** Allocate data structures. **/
-	if (UNLIKELY(xaInit(&objs, 16) != 0))
+	if (xaInit(&objs, 16) != 0)
 	    {
 	    mssError(1, "HTR", "xaInit(&objs, 16) failed.");
 	    goto end;
 	    }
-	if (UNLIKELY(xaInit(&props, 16) != 0))
+	if (xaInit(&props, 16) != 0)
 	    {
 	    mssError(1, "HTR", "xaInit(&props, 16) failed.");
 	    goto end;
 	    }
-	if (UNLIKELY(xsInit(&xs) != 0))
+	if (xsInit(&xs) != 0)
 	    {
 	    mssError(1, "HTR", "xsInit(&xs) failed.");
 	    goto end;
 	    }
-	if (UNLIKELY(xsInit(&exptxt) != 0))
+	if (xsInit(&exptxt) != 0)
 	    {
 	    mssError(1, "HTR", "xsInit(&exptxt) failed.");
 	    goto end;
 	    }
-	if (UNLIKELY(expGetPropList(exp, &objs, &props) < 0))
+	if (expGetPropList(exp, &objs, &props) < 0)
 	    {
 	    mssError(1, "HTR", "expGetPropList() failed.");
 	    goto end;
 	    }
 
 	/** Copy expression data. **/
-	if (UNLIKELY(xsCopy(&xs, "[", 1) < 0))
+	if (xsCopy(&xs, "[", 1) < 0)
 	    {
 	    mssError(1, "HTR", "xsCopy() failed.");
 	    goto end;
@@ -1668,14 +1667,14 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	    {
 	    const char* obj = (char*)(objs.Items[i]);
 	    const char* prop = (char*)(props.Items[i]);
-	    if (LIKELY(
+	    if (
 		obj  != NULL && obj[0]  != '\0' &&
 		prop != NULL && prop[0] != '\0'
-	    ))	{
-		if (UNLIKELY(xsConcatQPrintf(&xs,
+	    )	{
+		if (xsConcatQPrintf(&xs,
 		    "%[,%]['%STR&JSSTR','%STR&JSSTR']",
 		    (!first), obj, prop
-		) < 0))
+		) < 0)
 		    {
 		    mssError(1, "HTR", "Failed to write property %s.%s.", obj, prop);
 		    goto end;
@@ -1683,20 +1682,20 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 		first = false;
 		}
 	    }
-	if (UNLIKELY(xsConcatenate(&xs, "]", 1) < 0))
+	if (xsConcatenate(&xs, "]", 1) < 0)
 	    {
 	    mssError(1, "HTR", "xsConcatenate() failed.");
 	    goto end;
 	    }
-	if (UNLIKELY(expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
+	if (expGenerateText(exp, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to generate expression text.");
 	    goto end;
 	    }
-	if (UNLIKELY(htrAddExpressionItem_va(s,
+	if (htrAddExpressionItem_va(s,
 	    "    pg_expression('%STR&SYM','%STR&SYM',function (_context, _this) { return %STR; },%STR,'%STR&SYM');\n",
 	    objname, property, exptxt.String, xs.String, s->Namespace->DName
-	) != 0))
+	) != 0)
 	    {
 	    mssError(0, "HTR", "Failed to write the expression item.");
 	    goto end;
@@ -1706,17 +1705,17 @@ htrAddExpression(pHtSession s, char* objname, char* property, pExpression exp)
 	rval = 0;
 
 	end:
-	if (UNLIKELY(rval != 0)) mssError(0, "HTR", "Failed to add expression \"%s\".", objname);
+	if (rval != 0) mssError(0, "HTR", "Failed to add expression \"%s\".", objname);
 	
 	/** Clean up. **/
 	for (unsigned int i = 0u; i < objs.nItems; i++)
-	    if (LIKELY(objs.Items[i] != NULL)) nmSysFree(objs.Items[i]);
-	if (LIKELY(objs.nAlloc != 0)) warnFail(xaDeInit(&objs));
+	    if (objs.Items[i] != NULL) nmSysFree(objs.Items[i]);
+	if (objs.nAlloc != 0) warnFail(xaDeInit(&objs));
 	for (unsigned int i = 0u; i < props.nItems; i++)
-	    if (LIKELY(props.Items[i] != NULL)) nmSysFree(props.Items[i]);
-	if (LIKELY(props.nAlloc != 0)) warnFail(xaDeInit(&props));
-	if (LIKELY(xs.AllocLen != 0)) warnFail(xsDeInit(&xs));
-	if (LIKELY(exptxt.AllocLen != 0)) warnFail(xsDeInit(&exptxt));
+	    if (props.Items[i] != NULL) nmSysFree(props.Items[i]);
+	if (props.nAlloc != 0) warnFail(xaDeInit(&props));
+	if (xs.AllocLen != 0) warnFail(xsDeInit(&xs));
+	if (exptxt.AllocLen != 0) warnFail(xsDeInit(&exptxt));
 	
 	/** Done. **/
 	return rval;
@@ -1739,12 +1738,12 @@ htrCheckAddExpression(pHtSession s, pWgtrNode tree, char* w_name, char* property
         if (wgtrGetPropertyType(tree,property) == DATA_T_CODE)
             {
 	    pExpression code;
-	    if (UNLIKELY(wgtrGetPropertyValue(tree, property, DATA_T_CODE, POD(&code)) < 0))
+	    if (wgtrGetPropertyValue(tree, property, DATA_T_CODE, POD(&code)) < 0)
 		{
 		mssError(1, "HTR", "Failed to get property: '%s'", property);
 		goto err;
 		}
-	    if (UNLIKELY(htrAddExpression(s, w_name, property, code) != 0)) goto err;
+	    if (htrAddExpression(s, w_name, property, code) != 0) goto err;
 	    return 1;
             }
 
@@ -1776,7 +1775,7 @@ htrRenderSubwidgets(pHtSession s, pWgtrNode widget, int z_level)
 	for (unsigned int i = 0u; i < n_sub_widgets; i++)
 	    {
 	    pWgtrNode sub_widget = widget->Children.Items[i];
-	    if (UNLIKELY(htrRenderWidget(s, sub_widget, z_level) != 0))
+	    if (htrRenderWidget(s, sub_widget, z_level) != 0)
 		{
 		mssError(0, "HTR",
 		    "Failed to render \"%s\":\"%s\", "
@@ -1857,7 +1856,7 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
     {
 	/** Get type. **/
 	const int type = wgtrGetPropertyType(tree, propname);
-	if (UNLIKELY(type < 0))
+	if (type < 0)
 	    {
 	    mssError(1, "HTR", "Failed to get property type for property '%s'.", propname);
 	    goto err;
@@ -1866,7 +1865,7 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 	/** Get value. **/
 	ObjData od;
 	const int result = wgtrGetPropertyValue(tree, propname, type, &od);
-	if (UNLIKELY(result < 0))
+	if (result < 0)
 	    {
 	    mssError(1, "HTR",
 		"Failed to get property value for property '%s' of type %d.",
@@ -1878,7 +1877,7 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 	/** Value is null. **/
 	if (result == 1)
 	    {
-	    if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:null, ", propname) != 0)) goto err;
+	    if (htrAddScriptWgtr_va(s, "%STR&SYM:null, ", propname) != 0) goto err;
 	    return 0; /* success */
 	    }
 	
@@ -1886,19 +1885,19 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 	switch (type)
 	    {
 	    case DATA_T_INTEGER:
-		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer) != 0)) goto err;
+		if (htrAddScriptWgtr_va(s, "%STR&SYM:%INT, ", propname, od.Integer) != 0) goto err;
 		break;
 	    
 	    case DATA_T_STRING:
-		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String) != 0)) goto err;
+		if (htrAddScriptWgtr_va(s, "%STR&SYM:'%STR&JSSTR', ", propname, od.String) != 0) goto err;
 		break;
 	    
 	    case DATA_T_DOUBLE:
-		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:%DBL, ", propname, od.Double) != 0)) goto err;
+		if (htrAddScriptWgtr_va(s, "%STR&SYM:%DBL, ", propname, od.Double) != 0) goto err;
 		break;
 	    
 	    case DATA_T_DATETIME:
-		if (UNLIKELY(htrAddScriptWgtr_va(s,
+		if (htrAddScriptWgtr_va(s,
 		    "%STR&SYM:new Date(%LL, %LL, %LL, %LL, %LL, %LL), ",
 		    propname,
 		    (long long)od.DateTime->Part.Year + 1900,
@@ -1907,21 +1906,21 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		    (long long)od.DateTime->Part.Hour,
 		    (long long)od.DateTime->Part.Minute,
 		    (long long)od.DateTime->Part.Second
-		) != 0)) goto err;
+		) != 0) goto err;
 		break;
 	    
 	    case DATA_T_INTVEC:
-		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:[", propname) != 0)) goto err;
+		if (htrAddScriptWgtr_va(s, "%STR&SYM:[", propname) != 0) goto err;
 		for (unsigned int i = 0; i < od.IntVec->nIntegers; i++)
-		    if (UNLIKELY(htrAddScriptWgtr_va(s, "%[, %]%INT", (i != 0), od.IntVec->Integers[i]) != 0)) goto err;
-		if (UNLIKELY(htrAddScriptWgtr(s, "], ") != 0)) goto err;
+		    if (htrAddScriptWgtr_va(s, "%[, %]%INT", (i != 0), od.IntVec->Integers[i]) != 0) goto err;
+		if (htrAddScriptWgtr(s, "], ") != 0) goto err;
 		break;
 	    
 	    case DATA_T_STRINGVEC:
-		if (UNLIKELY(htrAddScriptWgtr_va(s, "%STR&SYM:[", propname) != 0)) goto err;
+		if (htrAddScriptWgtr_va(s, "%STR&SYM:[", propname) != 0) goto err;
 		for (unsigned int i = 0; i < od.StringVec->nStrings; i++)
-		    if (UNLIKELY(htrAddScriptWgtr_va(s, "%[, %]'%STR&JSSTR'", (i != 0), od.StringVec->Strings[i]) != 0)) goto err;
-		if (UNLIKELY(htrAddScriptWgtr(s, "], ") != 0)) goto err;
+		    if (htrAddScriptWgtr_va(s, "%[, %]'%STR&JSSTR'", (i != 0), od.StringVec->Strings[i]) != 0) goto err;
+		if (htrAddScriptWgtr(s, "], ") != 0) goto err;
 		break;
 	    
 	    case DATA_T_CODE:
@@ -1932,33 +1931,33 @@ htr_internal_WriteWgtrProperty(pHtSession s, pWgtrNode tree, char* propname)
 		bool successful = false;
 
 		/** Get the code data. **/
-		if (UNLIKELY(wgtrGetPropertyValue(tree, propname, DATA_T_CODE, POD(&code)) < 0))
+		if (wgtrGetPropertyValue(tree, propname, DATA_T_CODE, POD(&code)) < 0)
 		    {
 		    mssError(1, "HTR", "Failed to get value for property '%s'", propname);
 		    goto end;
 		    }
-		if (UNLIKELY(xsInit(&exptxt) != 0))
+		if (xsInit(&exptxt) != 0)
 		    {
 		    mssError(1, "HTR", "xsInit(&exptxt) failed.");
 		    goto end;
 		    }
-		if (UNLIKELY(xsInit(&proptxt) != 0))
+		if (xsInit(&proptxt) != 0)
 		    {
 		    mssError(1, "HTR", "xsInit(&proptxt) failed.");
 		    goto end;
 		    }
-		if (UNLIKELY(htrGetExpParams(code, &proptxt) != 0)) goto end;
-		if (UNLIKELY(expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0))
+		if (htrGetExpParams(code, &proptxt) != 0) goto end;
+		if (expGenerateText(code, NULL, xsWrite, &exptxt, '\0', "javascript", EXPR_F_RUNCLIENT) != 0)
 		    {
 		    mssError(0, "HTR", "Failed to generate expression text.");
 		    goto end;
 		    }
 
 		/** Write a script to execute the code. **/
-		if (UNLIKELY(htrAddScriptWgtr_va(s,
+		if (htrAddScriptWgtr_va(s,
 		    "%STR&SYM:{ val:null, exp:(_this, _context) => { return ( %STR ); }, props:%STR, revexp:null }, ",
 		    propname, exptxt.String, proptxt.String
-		) != 0)) goto end;
+		) != 0) goto end;
 		
 		/** Success. **/
 		successful = true;
@@ -2001,7 +2000,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
     char* propname;
 
 	/** Check recursion **/
-	if (UNLIKELY(thExcessiveRecursion()))
+	if (thExcessiveRecursion())
 	    {
 	    mssError(1,"HTR","Could not render application: resource exhaustion occurred");
 	    goto err;
@@ -2031,40 +2030,40 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 		(tree->Flags & WGTR_F_CONTROL),
 		(!tree->Parent || strcmp(tree->Parent->Namespace, tree->Namespace)),
 		tree->Namespace);
-	if (UNLIKELY(result != 0))
+	if (result != 0)
 	    {
 	    mssError(0, "HTR", "Failed to write JS data.");
 	    goto err;
 	    }
 
 	/** Parameters **/
-	if (UNLIKELY(htrAddScriptWgtr(s, ", param:{") != 0)) goto err;
+	if (htrAddScriptWgtr(s, ", param:{") != 0) goto err;
 	if (!(tree->Flags & WGTR_F_NONVISUAL))
 	    {
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "x") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "y") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "width") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "height") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_x") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_y") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_width") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "r_height") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_width") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_height") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_x") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_y") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_w") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_scale_h") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_parent_w") != 0)) goto err;
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, "fl_parent_h") != 0)) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "x") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "y") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "width") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "height") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "r_x") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "r_y") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "r_width") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "r_height") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_width") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_height") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_scale_x") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_scale_y") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_scale_w") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_scale_h") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_parent_w") != 0) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, "fl_parent_h") != 0) goto err;
 	    }
 	propname = wgtrFirstPropertyName(tree);
 	while (propname != NULL)
 	    {
-	    if (UNLIKELY(htr_internal_WriteWgtrProperty(s, tree, propname) != 0)) goto err;
+	    if (htr_internal_WriteWgtrProperty(s, tree, propname) != 0) goto err;
 	    propname = wgtrNextPropertyName(tree);
 	    }
-	if (UNLIKELY(htrAddScriptWgtr(s, "}") != 0)) goto err;
+	if (htrAddScriptWgtr(s, "}") != 0) goto err;
 
 	/** ... and any subwidgets **/ //TODO: there's a glitch in this section in which a comma is placed after the last element of an array.
 	unsigned int rendercnt;
@@ -2075,7 +2074,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 		continue;
 	    rendercnt++;
 	    }
-	if (LIKELY(rendercnt > 0))
+	if (rendercnt > 0)
 	    {
 	    if (htrAddScriptWgtr_va(s,
 		", sub:\n        %STR&*LEN    [\n",
@@ -2099,7 +2098,7 @@ htr_internal_BuildClientWgtr_r(pHtSession s, pWgtrNode tree, int indent)
 	    }
 	else
 	    {
-	    if (UNLIKELY(htrAddScriptWgtr(s, "}") != 0)) goto err;
+	    if (htrAddScriptWgtr(s, "}") != 0) goto err;
 	    }
 
 	/** Success. **/
@@ -2358,7 +2357,7 @@ htrGetErrorHTMLMsg(char* title, char* err_str)
 	    n_lines, title, err_str
 	)) < 0)
 	    {
-	    if (LIKELY(error_session != NULL)) qpfLogErrors(error_session);
+	    if (error_session != NULL) qpfLogErrors(error_session);
 	    goto fail;
 	    }
 
@@ -2367,17 +2366,17 @@ htrGetErrorHTMLMsg(char* title, char* err_str)
 
     fail:
 	fprintf(stderr, "Failed to print error page. (Continuing...)\n");
-	if (LIKELY(page_buf != NULL)) nmSysFree(page_buf);
+	if (page_buf != NULL) nmSysFree(page_buf);
 	page_buf = NULL;
 
     clean_up:
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) warnFail(qpfCloseSession(error_session));
+	if (error_session != NULL) warnFail(qpfCloseSession(error_session));
 	
 	/** Final fallback chain if we STILL couldn't create an error page. **/
-	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("See server logs"));
-	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("err"));
-	if (UNLIKELY(page_buf == NULL)) page_buf = warnNull(nmSysStrdup("!"));
+	if (page_buf == NULL) page_buf = warnNull(nmSysStrdup("See server logs"));
+	if (page_buf == NULL) page_buf = warnNull(nmSysStrdup("err"));
+	if (page_buf == NULL) page_buf = warnNull(nmSysStrdup("!"));
 	
 	return page_buf;
     }
@@ -2405,7 +2404,7 @@ htrGetErrorHTML(char* title)
 
 	page_buf = htrGetErrorHTMLMsg(title, err_str);
 
-	if (LIKELY(err_xs != NULL)) xsFree(err_xs);
+	if (err_xs != NULL) xsFree(err_xs);
 
     return page_buf;
     }
@@ -2441,7 +2440,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 	/** What UA is on the other end of the connection? **/
 	agent = (char*)mssGetParam("User-Agent");
-	if (UNLIKELY(agent == NULL || agent[0] == '\0'))
+	if (agent == NULL || agent[0] == '\0')
 	    {
 	    mssError(1, "HTR", "User-Agent undefined in the session parameters");
 	    return -1;
@@ -2449,7 +2448,7 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
     	/** Initialize the session **/
 	s = (pHtSession)nmMalloc(sizeof(HtSession));
-	if (UNLIKELY(s == NULL))
+	if (s == NULL)
 	    {
 	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtSession));
 	    return -1;
@@ -2598,14 +2597,14 @@ htrRender(void* stream, int (*stream_write)(void*, char*, int, int, int), pObjSe
 
 
 	/** Could not render? **/
-	if (UNLIKELY(rval < 0))
+	if (rval < 0)
 	    {
 	    /** Render an error page to gracefully recover from the error. **/
 	    char* error_title = "An error occurred while rendering the page.";
 	    char* error_html = warnNull(htrGetErrorHTML(error_title));
-	    if (UNLIKELY(error_html == NULL)) error_html = error_title;
+	    if (error_html == NULL) error_html = error_title;
 	    warnNeg(htrQPrintf(s, "%STR", error_html));
-	    if (LIKELY(error_html != error_title)) nmSysFree(error_html);
+	    if (error_html != error_title) nmSysFree(error_html);
 	    mssClearError();
 	    goto end_free;
 	    }
@@ -2932,7 +2931,7 @@ htrAllocDriver()
 
 	/** Allocate the driver structure **/
 	drv = (pHtDriver)nmMalloc(sizeof(HtDriver));
-	if (UNLIKELY(drv == NULL))
+	if (drv == NULL)
 	    {
 	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDriver));
 	    goto err;
@@ -2940,12 +2939,12 @@ htrAllocDriver()
 	memset(drv, 0, sizeof(HtDriver));
 
 	/** Init some of the basic array structures **/
-	if (UNLIKELY(xaInit(&(drv->Properties), 16) != 0))
+	if (xaInit(&(drv->Properties), 16) != 0)
 	    {
 	    mssError(1, "HTR", "xaInit(&(drv->Properties), 16) failed.");
 	    goto err;
 	    }
-	if (UNLIKELY(xaInit(&(drv->PseudoTypes), 4) != 0))
+	if (xaInit(&(drv->PseudoTypes), 4) != 0)
 	    {
 	    mssError(1, "HTR", "xaInit(&(drv->PseudoTypes), 4) failed.");
 	    goto err;
@@ -3072,7 +3071,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
     int rval = -1;
 
 	/** Initialize the buffer. **/
-	if (UNLIKELY(buflen < 1))
+	if (buflen < 1)
 	    {
 	    mssError(1, "HTR", "Failed! buflen (%d) < 1", buflen);
 	    goto end;
@@ -3081,7 +3080,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	
 	/** Create a pQPSession to track errors from qpfPrintf. **/
 	error_session = qpfOpenSession();
-	if (UNLIKELY(error_session == NULL))
+	if (error_session == NULL)
 	    {
 	    mssError(1, "HTR", "qpfOpenSession() failed.");
 	    goto end;
@@ -3097,10 +3096,10 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	if (prefix != NULL && prefix[0] != '\0')
 	    {
 	    /** Write bgcolor_buf. **/
-	    if (UNLIKELY(qpfPrintf(error_session,
+	    if (qpfPrintf(error_session,
 		bgcolor_buf, sizeof(bgcolor_buf),
 		"%STR&SYM_bgcolor", prefix
-	    ) < 0))
+	    ) < 0)
 		{
 		mssError(1, "HTR", "Failed to write background color attribute name.");
 		qpfLogErrors(error_session);
@@ -3109,10 +3108,10 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    else qpfClearErrors(error_session);
 
 	    /** Write background_buf. **/
-	    if (UNLIKELY(qpfPrintf(error_session,
+	    if (qpfPrintf(error_session,
 		    background_buf, sizeof(background_buf),
 		    "%STR&SYM_background", prefix
-		) < 0))
+		) < 0)
 		{
 		mssError(1, "HTR", "Failed to write background image attribute name.");
 		qpfLogErrors(error_session);
@@ -3129,7 +3128,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	if (wgtrGetPropertyValue(tree, background, DATA_T_STRING, POD(&ptr)) == 0)
 	    { /* Background image. */
 	    /** Check for invalid characters in the string. **/
-	    if (UNLIKELY(strpbrk(ptr, "\"'\n\r\t") != NULL))
+	    if (strpbrk(ptr, "\"'\n\r\t") != NULL)
 		{
 		mssError(1, "HTR",
 		    "Value for attribute '%s' contains invalid characters: \"%s\"",
@@ -3140,7 +3139,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    
 	    /** Write background image. **/
 	    const char* format = (as_style) ? "background-image:URL('%STR&CSSURL');" : "background='%STR&HTE'";
-	    if (UNLIKELY(qpfPrintf(error_session, buf, buflen, format, ptr) < 0))
+	    if (qpfPrintf(error_session, buf, buflen, format, ptr) < 0)
 		{
 		mssError(1, "HTR", "Failed to write background image using format: \"%s\"", format);
 		qpfLogErrors(error_session);
@@ -3151,7 +3150,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	else if (wgtrGetPropertyValue(tree, bgcolor, DATA_T_STRING, POD(&ptr)) == 0)
 	    { /* Background color. */
 	    /** Check for invalid characters in the string. **/
-	    if (UNLIKELY(strpbrk(ptr, "\"'\n\r\t;}<>&") != NULL))
+	    if (strpbrk(ptr, "\"'\n\r\t;}<>&") != NULL)
 		{
 		mssError(1, "HTR",
 		    "Value for attribute '%s' contains invalid characters: \"%s\"",
@@ -3162,7 +3161,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	    
 	    /** Write background color. **/
 	    const char* format = (as_style) ? "background-color:%STR&CSSVAL;" : "bgColor='%STR&HTE'";
-	    if (UNLIKELY(qpfPrintf(error_session, buf, buflen, format, ptr) < 0))
+	    if (qpfPrintf(error_session, buf, buflen, format, ptr) < 0)
 		{
 		mssError(1, "HTR", "Failed to write background color using format: \"%s\"", format);
 		qpfLogErrors(error_session);
@@ -3181,7 +3180,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 	rval = 0;
 
     end:
-	if (UNLIKELY(rval != 0))
+	if (rval != 0)
 	    {
 	    mssError(0, "HTR",
 		"Failed to write \"%s\"-background for \"%s\":\"%s\" into buffer %p of length %d.",
@@ -3191,7 +3190,7 @@ htrGetBackground(pWgtrNode tree, char* prefix, int as_style, char* buf, int bufl
 
     free:
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) qpfCloseSession(error_session);
+	if (error_session != NULL) qpfCloseSession(error_session);
 
 	return rval;
     }
@@ -3299,7 +3298,7 @@ htr_internal_CheckDMPrivateData(pWgtrNode widget)
 	if (!inf)
 	    {
 	    inf = (pHtDMPrivateData)nmMalloc(sizeof(HtDMPrivateData));
-	    if (UNLIKELY(inf == NULL))
+	    if (inf == NULL)
 		{
 		mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtDMPrivateData));
 		return NULL;
@@ -3351,11 +3350,11 @@ htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
 	/** Get private data. **/
 	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
-	if (UNLIKELY(inf == NULL)) goto err;
+	if (inf == NULL) goto err;
 	
 	/** Get temporary string data. **/
 	char* str_tmp = objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED);
-	if (UNLIKELY(str_tmp == NULL))
+	if (str_tmp == NULL)
 	    {
 	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", linkage);
 	    goto err;
@@ -3363,7 +3362,7 @@ htrAddWgtrObjLinkage(pHtSession s, pWgtrNode widget, char* linkage)
 	
 	/** Dup string data. **/
 	char* str = nmSysStrdup(str_tmp);
-	if (UNLIKELY(str == NULL))
+	if (str == NULL)
 	    {
 	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
 	    goto err;
@@ -3401,7 +3400,7 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 
 	/** Create a pQPSession to track errors from qpfPrintf. **/
 	error_session = qpfOpenSession();
-	if (UNLIKELY(error_session == NULL))
+	if (error_session == NULL)
 	    {
 	    mssError(1, "HTR", "qpfOpenSession() failed.");
 	    goto end;
@@ -3411,7 +3410,7 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 	va_start(va, fmt);
 	tmp = qpfPrintf_va(error_session, buf, sizeof(buf), fmt, va);
 	va_end(va);
-	if (UNLIKELY(tmp < 0))
+	if (tmp < 0)
 	    {
 	    mssError(1, "HTR", "qpfPrintf_va() failed to format: \"%s\"", fmt);
 	    qpfLogErrors(error_session);
@@ -3421,7 +3420,7 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 	
 	/** Add the linkage. **/
 	tmp = htrAddWgtrObjLinkage(s, widget, buf);
-	if (UNLIKELY(tmp < 0)) goto end;
+	if (tmp < 0) goto end;
 	
 	/** Success. **/
 	rval = 0;
@@ -3436,7 +3435,7 @@ htrAddWgtrObjLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 	    }
 	
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) qpfCloseSession(error_session);
+	if (error_session != NULL) qpfCloseSession(error_session);
 	
 	return rval;
     }
@@ -3457,11 +3456,11 @@ htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
     {
 	/** Get private data. **/
 	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
-	if (UNLIKELY(inf == NULL)) goto err;
+	if (inf == NULL) goto err;
 	
 	/** Get temporary string data. **/
 	char* str_tmp = objDataToStringTmp(DATA_T_STRING, linkage, DATA_F_QUOTED);
-	if (UNLIKELY(str_tmp == NULL))
+	if (str_tmp == NULL)
 	    {
 	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", linkage);
 	    goto err;
@@ -3469,7 +3468,7 @@ htrAddWgtrCtrLinkage(pHtSession s, pWgtrNode widget, char* linkage)
 	
 	/** Dup string data. **/
 	char* str = nmSysStrdup(str_tmp);
-	if (UNLIKELY(str == NULL))
+	if (str == NULL)
 	    {
 	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
 	    goto err;
@@ -3513,7 +3512,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 	va_start(va, fmt);
 	const int print_rval = qpfPrintf_va(error_session, buf, sizeof(buf), fmt, va);
 	va_end(va);
-	if (UNLIKELY(print_rval < 0))
+	if (print_rval < 0)
 	    {
 	    mssError(1, "HTR", "qpfPrintf_va() failed to format: \"%s\"", fmt);
 	    qpfLogErrors(error_session);
@@ -3522,7 +3521,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 	    }
 	
 	/** Add the linkage. **/
-	if (UNLIKELY(htrAddWgtrCtrLinkage(s, widget, buf) < 0)) goto end;
+	if (htrAddWgtrCtrLinkage(s, widget, buf) < 0) goto end;
 	
 	/** Success. **/
 	rval = 0;
@@ -3537,7 +3536,7 @@ htrAddWgtrCtrLinkage_va(pHtSession s, pWgtrNode widget, char* fmt, ...)
 	    }
 	
 	/** Clean up. **/
-	if (LIKELY(error_session != NULL)) qpfCloseSession(error_session);
+	if (error_session != NULL) qpfCloseSession(error_session);
 	
 	return rval;
     }
@@ -3559,7 +3558,7 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
     char buf[256];
     
 	pHtDMPrivateData inf = htr_internal_CheckDMPrivateData(widget);
-	if (UNLIKELY(inf == NULL)) goto err;
+	if (inf == NULL) goto err;
 
 	/** Process format. **/
 	inf->InitFunc = func;
@@ -3569,13 +3568,13 @@ htrAddWgtrInit(pHtSession s, pWgtrNode widget, char* func, char* paramfmt, ...)
 	
 	/** Process string data. **/
 	char* str_tmp = objDataToStringTmp(DATA_T_STRING, buf, DATA_F_QUOTED);
-	if (UNLIKELY(str_tmp == NULL))
+	if (str_tmp == NULL)
 	    {
 	    mssError(1, "HTR", "objDataToStringTmp(DATA_T_STRING, \"%s\", DATA_F_QUOTED) failed.", buf);
 	    goto err;
 	    }
 	char* str = nmSysStrdup(str_tmp);
-	if (UNLIKELY(str == NULL))
+	if (str == NULL)
 	    {
 	    mssError(1, "HTR", "nmSysStrdup(\"%s\") failed.", str_tmp);
 	    goto err;
@@ -3612,7 +3611,7 @@ htrAddNamespace(pHtSession s, pWgtrNode container, char* nspace, int is_subns)
 
 	/** Allocate a new namespace **/
 	new_ns = (pHtNamespace)nmMalloc(sizeof(HtNamespace));
-	if (UNLIKELY(new_ns == NULL))
+	if (new_ns == NULL)
 	    {
 	    mssError(1, "HTR", "nmMalloc(%zu) failed.", sizeof(HtNamespace));
 	    goto err;
@@ -3897,7 +3896,7 @@ htrFormatElement(pHtSession s, pWgtrNode node, char* id, int flags, int x, int y
 	    shadow_color, (strcasecmp(shadow_location, "inside") == 0) ? " inset" : "",
 	    (addl != NULL && addl[0] != '\0'), addl
 	);
-	if (UNLIKELY(tmp != 0))
+	if (tmp != 0)
 	    {
 	    mssError(0, "HTR", "Failed to write CSS while formatting element.");
 	    return -1;

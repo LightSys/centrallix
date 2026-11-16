@@ -122,7 +122,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 
 	/** Build the param list **/
-	if (UNLIKELY(xsInit(&xs) != 0))
+	if (xsInit(&xs) != 0)
 	    {
 	    mssError(1, "HTCONN", "xsInit() failed.");
 	    goto end;
@@ -132,7 +132,7 @@ htconnRender(pHtSession s, pWgtrNode tree, int z)
 	    {
 	    if (!strcmp(ptr, "event") || !strcmp(ptr, "target") || !strcmp(ptr, "action") || !strcmp(ptr, "source") || !strcmp(ptr, "condition")) continue;
 	    const int property_type = wgtrGetPropertyType(tree, ptr);
-	    if (!first && UNLIKELY(xsConcatenate(&xs, ",", 1) != 0))
+	    if (!first && xsConcatenate(&xs, ",", 1) != 0)
 		{
 		mssError(1, "HTCONN", "xsConcatenate() failed for param \"%s\".", ptr);
 		goto err_param;

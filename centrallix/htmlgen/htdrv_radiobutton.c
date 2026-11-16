@@ -33,7 +33,6 @@
 #include <string.h>
 
 #include "cxlib/datatypes.h"
-#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
@@ -270,7 +269,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	}
     
     /** Search child array for radio buttons. **/
-    if (UNLIKELY(xaInit(&radio_buttons, tree->Children.nItems) != 0))
+    if (xaInit(&radio_buttons, tree->Children.nItems) != 0)
 	{
 	mssError(1, "HTRB", "xaInit(&radio_buttons, %d) failed.", tree->Children.nItems);
 	goto end_free;
@@ -278,7 +277,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
     for (int i = 0; i < tree->Children.nItems; i++)
 	{
 	pWgtrNode child = tree->Children.Items[i];
-	if (UNLIKELY(child == NULL))
+	if (child == NULL)
 	    {
 	    mssError(1, "HTRB", "Child widget #%d/%d is NULL.", i + 1, tree->Children.nItems);
 	    goto end_free;
@@ -291,7 +290,7 @@ int htrbRender(pHtSession s, pWgtrNode tree, int z)
 	wgtrGetPropertyValue(child, "outer_type", DATA_T_STRING, POD(&ptr));
 	if (strcmp(ptr, "widget/radiobutton") == 0)
 	    {
-	    if (UNLIKELY(xaAddItem(&radio_buttons, child) < 0))
+	    if (xaAddItem(&radio_buttons, child) < 0)
 		{
 		mssError(1, "HTRB", "Failed to add radio button #%d/%d to XArray.", i + 1, tree->Children.nItems);
 		goto end_free;

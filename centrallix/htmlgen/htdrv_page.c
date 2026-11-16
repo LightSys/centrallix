@@ -36,7 +36,6 @@
 
 #include "centrallix.h"
 #include "cxlib/datatypes.h"
-#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
@@ -404,20 +403,20 @@ htpageRender(pHtSession s, pWgtrNode tree, int z)
 
 	/** Allocate and init endorsement xarrays. **/
 	XArray endorsements_buf;
-	if (UNLIKELY(xaInit(&endorsements_buf, 16) != 0))
+	if (xaInit(&endorsements_buf, 16) != 0)
 	    {
 	    mssError(1, "HTPAGE", "xaInit(&endorsements_buf, 16) failed.");
 	    goto end;
 	    }
 	endorsements = &endorsements_buf;
 	XArray contexts_buf;
-	if (UNLIKELY(xaInit(&contexts_buf, 16) != 0))
+	if (xaInit(&contexts_buf, 16) != 0)
 	    {
 	    mssError(1, "HTPAGE", "xaInit(&contexts_buf, 16) failed.");
 	    goto end;
 	    }
 	contexts = &contexts_buf;
-	if (UNLIKELY(cxssGetEndorsementList(endorsements, contexts) < 0))
+	if (cxssGetEndorsementList(endorsements, contexts) < 0)
 	    {
 	    mssError(1, "HTPAGE", "cxssGetEndorsementList() failed.");
 	    goto end;

@@ -34,7 +34,6 @@
 #include <strings.h>
 
 #include "cxlib/datatypes.h"
-#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
 #include "cxlib/strtcpy.h"
@@ -164,7 +163,7 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
 	if (wgtrGetPropertyValue(tree, "sql", DATA_T_STRING, POD(&ptr)) == 0)
 	    {
 	    sql = nmSysStrdup(ptr);
-	    if (UNLIKELY(sql == NULL))
+	    if (sql == NULL)
 		{
 		mssError(1, "HTOSRC", "nmSysStrdup(\"%s\") failed for 'sql'.", ptr);
 		goto end;
@@ -182,13 +181,13 @@ htosrcRender(pHtSession s, pWgtrNode tree, int z)
     }
 
     baseobj = (wgtrGetPropertyValue(tree, "baseobj", DATA_T_STRING, POD(&ptr)) == 0) ? nmSysStrdup(ptr) : no_string;
-    if (UNLIKELY(baseobj == NULL))
+    if (baseobj == NULL)
 	{
 	mssError(1, "HTOSRC", "nmSysStrdup(\"%s\") failed for 'baseobj'.", ptr);
 	goto end;
 	}
     filter = (wgtrGetPropertyValue(tree, "filter", DATA_T_STRING, POD(&ptr)) == 0) ? nmSysStrdup(ptr) : no_string;
-    if (UNLIKELY(filter == NULL))
+    if (filter == NULL)
 	{
 	mssError(1, "HTOSRC", "nmSysStrdup(\"%s\") failed for 'filter'.", ptr);
 	goto end;

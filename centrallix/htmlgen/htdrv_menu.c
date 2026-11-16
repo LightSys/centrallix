@@ -32,7 +32,6 @@
 #include <string.h>
 
 #include "cxlib/datatypes.h"
-#include "cxlib/expect.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/xarray.h"
@@ -504,7 +503,7 @@ htmenuRender(pHtSession s, pWgtrNode menu, int z)
 
 	/** Add menu items and dropdowns. **/
 	xs = xsNew();
-	if (UNLIKELY(xs == NULL))
+	if (xs == NULL)
 	    {
 	    mssError(1, "HTMENU", "xsNew() failed.");
 	    goto end;

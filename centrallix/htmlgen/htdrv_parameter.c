@@ -139,7 +139,7 @@ htparamRender(pHtSession s, pWgtrNode tree, int z)
 		}
 
 	    /** Write presentation hints. **/
-	    if (UNLIKELY(xsInit(&xs) != 0))
+	    if (xsInit(&xs) != 0)
 		{
 		mssError(1, "HTPARAM", "xsInit() failed.");
 		goto err_deploy;
