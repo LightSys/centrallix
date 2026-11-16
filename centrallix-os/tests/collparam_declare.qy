@@ -1,0 +1,7 @@
+$Version=2$
+collparam_declare "system/query"
+    {
+    src "query/parameter" { type = collection; }
+
+    sql = "declare collection src; select cnt = count(1) from collection src";
+    }

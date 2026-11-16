@@ -19,8 +19,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "expect.h"
 #include "range.h"
+#include "strtcpy.h"
 #include "t_utils.h"
 
 /*** Implement ASSERT_TRUE().
@@ -34,7 +34,7 @@
 bool
 t_i_assertTrue(bool success, const char* expr, const char* file, int line)
     {
-	if (UNLIKELY(!success))
+	if (!success)
 	    fprintf(stderr,
 		"  > Expected %s to be true at %s:%d\n",
 		expr, file, line
@@ -56,7 +56,7 @@ t_i_assertFmt(bool success, const char* fmt, ...)
     {
     va_list args;
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    {
 	    va_start(args, fmt);
 	    vfprintf(stderr, fmt, args);
@@ -83,10 +83,12 @@ t_i_assertStrEql(const char* str1, const char* str2, const char* expr1, const ch
     const bool both_eql = (str1 != NULL && str2 != NULL && strcmp(str1, str2) == 0);
     const bool success = (both_null || both_eql);
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    fprintf(stderr,
 		"  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n",
-		expr1, str1, expr2, str2, file, line
+		expr1, (str1 == NULL) ? "(null)" : str1,
+		expr2, (str2 == NULL) ? "(null)" : str2,
+		file, line
 	    );
 
     return success;
@@ -110,15 +112,15 @@ t_i_assertStrEqlN(const char* str1, const char* str2, size_t len, const char* ex
     const bool both_eql = (str1 != NULL && str2 != NULL && memcmp(str1, str2, len) == 0);
     const bool success = (both_null || both_eql);
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    {
 	    const size_t buf_len = max(7, len + 1);
 	    char tmp1[buf_len];
-	    if (str1 == NULL) strcpy(tmp1, "(null)");
+	    if (str1 == NULL) strtcpy(tmp1, "(null)", sizeof(tmp1));
 	    else copyReplaceNulls(tmp1, str1, len);
 
 	    char tmp2[buf_len];
-	    if (str2 == NULL) strcpy(tmp2, "(null)");
+	    if (str2 == NULL) strtcpy(tmp2, "(null)", sizeof(tmp2));
 	    else copyReplaceNulls(tmp2, str2, len);
 
 	    fprintf(stderr,
@@ -143,7 +145,7 @@ t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int line)
     {
     const bool success = (ptr != NULL);
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    fprintf(stderr,
 		"  > Expected %s (%p) to be non null at %s:%d\n",
 		expr, ptr, file, line
@@ -165,11 +167,18 @@ copyReplaceNulls(char* dest, const char* src, size_t n)
 long long
 loopTest(bool (*test_fn)(void))
     {
+    return loopTestMin(test_fn, 0ll);
+    }
+
+long long
+loopTestMin(bool (*test_fn)(void), long long min_runs)
+    {
     long long result = 0ll;
     Timer iter_timer_buf;
     Timer *iter_timer = timerStart(timerInit(&iter_timer_buf));
 
-	while (timerGet(iter_timer) < MIN_TEST_SECONDS)
+	if (ON_VALGRIND) min_runs = 0ll;
+	while (result < min_runs || timerGet(iter_timer) < MIN_TEST_SECONDS)
 	    {
 	    result++;
 	    if (!test_fn())

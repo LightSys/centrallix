@@ -4,7 +4,6 @@
 
 #include "t_utils.h"
 
-#include "mtsession.h"
 #include "newmalloc.h"
 
 #include "mtlexer.h"
@@ -102,8 +101,6 @@ long long
 test(char** tname)
     {
 	*tname = "mtlexer-22 semicolon ends a filename";
-
-	mssInitialize("system", "", "", 0, "test", MSS_WARN_HISTORY_DEFAULT);
 
 	long_path[0] = '/';
 	memset(long_path + 1, 'a', sizeof(long_path) - 3);
