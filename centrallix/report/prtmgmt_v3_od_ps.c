@@ -90,6 +90,7 @@ typedef struct _PPSF
 
 void* prt_psod_OpenPDF(pPrtSession);
 
+/** Formats built from PostScript; see centrallix-sysdoc/ReportOutput.md. **/
 static PrtPsodFormat PsFormats[] =
     {
 	{ "png",	"image/png",		prt_psod_OpenPDF,	1,	"/usr/bin/gs -q -dSAFER -dNOPAUSE -dBATCH -dFirstPage=1 -dLastPage=1 -sDEVICE=png16m -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=- -" },

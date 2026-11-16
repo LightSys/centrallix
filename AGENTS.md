@@ -47,6 +47,7 @@ For other terminology or to find more detailed info, read `centrallix-sysdoc/Ter
 - **Forms** (form modes, element callbacks): `centrallix-sysdoc/HTFormsInterface.md`.
 - **Widget tree / Wgtr module** (server-side tree building, verification, component loading): `centrallix-sysdoc/WidgetTree.md`.
 - **Practical examples**: `centrallix-os/samples/*.app`.
+- **Report output formats** (which ones matter, known issues): `centrallix-sysdoc/ReportOutput.md`.
 
 ## Key patterns
 
