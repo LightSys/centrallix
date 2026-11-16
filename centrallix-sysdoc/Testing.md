@@ -8,8 +8,7 @@ License:   Copyright (C) 2026 LightSys Technology Services.  See LICENSE.txt.
 
 
 ## Overview
-Centrallix has various sets of tests and test suites for running them.  This file contains a complete list of all such testing and instructions for how to run tests.  When making changes in Centrallix, this file may be helpful to ensure that all relevant tests are run before committing or reviewing code.
-<!-- TODO: Greg - Above, I've claimed that this file represents a COMPLETE list of the tests in Centrallix. Could you verify that and let me know if there's any test suites lying around that I forgot to include? -->
+Centrallix has several automated test suites, which are run with a command and report whether each test passed or failed.  This file contains a complete list of these suites and instructions for how to run them.  When making changes in Centrallix, this file may be helpful to ensure that all relevant tests are run before committing or reviewing code.
 
 
 ## Table of Contents
