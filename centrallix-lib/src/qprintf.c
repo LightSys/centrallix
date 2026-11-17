@@ -365,27 +365,11 @@ qpfInitialize()
 
 	/* set up table for url encoding everything except 0-9, A-Z, and a-z */
 	memset(&QPF.url_matrix, 0, sizeof(QPF.url_matrix));
-	for(i=0;i<48;i++) /* escape until 0-9 */
+	buf[0] = '%';
+	for(i=0;i<QPF_MATRIX_SIZE;i++)
 	    {
-	    buf[0] = '%';
-	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
-	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
-	    }
-	for(i=58;i<65;i++) /* skip 0-9 and continue until A-Z */
-	    {
-	    buf[0] = '%';
-	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
-	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
-	    }
-	for(i=91;i<97;i++) /* skip A-Z and continue until a-z */
-	    {
-	    buf[0] = '%';
-	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
-	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
-	    }
-	for(i=123;i<QPF_MATRIX_SIZE;i++) /* encode everything higher */
-	    {
-	    buf[0] = '%';
+	    if ((i >= '0' && i <= '9') || (i >= 'A' && i <= 'Z') || (i >= 'a' && i <= 'z'))
+		continue;
 	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
