@@ -15,6 +15,7 @@
 /*		HEX_F_TRUNCATE.						*/
 /************************************************************************/
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -72,6 +73,36 @@ static Case cases[] =
 /** Number of cases run per call to doTest(). **/
 #define NCASES	((int)(sizeof(cases) / sizeof(Case)))
 
+typedef struct
+    {
+    size_t	    SrcOff;	/* offset of src in the area */
+    size_t	    DstOff;	/* offset of dst in the area */
+    size_t	    DstSize;	/* size handed to hexEncode() */
+    ssize_t	    ExpRval;	/* expected return value */
+    }
+    OverlapCase;
+
+/** Data that each overlap case places in the area, and its encoding. **/
+static const unsigned char overlap_data[] = { 0x01, 0x23, 0xAB, 0xCD };
+#define OVERLAP_ENC	"0123abcd"
+
+static OverlapCase overlap_cases[] =
+    {
+    /**	  SrcOff	DstOff	DstSize	ExpRval **/
+
+    /** dst must not partly overlap src, even with space it would not write. **/
+	{ 0,		1,	9,	-1 },
+	{ 10,		9,	9,	-1 },
+	{ 20,		0,	30,	-1 },
+
+    /** Adjacent buffers do not overlap. **/
+	{ 0,		4,	9,	 8 },
+	{ 9,		0,	9,	 8 },
+    };
+
+/** Number of overlap cases run per call to doTest(). **/
+#define NOVERLAP	((int)(sizeof(overlap_cases) / sizeof(OverlapCase)))
+
 /** Largest digit count checked when truncating in place. **/
 #define MAX_DIGITS	20
 
@@ -107,6 +138,55 @@ checkCases(void)
 	    for (size_t i = GUARD + written; i < RAW; i++)
 		success &= ASSERT_EQL(raw[i], 0xAA, "%d");
 	    }
+
+    return success;
+    }
+
+/** Encode each overlap case, checking that a failure writes nothing. **/
+static bool
+checkOverlap(void)
+    {
+    bool success = true;
+    unsigned char raw[RAW];
+    unsigned char before[RAW];
+    char* area = (char*)raw + GUARD;
+
+	for (int c = 0; c < NOVERLAP; c++)
+	    {
+	    const OverlapCase* tc = &overlap_cases[c];
+	    char* dst = area + tc->DstOff;
+
+	    memset(raw, 0xAA, RAW);
+	    memcpy(area + tc->SrcOff, overlap_data, sizeof(overlap_data));
+	    memcpy(before, raw, RAW);
+	    const ssize_t rval = hexEncode(dst, tc->DstSize, area + tc->SrcOff, sizeof(overlap_data), HEX_F_NONE);
+	    if (!ASSERT_EQL(rval, tc->ExpRval, "%zd"))
+		{
+		fprintf(stderr, "  > Overlap case %d: src at %zu, dst at %zu\n", c, tc->SrcOff, tc->DstOff);
+		success = false;
+		}
+	    if (tc->ExpRval < 0)
+		success &= ASSERT_TRUE(memcmp(raw, before, RAW) == 0);
+	    else
+		success &= ASSERT_STR_EQL(dst, OVERLAP_ENC);
+	    }
+
+    return success;
+    }
+
+/** An encoding too large for a ssize_t fails without touching dst. **/
+static bool
+checkTooLarge(void)
+    {
+    bool success = true;
+    unsigned char raw[RAW];
+    char* dst = (char*)raw + GUARD;
+
+	/** src follows dst so that they do not overlap. **/
+	memset(raw, 0xAA, RAW);
+	success &= ASSERT_EQL(hexEncode(dst, AREA / 2, dst + AREA / 2, SSIZE_MAX, HEX_F_NONE), (ssize_t)-1, "%zd");
+	for (size_t i = 0; i < RAW; i++)
+	    success &= ASSERT_EQL(raw[i], 0xAA, "%d");
 
     return success;
     }
@@ -147,19 +227,21 @@ doTest(void)
     bool success = true;
 
 	success &= checkCases();
+	success &= checkOverlap();
+	success &= checkTooLarge();
 	success &= checkInPlace();
 
     return success;
     }
 
 /*** This test verifies that hexEncode() fails without touching dst when the
- *** encoding does not fit or the arguments are bad, and that
- *** HEX_F_TRUNCATE writes as many digits as fit (an odd number included),
- *** in place or not, without writing past dst_size.
+ *** encoding does not fit, dst partly overlaps src, or the arguments are
+ *** bad, and that HEX_F_TRUNCATE writes as many digits as fit (an odd
+ *** number included), in place or not, without writing past dst_size.
  ***/
 long long
 test(char** tname)
     {
     *tname = "hex-03 hexEncode() errors and truncation";
-    return loopTest(doTest) * (NCASES + MAX_DIGITS + 1);
+    return loopTest(doTest) * (NCASES + NOVERLAP + 1 + MAX_DIGITS + 1);
     }

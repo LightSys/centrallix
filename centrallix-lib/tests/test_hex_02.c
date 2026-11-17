@@ -78,6 +78,64 @@ static Case cases[] =
 /** Number of cases run per call to doTest(). **/
 #define NCASES	((int)(sizeof(cases) / sizeof(Case)))
 
+typedef struct
+    {
+    size_t	    SrcOff;	/* offset of src in the area */
+    size_t	    DstOff;	/* offset of dst in the area */
+    size_t	    DstSize;	/* size handed to hexDecode() */
+    ssize_t	    ExpRval;	/* expected return value */
+    }
+    OverlapCase;
+
+/** Hex that each overlap case places in the area, and its decoding. **/
+#define OVERLAP_HEX	"666f6f21"
+#define OVERLAP_DATA	"foo!"
+
+static OverlapCase overlap_cases[] =
+    {
+    /**	  SrcOff	DstOff	DstSize	ExpRval **/
+
+    /** dst must not partly overlap src, even with space it would not write. **/
+	{ 0,		1,	5,	-1 },
+	{ 10,		9,	5,	-1 },
+	{ 20,		0,	30,	-1 },
+
+    /** Adjacent buffers do not overlap. **/
+	{ 0,		8,	5,	 4 },
+	{ 5,		0,	5,	 4 },
+    };
+
+/** Number of overlap cases run per call to doTest(). **/
+#define NOVERLAP	((int)(sizeof(overlap_cases) / sizeof(OverlapCase)))
+
+/** Decode each overlap case. **/
+static bool
+checkOverlap(void)
+    {
+    bool success = true;
+    unsigned char raw[RAW];
+    char* area = (char*)raw + GUARD;
+
+	for (int c = 0; c < NOVERLAP; c++)
+	    {
+	    const OverlapCase* tc = &overlap_cases[c];
+	    char* dst = area + tc->DstOff;
+
+	    memset(raw, 0xAA, RAW);
+	    memcpy(area + tc->SrcOff, OVERLAP_HEX, strlen(OVERLAP_HEX));
+	    const ssize_t rval = hexDecode(dst, tc->DstSize, area + tc->SrcOff, strlen(OVERLAP_HEX), HEX_F_NONE);
+	    if (!ASSERT_EQL(rval, tc->ExpRval, "%zd"))
+		{
+		fprintf(stderr, "  > Overlap case %d: src at %zu, dst at %zu\n", c, tc->SrcOff, tc->DstOff);
+		success = false;
+		}
+	    if (tc->ExpRval >= 0)
+		success &= ASSERT_STR_EQL(dst, OVERLAP_DATA);
+	    }
+
+    return success;
+    }
+
 static bool
 doTest(void)
     {
@@ -105,17 +163,20 @@ doTest(void)
 		success &= ASSERT_EQL(raw[i], 0xAA, "%d");
 	    }
 
+	success &= checkOverlap();
+
     return success;
     }
 
 /*** This test verifies that hexDecode() returns -1 for an odd number of
  *** digits, characters that are not hex digits, bad arguments, and a dst
  *** too small for the data and its null, while never writing outside the
- *** dst_size it was given.
+ *** dst_size it was given.  It also verifies that hexDecode() rejects a dst
+ *** that partly overlaps src.
  ***/
 long long
 test(char** tname)
     {
     *tname = "hex-02 hexDecode() errors";
-    return loopTest(doTest) * NCASES;
+    return loopTest(doTest) * (NCASES + NOVERLAP);
     }
