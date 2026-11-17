@@ -20,6 +20,6 @@ doTest(void)
 long long
 test(char** tname)
     {
-    *tname = "BASELINE - should pass";
+    *tname = "BASELINE ** SHOULD PASS **";
     return loopTest(doTest) * OPS_PER_PASS;
     }

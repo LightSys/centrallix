@@ -10,7 +10,7 @@ test(char** tname)
     {
     int iter;
 
-	*tname = "BASELINE infinite loop - should show 'lockup'";
+	*tname = "BASELINE infinite loop ** SHOULD LOCKUP **";
 	iter = 1000*1000*1000;
 	while(1);
 
