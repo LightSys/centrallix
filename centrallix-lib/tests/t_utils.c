@@ -19,7 +19,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "expect.h"
 #include "range.h"
 #include "strtcpy.h"
 #include "t_utils.h"
@@ -35,7 +34,7 @@
 bool
 t_i_assertTrue(bool success, const char* expr, const char* file, int line)
     {
-	if (UNLIKELY(!success))
+	if (!success)
 	    fprintf(stderr,
 		"  > Expected %s to be true at %s:%d\n",
 		expr, file, line
@@ -57,7 +56,7 @@ t_i_assertFmt(bool success, const char* fmt, ...)
     {
     va_list args;
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    {
 	    va_start(args, fmt);
 	    vfprintf(stderr, fmt, args);
@@ -84,7 +83,7 @@ t_i_assertStrEql(const char* str1, const char* str2, const char* expr1, const ch
     const bool both_eql = (str1 != NULL && str2 != NULL && strcmp(str1, str2) == 0);
     const bool success = (both_null || both_eql);
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    fprintf(stderr,
 		"  > Expected %s (\"%s\") to equal %s (\"%s\") at %s:%d\n",
 		expr1, (str1 == NULL) ? "(null)" : str1,
@@ -113,7 +112,7 @@ t_i_assertStrEqlN(const char* str1, const char* str2, size_t len, const char* ex
     const bool both_eql = (str1 != NULL && str2 != NULL && memcmp(str1, str2, len) == 0);
     const bool success = (both_null || both_eql);
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    {
 	    const size_t buf_len = max(7, len + 1);
 	    char tmp1[buf_len];
@@ -146,7 +145,7 @@ t_i_assertNotNull(const void* ptr, const char* expr, const char* file, int line)
     {
     const bool success = (ptr != NULL);
 
-	if (UNLIKELY(!success))
+	if (!success)
 	    fprintf(stderr,
 		"  > Expected %s (%p) to be non null at %s:%d\n",
 		expr, ptr, file, line

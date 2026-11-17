@@ -20,6 +20,6 @@
 long long
 test(char** tname)
     {
-    *tname = "BASELINE no operations - should skip";
+    *tname = "BASELINE no operations ** SHOULD SKIP **";
     return 0;
     }

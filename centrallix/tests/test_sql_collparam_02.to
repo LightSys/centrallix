@@ -1,0 +1,12 @@
+##NAME Collection parameters: errors and secrecy
+
+query select * from /tests/collparam_strict.qy
+query select * from /tests/collparam_strict.qy?src=0123456789abcdef0123456789abcdef
+query declare collection c; exec /tests/collparam_string.qy (p = collection c)
+query exec /tests/collparam_string.qy (p = 'hello')
+query declare collection c; exec /tests/collparam_declare.qy (src = collection c)
+query exec /tests/collparam.qy (src = collection nosuch)
+query exec /tests/testquery.qy (id = 1
+query select * from collection c (x = 1)
+query insert into /tests/testquery.qy (a, b) select a = 1
+query select done = 1
