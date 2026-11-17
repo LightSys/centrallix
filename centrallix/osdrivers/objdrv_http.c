@@ -1202,7 +1202,12 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    cxssKeystreamGenerate(HTTP_INF.NonceData, &noncelen, 1);
 	    cnt = noncelen;
 	    cnt += 16;
-	    cxssKeystreamGenerateHex(HTTP_INF.NonceData, nonce, cnt);
+	    if (cxssKeystreamGenerateHex(HTTP_INF.NonceData, nonce, cnt) < 0)
+		{
+		mssError(0, "HTTP", "Failed to generate a request nonce");
+		nmSysFree(nonce);
+		goto error;
+		}
 	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1, 1);
 	    }
 
