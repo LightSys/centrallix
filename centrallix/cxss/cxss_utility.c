@@ -45,35 +45,6 @@
 /************************************************************************/
 
 
-/*** cxss_i_Hexify - convert binary data into a hex string.  Supports doing an
- *** in-place conversion, i.e. bindata and hexdata referring to the same
- *** buffer starting address.
- ***
- *** This function fills as much of the buffer hexdata as is possible given
- *** the length of the bindata input.  If hexdata is too small, on the other
- *** hand, the conversion is truncated.  'hexdatalen' refers to the number of
- *** hex characters to convert; this function adds an additional nul
- *** terminator beyond those 'hexdatalen' characters.
- ***/
-int
-cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen)
-    {
-    return hexEncode(hexdata, hexdatalen + 1, bindata, (ssize_t)bindatalen, HEX_F_TRUNCATE);
-    }
-
-
-/*** cxssHexify - this is cxss_i_Hexify with a more traditional interface.  The above
- *** function is different because it is optimized for generating a hex string of a
- *** given size, even if an odd length, rather than for converting all of a binary
- *** string to a hex string.
- ***/
-int
-cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatabuflen)
-    {
-    return hexEncode(hexdata, hexdatabuflen, bindata, (ssize_t)bindatalen, HEX_F_NONE);
-    }
-
-
 /*** cxssGenerateKey - create a pseudorandom key of the specified size
  *** using cryptographically secure methods.
  ***/
@@ -104,7 +75,7 @@ cxssGenerateHexKey(char* hexkey, size_t len)
 	    return rval;
 
 	/** Convert to hex **/
-	if (cxss_i_Hexify((unsigned char*)hexkey, len/2+1, hexkey, len) < 0)
+	if (hexEncode(hexkey, len + 1, hexkey, len/2+1, HEX_F_TRUNCATE) < 0)
 	    return -1;
 
     return rval;
