@@ -2573,7 +2573,11 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 
 		    /** Copy it, transforming it to a hex string */
 		    hexbuf = nmSysMalloc(clen*2 + 1);
-		    if (!hexbuf) return -1;
+		    if (!hexbuf)
+			{
+			mssError(1, "OBJ", "Failed to allocate %d bytes to hex-encode a key.", clen*2 + 1);
+			return -1;
+			}
 		    src = cptr;
 		    if (exp->Flags & EXPR_F_DESC)
 			{
