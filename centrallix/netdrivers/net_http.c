@@ -1,5 +1,6 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
+#include "cxlib/hex.h"
 #include "cxlib/memstr.h"
 #include "cxlib/strtcpy.h"
 #include "json/json.h"
@@ -1239,7 +1240,6 @@ nht_i_Logout(pNhtConn conn, pNhtAppGroup group, pNhtApp app, int do_all)
 pNhtPostPayload
 nht_i_ParsePostPayload(pNhtConn conn)
     {
-    char hex_chars[] = "0123456789abcdef";
     char token[512];
     char name[48];
     char *ptr, *half;
@@ -1423,12 +1423,8 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    }
 	strtcat(name, "-", 34);
 	ptr = strchr(name, '\0');
-	cxssGenerateKey((unsigned char*)ptr, 12);
-	for(i=0; i<12; i++)
-	    {
-	    ptr[i] = hex_chars[ptr[i] & 0x0f];
-	    }
-	ptr[i] = '\0';
+	cxssGenerateKey((unsigned char*)ptr, 6);
+	hexEncode(ptr, sizeof(name) - (ptr - name), ptr, 6, HEX_F_NONE);
 	
 	/** Append the extension to the unique name and store it in payload **/
 	if (strlen(name) + strlen(payload->extension) >= sizeof(payload->newname) - 1 || strlen(name) + strlen(payload->extension) + 9 >= sizeof(payload->full_new_path) - 1)
