@@ -2541,7 +2541,7 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
     unsigned char tmp_data[12];
     int rval;
     pExpression exp;
-    char* ptr;
+    char* hexbuf;
     const char* src;
 
 	startoffset = str->Length;
@@ -2572,16 +2572,18 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 			str->String[str->Length-1] = ('1' + '0') - str->String[str->Length-1];
 
 		    /** Copy it, transforming it to a hex string */
-		    if (xsCheckAlloc(str, clen*2) < 0) return -1;
-		    ptr = str->String + str->Length;
+		    hexbuf = nmSysMalloc(clen*2 + 1);
+		    if (!hexbuf) return -1;
 		    src = cptr;
 		    if (exp->Flags & EXPR_F_DESC)
 			{
-			for(j=0; j<clen; j++) ptr[j] = ~cptr[j];
-			src = ptr;
+			for(j=0; j<clen; j++) hexbuf[j] = ~cptr[j];
+			src = hexbuf;
 			}
-		    if (hexEncode(ptr, clen*2 + 1, src, clen, HEX_F_NONE) < 0) return -1;
-		    str->Length += clen*2;
+		    rval = hexEncode(hexbuf, clen*2 + 1, src, clen, HEX_F_NONE);
+		    if (rval >= 0) rval = xsConcatenate(str, hexbuf, clen*2);
+		    nmSysFree(hexbuf);
+		    if (rval < 0) return -1;
 		    }
 		else
 		    {
