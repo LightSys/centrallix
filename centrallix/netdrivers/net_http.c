@@ -1422,7 +1422,12 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    }
 	strtcat(name, "-", 34);
 	ptr = strchr(name, '\0');
-	cxssGenerateHexKey(ptr, 12);
+	if (cxssGenerateHexKey(ptr, 12) < 0)
+	    {
+	    mssError(0,"NHT","Failed to generate a temp file name for uploaded file '%s'", payload->filename);
+	    payload->status = -1;
+	    return payload;
+	    }
 	
 	/** Append the extension to the unique name and store it in payload **/
 	if (strlen(name) + strlen(payload->extension) >= sizeof(payload->newname) - 1 || strlen(name) + strlen(payload->extension) + 9 >= sizeof(payload->full_new_path) - 1)
