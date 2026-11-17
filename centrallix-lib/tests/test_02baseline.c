@@ -8,7 +8,7 @@
 long long
 test(char** tname)
     {
-	*tname = "BASELINE failed, return value - should fail";
+	*tname = "BASELINE failed, return value ** SHOULD FAIL **";
 
     return -1;
     }

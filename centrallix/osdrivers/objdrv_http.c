@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <regex.h>
 #include "obj.h"
+#include "cxlib/base64.h"
 #include "cxlib/mtask.h"
 #include "stparse.h"
 #include "st_node.h"
@@ -2548,14 +2549,20 @@ httpOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree
 	    if (!ptr)
 		goto error;
 	    sprintf(ptr, "%s:%s", user, pw);
-	    len = (strlen(user) + 1 + strlen(pw)) * 2 + 3 + 6;
+	    len = strlen("Basic ") + b64EncodedSize(strlen(ptr), 0, B64_F_NONE);
 	    authline = nmSysMalloc(len);
 	    if (!authline)
 		{
 		nmSysFree(ptr);
 		goto error;
 		}
-	    qpfPrintf(NULL, authline, len, "Basic %STR&B64", ptr);
+	    if (qpfPrintf(NULL, authline, len, "Basic %STR&B64", ptr) < 0)
+		{
+		mssError(1, "HTTP", "Failed to encode the credentials for user '%s'.", user);
+		nmSysFree(authline);
+		nmSysFree(ptr);
+		goto error;
+		}
 	    nmSysFree(ptr);
 	    http_internal_AddRequestHeader(inf, "Authorization", authline, 1, 0);
 	    }

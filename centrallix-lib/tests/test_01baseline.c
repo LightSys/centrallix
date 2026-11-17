@@ -10,7 +10,7 @@ test(char** tname)
     {
     int iter;
 
-	*tname = "BASELINE assert() failed - should abort";
+	*tname = "BASELINE assert() failed ** SHOULD ABORT **";
 	iter = 1000*1000*1000;
 	assert(0);
 

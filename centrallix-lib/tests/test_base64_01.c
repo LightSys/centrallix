@@ -1,0 +1,135 @@
+/************************************************************************/
+/* Centrallix Application Server System					*/
+/* Centrallix Base Library						*/
+/*									*/
+/* Copyright (C) 2026 LightSys Technology Services, Inc.		*/
+/*									*/
+/* You may use these files and this library under the terms of the	*/
+/* GNU Lesser General Public License, Version 2.1, contained in the	*/
+/* included file "COPYING".						*/
+/*									*/
+/* Module:	test_base64_01.c					*/
+/* Author:	Israel Fuller						*/
+/* Creation:	November 10th, 2026					*/
+/* Description:	Test b64Decode() on valid input, including decoding	*/
+/*		in place.						*/
+/************************************************************************/
+
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/** Test dependencies. **/
+#include "t_utils.h"
+
+/** Tested module. **/
+#include "base64.h"
+
+/** Working area is raw[GUARD] through raw[GUARD+AREA-1], guarded on both sides. **/
+#define GUARD	4
+#define AREA	64
+#define RAW	(GUARD + AREA + GUARD)
+
+typedef struct
+    {
+    const char*	    Src;	/* base64 to decode */
+    ssize_t	    SrcLen;	/* length handed to b64Decode() */
+    const char*	    Exp;	/* expected decoded data */
+    ssize_t	    ExpLen;	/* expected decoded length */
+    }
+    Case;
+
+static Case cases[] =
+    {
+    /**	  Src			SrcLen	Exp			ExpLen **/
+
+    /** RFC 4648 test vectors. **/
+	{ "",			-1,	"",			0 },
+	{ "Zg==",		-1,	"f",			1 },
+	{ "Zm8=",		-1,	"fo",			2 },
+	{ "Zm9v",		-1,	"foo",			3 },
+	{ "Zm9vYg==",		-1,	"foob",			4 },
+	{ "Zm9vYmE=",		-1,	"fooba",		5 },
+	{ "Zm9vYmFy",		-1,	"foobar",		6 },
+
+    /** Leftover bits in the final group are ignored. **/
+	{ "QQ==",		-1,	"A",			1 },
+	{ "QR==",		-1,	"A",			1 },
+	{ "QUJ=",		-1,	"AB",			2 },
+
+    /** An explicit length decodes only the start of the input. **/
+	{ "Zm9vYmFy",		4,	"foo",			3 },
+	{ "Zm9vYmFy",		0,	"",			0 },
+	{ "Zm9vYmFy!!!",	8,	"foobar",		6 },
+
+    /** Binary data, including nulls and both non-alphanumeric characters. **/
+	{ "AA==",		-1,	"\x00",			1 },
+	{ "AP8A",		-1,	"\x00\xFF\x00",		3 },
+	{ "YQBi",		-1,	"a\0b",			3 },
+	{ "+/8=",		-1,	"\xFB\xFF",		2 },
+
+    /** Whitespace is ignored anywhere, including around the padding. **/
+	{ "Zm9v\r\nYmFy\r\n",	-1,	"foobar",		6 },
+	{ "Zm9v\nYmE=\n",	-1,	"fooba",		5 },
+	{ " Z m\t9\vv\f",	-1,	"foo",			3 },
+	{ "Zg=\n=",		-1,	"f",			1 },
+	{ "\r\n",		-1,	"",			0 },
+
+    /** An HTTP Basic credential. **/
+	{ "QWxhZGRpbjpvcGVuIHNlc2FtZQ==", -1, "Aladdin:open sesame", 19 },
+    };
+
+/** Number of cases run per call to doTest(). **/
+#define NCASES	((int)(sizeof(cases) / sizeof(Case)))
+
+/** Decode each case into a guarded area, and again in place. **/
+static bool
+doTest(void)
+    {
+    bool success = true;
+    unsigned char raw[RAW];
+    char* dst = (char*)raw + GUARD;
+
+	for (int c = 0; c < NCASES; c++)
+	    {
+	    const Case* tc = &cases[c];
+
+	    /** Decode into a guarded area. **/
+	    memset(raw, 0xAA, RAW);
+	    ssize_t rval = b64Decode(dst, AREA, tc->Src, tc->SrcLen, B64_F_NONE);
+
+	    /** The result is the decoded data, null-terminated. **/
+	    success &= ASSERT_EQL(rval, tc->ExpLen, "%zd");
+	    success &= ASSERT_STR_EQL_N(dst, tc->Exp, tc->ExpLen);
+	    success &= ASSERT_EQL(dst[tc->ExpLen], '\0', "%d");
+
+	    /** Nothing outside the area is touched. **/
+	    for (int i = 0; i < GUARD; i++)
+		{
+		success &= ASSERT_EQL(raw[i], 0xAA, "%d");
+		success &= ASSERT_EQL(raw[GUARD + AREA + i], 0xAA, "%d");
+		}
+
+	    /** Decoding in place gives the same result. **/
+	    memset(raw, 0xAA, RAW);
+	    memcpy(dst, tc->Src, strlen(tc->Src) + 1);
+	    rval = b64Decode(dst, AREA, dst, tc->SrcLen, B64_F_NONE);
+	    success &= ASSERT_EQL(rval, tc->ExpLen, "%zd");
+	    success &= ASSERT_STR_EQL_N(dst, tc->Exp, tc->ExpLen);
+	    success &= ASSERT_EQL(dst[tc->ExpLen], '\0', "%d");
+	    }
+
+    return success;
+    }
+
+/*** This test verifies that b64Decode() accepts standard, padded base64,
+ *** ignores leftover bits and whitespace, honors an explicit length or -1
+ *** for strlen(), and decodes in place.
+ ***/
+long long
+test(char** tname)
+    {
+    *tname = "base64-01 b64Decode() on valid input";
+    return loopTest(doTest) * (NCASES * 2);
+    }

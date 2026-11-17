@@ -6,7 +6,7 @@ Goto in error handling and cleanup:
 
 1. C functions handle failures by jumping forward to a cleanup label with goto. Goto is allowed and required here. Flag any backward goto used for error handling.
 
-2. A function normally has one cleanup label for the whole function. Name it `end` when cleanup runs on both success and failure, or `error` when it runs only on failure. Accept either name. Some functions also use a separate cleanup label inside a scope like a loop for per-iteration cleanup; do not flag that pattern or its label name.
+2. A function normally has one cleanup label for the whole function. Name it `end` when cleanup runs on both success and failure, or `error` or `fail` when it runs only on failure. Accept any of these names. Some functions also use a separate cleanup label inside a scope like a loop for per-iteration cleanup; do not flag that pattern or its label name.
 
 3. Prefer a single exit: initialize the result to failure (`int rval = -1;`), make every failure `goto end`, and set `rval = 0` only after the last step succeeds. A forgotten assignment then fails safely instead of silently reporting success.
 
