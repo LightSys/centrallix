@@ -26,6 +26,7 @@
 #include "strtcpy.h"
 #include "warn.h"
 #include "cxsec.h"
+#include "hex.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -170,24 +171,14 @@ mssPassword()
 int
 mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen)
     {
-    char salt_chars[] = "0123456789abcdef";
     char salt_buf[9];
     char *ptr;
-    char *dstptr;
 	
 	/** Minimum salt length is 1 byte **/
 	if (salt_len < 1) return -1;
 
 	/** Expand the salt to (up to) 8 bytes **/
-	ptr = salt;
-	dstptr = salt_buf;
-	while (*ptr)
-	    {
-	    *(dstptr++) = salt_chars[ptr[0] & 0xF];
-	    *(dstptr++) = salt_chars[(ptr[0]>>4) & 0xF];
-	    ptr++;
-	    }
-	*dstptr = '\0';
+	hexEncode(salt_buf, sizeof(salt_buf), salt, (salt_len < 4) ? salt_len : 4, HEX_F_NONE);
 
 	/** Try MD5 style **/
 	if (cred_maxlen >= 35)
