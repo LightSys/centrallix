@@ -187,6 +187,14 @@ b64Wrap(char* dst, size_t dst_size, const char* src, ssize_t src_len, size_t lin
 	    }
 	if (UNLIKELY(b64_i_Length(src, src_len, "wrap", &len) < 0)) return -1;
 
+	/** Check that dst does not partly overlap src. **/
+	const uintptr_t d = (uintptr_t)dst, s = (uintptr_t)src;
+	if (d != s && d < s + len && s < d + dst_size)
+	    {
+	    mssError(1, "B64", "Failed to wrap: dst %p (%zu bytes) overlaps src %p (%zu bytes).", dst, dst_size, src, len);
+	    return -1;
+	    }
+
 	/** Check that the result fits. **/
 	const size_t req_size = b64WrappedSize(len, line_len, flags);
 	if (UNLIKELY(req_size == 0))
@@ -256,6 +264,14 @@ b64Encode(char* dst, size_t dst_size, const void* src, ssize_t src_len, size_t l
 	    return -1;
 	    }
 	if (UNLIKELY(b64_i_Length((const char*)src, src_len, "encode", &len) < 0)) return -1;
+
+	/** Check that dst does not overlap src. **/
+	const uintptr_t d = (uintptr_t)dst, s = (uintptr_t)src;
+	if (d < s + len && s < d + dst_size)
+	    {
+	    mssError(1, "B64", "Failed to encode: dst %p (%zu bytes) overlaps src %p (%zu bytes).", dst, dst_size, src, len);
+	    return -1;
+	    }
 
 	/** Check that the encoding fits. **/
 	const size_t req_size = b64EncodedSize(len, line_len, flags);
@@ -337,6 +353,14 @@ b64Decode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	    return -1;
 	    }
 	if (UNLIKELY(b64_i_Length(src, src_len, "decode", &len) < 0)) return -1;
+
+	/** Check that dst does not partly overlap src. **/
+	const uintptr_t d = (uintptr_t)dst, s = (uintptr_t)src;
+	if (d != s && d < s + len && s < d + dst_size)
+	    {
+	    mssError(1, "B64", "Failed to decode: dst %p (%zu bytes) overlaps src %p (%zu bytes).", dst, dst_size, src, len);
+	    return -1;
+	    }
 
 	for (size_t i = 0; i < len; i++)
 	    {
