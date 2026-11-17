@@ -5,6 +5,7 @@
 #include "config.h"
 #include "centrallix.h"
 #include "cxlib/xstring.h"
+#include "cxlib/hex.h"
 #include "cxss/cxss.h"
 #include <openssl/err.h>
 #include <openssl/sha.h>
@@ -15,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2024 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -66,8 +67,6 @@ cxssLinkHash(char* url, int urllen, unsigned char* key, int keylen, char* nonce,
     pXString hashstr = NULL;
     unsigned char binhashvalue[EVP_MAX_MD_SIZE];
     unsigned int binhashlen;
-    char hex[] = "0123456789abcdef";
-    int i;
     char* pathptr;
 
 	/** Build the hashable string **/
@@ -90,14 +89,8 @@ cxssLinkHash(char* url, int urllen, unsigned char* key, int keylen, char* nonce,
 	HMAC(EVP_sha256(), key, keylen, (unsigned char*)xsString(hashstr), xsLength(hashstr), binhashvalue, &binhashlen);
 
 	/** Convert to hex **/
-	if (hashlen < binhashlen*2 + 1)
+	if (hexEncode(hash, (size_t)hashlen, binhashvalue, (ssize_t)binhashlen, HEX_F_NONE) < 0)
 	    goto error;
-	for(i=0; i<binhashlen; i++)
-	    {
-	    hash[i*2] = hex[(binhashvalue[i] & 0xf0)>>4];
-	    hash[i*2+1] = hex[(binhashvalue[i] & 0x0f)];
-	    }
-	hash[binhashlen*2] = '\0';
 
 	xsFree(hashstr);
 

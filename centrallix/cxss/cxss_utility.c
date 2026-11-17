@@ -9,13 +9,14 @@
 #include "cxlib/xhash.h"
 #include "cxlib/mtlexer.h"
 #include "cxlib/cxsec.h"
+#include "cxlib/hex.h"
 #include "cxss/cxss.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -57,21 +58,7 @@
 int
 cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen)
     {
-    int i;
-    char hex_chars[] = "0123456789abcdef";
-
-	/** Ensure we have enough data, truncate if not. **/
-	if (hexdatalen > bindatalen*2)
-	    hexdatalen = bindatalen*2;
-
-	/** Convert it, starting at the end **/
-	for(i=hexdatalen-1; i>=0; i--)
-	    {
-	    hexdata[i] = hex_chars[(i&1)?(bindata[i/2] & 0x0f):((bindata[i/2]>>4) & 0x0f)];
-	    }
-	hexdata[hexdatalen] = '\0';
-
-    return hexdatalen;
+    return hexEncode(hexdata, hexdatalen + 1, bindata, (ssize_t)bindatalen, HEX_F_TRUNCATE);
     }
 
 
@@ -83,12 +70,7 @@ cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t h
 int
 cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatabuflen)
     {
-
-	/** Ensure buffer is large enough **/
-	if (hexdatabuflen < bindatalen*2 + 1)
-	    return -1;
-	
-    return cxss_i_Hexify(bindata, bindatalen, hexdata, bindatalen*2);
+    return hexEncode(hexdata, hexdatabuflen, bindata, (ssize_t)bindatalen, HEX_F_NONE);
     }
 
 
