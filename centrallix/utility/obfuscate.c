@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <openssl/sha.h>
+#include "cxlib/hex.h"
 #include "cxlib/mtask.h"
 #include "cxlib/strtcpy.h"
 #include "cxlib/mtlexer.h"
@@ -406,8 +407,6 @@ obfOpenSession(pObjSession objsess, char* rule_file_osml_path, char* key)
     {
     pObfSession s = NULL;
     unsigned char binkey[OBF_KEY_SIZE];
-    char* hexdigit = "0123456789abcdef";
-    int i;
     pObject rules_obj = NULL;
     pLxSession lexer = NULL;
     pObfRule rule, *ruletail;
@@ -433,12 +432,8 @@ obfOpenSession(pObjSession objsess, char* rule_file_osml_path, char* key)
 		goto error;
 	    if (cxssGenerateKey(binkey, sizeof(binkey)) < 0)
 		goto error;
-	    for(i=0;i<OBF_KEY_SIZE;i++)
-		{
-		s->Key[i*2] = hexdigit[binkey[i] >> 4];
-		s->Key[i*2 + 1] = hexdigit[binkey[i] & 0x0f];
-		}
-	    s->Key[OBF_HEXKEYBUF_SIZE - 1] = '\0';
+	    if (hexEncode(s->Key, OBF_HEXKEYBUF_SIZE, binkey, sizeof(binkey), HEX_F_NONE) < 0)
+		goto error;
 	    }
 
 	/** Load the rules **/
