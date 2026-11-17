@@ -2494,8 +2494,8 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 			val = cptr[j];
 			if (exp->Flags & EXPR_F_DESC)
 			    val = ~val;
-			ptr[j*2] = hex[(cptr[j]>>4)&0xf];
-			ptr[j*2+1] = hex[cptr[j]&0xf];
+			ptr[j*2] = hex[(val>>4)&0xf];
+			ptr[j*2+1] = hex[val&0xf];
 			}
 		    ptr += clen*2;
 		    }
@@ -2578,9 +2578,9 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 			val = cptr[j];
 			if (exp->Flags & EXPR_F_DESC)
 			    val = ~val;
-			hval = hex[(cptr[j]>>4)&0xf];
+			hval = hex[(val>>4)&0xf];
 			xsConcatenate(str, &hval, 1);
-			hval = hex[cptr[j]&0xf];
+			hval = hex[val&0xf];
 			xsConcatenate(str, &hval, 1);
 			}
 		    }
