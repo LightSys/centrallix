@@ -43,7 +43,7 @@ static bool doTest(void)
 	 ***/
 	for (int i = 0; i < KEY_COUNT; i++)
 	    {
-	    snprintf(keys[i], sizeof(keys[i]), "spread-key-%d", i);
+	    success &= ASSERT_RANGE(snprintf(keys[i], sizeof(keys[i]), "spread-key-%d", i), 0, KEY_SIZE - 1, "%d");
 	    success &= ASSERT_EQL(xhAdd(&hash, keys[i], keys[i]), 0, "%d");
 	    }
 	success &= ASSERT_EQL(hash.nItems, KEY_COUNT, "%d");
