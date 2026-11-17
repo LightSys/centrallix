@@ -2495,7 +2495,7 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 			for(j=0; j<clen; j++) ptr[j] = ~cptr[j];
 			src = ptr;
 			}
-		    hexEncode(ptr, buf + buflen - ptr, src, clen, HEX_F_NONE);
+		    if (hexEncode(ptr, buf + buflen - ptr, src, clen, HEX_F_NONE) < 0) return -1;
 		    ptr += clen*2;
 		    }
 		else
@@ -2580,7 +2580,7 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 			for(j=0; j<clen; j++) ptr[j] = ~cptr[j];
 			src = ptr;
 			}
-		    hexEncode(ptr, clen*2 + 1, src, clen, HEX_F_NONE);
+		    if (hexEncode(ptr, clen*2 + 1, src, clen, HEX_F_NONE) < 0) return -1;
 		    str->Length += clen*2;
 		    }
 		else

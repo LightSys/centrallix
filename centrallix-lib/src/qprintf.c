@@ -358,7 +358,8 @@ qpfInitialize()
 
 	for(i=0;i<QPF_MATRIX_SIZE;i++)
 	    {
-	    hexEncode(buf, sizeof(buf), &(unsigned char){ i }, 1, HEX_F_NONE);
+	    if (hexEncode(buf, sizeof(buf), &(unsigned char){ i }, 1, HEX_F_NONE) < 0)
+		return -1;
 	    QPF.hex_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	qpf_internal_SetupTable(&QPF.hex_matrix);
@@ -370,7 +371,8 @@ qpfInitialize()
 	    {
 	    if ((i >= '0' && i <= '9') || (i >= 'A' && i <= 'Z') || (i >= 'a' && i <= 'z'))
 		continue;
-	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
+	    if (hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE) < 0)
+		return -1;
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	qpf_internal_SetupTable(&QPF.url_matrix);
