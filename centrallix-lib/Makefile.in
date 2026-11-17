@@ -218,7 +218,7 @@ RUN_TESTS = \
     CYELLOW=$$(/usr/bin/tput setaf 3 2>/dev/null); \
     CBLUE=$$(/usr/bin/tput setaf 4 2>/dev/null); \
     CNORM=$$(/usr/bin/tput sgr0 2>/dev/null); \
-    N=0; NPASS=0; NSKIP=0; NFAIL=0; NCRASH=0; NABORT=0; NLOCKUP=0; NBASE=0; NBASEOK=0; TOSTART=$$(date +%s); \
+    N=0; NPASS=0; NSKIP=0; NFAIL=0; NCRASH=0; NABORT=0; NLOCKUP=0; NBASE=0; NBASEOK=0; TOSTART=$$(date +%s%N); \
     for PROG in $$( ls $(TESTPROGS) ); do \
 	case "$$PROG" in tests/test_$$TONLY*) \
 	    N=$$((N+1)); \
@@ -279,7 +279,8 @@ RUN_TESTS = \
     [ "$$NCRASH" -gt 0 ] && TOSUM "CRASH" "$$NCRASH" "$$CRED"; \
     [ "$$NABORT" -gt 0 ] && TOSUM "ABORT" "$$NABORT" "$$CRED"; \
     [ "$$NLOCKUP" -gt 0 ] && TOSUM "LOCKUP" "$$NLOCKUP" "$$CRED"; \
-    printf "%-62.62s  %s\n" "Total" "$$NRAN in $$(($$(date +%s)-TOSTART))s"; \
+    TOCS=$$((($$(date +%s%N)-TOSTART)/10000000)); \
+    printf "%-62.62s  %s in %d.%02ds\n" "Total" "$$NRAN" "$$((TOCS/100))" "$$((TOCS%100))"; \
     exit "$$RC"
 
 .PHONY: test
