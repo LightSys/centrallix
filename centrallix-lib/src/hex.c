@@ -15,6 +15,7 @@
 /************************************************************************/
 
 #include <limits.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "hex.h"
@@ -125,6 +126,14 @@ hexEncode(char* dst, size_t dst_size, const void* src, ssize_t src_len, int flag
 	    }
 	if (hex_i_Length((const char*)src, src_len, "encode", &len) < 0) return -1;
 
+	/** Check that dst does not partly overlap src. **/
+	const uintptr_t d = (uintptr_t)dst, s = (uintptr_t)src;
+	if (d != s && d < s + len && s < d + dst_size)
+	    {
+	    mssError(1, "HEX", "Failed to encode: dst %p (%zu bytes) overlaps src %p (%zu bytes).", dst, dst_size, src, len);
+	    return -1;
+	    }
+
 	/** Truncate to fit dst, or check that the whole encoding fits. **/
 	if ((flags & HEX_F_TRUNCATE) != 0)
 	    {
@@ -192,6 +201,15 @@ hexDecode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	    return -1;
 	    }
 	if (hex_i_Length(src, src_len, "decode", &len) < 0) return -1;
+
+	/** Check that dst does not partly overlap src. **/
+	const uintptr_t d = (uintptr_t)dst, s = (uintptr_t)src;
+	if (d != s && d < s + len && s < d + dst_size)
+	    {
+	    mssError(1, "HEX", "Failed to decode: dst %p (%zu bytes) overlaps src %p (%zu bytes).", dst, dst_size, src, len);
+	    return -1;
+	    }
+
 	if (len % 2 != 0)
 	    {
 	    mssError(1, "HEX", "Failed to decode: odd length %zu.", len);
