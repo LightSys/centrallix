@@ -177,7 +177,9 @@ install: all
 ## rather than written straight to the terminal, then printed in listing order
 ## as each test finishes, so parallel tests cannot interleave.  A summary of
 ## the results follows the tests.  Baseline tests count as correct when their
-## result matches the "** SHOULD <result> **" marker in their source.
+## result matches the "** SHOULD <result> **" marker in their source.  Status
+## words are colored and other test output is blue, all plain without a usable
+## TERM.
 ##
 ## The stack limit is raised to 16MB because mtask carves each thread's stack
 ## from the process stack, and the default 8MB holds too few for its 256
@@ -211,6 +213,11 @@ RUN_TESTS = \
     trap 'stop INT' INT; \
     trap 'stop TERM' TERM; \
     ulimit -s 16384; \
+    CRED=$$(/usr/bin/tput setaf 1 2>/dev/null); \
+    CGREEN=$$(/usr/bin/tput setaf 2 2>/dev/null); \
+    CYELLOW=$$(/usr/bin/tput setaf 3 2>/dev/null); \
+    CBLUE=$$(/usr/bin/tput setaf 4 2>/dev/null); \
+    CNORM=$$(/usr/bin/tput sgr0 2>/dev/null); \
     N=0; NPASS=0; NSKIP=0; NFAIL=0; NCRASH=0; NABORT=0; NLOCKUP=0; NBASE=0; NBASEOK=0; TOSTART=$$SECONDS; \
     for PROG in $$( ls $(TESTPROGS) ); do \
 	case "$$PROG" in tests/test_$$TONLY*) \
@@ -233,10 +240,13 @@ RUN_TESTS = \
 	done; \
 	PROG=$$(sed -n "$$((2 * I - 1))p" "$$RESULTS/list"); \
 	if [ -e "$$OUT" ]; then \
-	    cat "$$OUT"; \
+	    sed -E -e "s/^(.{62}  )(PASS)( .*)?$$/\1$$CGREEN\2$$CNORM\3/;t" \
+		-e "s/^(.{62}  )(SKIP)( .*)?$$/\1$$CYELLOW\2$$CNORM\3/;t" \
+		-e "s/^(.{62}  )(FAIL|CRASH|ABORT|LOCKUP)( .*)?$$/\1$$CRED\2$$CNORM\3/;t" \
+		-e "s/.*/$$CBLUE&$$CNORM/" "$$OUT"; \
 	    RES=$$(sed -En 's/^.{62}  (PASS|SKIP|FAIL|CRASH|ABORT|LOCKUP)( .*)?$$/\1/p' "$$OUT" | tail -n 1); \
 	else \
-	    printf '%-62.62s  FAIL (produced no result)\n' "$$PROG"; \
+	    printf '%-62.62s  %sFAIL%s (produced no result)\n' "$$PROG" "$$CRED" "$$CNORM"; \
 	    RC=1; \
 	    RES=FAIL; \
 	fi; \
@@ -258,10 +268,6 @@ RUN_TESTS = \
     done; \
     wait "$$XARGS" || RC=$$?; \
     cat "$$RESULTS/stderr" >&2; \
-    CRED=$$(/usr/bin/tput setaf 1); \
-    CGREEN=$$(/usr/bin/tput setaf 2); \
-    CYELLOW=$$(/usr/bin/tput setaf 3); \
-    CNORM=$$(/usr/bin/tput sgr0); \
     TOSUM() { printf "%s%-62.62s  %s%s\n" "$$3" "$$1" "$$2" "$$CNORM"; }; \
     printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"; \
     NRAN=$$((NPASS+NSKIP+NFAIL+NCRASH+NABORT+NLOCKUP)); \
