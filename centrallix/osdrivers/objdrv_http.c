@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <regex.h>
 #include "obj.h"
+#include "cxlib/hex.h"
 #include "cxlib/mtask.h"
 #include "stparse.h"
 #include "st_node.h"
@@ -1187,7 +1188,6 @@ http_internal_SendRequest(pHttpData inf, char* path)
     int cnt;
     unsigned char noncelen;
     int hashpos;
-    char hexval[17] = "0123456789abcdef";
     pXString post_params = NULL;
     pXString url_params = NULL;
     pHttpParam one_http_param;
@@ -1206,14 +1206,7 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	    cnt = noncelen;
 	    cnt += 16;
 	    cxssKeystreamGenerate(HTTP_INF.NonceData, keydata, cnt / 2 + 1);
-	    for(i=0;i<cnt;i++)
-		{
-		if (i & 1)
-		    nonce[i] = hexval[(keydata[i/2] & 0xf0) >> 4];
-		else
-		    nonce[i] = hexval[keydata[i/2] & 0x0f];
-		}
-	    nonce[cnt] = '\0';
+	    hexEncode(nonce, cnt + 1, keydata, cnt / 2 + 1, HEX_F_TRUNCATE);
 	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1, 1);
 	    nmSysFree(keydata);
 	    }
