@@ -765,7 +765,7 @@ void*
 qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pQyQuery qy = ((pQyQuery)(qy_v));
-    pQyData inf;
+    pQyData inf = NULL;
     char* ptr;
 
 	/** Alloc the structure **/
@@ -774,8 +774,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	memset(inf, 0, sizeof(QyData));
 	if (xaInit(&inf->Parameters, 16) < 0 || xaInit(&inf->HeldCollections, 4) < 0)
 	    {
-	    qy_internal_Close(inf);
-	    return NULL;
+	    goto error;
 	    }
 	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
 	inf->Node = qy->Data->Node;
@@ -793,8 +792,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (!inf->MultiQueryObject)
 	    {
 	    /** if no more items, return NULL **/
-	    qy_internal_Close(inf);
-	    return NULL;
+	    goto end_of_results;
 	    }
 	objUnmanageObject(inf->Obj->Session, inf->MultiQueryObject);
 	qy->ItemCnt++;
@@ -804,18 +802,22 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	objGetAttrValue(inf->MultiQueryObject, "name", DATA_T_STRING, POD(&ptr));
 	if (!ptr)
 	    {
-	    qy_internal_Close(inf);
-	    return NULL;
+	    mssError(1, "QUERY", "Query result has no 'name' attribute");
+	    goto error;
 	    }
 	if (obj_internal_AddToPath(obj->Pathname, ptr) < 0)
 	    {
 	    mssError(1,"QUERY","Query result pathname exceeds internal limits");
-	    qy_internal_Close(inf);
-	    return NULL;
+	    goto error;
 	    }
 	inf->Name = nmSysStrdup(ptr);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    end_of_results:
+    error:
+	if (inf) qy_internal_Close(inf);
+	return NULL;
     }
 
 
