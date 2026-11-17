@@ -67,8 +67,8 @@ Please check the end of this document for information on which of these specifie
 | &FILE             | Presumes that the string is a filename, and thus results in an error if the string contains '/' or if the string is solely '.' or '..'.
 | &PATH             | Presumes that the string is a pathname, and so cannot contain '..' at the beginning, end, or between two '/' characters.
 | &SYM              | Treats the string as a 'symbol', beginning with [_a-zA-Z] and then containing [_a-zA-Z0-9].  Results in an error if the string does not match.
-| &HEX              | Hex-encodes the entire string.
-| &DHEX             | Hex-decodes the entire string.
+| &HEX              | Hex-encodes the entire string in lowercase.
+| &DHEX             | Hex-decodes the entire string, in either case.  An odd length or any other character is an error.
 | &B64              | Base64-encodes the entire string.
 | &DB64             | Base64-decodes the entire string.
 | &RF/reg/          | Filters string value through regular expression, and if it does not match in its entirety, causes an error.

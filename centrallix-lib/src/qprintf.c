@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdint.h>
+#include "hex.h"
 #include "qprintf.h"
 #include "mtask.h"
 #include "newmalloc.h"
@@ -233,7 +234,7 @@ qpfInitialize()
     {
     int i;
     char buf[4];
-    char hex[] = "0123456789abcdef";
+    unsigned char ch;
 
 	memset(&QPF.quote_matrix, 0, sizeof(QPF.quote_matrix));
 	QPF.quote_matrix.Matrix['\''] = "\\'";
@@ -358,9 +359,8 @@ qpfInitialize()
 
 	for(i=0;i<QPF_MATRIX_SIZE;i++)
 	    {
-	    buf[0] = hex[(i>>4)&0x0F];
-	    buf[1] = hex[i&0x0F];
-	    buf[2] = '\0';
+	    ch = (unsigned char)i;
+	    hexEncode(buf, sizeof(buf), &ch, 1, HEX_F_NONE);
 	    QPF.hex_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	qpf_internal_SetupTable(&QPF.hex_matrix);
@@ -370,33 +370,29 @@ qpfInitialize()
 	for(i=0;i<48;i++) /* escape until 0-9 */
 	    {
 	    buf[0] = '%';
-	    buf[1] = hex[(i>>4)&0x0F];
-	    buf[2] = hex[i&0x0F];
-	    buf[3] = '\0';
+	    ch = (unsigned char)i;
+	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	for(i=58;i<65;i++) /* skip 0-9 and continue until A-Z */
 	    {
 	    buf[0] = '%';
-	    buf[1] = hex[(i>>4)&0x0F];
-	    buf[2] = hex[i&0x0F];
-	    buf[3] = '\0';
+	    ch = (unsigned char)i;
+	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	for(i=91;i<97;i++) /* skip A-Z and continue until a-z */
 	    {
 	    buf[0] = '%';
-	    buf[1] = hex[(i>>4)&0x0F];
-	    buf[2] = hex[i&0x0F];
-	    buf[3] = '\0';
+	    ch = (unsigned char)i;
+	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	for(i=123;i<QPF_MATRIX_SIZE;i++) /* encode everything higher */
 	    {
 	    buf[0] = '%';
-	    buf[1] = hex[(i>>4)&0x0F];
-	    buf[2] = hex[i&0x0F];
-	    buf[3] = '\0';
+	    ch = (unsigned char)i;
+	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	qpf_internal_SetupTable(&QPF.url_matrix);
@@ -501,6 +497,31 @@ qpf_internal_itoa(char* dst, size_t dstlen, int i)
 	}
     *dst = '\0';
     return rval;
+    }
+
+
+/*** qpf_internal_Reserve() - make room for req bytes after dst_offset,
+ *** growing dst if needed.  Returns 0 on success, or -1 on failure.
+ ***/
+static int
+qpf_internal_Reserve(pQPSession s, size_t req, char** dst, size_t* dst_size, size_t dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
+    {
+
+	/** The result is returned as an int. **/
+	if (req == 0 || dst_offset > INT_MAX || req > INT_MAX - dst_offset)
+	    {
+	    QPERR(QPF_ERR_T_BUFOVERFLOW);
+	    return -1;
+	    }
+
+	/** Grow dstbuf if necessary and possible. **/
+	if (dst_offset + req > *dst_size && (grow_fn == NULL || !grow_fn(dst, dst_size, dst_offset, grow_arg, dst_offset + req)))
+	    {
+	    QPERR(QPF_ERR_T_MEMORY);
+	    return -1;
+	    }
+
+    return 0;
     }
 
 
@@ -664,69 +685,25 @@ qpf_internal_base64decode(pQPSession s, const char* src, size_t src_size, char**
     }
 
 
-/*** qpf_internal_hexdecode() - convert base 64 to a string representation
+/*** qpf_internal_hexdecode() - decode hex src at dst_offset.
+ *** Returns the number of bytes written, or -1 on failure.
  ***/
-static inline int
+static int
 qpf_internal_hexdecode(pQPSession s, const char* src, size_t src_size, char** dst, size_t* dst_size, size_t* dst_offset, qpf_grow_fn_t grow_fn, void* grow_arg)
     {
-    char hex[23] = "0123456789abcdefABCDEF";
-    int conv[22] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 10, 11, 12, 13, 14, 15 };
-    char* ptr;
-    char* cursor;
-    int ix;
-    int req_size;
-    const char* orig_src = src;
+    ssize_t n;
 
-	/** Required size **/
-	if (src_size%2 == 1)
+	if (qpf_internal_Reserve(s, hexDecodedSize(src_size), dst, dst_size, *dst_offset, grow_fn, grow_arg) < 0)
+	    return -1;
+	n = hexDecode(*dst + *dst_offset, *dst_size - *dst_offset, src, (ssize_t)src_size, HEX_F_NONE);
+	if (n < 0)
 	    {
-	    QPERR(QPF_ERR_T_BADLENGTH);
+	    QPERR(QPF_ERR_T_BADCHAR);
 	    return -1;
 	    }
-	req_size = src_size/2;
+	*dst_offset += (size_t)n;
 
-	/** Grow dstbuf if necessary and possible, otherwise return error **/
-	if (req_size > *dst_size)
-	    {
-	    if(grow_fn == NULL || !grow_fn(dst, dst_size, 0, grow_arg, req_size))
-		{
-		QPERR(QPF_ERR_T_MEMORY);
-		return -1;
-		}
-	    }
-
-	cursor = *dst + *dst_offset;
-	
-	/** Step through src 2 bytes at a time. **/
-	while(*src && (src - orig_src) < src_size)
-	    {
-	    /** First 4 bits. **/
-	    ptr = strchr(hex, src[0]);
-	    if (!ptr)
-	        {
-		QPERR(QPF_ERR_T_BADCHAR);
-		return -1;
-		}
-	    ix = conv[ptr-hex];
-	    cursor[0] = ix<<4;
-
-	    /** Second four bits  **/
-	    ptr = strchr(hex, src[1]);
-	    if (!ptr)
-	        {
-		QPERR(QPF_ERR_T_BADCHAR);
-		return -1;
-		}
-	    ix = conv[ptr-hex];
-	    cursor[0] |= ix;
-
-	    src += 2;
-	    cursor += 1;
-	    }
-
-	*dst_offset = *dst_offset + cursor - *dst;
-
-    return cursor - *dst;
+    return (int)n;
     }
 
 
