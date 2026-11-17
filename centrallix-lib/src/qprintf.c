@@ -234,7 +234,6 @@ qpfInitialize()
     {
     int i;
     char buf[4];
-    unsigned char ch;
 
 	memset(&QPF.quote_matrix, 0, sizeof(QPF.quote_matrix));
 	QPF.quote_matrix.Matrix['\''] = "\\'";
@@ -359,8 +358,7 @@ qpfInitialize()
 
 	for(i=0;i<QPF_MATRIX_SIZE;i++)
 	    {
-	    ch = (unsigned char)i;
-	    hexEncode(buf, sizeof(buf), &ch, 1, HEX_F_NONE);
+	    hexEncode(buf, sizeof(buf), &(unsigned char){ i }, 1, HEX_F_NONE);
 	    QPF.hex_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	qpf_internal_SetupTable(&QPF.hex_matrix);
@@ -370,29 +368,25 @@ qpfInitialize()
 	for(i=0;i<48;i++) /* escape until 0-9 */
 	    {
 	    buf[0] = '%';
-	    ch = (unsigned char)i;
-	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
+	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	for(i=58;i<65;i++) /* skip 0-9 and continue until A-Z */
 	    {
 	    buf[0] = '%';
-	    ch = (unsigned char)i;
-	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
+	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	for(i=91;i<97;i++) /* skip A-Z and continue until a-z */
 	    {
 	    buf[0] = '%';
-	    ch = (unsigned char)i;
-	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
+	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	for(i=123;i<QPF_MATRIX_SIZE;i++) /* encode everything higher */
 	    {
 	    buf[0] = '%';
-	    ch = (unsigned char)i;
-	    hexEncode(buf + 1, sizeof(buf) - 1, &ch, 1, HEX_F_NONE);
+	    hexEncode(buf + 1, sizeof(buf) - 1, &(unsigned char){ i }, 1, HEX_F_NONE);
 	    QPF.url_matrix.Matrix[i] = nmSysStrdup(buf);
 	    }
 	qpf_internal_SetupTable(&QPF.url_matrix);
