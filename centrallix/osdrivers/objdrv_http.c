@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <regex.h>
 #include "obj.h"
-#include "cxlib/hex.h"
 #include "cxlib/mtask.h"
 #include "stparse.h"
 #include "st_node.h"
@@ -1184,7 +1183,6 @@ http_internal_SendRequest(pHttpData inf, char* path)
     int i, j, n_output;
     pHttpHeader hdr;
     char* nonce;
-    unsigned char* keydata;
     int cnt;
     unsigned char noncelen;
     int hashpos;
@@ -1200,15 +1198,12 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	 **/
 	if (inf->SSLpid && HTTP_INF.NonceData)
 	    {
-	    keydata = nmSysMalloc(128+8+1);
 	    nonce = nmSysMalloc(256+16+1);
 	    cxssKeystreamGenerate(HTTP_INF.NonceData, &noncelen, 1);
 	    cnt = noncelen;
 	    cnt += 16;
-	    cxssKeystreamGenerate(HTTP_INF.NonceData, keydata, cnt / 2 + 1);
-	    hexEncode(nonce, cnt + 1, keydata, cnt / 2 + 1, HEX_F_TRUNCATE);
+	    cxssKeystreamGenerateHex(HTTP_INF.NonceData, nonce, cnt);
 	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1, 1);
-	    nmSysFree(keydata);
 	    }
 
 	/** Add any parameterized request headers **/

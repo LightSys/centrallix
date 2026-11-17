@@ -1,6 +1,5 @@
 #include "net_http.h"
 #include "cxss/cxss.h"
-#include "cxlib/hex.h"
 #include "cxlib/memstr.h"
 #include "cxlib/strtcpy.h"
 #include "json/json.h"
@@ -1423,8 +1422,7 @@ nht_i_ParsePostPayload(pNhtConn conn)
 	    }
 	strtcat(name, "-", 34);
 	ptr = strchr(name, '\0');
-	cxssGenerateKey((unsigned char*)ptr, 6);
-	hexEncode(ptr, sizeof(name) - (ptr - name), ptr, 6, HEX_F_NONE);
+	cxssGenerateHexKey(ptr, 12);
 	
 	/** Append the extension to the unique name and store it in payload **/
 	if (strlen(name) + strlen(payload->extension) >= sizeof(payload->newname) - 1 || strlen(name) + strlen(payload->extension) + 9 >= sizeof(payload->full_new_path) - 1)
