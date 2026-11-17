@@ -2,7 +2,7 @@
 scope:
   - "**/*.c"
 ---
-Errors and warnings in the codebase:
+Errors and warnings in the codebase (not in test utilities or other code meant to run outside Centrallix):
 
 1. Errors use `mssError()`. An error is a failure the function propagates by returning its failure value (-1, NULL, or another documented failure result). Flag a failure return that no `mssError()` explains, either raised here or already raised by the failing callee. Flag `mssError(1, ...)` on a path that already raised an error, since it clears the original error.
 

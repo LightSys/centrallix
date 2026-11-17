@@ -11,7 +11,7 @@ test(char** tname)
     int iter;
     int array[2] = {0};
 
-	*tname = "BASELINE sigsegv (11) caused - should crash";
+	*tname = "BASELINE sigsegv (11) caused ** SHOULD CRASH **";
 	iter = 1000*1000*1000;
 	*((int*)0) = array[1];
 
