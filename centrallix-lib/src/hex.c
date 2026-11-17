@@ -86,7 +86,7 @@ hexEncodedSize(size_t src_len)
 
 /*** Get the exact size needed to hold decoded hex data.
  ***
- *** @param src_len The length of the hex text, excluding any null.
+ *** @param src_len The length of the hex text, excluding a null terminator.
  *** @returns The size hexDecode() needs for its output, including the null.
  ***	It is exact for valid hex text.
  ***/
@@ -170,14 +170,14 @@ hexEncode(char* dst, size_t dst_size, const void* src, ssize_t src_len, int flag
 	    dst[i * 2 - 1] = hex_i_digits[byte & 0x0F];
 	    }
 
-	/** The null overwrites the extra low digit of an odd truncation. **/
+	/** Note: The null overwrites the extra digit of an odd truncation. **/
 	dst[out_len] = '\0';
 
     return (ssize_t)out_len;
     }
 
 
-/*** Decode hex text, in either case.
+/*** Decode hex text (case insensitive).
  ***
  *** @param dst The buffer to write the null-terminated decoded data into.  It
  ***	may equal src to decode in place, but must not otherwise overlap it.
