@@ -179,6 +179,10 @@ install: all
 ## the results follows the tests.  Baseline tests count as correct when their
 ## result matches the "** SHOULD <result> **" marker in their source.
 ##
+## The stack limit is raised to 16MB because mtask carves each thread's stack
+## from the process stack, and the default 8MB holds too few for its 256
+## threads (see mtInitialize() in src/mtask.c).
+##
 ## TESTCMD runs once per test with the binary as "$$1" and its capture file as
 ## "$$2".  It writes to "$$2.part" and renames that to "$$2" when done so that
 ## the rename is what marks the test as finished, then it exits with the test's
@@ -206,6 +210,7 @@ RUN_TESTS = \
     trap 'rm -rf "$$RESULTS"' EXIT; \
     trap 'stop INT' INT; \
     trap 'stop TERM' TERM; \
+    ulimit -s 16384; \
     N=0; NPASS=0; NSKIP=0; NFAIL=0; NCRASH=0; NABORT=0; NLOCKUP=0; NBASE=0; NBASEOK=0; TOSTART=$$SECONDS; \
     for PROG in $$( ls $(TESTPROGS) ); do \
 	case "$$PROG" in tests/test_$$TONLY*) \
