@@ -136,7 +136,10 @@ hexEncode(char* dst, size_t dst_size, const void* src, ssize_t src_len, int flag
 	const uintptr_t d = (uintptr_t)dst, s = (uintptr_t)src;
 	if (d != s && d < s + len && s < d + dst_size)
 	    {
-	    mssError(1, "HEX", "Failed to encode: dst %p (%zu bytes) overlaps src %p (%zu bytes).", dst, dst_size, src, len);
+	    mssError(1, "HEX",
+		"Failed to encode: dst %p (%zu bytes) overlaps src %p (%zu bytes).",
+		dst, dst_size, src, len
+	    );
 	    return -1;
 	    }
 
@@ -161,7 +164,10 @@ hexEncode(char* dst, size_t dst_size, const void* src, ssize_t src_len, int flag
 		}
 	    if (req_size > dst_size)
 		{
-		mssError(1, "HEX", "Failed to encode %zu bytes: needs %zu bytes, but dst holds %zu.", len, req_size, dst_size);
+		mssError(1, "HEX",
+		    "Failed to encode %zu bytes: needs %zu bytes, but dst holds %zu.",
+		    len, req_size, dst_size
+		);
 		return -1;
 		}
 	    n_bytes = len;
@@ -212,7 +218,10 @@ hexDecode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	const uintptr_t d = (uintptr_t)dst, s = (uintptr_t)src;
 	if (d != s && d < s + len && s < d + dst_size)
 	    {
-	    mssError(1, "HEX", "Failed to decode: dst %p (%zu bytes) overlaps src %p (%zu bytes).", dst, dst_size, src, len);
+	    mssError(1, "HEX",
+		"Failed to decode: dst %p (%zu bytes) overlaps src %p (%zu bytes).",
+		dst, dst_size, src, len
+	    );
 	    return -1;
 	    }
 
@@ -226,7 +235,10 @@ hexDecode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	const size_t n_bytes = len / 2;
 	if (n_bytes >= dst_size)
 	    {
-	    mssError(1, "HEX", "Failed to decode %zu characters: needs %zu bytes, but dst holds %zu.", len, n_bytes + 1, dst_size);
+	    mssError(1, "HEX",
+		"Failed to decode %zu characters: needs %zu bytes, but dst holds %zu.",
+		len, n_bytes + 1, dst_size
+	    );
 	    return -1;
 	    }
 
@@ -238,7 +250,10 @@ hexDecode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	    if (high < 0 || low < 0)
 		{
 		const size_t bad = (high < 0) ? i * 2 : i * 2 + 1;
-		mssError(1, "HEX", "Failed to decode: invalid character 0x%02x at offset %zu.", (unsigned char)src[bad], bad);
+		mssError(1, "HEX",
+		    "Failed to decode: invalid character 0x%02x at offset %zu.",
+		    (unsigned char)src[bad], bad
+		);
 		return -1;
 		}
 	    out[i] = (unsigned char)((high << 4) | low);
