@@ -405,9 +405,6 @@ pObfSession
 obfOpenSession(pObjSession objsess, char* rule_file_osml_path, char* key)
     {
     pObfSession s = NULL;
-    unsigned char binkey[OBF_KEY_SIZE];
-    char* hexdigit = "0123456789abcdef";
-    int i;
     pObject rules_obj = NULL;
     pLxSession lexer = NULL;
     pObfRule rule, *ruletail;
@@ -431,14 +428,8 @@ obfOpenSession(pObjSession objsess, char* rule_file_osml_path, char* key)
 	    s->Key = nmSysMalloc(OBF_HEXKEYBUF_SIZE); /* 64 bit hexstring */
 	    if (!s->Key)
 		goto error;
-	    if (cxssGenerateKey(binkey, sizeof(binkey)) < 0)
+	    if (cxssGenerateHexKey(s->Key, OBF_HEXKEYBUF_SIZE - 1) < 0)
 		goto error;
-	    for(i=0;i<OBF_KEY_SIZE;i++)
-		{
-		s->Key[i*2] = hexdigit[binkey[i] >> 4];
-		s->Key[i*2 + 1] = hexdigit[binkey[i] & 0x0f];
-		}
-	    s->Key[OBF_HEXKEYBUF_SIZE - 1] = '\0';
 	    }
 
 	/** Load the rules **/

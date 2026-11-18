@@ -14,6 +14,7 @@
 #include "obj.h"
 #include "expression.h"
 #include "cxlib/expect.h"
+#include "cxlib/hex.h"
 #include "cxlib/xstring.h"
 #include "cxlib/mtsession.h"
 #include "cxlib/util.h"
@@ -2443,8 +2444,7 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
     char* fieldstart;
     int clen;
     unsigned char tmp_data[12];
-    char hex[] = "0123456789abcdef";
-    char val;
+    const char* src;
 
 	if (asciz)
 	    {
@@ -2489,14 +2489,13 @@ objBuildBinaryImage(char* buf, int buflen, void* fields_v, int n_fields, void* o
 			ptr[-1] = ('1' + '0') - ptr[-1];
 
 		    /** Copy it, transforming it to a hex string */
-		    for(j=0; j<clen; j++)
+		    src = cptr;
+		    if (exp->Flags & EXPR_F_DESC)
 			{
-			val = cptr[j];
-			if (exp->Flags & EXPR_F_DESC)
-			    val = ~val;
-			ptr[j*2] = hex[(cptr[j]>>4)&0xf];
-			ptr[j*2+1] = hex[cptr[j]&0xf];
+			for(j=0; j<clen; j++) ptr[j] = ~cptr[j];
+			src = ptr;
 			}
+		    if (hexEncode(ptr, buf + buflen - ptr, src, clen, HEX_F_NONE) < 0) return -1;
 		    ptr += clen*2;
 		    }
 		else
@@ -2542,8 +2541,8 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
     unsigned char tmp_data[12];
     int rval;
     pExpression exp;
-    char hex[] = "0123456789abcdef";
-    char val, hval;
+    char* hexbuf;
+    const char* src;
 
 	startoffset = str->Length;
 	for(i=0;i<n_fields;i++)
@@ -2573,16 +2572,22 @@ objBuildBinaryImageXString(pXString str, void* fields_v, int n_fields, void* obj
 			str->String[str->Length-1] = ('1' + '0') - str->String[str->Length-1];
 
 		    /** Copy it, transforming it to a hex string */
-		    for(j=0; j<clen; j++)
+		    hexbuf = nmSysMalloc(clen*2 + 1);
+		    if (!hexbuf)
 			{
-			val = cptr[j];
-			if (exp->Flags & EXPR_F_DESC)
-			    val = ~val;
-			hval = hex[(cptr[j]>>4)&0xf];
-			xsConcatenate(str, &hval, 1);
-			hval = hex[cptr[j]&0xf];
-			xsConcatenate(str, &hval, 1);
+			mssError(1, "OBJ", "Failed to allocate %d bytes to hex-encode a key.", clen*2 + 1);
+			return -1;
 			}
+		    src = cptr;
+		    if (exp->Flags & EXPR_F_DESC)
+			{
+			for(j=0; j<clen; j++) hexbuf[j] = ~cptr[j];
+			src = hexbuf;
+			}
+		    rval = hexEncode(hexbuf, clen*2 + 1, src, clen, HEX_F_NONE);
+		    if (rval >= 0) rval = xsConcatenate(str, hexbuf, clen*2);
+		    nmSysFree(hexbuf);
+		    if (rval < 0) return -1;
 		    }
 		else
 		    {

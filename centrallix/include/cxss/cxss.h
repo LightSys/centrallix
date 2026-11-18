@@ -137,8 +137,6 @@ extern CXSS_t CXSS;
 int cxssInitialize();
 
 /*** Utility functions ***/
-int cxssHexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatabuflen);
-int cxss_i_Hexify(unsigned char* bindata, size_t bindatalen, char* hexdata, size_t hexdatalen);
 int cxssGenerateKey(unsigned char* key, size_t n_bytes);
 int cxssGenerateHexKey(char* hexkey, size_t len);
 void cxssShred(void* data, size_t n_bytes);

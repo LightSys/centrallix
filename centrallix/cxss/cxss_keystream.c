@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include "config.h"
 #include "centrallix.h"
+#include "cxlib/hex.h"
 #include "cxlib/xstring.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -18,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2017 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -183,7 +184,7 @@ cxssKeystreamGenerateHex(pCxssKeystreamState kstate, char* hexdata, int hexdatal
 	    goto error;
 
 	/** Convert to hex **/
-	if (cxss_i_Hexify((unsigned char*)hexdata, hexdatalen/2+1, hexdata, hexdatalen) < 0)
+	if (hexEncode(hexdata, hexdatalen + 1, hexdata, hexdatalen/2+1, HEX_F_TRUNCATE) < 0)
 	    goto error;
 
 	return hexdatalen;

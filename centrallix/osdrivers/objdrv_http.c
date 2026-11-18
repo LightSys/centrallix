@@ -1183,11 +1183,9 @@ http_internal_SendRequest(pHttpData inf, char* path)
     int i, j, n_output;
     pHttpHeader hdr;
     char* nonce;
-    unsigned char* keydata;
     int cnt;
     unsigned char noncelen;
     int hashpos;
-    char hexval[17] = "0123456789abcdef";
     pXString post_params = NULL;
     pXString url_params = NULL;
     pHttpParam one_http_param;
@@ -1200,22 +1198,17 @@ http_internal_SendRequest(pHttpData inf, char* path)
 	 **/
 	if (inf->SSLpid && HTTP_INF.NonceData)
 	    {
-	    keydata = nmSysMalloc(128+8+1);
 	    nonce = nmSysMalloc(256+16+1);
 	    cxssKeystreamGenerate(HTTP_INF.NonceData, &noncelen, 1);
 	    cnt = noncelen;
 	    cnt += 16;
-	    cxssKeystreamGenerate(HTTP_INF.NonceData, keydata, cnt / 2 + 1);
-	    for(i=0;i<cnt;i++)
+	    if (cxssKeystreamGenerateHex(HTTP_INF.NonceData, nonce, cnt) < 0)
 		{
-		if (i & 1)
-		    nonce[i] = hexval[(keydata[i/2] & 0xf0) >> 4];
-		else
-		    nonce[i] = hexval[keydata[i/2] & 0x0f];
+		mssError(0, "HTTP", "Failed to generate a request nonce");
+		nmSysFree(nonce);
+		goto error;
 		}
-	    nonce[cnt] = '\0';
 	    http_internal_AddRequestHeader(inf, "X-Nonce", nonce, 1, 1);
-	    nmSysFree(keydata);
 	    }
 
 	/** Add any parameterized request headers **/
