@@ -1,0 +1,23 @@
+##NAME MySQL Update One key
+
+# make sure clean start
+query delete from /tests/Driver_DB/typeTests/rows
+
+# insert test values
+query insert into /tests/Driver_DB/typeTests/rows select dates = '2020-02-02', monies = convert('money', 20.0200), ints = -1000, strings = 'two twos', bits = 0, floats = 22222.22222, blobs = 'just a longer string to test this'
+
+# run updates
+query update  /tests/Driver_DB/typeTests/rows set :dates = '1991-09-01'
+query update  /tests/Driver_DB/typeTests/rows set :monies = convert('money', 1991.0901)
+query update  /tests/Driver_DB/typeTests/rows set :ints = 12
+query update  /tests/Driver_DB/typeTests/rows set :strings = 'this is a new string'
+query update  /tests/Driver_DB/typeTests/rows set :bits = 1
+query update  /tests/Driver_DB/typeTests/rows set :floats = 19.91
+query update  /tests/Driver_DB/typeTests/rows set :blobs = 'this works without a where because there is only one row'
+
+# test that values updated properly 
+csv select * from /tests/Driver_DB/typeTests/rows
+
+# cleanup
+query delete from /tests/Driver_DB/typeTests/rows
+csv select * from /tests/Driver_DB/typeTests/rows
