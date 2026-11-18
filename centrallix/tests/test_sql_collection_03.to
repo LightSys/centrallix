@@ -1,0 +1,8 @@
+##NAME SQL Temp Collection Indexing Across Types
+
+query declare collection t scope application; insert into collection t select id = :s:id, m = convert(money, :s:id), f = condition(:s:id = 7, '7', :s:id), d = (convert(double, :s:id) - 1.0) * -1.0 from /tests/States.csv/rows s; select n = count(1) from collection t where :id = '5'
+query select n = count(1) from collection t where :id = 5.0
+query select n = count(1) from collection t where :m = 5
+query select n = count(1) from collection t where :f = 7
+query select n = count(1) from collection t where :d = 0.0
+query select n = count(1) from collection t where :id = 5
