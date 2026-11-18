@@ -544,10 +544,10 @@ tmp_internal_AnalyzeCriteria(pObjTemp tmp, pObjTempIndex idx, pExpression query)
 	    return NULL;
 	    }
 
-	/** Did we get them all? **/
+	/** Did we get them all, and are they non-NULL (NULL never compares equal)? **/
 	for(i=0; i<idx->Fields.nItems; i++)
 	    {
-	    if (values[i] == NULL)
+	    if (values[i] == NULL || expEvalTree(values[i], idx->OneObjList) < 0 || (values[i]->Flags & EXPR_F_NULL))
 		{
 		nmFree(values, sizeof(pExpression) * idx->Fields.nItems);
 		return NULL;
