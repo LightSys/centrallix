@@ -25,21 +25,27 @@
 /** The hex digits, in value order. **/
 static const char hex_i_digits[] = "0123456789abcdef";
 
-
-/*** Get the value of a hex digit.
- ***
- *** @param ch The character.
- *** @returns The digit's value (0-15), or -1 if ch is not a hex digit.
- ***/
-static int
-hex_i_Value(unsigned char ch)
+/** The value of each hex digit, or -1 for other characters. **/
+static const signed char hex_i_values[256] =
     {
-	if (ch >= '0' && ch <= '9') return ch - '0';
-	if (ch >= 'a' && ch <= 'f') return ch - 'a' + 10;
-	if (ch >= 'A' && ch <= 'F') return ch - 'A' + 10;
-
-    return -1;
-    }
+    [0 ... 255] = -1,
+    ['0'] = 0,
+    ['1'] = 1,
+    ['2'] = 2,
+    ['3'] = 3,
+    ['4'] = 4,
+    ['5'] = 5,
+    ['6'] = 6,
+    ['7'] = 7,
+    ['8'] = 8,
+    ['9'] = 9,
+    ['a'] = 10, ['A'] = 10,
+    ['b'] = 11, ['B'] = 11,
+    ['c'] = 12, ['C'] = 12,
+    ['d'] = 13, ['D'] = 13,
+    ['e'] = 14, ['E'] = 14,
+    ['f'] = 15, ['F'] = 15,
+    };
 
 
 /*** Resolve a length argument, where -1 means the string's strlen().
@@ -227,8 +233,8 @@ hexDecode(void* dst, size_t dst_size, const char* src, ssize_t src_len, int flag
 	/** Decode from first byte to last, so dst may equal src. **/
 	for (size_t i = 0; i < n_bytes; i++)
 	    {
-	    const int high = hex_i_Value((unsigned char)src[i * 2]);
-	    const int low = hex_i_Value((unsigned char)src[i * 2 + 1]);
+	    const int high = hex_i_values[(unsigned char)src[i * 2]];
+	    const int low = hex_i_values[(unsigned char)src[i * 2 + 1]];
 	    if (high < 0 || low < 0)
 		{
 		const size_t bad = (high < 0) ? i * 2 : i * 2 + 1;
