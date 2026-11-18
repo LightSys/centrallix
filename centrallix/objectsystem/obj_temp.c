@@ -493,17 +493,47 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
     return idx;
     }
 
-/*** tmp_internal_AnalyzeCriteria_r() - find the ANDed `field = value` terms
- *** in query criteria that an index lookup can answer, where each value is
- *** constant or frozen.  Adds each term's field name to 'fields' and its value
- *** to 'values', using each field at most once.  Returns 1 if the criteria
- *** have other terms, 0 if not.
+
+/*** tmp_internal_IsRowIndependent() - determine whether an expression has
+ *** the same value for every row: it uses only constants, frozen values, and
+ *** deterministic functions of them.
  ***/
 int
-tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pXArray fields, pXArray values)
+tmp_internal_IsRowIndependent(pExpression exp)
+    {
+    int i;
+
+	if (exp->Flags & EXPR_F_FREEZEEVAL)
+	    return 1;
+	if (exp->NodeType == EXPR_N_PROPERTY || exp->NodeType == EXPR_N_OBJECT || exp->NodeType == EXPR_N_SUBQUERY)
+	    return 0;
+	if (exp->Flags & (EXPR_F_AGGREGATEFN | EXPR_F_WINDOWFN))
+	    return 0;
+	/** rand() changes per call, and eval() and substitute() can read the row **/
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcasecmp(exp->Name, "rand") || !strcasecmp(exp->Name, "eval") ||
+		!strcasecmp(exp->Name, "substitute")))
+	    return 0;
+	for(i=0; i<exp->Children.nItems; i++)
+	    {
+	    if (!tmp_internal_IsRowIndependent((pExpression)exp->Children.Items[i]))
+		return 0;
+	    }
+
+    return 1;
+    }
+
+
+/*** tmp_internal_AnalyzeCriteria_r() - find the ANDed `field = value` terms
+ *** in query criteria that an index lookup can answer, where each value is
+ *** the same for every row.  Adds each term's field name to 'fields' and its
+ *** value to 'values', using each field at most once.  Returns 1 if the
+ *** criteria have other terms, 0 if not.
+ ***/
+int
+tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObjects objlist, pXArray fields, pXArray values)
     {
     int i, has_other_terms = 0;
-    pExpression i0, i1, it;
+    pExpression i0, i1, it, child, remaining;
     int i0_id = -10, i1_id = -10;
 
 	/** AND? recurse if so. **/
@@ -511,10 +541,34 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pXArray fiel
 	    {
 	    for(i=0; i<query->Children.nItems; i++)
 		{
-		if (tmp_internal_AnalyzeCriteria_r(root, (pExpression)query->Children.Items[i], fields, values))
+		if (tmp_internal_AnalyzeCriteria_r(root, (pExpression)query->Children.Items[i], objlist, fields, values))
 		    has_other_terms = 1;
 		}
 	    return has_other_terms;
+	    }
+
+	/** OR like `(:parameters:p is null or :f = :parameters:p)` with p set? Analyze the term left. **/
+	if (query->NodeType == EXPR_N_OR)
+	    {
+	    remaining = NULL;
+	    for(i=0; i<query->Children.nItems; i++)
+		{
+		child = (pExpression)query->Children.Items[i];
+		if (!tmp_internal_IsRowIndependent(child))
+		    {
+		    if (remaining)
+			return 1;
+		    remaining = child;
+		    }
+		else if (expEvalTree(child, objlist) < 0 || child->DataType != DATA_T_INTEGER ||
+			(child->Flags & (EXPR_F_NULL | EXPR_F_INDETERMINATE)) || child->Integer != 0)
+		    {
+		    return 1;
+		    }
+		}
+	    if (remaining)
+		tmp_internal_AnalyzeCriteria_r(root, remaining, objlist, fields, values);
+	    return 1; /* the ObjectSystem rechecks the whole OR */
 	    }
 
 	/** Equality comparison? Analyze it. **/
@@ -538,10 +592,10 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pXArray fiel
 		}
 
 	    /** Must be an obj/prop that we handle, and a constant-like value **/
-	    if (((expIsConstant(i0) || (i0->Flags & EXPR_F_FREEZEEVAL)) && (i1_id == 0 || i1_id == -1 || i1_id == -2)) ||
-		((expIsConstant(i1) || (i1->Flags & EXPR_F_FREEZEEVAL)) && (i0_id == 0 || i0_id == -1 || i0_id == -2)))
+	    if ((tmp_internal_IsRowIndependent(i0) && (i1_id == 0 || i1_id == -1 || i1_id == -2)) ||
+		(tmp_internal_IsRowIndependent(i1) && (i0_id == 0 || i0_id == -1 || i0_id == -2)))
 		{
-		if (expIsConstant(i0) || (i0->Flags & EXPR_F_FREEZEEVAL))
+		if (tmp_internal_IsRowIndependent(i0))
 		    {
 		    /** swap **/
 		    it = i0; i0 = i1; i1 = it;
@@ -943,7 +997,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    values = xaNew(16);
 	    if (!fields || !values)
 		goto error;
-	    has_other_terms = tmp_internal_AnalyzeCriteria_r(query->Tree, query->Tree, fields, values);
+	    has_other_terms = tmp_internal_AnalyzeCriteria_r(query->Tree, query->Tree, (pParamObjects)query->ObjList, fields, values);
 	    if (fields->nItems > 0)
 		{
 		/** Find a usable index, or create one.  If the create
