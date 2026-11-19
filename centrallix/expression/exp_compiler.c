@@ -915,7 +915,7 @@ exp_internal_WarnEqualsNull(pExpression exp, pParamObjects objlist)
 	    }
 
 	/** Warn on a server-side "= NULL" **/
-	if (exp->NodeType == EXPR_N_COMPARE && exp->CompareType == MLX_CMP_EQUALS && compares_null && operand != NULL && !(exp->Flags & EXPR_F_RUNCLIENT))
+	if (exp->NodeType == EXPR_N_COMPARE && exp->CompareType == MLX_CMP_EQUALS && compares_null && operand != NULL && (exp->Flags & EXPR_F_DOMAINMASK) != EXPR_F_RUNCLIENT)
 	    {
 	    if (xsInit(&text_buf) == 0) text = &text_buf;
 	    if (text == NULL || expGenerateText(operand, objlist, xsWrite, text, '\0', "cxsql", 0) < 0)
