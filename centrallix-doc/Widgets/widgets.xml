@@ -396,6 +396,7 @@ vbox1 "widget/vbox"
 			<property name="legend_position" type="string">The position of the legend on the chart. May be "top", "botton", "left", or "right".</property>
 			<property name="objectsource" type="string">The name of the ObjectSource widget which will supply data for the chart. We recommend that you do not specify this directly but instead embed the chart widget within a parent ObjectSource, directly or indirectly. If not specified, the chart will look for an ObjectSource in its parents.</property>
 			<property name="start_at_zero" type="boolean">Set to false if you want the y axis to start at the lowest data value. Default is true.</property>
+			<property name="stacked" type="boolean">Set to true to stack the bars of all series at each x value, instead of drawing them side by side. Default is false.</property>
 			<property name="title" type="string">The title of the chart. Default is none.</property>
 			<property name="titlecolor" type="string">A color, RGB or named, of the chart title.</property>
 			<property name="title_size" type="integer">The size, in points, of the title font.</property>
