@@ -1,20 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include "ht_render.h"
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/xarray.h"
-#include "cxlib/xhash.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/strtcpy.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -41,6 +29,12 @@
 /*		a message.						*/
 /************************************************************************/
 
+#include <string.h>
+
+#include "cxlib/mtsession.h"
+#include "ht_render.h"
+#include "wgtr.h"
+
 
 /*** htalrtRender - generate the HTML code for the alert -- not much..
  ***/
@@ -48,12 +42,35 @@ int
 htalrtRender(pHtSession s, pWgtrNode tree, int z)
     {
 
-	/** Get name **/
-	htrAddScriptInit_va(s,"    alrt_init(wgtrGetNodeRef(ns,\"%STR&SYM\"));\n", wgtrGetName(tree));
+	/** Verify browser capabilities. **/
+	if (!s->Capabilities.Dom1HTML || !s->Capabilities.Dom2CSS)
+	    {
+	    mssError(1, "HTALRT", "Unsupported browser: W3C DOM1 HTML and DOM2 CSS support required.");
+	    goto err;
+	    }
 
-	htrAddScriptInclude(s,"/sys/js/htdrv_alerter.js",0);
+	/** Script include call **/
+	if (htrAddScriptInclude(s, "/sys/js/htdrv_alerter.js", 0) != 0)
+	    {
+	    mssError(0, "HTALRT", "Failed to include JS.");
+	    goto err;
+	    }
 
-    return 0;
+	/** Script initialization call. **/
+	if (htrAddScriptInit_va(s, "\talrt_init(wgtrGetNodeRef(ns, '%STR&SYM'));\n", wgtrGetName(tree)) != 0)
+	    {
+	    mssError(0, "HTALRT", "Failed to write JS init call.");
+	    goto err;
+	    }
+
+	return 0;
+
+    err:
+	mssError(0, "HTALRT",
+	    "Failed to render \"%s\":\"%s\".",
+	    tree->Name, tree->Type
+	);
+	return -1;
     }
 
 
@@ -72,14 +89,6 @@ htalrtInitialize()
 	strcpy(drv->Name,"DHTML Alert Widget");
 	strcpy(drv->WidgetName,"alerter");
 	drv->Render = htalrtRender;
-
-	/** Add actions **/
-	htrAddAction(drv,"Alert");
-	htrAddParam(drv,"Alert","Parameter",DATA_T_STRING);
-	htrAddAction(drv,"Confirm");
-	htrAddParam(drv,"Confirm","Parameter",DATA_T_STRING);
-	//htrAddAction(drv,"ViewDOM");
-	//htrAddParam(drv,"ViewDOM","Paramater",DATA_T_STRING);
 
 	/** Register. **/
 	htrRegisterDriver(drv);

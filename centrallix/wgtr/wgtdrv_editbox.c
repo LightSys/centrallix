@@ -1,16 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -36,6 +28,7 @@
 /* Description:								*/
 /************************************************************************/
 
+#include "wgtr.h"
 
 
 /*** wgtebVerify - allows the driver to check elsewhere in the tree
@@ -51,6 +44,11 @@ wgtebVerify(pWgtrVerifySession s)
 
 	if (this->min_height < min_height) this->min_height = min_height;
 
+	/*** If no height is given, estimate the height for one line of text
+	 *** (since htdrv_editbox.c requires one).
+	 ***/
+	if (this->height < 0) this->height = this->pre_height = min_height;
+
     return 0;
     }
 
@@ -63,6 +61,7 @@ wgtebVerify(pWgtrVerifySession s)
 int
 wgtebNew(pWgtrNode node)
     {
+	node->Flags |= WGTR_F_VISUAL_CONTAINER;
 	if(node->fl_width < 0) node->fl_width = 40;
 	if(node->fl_height < 0) node->fl_height = 1;
 

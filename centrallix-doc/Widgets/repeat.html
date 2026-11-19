@@ -14,16 +14,16 @@
 <h3 class="overview">Overview:</h3>
 <span class="overview">
 
-		<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.</p>
+			<p>The 'repeat' nonvisual widget is used to repeat its entire subtree of widgets for each record in an sql query.</p>
 
-	    </span><h3 class="usage">Usage:</h3>
+		</span><h3 class="usage">Usage:</h3>
 <span class="usage">
 
-		<p>This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.</p>
+			<p>This widget has no content of its own, so it is only useful if it has widgets inside it.  For positioning of visual widgets inside a widget/repeat, an hbox or vbox (outside the widget/repeat) can be used, or the x and y can be set mathematically based on results from the SQL query.</p>
 
-		<p>The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.</p>
+			<p>The widget/repeat can be useful in creating data-driven user interfaces, as well as in facilitating a plug-in architecture in your application.  For instance, the SQL query could retrieve a list of matching components to be included in an interface, and the repeat widget could create components, tabs, windows, table columns, buttons, etc., for each returned SQL query record.</p>
 
-	    </span><h3 class="properties">Properties:</h3>
+		</span><h3 class="properties">Properties:</h3>
 <table class="properties">
 <tr>
 <th class="name">Property</th>
@@ -39,7 +39,7 @@
 <h3 class="sample">Sample Code:</h3>
 <pre>
 
-		
+			
 
 $Version=2$
 
@@ -47,11 +47,11 @@ $Version=2$
 
 	vbox "widget/vbox"
 
-	    {
+			{
 
-	    x=10; y=10; cellsize=20; spacing=0;
+			x=10; y=10; cellsize=20; spacing=0;
 
-	    rpt "widget/repeat"
+			rpt "widget/repeat"
 
 		{
 
@@ -59,22 +59,22 @@ $Version=2$
 
 		button "widget/button"
 
-		    {
+				{
 
-		    type="text";
+				type="text";
 
-		    width=100; height=20;
+				width=100; height=20;
 
-		    text=runserver(:rpt:name);
+				text=runserver(:rpt:name);
 
-		    }
+				}
 
 		}
 
-	    }
+			}
 
-		
+			
 
-	    </pre>
+			</pre>
 </body>
 </html>

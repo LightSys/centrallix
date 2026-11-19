@@ -1,6 +1,6 @@
 // sys/js/htdrv_objcanvas.js
 //
-// Copyright (C) 2004 LightSys Technology Services, Inc.
+// Copyright (C) 2004-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -113,6 +113,7 @@ function oc_add_osrc_object(o)
     y = parseInt(y);
 
     // make and position the layer
+    console.error("New layer created. This will probably break responsive design.");
     var l = this.NewLayer();
     htr_init_layer(l, this, 'oc');
     l.osrc_oid = o.oid;

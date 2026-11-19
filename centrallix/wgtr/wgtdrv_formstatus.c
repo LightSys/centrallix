@@ -1,17 +1,8 @@
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include "obj.h"
-#include "cxlib/mtask.h"
-#include "cxlib/mtsession.h"
-#include "cxlib/datatypes.h"
-#include "wgtr.h"
-
 /************************************************************************/
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -37,6 +28,11 @@
 /* Description:								*/
 /************************************************************************/
 
+#include <stdio.h>
+#include <string.h>
+
+#include "cxlib/datatypes.h"
+#include "wgtr.h"
 
 
 /*** wgtfsVerify - allows the driver to check elsewhere in the tree
@@ -71,9 +67,25 @@ wgtfsVerify(pWgtrVerifySession s)
 int
 wgtfsNew(pWgtrNode node)
     {
-	if(node->fl_width < 0) node->fl_width = 0;
-	if(node->fl_height < 0) node->fl_height = 0;
-	
+	/** Set widget to be inflexible. **/
+	if (node->fl_width > 0)
+	    {
+	    fprintf(stderr,
+		"Warning: widget/formstatus does not flex. Dropping fl_width: %d.\n",
+		node->fl_width
+	    );
+	    }
+	node->fl_width = 0;
+
+	if (node->fl_height > 0)
+	    {
+	    fprintf(stderr,
+		"Warning: widget/formstatus does not flex. Dropping fl_height: %d.\n",
+		node->fl_height
+	    );
+	    }
+	node->fl_height = 0;
+
     return 0;
     }
 
