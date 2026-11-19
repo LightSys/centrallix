@@ -917,9 +917,12 @@ exp_internal_WarnEqualsNull(pExpression exp, pParamObjects objlist)
 	/** Warn on a server-side "= NULL" **/
 	if (exp->NodeType == EXPR_N_COMPARE && exp->CompareType == MLX_CMP_EQUALS && compares_null && operand != NULL && !(exp->Flags & EXPR_F_RUNCLIENT))
 	    {
-	    if (xsInit(&text_buf) < 0) goto end;
-	    text = &text_buf;
-	    if (expGenerateText(operand, objlist, xsWrite, text, '\0', "cxsql", 0) < 0) goto end;
+	    if (xsInit(&text_buf) == 0) text = &text_buf;
+	    if (text == NULL || expGenerateText(operand, objlist, xsWrite, text, '\0', "cxsql", 0) < 0)
+		{
+		mssError(0,"EXP","Failed to print a '= NULL' comparison, which is always false: use IS NULL.");
+		goto end;
+		}
 	    xsTrim(text);
 	    mssWarn("EXP", "'%s = NULL' is always false: use '%s IS NULL'.", text->String, text->String);
 	    }
@@ -1040,10 +1043,7 @@ expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags)
 	exp_internal_SetCoverageMask(e);
 	exp_internal_SetDomain(e);
 	if (exp_internal_WarnEqualsNull(e, objlist) < 0)
-	    {
-	    expFreeExpression(e);
-	    return NULL;
-	    }
+	    mssWarnError("EXP", "Failed to check for '= NULL' comparisons.");
 
 	/** Set SEQ ids. **/
 	exp_internal_SetupControl(e);
