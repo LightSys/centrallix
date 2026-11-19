@@ -2653,6 +2653,8 @@ myMenu "widget/menu"
 		
 			<action name="Clear"><ni/>Clears the replica of data.</action>
 
+			<action name="Copy">Creates a new object that is a copy of the current record, and makes the new object the current record.  Any parameters supplied set the values of those fields in the new object instead of the copied values; a parameter set to null leaves that field unset, so it takes its default value (or, for a key field, is autonumbered by drivers that support that).  If a form or other client has unsaved changes, it is given the chance to save them first.</action>
+
 			<action name="Create"><ni/>Encapsulates data in an array and calls CreateObject.</action>
 
 			<action name="CreateObject">Creates an object though OSML</action>
