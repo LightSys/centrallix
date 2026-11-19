@@ -270,7 +270,8 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 
 /*** tmp_internal_AddToIndex() - add one object in the collection to the index,
  *** or update its key if it is already there.  On failure, the index no
- *** longer has every object, so queries stop using it.
+ *** longer has every object, so queries stop using it, and this returns -1.
+ *** -1 is not an error, and no error is left on the error stack.
  ***/
 int
 tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
@@ -343,6 +344,7 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 	    tmp_internal_FreeIndexNode(node);
 	    }
     error:
+	mssClearError();
 	idx->IsComplete = 0;
 	return -1;
     }
@@ -396,7 +398,7 @@ tmp_internal_RemoveFromMatchingIndexes(pObjTemp tmp, pStructInf tuple, char* fie
 
 /*** tmp_internal_AddAllToIndex() - adds all objects in the temp collection
  *** to the index.  This is used for initializing the index when it is first
- *** created.
+ *** created.  Returns -1 if the index is incomplete, which is not an error.
  ***/
 int
 tmp_internal_AddAllToIndex(pObjTemp tmp, pObjTempIndex idx)
