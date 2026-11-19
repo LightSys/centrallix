@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -890,7 +891,7 @@ exp_internal_WarnEqualsNull(pExpression exp, pParamObjects objlist)
     {
     int i;
     int rval = -1;
-    int compares_null = 0;
+    bool compares_null = false;
     pExpression child;
     pExpression operand = NULL;
     pXString text = NULL;
@@ -909,7 +910,7 @@ exp_internal_WarnEqualsNull(pExpression exp, pParamObjects objlist)
 	    child = (pExpression)(exp->Children.Items[i]);
 	    if (exp_internal_WarnEqualsNull(child, objlist) < 0) goto end;
 	    if (child->Flags & EXPR_F_PERMNULL)
-		compares_null = 1;
+		compares_null = true;
 	    else
 		operand = child;
 	    }
