@@ -1717,7 +1717,11 @@ function form_init(form,param)
     form.is_savable = false;
     form.is_discardable = false;
     form.is_editable = false;
-    form.is_newable = form.allownew?true:false;
+    // New is a special case since it has to be valid before any data or operations are processed.
+    if (form.allownew == -1)
+	form.is_newable = htr_boolean(wgtrGetServerProperty(form,'allow_new',1));
+    else
+	form.is_newable = form.allownew?true:false;
     form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
     form.is_focusable = form.is_newable || form.is_editable || form.is_queryable;
