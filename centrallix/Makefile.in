@@ -387,7 +387,7 @@ VERSION=$(shell cat .version)
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
 #CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
-CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wformat-nonliteral -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -std=gnu99 -Wall -Wformat-nonliteral -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
 TCFLAGS=$(CFLAGS) -DCX_TESTING
 
 #LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
@@ -576,7 +576,7 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
                 printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CRED}CRASH$$CNORM"; \
                 RES=CRASH; \
             elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CGREEN}Pass$$CNORM"; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CGREEN}PASS$$CNORM"; \
                 /bin/rm -f "$$PWD/$$TOBASE.out"; \
                 RES=Pass; \
             else \
@@ -619,8 +619,8 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"; \
 	NRAN=$$((NPASS+NSKIP+NFAIL+NCRASH+NLOCKUP)); \
 	[ "$$NBASE" -gt 0 ] && TOSUM "Baseline" "$$NBASEOK/$$NBASE Correct" "$$([ "$$NBASEOK" -eq "$$NBASE" ] && echo "$$CGREEN" || echo "$$CRED")"; \
-	TOSUM "Pass" "$$NPASS" "$$CGREEN"; \
-	[ "$$NSKIP" -gt 0 ] && TOSUM "Skipped" "$$NSKIP" "$$CYELLOW"; \
+	TOSUM "PASS" "$$NPASS" "$$CGREEN"; \
+	[ "$$NSKIP" -gt 0 ] && TOSUM "SKIP" "$$NSKIP" "$$CYELLOW"; \
 	[ -n "$$TONLY" ] && TOSUM "Filtered (TONLY=$$TONLY)" "$$(($(words $(wildcard tests/test_*.to tests/test_*.c))-NRAN-NBASE))" "$$CYELLOW"; \
 	[ "$$NFAIL" -gt 0 ] && TOSUM "FAIL" "$$NFAIL" "$$CRED"; \
 	[ "$$NCRASH" -gt 0 ] && TOSUM "CRASH" "$$NCRASH" "$$CRED"; \

@@ -132,10 +132,10 @@ start(void* v)
         }
     if (rval == 1)
         {
-        print_result("Skipped", COLOR_YELLOW);
+        print_result("SKIP", COLOR_YELLOW);
         exit(T_EXIT_SKIPPED);
         }
-    print_result("Pass", COLOR_GREEN);
+    print_result("PASS", COLOR_GREEN);
     exit(T_EXIT_PASS);
     }
 
