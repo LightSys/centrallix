@@ -1615,7 +1615,7 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
 /** Functions that only use their arguments, so they evaluate safely without an object list. **/
 static char* mysd_foldable_functions[] =
     {
-    "convert", "dateadd", "datediff", "datepart", "isnull",
+    "convert", "dateadd", "datediff", "datepart", "isnull", "condition",
     "substring", "right", "ltrim", "rtrim", "upper", "lower", "char_length", "charindex", "replace",
     "abs", "round", "truncate",
     NULL
@@ -1624,9 +1624,9 @@ static char* mysd_foldable_functions[] =
 
 /*** mysd_internal_IsFoldable - returns 1 if the expression subtree can be
  *** evaluated by Centrallix without an object list: constants, frozen values
- *** such as query parameters, and arithmetic and mysd_foldable_functions[]
- *** applied to those.  Returns 0 otherwise, including for column references,
- *** subqueries, and other functions.
+ *** such as query parameters, and arithmetic, comparisons, logic, and
+ *** mysd_foldable_functions[] applied to those.  Returns 0 otherwise,
+ *** including for column references, subqueries, and other functions.
  ***/
 int
 mysd_internal_IsFoldable(pExpression tree)
@@ -1661,6 +1661,12 @@ mysd_internal_IsFoldable(pExpression tree)
 	    case EXPR_N_MINUS:
 	    case EXPR_N_MULTIPLY:
 	    case EXPR_N_DIVIDE:
+	    case EXPR_N_COMPARE:
+	    case EXPR_N_AND:
+	    case EXPR_N_OR:
+	    case EXPR_N_NOT:
+	    case EXPR_N_ISNULL:
+	    case EXPR_N_ISNOTNULL:
 	    case EXPR_N_OBJECT:
 		break;
 
