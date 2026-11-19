@@ -14,6 +14,7 @@
 #include "stparse.h"
 #include "cxss/cxss.h"
 #include "cxlib/strtcpy.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -1029,8 +1030,13 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	if (qy->UsingIndex)
 	    {
 	    query->Flags |= OBJ_QY_F_FULLQUERY;
+	    cxTestOutput(3, "TMP: Using index.\n");
 	    }
-    
+	else
+	    {
+	    cxTestOutput(4, "TMP: Scanning collection.\n");
+	    }
+
 	return (void*)qy;
 
     error:
