@@ -575,7 +575,7 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
                 printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CRED}CRASH$$CNORM"; \
                 NCRASH=$$((NCRASH+1)); \
             elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
-                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CGREEN}Pass$$CNORM"; \
+                printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CGREEN}PASS$$CNORM"; \
                 /bin/rm -f "$$PWD/$$TOBASE.out"; \
                 NPASS=$$((NPASS+1)); \
             else \
@@ -603,8 +603,8 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	TOSUM() { printf "%s%-62.62s  %s%s\n" "$$3" "$$1" "$$2" "$$CNORM"; }; \
 	printf "%-62.62s  %s\n" "----------------------------------------------------------------" "--------------"; \
 	NRAN=$$((NPASS+NSKIP+NFAIL+NCRASH+NLOCKUP)); \
-	TOSUM "Pass" "$$NPASS" "$$CGREEN"; \
-	[ "$$NSKIP" -gt 0 ] && TOSUM "Skipped" "$$NSKIP" "$$CYELLOW"; \
+	TOSUM "PASS" "$$NPASS" "$$CGREEN"; \
+	[ "$$NSKIP" -gt 0 ] && TOSUM "SKIP" "$$NSKIP" "$$CYELLOW"; \
 	[ -n "$$TONLY" ] && TOSUM "Filtered (TONLY=$$TONLY)" "$$(($(words $(wildcard tests/test_*.to tests/test_*.c))-NRAN))" "$$CYELLOW"; \
 	TOSUM "FAIL" "$$NFAIL" "$$CRED"; \
 	TOSUM "CRASH" "$$NCRASH" "$$CRED"; \
