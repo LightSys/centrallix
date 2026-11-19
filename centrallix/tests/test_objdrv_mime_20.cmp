@@ -1,0 +1,8 @@
+Attribute [name]:   string   "MimeCrlf.eml" 
+Attribute [inner_type]:   string   "multipart/mixed" 
+Attribute [name]:   string   "attachment1.txt" 
+Attribute [charset]:   string   "us-ascii" 
+Attribute [note]:   string   "crlf" 
+Attribute [start]:   string   "Plain part." 
+Attribute [name]:   string   "attachment2.txt" 
+Attribute [c]:   string   "Hello, world!" 

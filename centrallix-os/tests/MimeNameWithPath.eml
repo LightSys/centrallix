@@ -1,0 +1,13 @@
+From: tester@example.com
+Subject: Part names that include a directory
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain; name="docs/report.txt"
+
+Report.
+--b1
+Content-Type: text/plain; name=C:\docs\notes.txt
+
+Notes.
+--b1--

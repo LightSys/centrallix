@@ -17,7 +17,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2008 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -221,6 +221,7 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     int t;
     pXArray objects_to_update = NULL;
     pParamObjects objlist;
+    pObject src_obj, dst_obj;
     /*ObjData od;*/
 
 	/** Now, 'trickle down' the Start operation to the child item(s). **/
@@ -278,6 +279,16 @@ mquStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    {
 		    exp = (pExpression)(qe->AttrCompiledExpr.Items[i]);
 		    assign_exp = (pExpression)(qe->AttrAssignExpr.Items[i]);
+
+		    /** Stream content between objects **/
+		    src_obj = mq_internal_ContentSource(exp, stmt->Query->ObjList);
+		    dst_obj = mq_internal_ContentSource(assign_exp, stmt->Query->ObjList);
+		    if (src_obj && dst_obj)
+			{
+			if (mq_internal_CopyContent(src_obj, dst_obj) < 0)
+			    goto error;
+			continue;
+			}
 
 		    /** Get the value to be assigned **/
 		    if (expEvalTree(exp, stmt->Query->ObjList) < 0) 

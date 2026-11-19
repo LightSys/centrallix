@@ -564,9 +564,11 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
 	)
 
 	ENABLE_MIME="no"
- 
+	MIME_OBJS=""
+
 	if test "$WITH_MIME" = "yes"; then
 	    AC_DEFINE(USE_MIME)
+	    MIME_OBJS="mime/mime_parse.o mime/mime_address.o mime/mime_encode.o mime/mime_util.o mime/mime_attributes.o"
 	    if test "$WITH_DYNAMIC_LOAD" = "yes"; then
 		OBJDRIVERMODULES="$OBJDRIVERMODULES objdrv_mime.so"
 	    else
@@ -579,6 +581,7 @@ AC_DEFUN(CENTRALLIX_CHECK_MIME_OS,
 	    AC_MSG_RESULT(no)
 	fi
 	AC_SUBST(ENABLE_MIME)
+	AC_SUBST(MIME_OBJS)
     ]
 )
 

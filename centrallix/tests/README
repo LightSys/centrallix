@@ -72,6 +72,9 @@ automatically undone post-test by including an "##UNDO " tag inside the script:
     ##UNDO /tests/updatetest.csv
     query update /tests/updatetest.csv/rows set :value = 1
 
+Use one "##UNDO " line per file.  A file that did not exist before the test is
+deleted after it.
+
 If the test depends on enabling specific types of debugging output from the
 Centrallix binary (test_obj), you'll want to enable those using the 'test'
 command in your .to file:

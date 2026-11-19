@@ -1,0 +1,10 @@
+From: tester@example.com
+Subject: A multipart message with an epilogue
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain
+
+Only part.
+--b1--
+This epilogue is not part of the message.

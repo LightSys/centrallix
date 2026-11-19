@@ -118,6 +118,7 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     pObject reopen_obj;
     pObject old_newobj;
     pObject parent_obj = NULL;
+    pObject src_obj;
     int old_newobj_id;
     int is_started = 0;
     int attrid, astobjid;
@@ -299,6 +300,17 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    }
 		else
 		    {
+		    /** Stream objcontent from its object **/
+		    src_obj = NULL;
+		    if (!strcmp(attrname, "objcontent"))
+			src_obj = mq_internal_ContentSource((pExpression)sel->AttrCompiledExpr.Items[attrid], stmt->Query->ObjList);
+		    if (src_obj)
+			{
+			if (mq_internal_CopyContent(src_obj, new_obj) < 0)
+			    goto error;
+			continue;
+			}
+
 		    /** attr available through SELECT item list **/
 		    if (expEvalTree((pExpression)sel->AttrCompiledExpr.Items[attrid], stmt->Query->ObjList) < 0)
 			goto error;
@@ -333,10 +345,19 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 		    goto error;
 		    }
 		sprval = snprintf(new_pathname, sizeof(new_pathname), "%s/%s", dest_path, new_objname);
-		if (sprval < 0 || sprval >= sizeof(pathname))
+		if (sprval < 0 || sprval >= sizeof(new_pathname))
 		    {
 		    mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
 		    goto error;
+		    }
+		if (new_obj->Flags & OBJ_F_NOCASCADE)
+		    {
+		    if (strlen(new_pathname) + 36 >= sizeof(new_pathname))
+			{
+			mssError(1, "MQIS", "Pathname too long for newly INSERTed object %s", new_objname);
+			goto error;
+			}
+		    strtcat(new_pathname, "?ls__type=application%2foctet-stream", sizeof(new_pathname));
 		    }
 		}
 
