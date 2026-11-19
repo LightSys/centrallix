@@ -23,7 +23,7 @@
 /* Centrallix Application Server System                                 */
 /* Centrallix Core                                                      */
 /*                                                                      */
-/* Copyright (C) 1998-2008 LightSys Technology Services, Inc.           */
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.           */
 /*                                                                      */
 /* This program is free software; you can redistribute it and/or modify */
 /* it under the terms of the GNU General Public License as published by */
@@ -1612,6 +1612,97 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
     return 0;
     }
 
+/*** mysd_internal_IsFoldable - returns 1 if the expression subtree can be
+ *** evaluated by Centrallix without row data (it contains only constants,
+ *** frozen values such as query parameters, and non-aggregate operators and
+ *** functions of those), or 0 if it refers to a column or other object.
+ ***/
+int
+mysd_internal_IsFoldable(pExpression tree)
+    {
+    int i;
+
+	if (tree->Flags & EXPR_F_FREEZEEVAL) return 1;
+	if (expIsConstant(tree)) return 1;
+	if (tree->NodeType == EXPR_N_PROPERTY)
+	    return (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL))?1:0;
+	if (tree->Flags & EXPR_F_AGGREGATEFN) return 0;
+	for(i=0;i<tree->Children.nItems;i++)
+	    if (!mysd_internal_IsFoldable((pExpression)(tree->Children.Items[i])))
+		return 0;
+
+    return 1;
+    }
+
+
+/*** mysd_internal_ColCxType - returns the Centrallix data type of the named
+ *** column in the table, or -1 if there is no such column.
+ ***/
+int
+mysd_internal_ColCxType(pMysdTable tdata, char* name)
+    {
+    int i;
+
+	for(i=0;i<tdata->nCols;i++)
+	    if (!strcmp(name, tdata->Cols[i]))
+		return tdata->ColCxTypes[i];
+
+    return -1;
+    }
+
+
+/*** mysd_internal_DateTimeToClause - add a date/time value to the SQL
+ *** statement, in a format that MySQL understands.
+ ***/
+void
+mysd_internal_DateTimeToClause(pDateTime dt, pXString where_clause)
+    {
+    char* ptr;
+
+	ptr = objFormatDateTmp(dt, "yyyy-MM-dd HH:mm:ss");
+	xsConcatQPrintf(where_clause, "convert(%STR&DQUOT, datetime)", ptr);
+
+    return;
+    }
+
+
+/*** mysd_internal_StringToDateTime - if the expression is a non-NULL string
+ *** constant (a literal or a frozen value), converts it to a date the same
+ *** way Centrallix's convert() does, puts it in dt and returns 0; otherwise
+ *** returns -1.
+ ***/
+int
+mysd_internal_StringToDateTime(pExpression tree, pDateTime dt)
+    {
+    int is_frozen;
+
+	if (tree->NodeType == EXPR_N_OBJECT && tree->Children.nItems == 1 && !(tree->Flags & EXPR_F_FREEZEEVAL))
+	    tree = (pExpression)(tree->Children.Items[0]);
+	is_frozen = (tree->Flags & EXPR_F_FREEZEEVAL) || (tree->NodeType == EXPR_N_PROPERTY && tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL));
+	if (tree->NodeType != EXPR_N_STRING && !is_frozen) return -1;
+	if (tree->DataType != DATA_T_STRING || (tree->Flags & EXPR_F_NULL) || !tree->String) return -1;
+	if (objDataToDateTime(DATA_T_STRING, tree->String, dt, NULL) < 0) return -1;
+
+    return 0;
+    }
+
+
+/*** mysd_internal_IsDateTimeColumn - returns 1 if the expression is a
+ *** reference to one of the table's datetime columns.
+ ***/
+int
+mysd_internal_IsDateTimeColumn(pExpression tree, pMysdTable tdata)
+    {
+
+	if (tree->NodeType == EXPR_N_OBJECT && tree->Children.nItems == 1)
+	    tree = (pExpression)(tree->Children.Items[0]);
+	if (tree->NodeType != EXPR_N_PROPERTY || tree->ObjID == -1) return 0;
+	if ((tree->Flags & EXPR_F_FREEZEEVAL) || (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL))) return 0;
+
+    return (mysd_internal_ColCxType(tdata, tree->Name) == DATA_T_DATETIME)?1:0;
+    }
+
+
 /*** mysd_internal_TreeToClause - convert an expression tree to the appropriate
  *** clause for the SQL statement.
  ***/
@@ -1626,6 +1717,8 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     char quote;
     char* ptr;
     int len;
+    DateTime cmp_dt;
+    int cmp_dt_side;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1641,8 +1734,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
             {
             case EXPR_N_DATETIME:
           mysd_DO_DATETIME:
-		ptr = objFormatDateTmp(&(tree->Types.Date),"yyyy-MM-dd HH:mm:ss");
-		xsConcatQPrintf(where_clause, "convert(%STR&DQUOT, datetime)", ptr);
+		mysd_internal_DateTimeToClause(&(tree->Types.Date), where_clause);
                 /*objDataToString(where_clause, DATA_T_DATETIME, &(tree->Types.Date), DATA_F_QUOTED);*/
                 break;
 
@@ -1799,16 +1891,30 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_COMPARE:
+		/** A string compared with a datetime column is parsed here; MySQL only parses ISO dates. **/
+		cmp_dt_side = -1;
+		if (mysd_internal_IsDateTimeColumn((pExpression)(tree->Children.Items[0]), tdata[id]) &&
+			mysd_internal_StringToDateTime((pExpression)(tree->Children.Items[1]), &cmp_dt) == 0)
+		    cmp_dt_side = 1;
+		else if (mysd_internal_IsDateTimeColumn((pExpression)(tree->Children.Items[1]), tdata[id]) &&
+			mysd_internal_StringToDateTime((pExpression)(tree->Children.Items[0]), &cmp_dt) == 0)
+		    cmp_dt_side = 0;
                 xsConcatenate(where_clause, " (", 2);
                 subtree = (pExpression)(tree->Children.Items[0]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		if (cmp_dt_side == 0)
+		    mysd_internal_DateTimeToClause(&cmp_dt, where_clause);
+		else
+		    mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
                 xsConcatenate(where_clause, " ", 1);
                 if (tree->CompareType & MLX_CMP_LESS) xsConcatenate(where_clause,"<",1);
                 if (tree->CompareType & MLX_CMP_GREATER) xsConcatenate(where_clause,">",1);
                 if (tree->CompareType & MLX_CMP_EQUALS) xsConcatenate(where_clause,"=",1);
                 xsConcatenate(where_clause, " ", 1);
                 subtree = (pExpression)(tree->Children.Items[1]);
-                mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
+		if (cmp_dt_side == 1)
+		    mysd_internal_DateTimeToClause(&cmp_dt, where_clause);
+		else
+		    mysd_internal_TreeToClause(subtree,tdata,where_clause,conn);
                 xsConcatenate(where_clause, ") ", 2);
                 break;
 
@@ -1867,6 +1973,23 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    /** MySQL isnull() does something different than CX isnull().  Use ifnull() instead. **/
 		    fn_use_name = "ifnull";
 		    use_stock_fn_call = 1;
+		    }
+		else if (!strcmp(tree->Name,"convert") && tree->Children.nItems == 2 &&
+			mysd_internal_IsFoldable((pExpression)(tree->Children.Items[1])) && expEvalTree(tree, NULL) >= 0)
+		    {
+		    /** Constant value: use the Centrallix conversion, since MySQL parses values differently. **/
+		    if (tree->Flags & EXPR_F_NULL)
+			{
+			xsConcatenate(where_clause, " NULL ", 6);
+			break;
+			}
+		    if (tree->DataType == DATA_T_INTEGER) goto mysd_DO_INTEGER;
+		    else if (tree->DataType == DATA_T_STRING) goto mysd_DO_STRING;
+		    else if (tree->DataType == DATA_T_DATETIME) goto mysd_DO_DATETIME;
+		    else if (tree->DataType == DATA_T_MONEY) goto mysd_DO_MONEY;
+		    else if (tree->DataType == DATA_T_DOUBLE) goto mysd_DO_DOUBLE;
+		    mssError(1,"MYSD","Unsupported convert() result type");
+		    return -1;
 		    }
 		else if (!strcmp(tree->Name,"convert"))
 		    {
