@@ -599,7 +599,9 @@ tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
  *** criteria in it, we determine whether we can handle the criteria, and if
  *** so, with what field values.  This adds to what expGetPropsForObject()
  *** already does (it lets us find the index).  Returns an array of expressions,
- *** which can then be passed to tmp_internal_IndexLookup().
+ *** which can then be passed to tmp_internal_IndexLookup(), or NULL if the
+ *** index can't be used.  NULL is not an error: the caller scans instead, and
+ *** no error is left on the error stack.
  ***/
 pExpression*
 tmp_internal_AnalyzeCriteria(pObjTemp tmp, pObjTempIndex idx, pExpression query)
@@ -1585,4 +1587,3 @@ tmpInitialize()
 
     return 0;
     }
-
