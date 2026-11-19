@@ -8,3 +8,5 @@ query select n = count(1) from collection t where :id = convert(integer, '5') an
 query select n = count(1) from collection t where (:id = 5 or :id = 6)
 query select n = count(1) from collection t where (1 = 1 or :id = 5)
 query select n = count(1) from collection t where (1 = 0 or :id = 5)
+query declare collection v scope application; insert into collection v select q = :s:id from /tests/States.csv/rows s where :s:id <= 5; select s = sum(:t:id) from collection v, collection t where :t:id = convert(integer, :v:q)
+query select s = sum(:t:id) from collection v, collection t where (:v:q is null or :t:id = :v:q + 0)

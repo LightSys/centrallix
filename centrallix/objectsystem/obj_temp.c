@@ -107,17 +107,18 @@ tmp_internal_IndexHasField(pObjTempIndex idx, char* field)
     }
 
 
-/*** tmp_internal_GenerateKey() - determine lookup key for the index
+/*** tmp_internal_GenerateKey() - determine lookup key for the index,
+ *** evaluating the field values with 'objlist'.
  ***/
 char*
-tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[])
+tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[], pParamObjects objlist)
     {
     char key[TMP_MAX_KEY];
     char* rkey;
     int len;
 
 	/** Generate the key value **/
-	len = objBuildBinaryImage(key, sizeof(key), fields, idx->Fields.nItems, idx->OneObjList, 1);
+	len = objBuildBinaryImage(key, sizeof(key), fields, idx->Fields.nItems, objlist, 1);
 	if (len >= sizeof(key))
 	    {
 	    mssError(1, "TMP", "Create index: Key length exceeds internal representation");
@@ -148,22 +149,23 @@ tmp_internal_GenerateKeyFromInf(pObjTempIndex idx, pStructInf tuple)
 	    fields[i] = stGetExpression(one_field, 0);
 	    }
 
-	key = tmp_internal_GenerateKey(idx, fields);
+	key = tmp_internal_GenerateKey(idx, fields, idx->OneObjList);
 
     return key;
     }
 
 
-/*** tmp_internal_IndexLookup() - find an object via the index
+/*** tmp_internal_IndexLookup() - find an object via the index, evaluating
+ *** the field values with 'objlist'.
  ***/
 pObjTempIdxNode
-tmp_internal_IndexLookup(pObjTempIndex idx, pExpression fields[])
+tmp_internal_IndexLookup(pObjTempIndex idx, pExpression fields[], pParamObjects objlist)
     {
     char* key;
     pObjTempIdxNode node;
 
 	/** Determine the lookup key **/
-	key = tmp_internal_GenerateKey(idx, fields);
+	key = tmp_internal_GenerateKey(idx, fields, objlist);
 	if (!key)
 	    return NULL;
 
@@ -618,15 +620,15 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 
 
 /*** tmp_internal_IsKeyUsable() - determine whether looking up a value in
- *** an index field finds exactly the rows whose field compares equal to it.
- *** Returns 1 if so, 0 if not.
+ *** an index field finds exactly the rows whose field compares equal to it,
+ *** evaluating the value with 'objlist'.  Returns 1 if so, 0 if not.
  ***/
 int
-tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
+tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value, pParamObjects objlist)
     {
     int type = idx->Types[field];
 
-	if (expEvalTree(value, idx->OneObjList) < 0)
+	if (expEvalTree(value, objlist) < 0)
 	    return 0;
 
 	/** NULL never compares equal **/
@@ -646,12 +648,13 @@ tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
 
 
 /*** tmp_internal_LookupTerms() - look up the row matching the terms found
- *** by tmp_internal_AnalyzeCriteria_r() in an index on exactly those fields.
- *** Returns 0 and sets *node (NULL if no row matches), or -1 if a term's value
- *** can't use the index.
+ *** by tmp_internal_AnalyzeCriteria_r() in an index on exactly those fields,
+ *** evaluating the values with the query's 'objlist'.  Returns 0 and sets
+ *** *node (NULL if no row matches), or -1 if a term's value can't use the
+ *** index.
  ***/
 int
-tmp_internal_LookupTerms(pObjTempIndex idx, pXArray fields, pXArray values, pObjTempIdxNode* node)
+tmp_internal_LookupTerms(pObjTempIndex idx, pXArray fields, pXArray values, pParamObjects objlist, pObjTempIdxNode* node)
     {
     pExpression key_values[idx->Fields.nItems];
     int i, field;
@@ -660,12 +663,12 @@ tmp_internal_LookupTerms(pObjTempIndex idx, pXArray fields, pXArray values, pObj
 	for(i=0; i<fields->nItems; i++)
 	    {
 	    field = tmp_internal_IndexHasField(idx, (char*)fields->Items[i]) - 1;
-	    if (field < 0 || !tmp_internal_IsKeyUsable(idx, field, (pExpression)values->Items[i]))
+	    if (field < 0 || !tmp_internal_IsKeyUsable(idx, field, (pExpression)values->Items[i], objlist))
 		return -1;
 	    key_values[field] = (pExpression)values->Items[i];
 	    }
 
-	*node = tmp_internal_IndexLookup(idx, key_values);
+	*node = tmp_internal_IndexLookup(idx, key_values, objlist);
 
     return 0;
     }
@@ -1012,7 +1015,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    }
 
 		/** Use it if it is unique and every value can use its keys **/
-		if (idx && idx->IsUnique && tmp_internal_LookupTerms(idx, fields, values, &qy->IndexNode) == 0)
+		if (idx && idx->IsUnique && tmp_internal_LookupTerms(idx, fields, values, (pParamObjects)query->ObjList, &qy->IndexNode) == 0)
 		    qy->UsingIndex = idx;
 		}
 	    xaFree(fields);
