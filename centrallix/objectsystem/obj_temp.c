@@ -65,10 +65,20 @@ typedef struct
     }
     ObjTempData, *pObjTempData;
 
-typedef struct
+typedef struct _TIE
+    {
+    pStructInf	Tuple;
+    struct _TIE* Prev;
+    struct _TIE* Next;
+    struct _TIN* Node;
+    }
+    ObjTempIdxEntry, *pObjTempIdxEntry;
+
+typedef struct _TIN
     {
     char*	Key;
-    pStructInf	Tuple;
+    pObjTempIdxEntry First;	/* entries with this key, in the order added */
+    pObjTempIdxEntry Last;
     }
     ObjTempIdxNode, *pObjTempIdxNode;
 
@@ -79,7 +89,7 @@ typedef struct
     pStructInf	CurInf;
     pObjTemp	TempObj;
     pObjTempIndex UsingIndex;
-    pObjTempIdxNode IndexNode;
+    XArray	Matches;	/* of pStructInf, linked; rows found by the index */
     pObjQuery	ObjQuery;
     }
     ObjTempQuery, *pObjTempQuery;
@@ -208,76 +218,135 @@ tmp_internal_FreeIndexNode(pObjTempIdxNode node)
     }
 
 
-/*** tmp_internal_RemoveFromIndex() - remove an object from an index
+/*** tmp_internal_FreeIndexEntry() - release an entry in the index
  ***/
 int
-tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
+tmp_internal_FreeIndexEntry(pObjTempIdxEntry entry)
     {
-    char* key;
-    pObjTempIdxNode node;
 
-	/** Determine the lookup key **/
-	key = tmp_internal_GenerateKeyFromInf(idx, tuple);
-	if (!key)
-	    return -1;
-
-	/** Look it up **/
-	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
-	if (!node)
-	    {
-	    nmSysFree(key);
-	    return -1;
-	    }
-
-	/** Remove it **/
-	xhRemove(&idx->Index,  key);
-
-	/** Free the node **/
-	tmp_internal_FreeIndexNode(node);
-	nmSysFree(key);
+	nmFree(entry, sizeof(ObjTempIdxEntry));
 
     return 0;
     }
 
 
-/*** tmp_internal_AddToIndex() - add one object in the collection to the index
+/*** tmp_internal_RemoveFromIndex() - remove an object from an index.
+ *** Returns -1 if the object is not in the index.
+ ***/
+int
+tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
+    {
+    pObjTempIdxEntry entry;
+    pObjTempIdxNode node;
+
+	/** Look it up **/
+	entry = (pObjTempIdxEntry)xhLookup(&idx->Entries, (char*)&tuple);
+	if (!entry)
+	    return -1;
+	xhRemove(&idx->Entries, (char*)&tuple);
+
+	/** Unlink it from its key's entries **/
+	node = entry->Node;
+	if (entry->Prev)
+	    entry->Prev->Next = entry->Next;
+	else
+	    node->First = entry->Next;
+	if (entry->Next)
+	    entry->Next->Prev = entry->Prev;
+	else
+	    node->Last = entry->Prev;
+	tmp_internal_FreeIndexEntry(entry);
+
+	/** Free the node with its last entry **/
+	if (!node->First)
+	    {
+	    xhRemove(&idx->Index, node->Key);
+	    tmp_internal_FreeIndexNode(node);
+	    }
+
+    return 0;
+    }
+
+
+/*** tmp_internal_AddToIndex() - add one object in the collection to the index,
+ *** or update its key if it is already there.  On failure, the index no
+ *** longer has every object, so queries stop using it, and this returns -1.
+ *** -1 is not an error, and no error is left on the error stack.
  ***/
 int
 tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
     {
     pObjTempIdxNode node;
+    pObjTempIdxEntry entry;
     char* key;
 
-	/** Not unique? **/
-	if (!idx->IsUnique)
+	/** Not complete? **/
+	if (!idx->IsComplete)
 	    return -1;
+
+	/** Indexed before its values were set? **/
+	tmp_internal_RemoveFromIndex(idx, tuple);
 
 	/** Determine the lookup key **/
 	key = tmp_internal_GenerateKeyFromInf(idx, tuple);
 	if (!key)
-	    return -1;
+	    goto error;
 
-	/** Create the index node **/
-	node = (pObjTempIdxNode)nmMalloc(sizeof(ObjTempIdxNode));
-	if (!node)
+	/** Find the key's node, or add one **/
+	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
+	if (node)
 	    {
-	    return -1;
+	    nmSysFree(key);
 	    }
-	node->Key = key;
-	node->Tuple = tuple;
-
-	/** Add it to the index **/
-	if (xhAdd(&idx->Index, node->Key, (void*)node) < 0)
+	else
 	    {
-	    /** duplicate key - not allowed with hash table **/
-	    idx->IsUnique = 0;
-	    mssError(1, "TMP", "Duplicate key %s not allowed", key);
-	    nmSysFree(node->Key);
-	    nmFree(node, sizeof(ObjTempIdxNode));
-	    return -1;
+	    node = (pObjTempIdxNode)nmMalloc(sizeof(ObjTempIdxNode));
+	    if (!node)
+		{
+		nmSysFree(key);
+		goto error;
+		}
+	    node->Key = key;
+	    node->First = NULL;
+	    node->Last = NULL;
+	    if (xhAdd(&idx->Index, node->Key, (void*)node) < 0)
+		{
+		tmp_internal_FreeIndexNode(node);
+		goto error;
+		}
 	    }
 
-    return 0;
+	/** Add the entry after the key's other entries **/
+	entry = (pObjTempIdxEntry)nmMalloc(sizeof(ObjTempIdxEntry));
+	if (!entry)
+	    goto error_node;
+	entry->Tuple = tuple;
+	entry->Node = node;
+	if (xhAdd(&idx->Entries, (char*)&entry->Tuple, (void*)entry) < 0)
+	    {
+	    tmp_internal_FreeIndexEntry(entry);
+	    goto error_node;
+	    }
+	entry->Next = NULL;
+	entry->Prev = node->Last;
+	if (node->Last)
+	    node->Last->Next = entry;
+	else
+	    node->First = entry;
+	node->Last = entry;
+
+	return 0;
+
+    error_node:
+	if (!node->First)
+	    {
+	    xhRemove(&idx->Index, node->Key);
+	    tmp_internal_FreeIndexNode(node);
+	    }
+    error:
+	mssClearError();
+	idx->IsComplete = 0;
+	return -1;
     }
 
 
@@ -329,7 +398,7 @@ tmp_internal_RemoveFromMatchingIndexes(pObjTemp tmp, pStructInf tuple, char* fie
 
 /*** tmp_internal_AddAllToIndex() - adds all objects in the temp collection
  *** to the index.  This is used for initializing the index when it is first
- *** created.
+ *** created.  Returns -1 if the index is incomplete, which is not an error.
  ***/
 int
 tmp_internal_AddAllToIndex(pObjTemp tmp, pObjTempIndex idx)
@@ -344,10 +413,7 @@ tmp_internal_AddAllToIndex(pObjTemp tmp, pObjTempIndex idx)
 
 	    /** Add it **/
 	    if (tmp_internal_AddToIndex(idx, tuple) < 0)
-		{
-		/** FIXME: We need to use an index technology that allows duplicates **/
 		return -1;
-		}
 	    }
 
     return 0;
@@ -362,8 +428,10 @@ tmp_internal_FreeIndex(pObjTempIndex idx)
 
 	expFreeParamList(idx->OneObjList);
 	xaClear(&idx->Fields, (void*)nmSysFree, NULL);
+	xhClear(&idx->Entries, (void*)tmp_internal_FreeIndexEntry, NULL);
 	xhClear(&idx->Index, (void*)tmp_internal_FreeIndexNode, NULL);
 	xaDeInit(&idx->Fields);
+	xhDeInit(&idx->Entries);
 	xhDeInit(&idx->Index);
 	nmFree(idx, sizeof(ObjTempIndex));
 
@@ -427,7 +495,7 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 	if (!idx)
 	    return NULL;
 	xaInit(&idx->Fields, 16);
-	idx->IsUnique = 1;
+	idx->IsComplete = 1;
 	order = ((pStructInf)tmp->Data)->nSubInf;
 
 	/** Tuneables **/
@@ -439,6 +507,7 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 	 ** variable length keys (asciz).
 	 **/
 	xhInit(&idx->Index, order, 0);
+	xhInit(&idx->Entries, order, sizeof(pStructInf));
 
 	/** Copy the field list **/
 	for(i=0; i<fields->nItems; i++)
@@ -868,6 +937,8 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     pXArray propnames = NULL;
     int i;
     pExpression* values;
+    pObjTempIdxNode node;
+    pObjTempIdxEntry entry;
 
 	/** By default, no query criteria support **/
 	query->Flags &= ~OBJ_QY_F_FULLQUERY;
@@ -881,7 +952,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->ItemCnt = 0;
 	qy->TempObj = inf->TempObj;
 	qy->UsingIndex = NULL;
-	qy->IndexNode = NULL;
+	xaInit(&qy->Matches, 16);
 	qy->ObjQuery = query;
 	inf->TempObj->LinkCnt++;
 
@@ -921,8 +992,8 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			}
 		    }
 
-		/** Require a unique index **/
-		if (qy->UsingIndex && qy->UsingIndex->IsUnique == 0)
+		/** Require a complete index **/
+		if (qy->UsingIndex && !qy->UsingIndex->IsComplete)
 		    qy->UsingIndex = NULL;
 
 		/** If we have an index, see if our criteria allow us to use it **/
@@ -940,10 +1011,18 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			{
 			//printf(" - got values");
 			/** Ok, it is usable.  Do the lookup. **/
-			qy->IndexNode = tmp_internal_IndexLookup(qy->UsingIndex, values);
+			node = tmp_internal_IndexLookup(qy->UsingIndex, values);
 			nmFree(values, sizeof(pExpression) * qy->UsingIndex->Fields.nItems);
 			values = NULL;
-			//if (qy->IndexNode) printf(" - got node");
+			if (node)
+			    {
+			    for(entry=node->First; entry; entry=entry->Next)
+				{
+				if (xaAddItem(&qy->Matches, entry->Tuple) < 0)
+				    goto error;
+				stLinkInf(entry->Tuple);
+				}
+			    }
 			}
 		    else
 			{
@@ -971,6 +1050,8 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    if (qy->TempObj)
 		qy->TempObj->LinkCnt--;
+	    xaClear(&qy->Matches, (void*)stFreeInf, NULL);
+	    xaDeInit(&qy->Matches);
 	    nmFree(qy, sizeof(ObjTempQuery));
 	    }
 	if (props)
@@ -997,9 +1078,12 @@ tmpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	/** Using an index? **/
 	if (qy->UsingIndex)
 	    {
-	    /** Yes, using an index **/
-	    if (qy->ItemCnt > 0 || !qy->IndexNode) return NULL;
-	    qy->CurInf = qy->IndexNode->Tuple;
+	    /** Yes, using an index.  Skip rows deleted since the lookup. **/
+	    while(qy->ItemCnt < qy->Matches.nItems && !((pStructInf)qy->Matches.Items[qy->ItemCnt])->Parent)
+		qy->ItemCnt++;
+	    if (qy->ItemCnt >= qy->Matches.nItems)
+		return NULL;
+	    qy->CurInf = (pStructInf)qy->Matches.Items[qy->ItemCnt];
 	    }
 	else
 	    {
@@ -1036,6 +1120,8 @@ tmpQueryClose(void* qy_v, pObjTrxTree* oxt)
     pObjTempQuery qy = ((pObjTempQuery)(qy_v));
 
 	/** Free the structure **/
+	xaClear(&qy->Matches, (void*)stFreeInf, NULL);
+	xaDeInit(&qy->Matches);
 	obj_internal_CloseTempObj(qy->TempObj);
 	stFreeInf(qy->Data);
 	nmFree(qy, sizeof(ObjTempQuery));
