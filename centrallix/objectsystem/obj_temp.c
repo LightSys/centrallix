@@ -19,7 +19,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2019 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -523,7 +523,9 @@ tmp_internal_AnalyzeCriteria_r(pObjTemp tmp, pObjTempIndex idx, pExpression root
  *** criteria in it, we determine whether we can handle the criteria, and if
  *** so, with what field values.  This adds to what expGetPropsForObject()
  *** already does (it lets us find the index).  Returns an array of expressions,
- *** which can then be passed to tmp_internal_IndexLookup().
+ *** which can then be passed to tmp_internal_IndexLookup(), or NULL if the
+ *** index can't be used.  NULL is not an error: the caller scans instead, and
+ *** no error is left on the error stack.
  ***/
 pExpression*
 tmp_internal_AnalyzeCriteria(pObjTemp tmp, pObjTempIndex idx, pExpression query)
@@ -544,10 +546,16 @@ tmp_internal_AnalyzeCriteria(pObjTemp tmp, pObjTempIndex idx, pExpression query)
 	    return NULL;
 	    }
 
-	/** Did we get them all? **/
+	/** Did we get them all, and are they non-NULL (NULL never compares equal)? **/
 	for(i=0; i<idx->Fields.nItems; i++)
 	    {
-	    if (values[i] == NULL)
+	    if (values[i] != NULL && expEvalTree(values[i], idx->OneObjList) < 0)
+		{
+		mssClearError(); /* Handle errors from evaluating the tree */
+		nmFree(values, sizeof(pExpression) * idx->Fields.nItems);
+		return NULL;
+		}
+	    if (values[i] == NULL || (values[i]->Flags & EXPR_F_NULL))
 		{
 		nmFree(values, sizeof(pExpression) * idx->Fields.nItems);
 		return NULL;
@@ -1504,4 +1512,3 @@ tmpInitialize()
 
     return 0;
     }
-
