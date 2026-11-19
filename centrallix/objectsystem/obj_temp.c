@@ -667,7 +667,7 @@ tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value, pParam
  *** by tmp_internal_AnalyzeCriteria_r() in an index on exactly those fields,
  *** evaluating the values with the query's 'objlist'.  Returns 0 and sets
  *** *node (NULL if no row matches), or -1 if a term's value can't use the
- *** index.
+ *** index.  -1 is not an error: the caller scans instead.
  ***/
 int
 tmp_internal_LookupTerms(pObjTempIndex idx, pXArray fields, pXArray values, pParamObjects objlist, pObjTempIdxNode* node)
