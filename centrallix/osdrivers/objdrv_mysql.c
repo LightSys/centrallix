@@ -1612,21 +1612,62 @@ mysd_internal_DetermineType(pObject obj, pMysdData inf)
     return 0;
     }
 
+/** Functions that only use their arguments, so they evaluate safely without an object list. **/
+static char* mysd_foldable_functions[] =
+    {
+    "convert", "dateadd", "datediff", "datepart", "isnull",
+    "substring", "right", "ltrim", "rtrim", "upper", "lower", "char_length", "charindex", "replace",
+    "abs", "round", "truncate",
+    NULL
+    };
+
+
 /*** mysd_internal_IsFoldable - returns 1 if the expression subtree can be
- *** evaluated by Centrallix without row data (it contains only constants,
- *** frozen values such as query parameters, and non-aggregate operators and
- *** functions of those), or 0 if it refers to a column or other object.
+ *** evaluated by Centrallix without an object list: constants, frozen values
+ *** such as query parameters, and arithmetic and mysd_foldable_functions[]
+ *** applied to those.  Returns 0 otherwise, including for column references,
+ *** subqueries, and other functions.
  ***/
 int
 mysd_internal_IsFoldable(pExpression tree)
     {
     int i;
+    int found;
+
+	if (thExcessiveRecursion()) return 0;
 
 	if (tree->Flags & EXPR_F_FREEZEEVAL) return 1;
 	if (expIsConstant(tree)) return 1;
-	if (tree->NodeType == EXPR_N_PROPERTY)
-	    return (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL))?1:0;
-	if (tree->Flags & EXPR_F_AGGREGATEFN) return 0;
+
+	switch(tree->NodeType)
+	    {
+	    case EXPR_N_PROPERTY:
+		return (tree->Parent && (tree->Parent->Flags & EXPR_F_FREEZEEVAL))?1:0;
+
+	    case EXPR_N_FUNCTION:
+		found = 0;
+		for(i=0;mysd_foldable_functions[i];i++)
+		    {
+		    if (!strcmp(tree->Name, mysd_foldable_functions[i]))
+			{
+			found = 1;
+			break;
+			}
+		    }
+		if (!found) return 0;
+		break;
+
+	    case EXPR_N_PLUS:
+	    case EXPR_N_MINUS:
+	    case EXPR_N_MULTIPLY:
+	    case EXPR_N_DIVIDE:
+	    case EXPR_N_OBJECT:
+		break;
+
+	    default:
+		return 0;
+	    }
+
 	for(i=0;i<tree->Children.nItems;i++)
 	    if (!mysd_internal_IsFoldable((pExpression)(tree->Children.Items[i])))
 		return 0;
@@ -1719,6 +1760,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
     int len;
     DateTime cmp_dt;
     int cmp_dt_side;
+    int folded;
 
 	/** Check recursion **/
 	if (thExcessiveRecursion())
@@ -1960,6 +2002,25 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
                 break;
 
             case EXPR_N_FUNCTION:
+		/** A constant convert() is done by Centrallix, since MySQL parses values differently. **/
+		folded = 0;
+		if (!strcmp(tree->Name,"convert") && tree->Children.nItems == 2 &&
+			mysd_internal_IsFoldable((pExpression)(tree->Children.Items[1])))
+		    {
+		    if (expEvalTree(tree, NULL) >= 0)
+			{
+			/** Only fold results that can be written as SQL literals below. **/
+			if ((tree->Flags & EXPR_F_NULL) || tree->DataType == DATA_T_INTEGER || tree->DataType == DATA_T_STRING ||
+				tree->DataType == DATA_T_DATETIME || tree->DataType == DATA_T_MONEY || tree->DataType == DATA_T_DOUBLE)
+			    folded = 1;
+			}
+		    else
+			{
+			mssWarn("MYSD", "could not evaluate constant convert(), passing it to MySQL instead");
+			mssClearError();
+			}
+		    }
+
                 /** Special case functions which MySQL doesn't have. **/
 		fn_use_name = tree->Name;
 		use_stock_fn_call = 0;
@@ -1974,10 +2035,8 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    fn_use_name = "ifnull";
 		    use_stock_fn_call = 1;
 		    }
-		else if (!strcmp(tree->Name,"convert") && tree->Children.nItems == 2 &&
-			mysd_internal_IsFoldable((pExpression)(tree->Children.Items[1])) && expEvalTree(tree, NULL) >= 0)
+		else if (folded)
 		    {
-		    /** Constant value: use the Centrallix conversion, since MySQL parses values differently. **/
 		    if (tree->Flags & EXPR_F_NULL)
 			{
 			xsConcatenate(where_clause, " NULL ", 6);
@@ -1987,9 +2046,7 @@ mysd_internal_TreeToClause(pExpression tree, pMysdTable *tdata, pXString where_c
 		    else if (tree->DataType == DATA_T_STRING) goto mysd_DO_STRING;
 		    else if (tree->DataType == DATA_T_DATETIME) goto mysd_DO_DATETIME;
 		    else if (tree->DataType == DATA_T_MONEY) goto mysd_DO_MONEY;
-		    else if (tree->DataType == DATA_T_DOUBLE) goto mysd_DO_DOUBLE;
-		    mssError(1,"MYSD","Unsupported convert() result type");
-		    return -1;
+		    else goto mysd_DO_DOUBLE;
 		    }
 		else if (!strcmp(tree->Name,"convert"))
 		    {
