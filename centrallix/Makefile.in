@@ -578,7 +578,7 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
             elif cmp -s "$$TOBASE.out" "$$TOBASE.cmp"; then \
                 printf "$$CNORM%-62.62s  %s\n" "$$TOSIMPLE $$TONAME" "$${CGREEN}PASS$$CNORM"; \
                 /bin/rm -f "$$PWD/$$TOBASE.out"; \
-                RES=Pass; \
+                RES=PASS; \
             else \
                 echo -n "$$CNORM"; \
                 diff --label EXPECTED --label ACTUAL -U0 -N "$$TOBASE.cmp" "$$TOBASE.out" | sed -e "s/^@@.*/    $$CCYAN&$$CNORM/;t" -e "s/^-.*/    $$CGREEN&$$CNORM/;t" -e "s/^+.*/    $$CRED&$$CNORM/;t" -e 's/^/    /'; \
@@ -591,9 +591,9 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		    ulimit -s 16384; \
 		    ./$$TOBASE.bin 2>&1; \
 		    case "$$?" in \
-			0) RES=Pass ;; \
+			0) RES=PASS ;; \
 			1) RES=FAIL ;; \
-			2) RES=Skipped ;; \
+			2) RES=SKIP ;; \
 			3) RES=CRASH ;; \
 			4) RES=LOCKUP ;; \
 			*) printf "$$CNORM%-62.62s  %s\n" "$${TOBASE#tests/test_}" "$${CRED}CRASH$$CNORM"; \
@@ -606,8 +606,8 @@ test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 		    [ "$$TOWANT" = "$$RES" ] && NBASEOK=$$((NBASEOK+1)); \
 		else \
 		    case "$$RES" in \
-			Pass) NPASS=$$((NPASS+1)) ;; \
-			Skipped) NSKIP=$$((NSKIP+1)) ;; \
+			PASS) NPASS=$$((NPASS+1)) ;; \
+			SKIP) NSKIP=$$((NSKIP+1)) ;; \
 			FAIL) NFAIL=$$((NFAIL+1)) ;; \
 			CRASH) NCRASH=$$((NCRASH+1)) ;; \
 			LOCKUP) NLOCKUP=$$((NLOCKUP+1)) ;; \
