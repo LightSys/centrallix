@@ -256,7 +256,10 @@ tmp_internal_RecordTypes(pObjTempIndex idx, pStructInf tuple)
 	    if (!exp)
 		continue;
 	    if (expEvalTree(exp, idx->OneObjList) < 0)
+		{
+		mssClearError();
 		idx->Types[i] = TMP_TYPE_MIXED;
+		}
 	    else if (exp->Flags & EXPR_F_NULL)
 		continue;
 	    else if (idx->Types[i] == DATA_T_UNAVAILABLE)
@@ -446,7 +449,8 @@ tmp_internal_FindIndex(pObjTemp tmp, pXArray fields)
     }
 
 
-/*** tmp_internal_CreateIndex() - create an index on a collection
+/*** tmp_internal_CreateIndex() - create an index on a collection.  Returns
+ *** NULL if it can't, which is not an error: the caller scans instead.
  ***/
 pObjTempIndex
 tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
@@ -560,7 +564,8 @@ tmp_internal_AnalyzeCriteria_r(pObjTemp tmp, pObjTempIndex idx, pExpression root
 
 /*** tmp_internal_IsKeyUsable() - determine whether looking up a value in
  *** an index field finds exactly the rows whose field compares equal to it.
- *** Returns 1 if so, 0 if not.
+ *** Returns 1 if so, 0 if not.  0 is not an error: the caller scans instead,
+ *** and no error is left on the error stack.
  ***/
 int
 tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
@@ -568,7 +573,10 @@ tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
     int type = idx->Types[field];
 
 	if (expEvalTree(value, idx->OneObjList) < 0)
+	    {
+	    mssClearError();
 	    return 0;
+	    }
 
 	/** NULL never compares equal **/
 	if (value->Flags & EXPR_F_NULL)
