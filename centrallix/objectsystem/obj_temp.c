@@ -534,7 +534,8 @@ tmp_internal_IsRowIndependent(pExpression exp)
  *** in query criteria that an index lookup can answer, where each value is
  *** the same for every row.  Adds each term's field name to 'fields' and its
  *** value to 'values', using each field at most once.  Returns 1 if the
- *** criteria have other terms, 0 if not.
+ *** criteria have other terms, 0 if not.  Neither is an error, and no error
+ *** is left on the error stack.
  ***/
 int
 tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObjects objlist, pXArray fields, pXArray values)
@@ -567,7 +568,12 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 			return 1;
 		    remaining = child;
 		    }
-		else if (expEvalTree(child, objlist) < 0 || child->DataType != DATA_T_INTEGER ||
+		else if (expEvalTree(child, objlist) < 0)
+		    {
+		    mssClearError();
+		    return 1;
+		    }
+		else if (child->DataType != DATA_T_INTEGER ||
 			(child->Flags & (EXPR_F_NULL | EXPR_F_INDETERMINATE)) || child->Integer != 0)
 		    {
 		    return 1;
