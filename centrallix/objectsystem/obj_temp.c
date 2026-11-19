@@ -603,7 +603,7 @@ tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
 /*** tmp_internal_LookupTerms() - look up the row matching the terms found
  *** by tmp_internal_AnalyzeCriteria_r() in an index on exactly those fields.
  *** Returns 0 and sets *node (NULL if no row matches), or -1 if a term's value
- *** can't use the index.
+ *** can't use the index.  -1 is not an error: the caller scans instead.
  ***/
 int
 tmp_internal_LookupTerms(pObjTempIndex idx, pXArray fields, pXArray values, pObjTempIdxNode* node)
