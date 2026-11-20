@@ -25,6 +25,10 @@ The ON DUPLICATE expressions may take on the form of SELECT items; that is they 
 
 In the above instance, key_id refers to the attribute in the data source being inserted into.  The values unique_code and last_name refer to attributes from the SELECT statement.
 
+In the UPDATE SET expressions, an unqualified attribute refers to the existing object being updated.  To use a value from the SELECT's sources, qualify it with the source's name, as in:
+
+    UPDATE SET :amount = :new_data:amount
+
 ## Algorithm
 - A.	For each ON DUPLICATE expression,
     1.  Compile the expression into an expression tree.

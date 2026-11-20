@@ -65,22 +65,22 @@ extern int blksiz[MAX_BLOCKS];
 #endif
 extern pOverlay lists[MAX_SIZE+1];
 
-void nmInitialize();
+void nmInitialize(void);
 void nmSetErrFunction(int (*error_fn)());
-void nmClear();
-void nmCheckAll(); // checks for buffer overflows
+void nmClear(void);
+void nmCheckAll(void); // checks for buffer overflows
 void* nmMalloc(int size);
 void nmFree(void* ptr,int size);
-void nmStats();
+void nmStats(void);
 void nmRegister(int size,char* name);
-void nmDebug();
-void nmDeltas();
+void nmDebug(void);
+void nmDeltas(void);
 void* nmSysMalloc(int size);
 void nmSysFree(void* ptr);
 void* nmSysRealloc(void* ptr, int newsize);
 char* nmSysStrdup(const char* ptr);
 
-void nmEnableTagging();
+void nmEnableTagging(void);
 void nmRegisterTagID(int tag_id, char* name);
 void nmSetTag(void* ptr, int tag_id, void* tag);
 void* nmGetTag(void* ptr, int tag_id);

@@ -13,7 +13,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Base Library						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* You may use these files and this library under the terms of the	*/
 /* GNU Lesser General Public License, Version 2.1, contained in the	*/
@@ -54,6 +54,7 @@ int xsCopy(pXString this, char* text, int len);
 char* xsString(pXString this);
 char* xsStringEnd(pXString this);
 int xsLength(pXString this);
+char xsCharAt(pXString this, int pos);
 int xsPrintf(pXString this, char* fmt, ...);
 int xsConcatPrintf(pXString this, char* fmt, ...);
 int xsWrite(pXString this, char* buf, int len, int offset, int flags);
@@ -73,7 +74,18 @@ int xsConcatQPrintf(pXString this, char* fmt, ...);
 pXString xsNew();
 void xsFree(pXString this);
 
+/*** xsConcatenateLiteral - concatenates a string literal, taking its length
+ *** from sizeof() at compile time (faster than measuring with strlen() at
+ *** run time).
+ ***
+ *** Note: The "" causes a compiler error if a pointer is passed because its
+ *** length is not known at compile time. Use xsConcatenate() for these.
+ ***
+ *** Note: The length covers the whole literal, so an embedded null ('\0') is
+ *** concatenated rather than treated as the end of the text.
+ ***/
+#define xsConcatenateLiteral(this, lit) xsConcatenate((this), (lit), (int)(sizeof("" lit) - 1))
+
 #define XS_U_SEEK	2
 
 #endif /* _XSTRING_H */
-
