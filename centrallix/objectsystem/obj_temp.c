@@ -573,7 +573,7 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pXArray fiel
 	    if (i0->NodeType == EXPR_N_PROPERTY)
 		{
 		i0_id = expObjID(i0,NULL);
-		if (root->Control && root->Control->Remapped) 
+		if (root->Control != NULL && root->Control->Remapped != 0 && i0_id >= 0)
 		    i0_id = root->Control->ObjMap[i0_id];
 		}
 	    i1 = (pExpression)query->Children.Items[1];
@@ -581,13 +581,13 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pXArray fiel
 	    if (i1->NodeType == EXPR_N_PROPERTY)
 		{
 		i1_id = expObjID(i1,NULL);
-		if (root->Control && root->Control->Remapped) 
+		if (root->Control != NULL && root->Control->Remapped != 0 && i1_id >= 0)
 		    i1_id = root->Control->ObjMap[i1_id];
 		}
 
 	    /** Must be an obj/prop that we handle, and a constant-like value **/
-	    if (((expIsConstant(i0) || (i0->Flags & EXPR_F_FREEZEEVAL)) && (i1_id == 0 || i1_id == -1 || i1_id == -2)) ||
-		((expIsConstant(i1) || (i1->Flags & EXPR_F_FREEZEEVAL)) && (i0_id == 0 || i0_id == -1 || i0_id == -2)))
+	    if (((expIsConstant(i0) || (i0->Flags & EXPR_F_FREEZEEVAL)) && (i1_id == 0 || i1_id == -2)) ||
+		((expIsConstant(i1) || (i1->Flags & EXPR_F_FREEZEEVAL)) && (i0_id == 0 || i0_id == -2)))
 		{
 		if (expIsConstant(i0) || (i0->Flags & EXPR_F_FREEZEEVAL))
 		    {
