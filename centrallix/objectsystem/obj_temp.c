@@ -457,20 +457,20 @@ pObjTempIndex
 tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
     {
     pObjTempIndex idx;
+    char* name;
     int order, i;
 
 	idx = (pObjTempIndex)nmMalloc(sizeof(ObjTempIndex));
 	if (!idx)
 	    return NULL;
+	memset(idx, 0, sizeof(ObjTempIndex));
 	idx->Types = (int*)nmSysMalloc(sizeof(int) * fields->nItems);
-	if (!idx->Types)
-	    {
-	    nmFree(idx, sizeof(ObjTempIndex));
-	    return NULL;
-	    }
+	if (idx->Types == NULL)
+	    goto error;
 	for(i=0; i<fields->nItems; i++)
 	    idx->Types[i] = DATA_T_UNAVAILABLE;
-	xaInit(&idx->Fields, 16);
+	if (xaInit(&idx->Fields, 16) < 0)
+	    goto error;
 	idx->IsUnique = 1;
 	order = ((pStructInf)tmp->Data)->nSubInf;
 
@@ -482,20 +482,53 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 	 ** to a B+ tree for this in the future).  This index uses
 	 ** variable length keys (asciz).
 	 **/
-	xhInit(&idx->Index, order, 0);
+	if (xhInit(&idx->Index, order, 0) < 0)
+	    {
+	    memset(&idx->Index, 0, sizeof(XHashTable));
+	    goto error;
+	    }
 
 	/** Copy the field list **/
 	for(i=0; i<fields->nItems; i++)
-	    xaAddItem(&idx->Fields, nmSysStrdup(fields->Items[i]));
+	    {
+	    name = nmSysStrdup(fields->Items[i]);
+	    if (name == NULL)
+		goto error;
+	    if (xaAddItem(&idx->Fields, name) < 0)
+		{
+		nmSysFree(name);
+		goto error;
+		}
+	    }
 
 	/** Create a param objects list **/
 	idx->OneObjList = expCreateParamList();
-	expAddParamToList(idx->OneObjList, NULL, NULL, EXPR_O_CURRENT);
+	if (idx->OneObjList == NULL)
+	    goto error;
+	if (expAddParamToList(idx->OneObjList, NULL, NULL, EXPR_O_CURRENT) < 0)
+	    goto error;
 
 	/** Add the index to the temp collection **/
-	xaAddItem(&tmp->Indexes, idx);
+	if (xaAddItem(&tmp->Indexes, idx) < 0)
+	    goto error;
 
-    return idx;
+	return idx;
+
+    error:
+	if (idx->OneObjList != NULL)
+	    expFreeParamList(idx->OneObjList);
+	if (idx->Index.nRows != 0)
+	    xhDeInit(&idx->Index);
+	if (idx->Fields.Items != NULL)
+	    {
+	    xaClear(&idx->Fields, (void*)nmSysFree, NULL);
+	    xaDeInit(&idx->Fields);
+	    }
+	if (idx->Types != NULL)
+	    nmSysFree(idx->Types);
+	mssClearError();
+	nmFree(idx, sizeof(ObjTempIndex));
+	return NULL;
     }
 
 /*** tmp_internal_AnalyzeCriteria_r() - find the ANDed `field = value` terms
