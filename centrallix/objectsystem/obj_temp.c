@@ -1045,6 +1045,8 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    if (qy->TempObj)
 		qy->TempObj->LinkCnt--;
+	    if (qy->Data != NULL)
+		stFreeInf(qy->Data);
 	    nmFree(qy, sizeof(ObjTempQuery));
 	    }
 	if (fields != NULL)
