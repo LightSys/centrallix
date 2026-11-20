@@ -3687,6 +3687,9 @@ int exp_fn_rand(pExpression tree, pParamObjects objlist, pExpression i0, pExpres
 	
 	if (!objlist)
 	    {
+	    /** No random state without an object list, so use zero. **/
+	    tree->DataType = DATA_T_DOUBLE;
+	    tree->Types.Double = 0.0;
 	    return 0;
 	    }
 
