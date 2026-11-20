@@ -108,17 +108,18 @@ tmp_internal_IndexHasField(pObjTempIndex idx, char* field)
     }
 
 
-/*** tmp_internal_GenerateKey() - determine lookup key for the index
+/*** tmp_internal_GenerateKey() - determine lookup key for the index,
+ *** evaluating the field values with 'objlist'.
  ***/
 char*
-tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[])
+tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[], pParamObjects objlist)
     {
     char key[TMP_MAX_KEY];
     char* rkey;
     int len;
 
 	/** Generate the key value **/
-	len = objBuildBinaryImage(key, sizeof(key), fields, idx->Fields.nItems, idx->OneObjList, 1);
+	len = objBuildBinaryImage(key, sizeof(key), fields, idx->Fields.nItems, objlist, 1);
 	if (len >= sizeof(key))
 	    {
 	    mssError(1, "TMP", "Create index: Key length exceeds internal representation");
@@ -149,22 +150,23 @@ tmp_internal_GenerateKeyFromInf(pObjTempIndex idx, pStructInf tuple)
 	    fields[i] = stGetExpression(one_field, 0);
 	    }
 
-	key = tmp_internal_GenerateKey(idx, fields);
+	key = tmp_internal_GenerateKey(idx, fields, idx->OneObjList);
 
     return key;
     }
 
 
-/*** tmp_internal_IndexLookup() - find an object via the index
+/*** tmp_internal_IndexLookup() - find an object via the index, evaluating
+ *** the field values with 'objlist'.
  ***/
 pObjTempIdxNode
-tmp_internal_IndexLookup(pObjTempIndex idx, pExpression fields[])
+tmp_internal_IndexLookup(pObjTempIndex idx, pExpression fields[], pParamObjects objlist)
     {
     char* key;
     pObjTempIdxNode node;
 
 	/** Determine the lookup key **/
-	key = tmp_internal_GenerateKey(idx, fields);
+	key = tmp_internal_GenerateKey(idx, fields, objlist);
 	if (!key)
 	    return NULL;
 
@@ -531,15 +533,48 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 	return NULL;
     }
 
-/*** tmp_internal_AnalyzeCriteria_r() - see below.  This does the actual
- *** expression search work.  Right now, we only allow AND expressions with
- *** equality comparisons (FIXME - enhancement).
+
+/*** tmp_internal_IsRowIndependent() - determine whether an expression has
+ *** the same value for every row: it uses only constants, frozen values, and
+ *** deterministic functions of them.
  ***/
 int
-tmp_internal_AnalyzeCriteria_r(pObjTemp tmp, pObjTempIndex idx, pExpression root, pExpression query, pExpression* values)
+tmp_internal_IsRowIndependent(pExpression exp)
     {
-    int i, field;
-    pExpression i0, i1, it;
+    int i;
+
+	if (exp->Flags & EXPR_F_FREEZEEVAL)
+	    return 1;
+	if (exp->NodeType == EXPR_N_PROPERTY || exp->NodeType == EXPR_N_OBJECT || exp->NodeType == EXPR_N_SUBQUERY)
+	    return 0;
+	if (exp->Flags & (EXPR_F_AGGREGATEFN | EXPR_F_WINDOWFN))
+	    return 0;
+	/** rand() changes per call, and eval() and substitute() can read the row **/
+	if (exp->NodeType == EXPR_N_FUNCTION && (!strcasecmp(exp->Name, "rand") || !strcasecmp(exp->Name, "eval") ||
+		!strcasecmp(exp->Name, "substitute")))
+	    return 0;
+	for(i=0; i<exp->Children.nItems; i++)
+	    {
+	    if (!tmp_internal_IsRowIndependent((pExpression)exp->Children.Items[i]))
+		return 0;
+	    }
+
+    return 1;
+    }
+
+
+/*** tmp_internal_AnalyzeCriteria_r() - find the ANDed `field = value` terms
+ *** in query criteria that an index lookup can answer, where each value is
+ *** the same for every row.  Adds each term's field name to 'fields' and its
+ *** value to 'values', using each field at most once.  Returns 1 if the
+ *** criteria have other terms, 0 if not.  Neither is an error, and no error
+ *** is left on the error stack.
+ ***/
+int
+tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObjects objlist, pXArray fields, pXArray values)
+    {
+    int i, has_other_terms = 0;
+    pExpression i0, i1, it, child, remaining;
     int i0_id = -10, i1_id = -10;
 
 	/** AND? recurse if so. **/
@@ -547,10 +582,39 @@ tmp_internal_AnalyzeCriteria_r(pObjTemp tmp, pObjTempIndex idx, pExpression root
 	    {
 	    for(i=0; i<query->Children.nItems; i++)
 		{
-		if (tmp_internal_AnalyzeCriteria_r(tmp, idx, root, (pExpression)query->Children.Items[i], values) < 0)
-		    return -1;
+		if (tmp_internal_AnalyzeCriteria_r(root, (pExpression)query->Children.Items[i], objlist, fields, values))
+		    has_other_terms = 1;
 		}
-	    return 0;
+	    return has_other_terms;
+	    }
+
+	/** OR like `(:parameters:p is null or :f = :parameters:p)` with p set? Analyze the term left. **/
+	if (query->NodeType == EXPR_N_OR)
+	    {
+	    remaining = NULL;
+	    for(i=0; i<query->Children.nItems; i++)
+		{
+		child = (pExpression)query->Children.Items[i];
+		if (!tmp_internal_IsRowIndependent(child))
+		    {
+		    if (remaining)
+			return 1;
+		    remaining = child;
+		    }
+		else if (expEvalTree(child, objlist) < 0)
+		    {
+		    mssClearError();
+		    return 1;
+		    }
+		else if (child->DataType != DATA_T_INTEGER ||
+			(child->Flags & (EXPR_F_NULL | EXPR_F_INDETERMINATE)) || child->Integer != 0)
+		    {
+		    return 1;
+		    }
+		}
+	    if (remaining)
+		tmp_internal_AnalyzeCriteria_r(root, remaining, objlist, fields, values);
+	    return 1; /* the ObjectSystem rechecks the whole OR */
 	    }
 
 	/** Equality comparison? Analyze it. **/
@@ -574,39 +638,43 @@ tmp_internal_AnalyzeCriteria_r(pObjTemp tmp, pObjTempIndex idx, pExpression root
 		}
 
 	    /** Must be an obj/prop that we handle, and a constant-like value **/
-	    if (((expIsConstant(i0) || (i0->Flags & EXPR_F_FREEZEEVAL)) && (i1_id == 0 || i1_id == -1 || i1_id == -2)) ||
-		((expIsConstant(i1) || (i1->Flags & EXPR_F_FREEZEEVAL)) && (i0_id == 0 || i0_id == -1 || i0_id == -2)))
+	    if ((tmp_internal_IsRowIndependent(i0) && (i1_id == 0 || i1_id == -1 || i1_id == -2)) ||
+		(tmp_internal_IsRowIndependent(i1) && (i0_id == 0 || i0_id == -1 || i0_id == -2)))
 		{
-		if (expIsConstant(i0) || (i0->Flags & EXPR_F_FREEZEEVAL))
+		if (tmp_internal_IsRowIndependent(i0))
 		    {
 		    /** swap **/
 		    it = i0; i0 = i1; i1 = it;
 		    }
 
 		/** Now i0 = property we handle, and i1 = constant **/
-		field = tmp_internal_IndexHasField(idx, i0->Name);
-		if (field <= 0)
-		    return -1;
-		values[field-1] = i1;
+		for(i=0; i<fields->nItems; i++)
+		    {
+		    if (!strcmp((char*)fields->Items[i], i0->Name))
+			return 1;
+		    }
+		xaAddItem(fields, i0->Name);
+		xaAddItem(values, i1);
 		return 0;
 		}
 	    }
 
-    return -1; /* some other node type or construct that we don't handle */
+    return 1; /* some other node type or construct that we don't handle */
     }
 
 
 /*** tmp_internal_IsKeyUsable() - determine whether looking up a value in
- *** an index field finds exactly the rows whose field compares equal to it.
- *** Returns 1 if so, 0 if not.  0 is not an error: the caller scans instead,
- *** and no error is left on the error stack.
+ *** an index field finds exactly the rows whose field compares equal to it,
+ *** evaluating the value with 'objlist'.  Returns 1 if so, 0 if not.  0 is
+ *** not an error: the caller scans instead, and no error is left on the
+ *** error stack.
  ***/
 int
-tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
+tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value, pParamObjects objlist)
     {
     int type = idx->Types[field];
 
-	if (expEvalTree(value, idx->OneObjList) < 0)
+	if (expEvalTree(value, objlist) < 0)
 	    {
 	    mssClearError();
 	    return 0;
@@ -628,44 +696,30 @@ tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
     }
 
 
-/*** tmp_internal_AnalyzeCriteria() - given an expression tree with search
- *** criteria in it, we determine whether we can handle the criteria, and if
- *** so, with what field values.  This adds to what expGetPropsForObject()
- *** already does (it lets us find the index).  Returns an array of expressions,
- *** which can then be passed to tmp_internal_IndexLookup(), or NULL if the
- *** index can't be used.  NULL is not an error: the caller scans instead, and
- *** no error is left on the error stack.
+/*** tmp_internal_LookupTerms() - look up the row matching the terms found
+ *** by tmp_internal_AnalyzeCriteria_r() in an index on exactly those fields,
+ *** evaluating the values with the query's 'objlist'.  Returns 0 and sets
+ *** *node (NULL if no row matches), or -1 if a term's value can't use the
+ *** index.  -1 is not an error: the caller scans instead.
  ***/
-pExpression*
-tmp_internal_AnalyzeCriteria(pObjTemp tmp, pObjTempIndex idx, pExpression query)
+int
+tmp_internal_LookupTerms(pObjTempIndex idx, pXArray fields, pXArray values, pParamObjects objlist, pObjTempIdxNode* node)
     {
-    pExpression* values = NULL;
-    int i;
+    pExpression key_values[idx->Fields.nItems];
+    int i, field;
 
-	/** Allocate our expression array **/
-	values = (pExpression*)nmMalloc(sizeof(pExpression) * idx->Fields.nItems);
-	if (!values)
-	    return NULL;
-	memset(values, 0, sizeof(pExpression) * idx->Fields.nItems);
-
-	/** Recurse through the query expression, looking for criteria. **/
-	if (tmp_internal_AnalyzeCriteria_r(tmp, idx, query, query, values) < 0)
+	/** Put the values in the index's field order **/
+	for(i=0; i<fields->nItems; i++)
 	    {
-	    nmFree(values, sizeof(pExpression) * idx->Fields.nItems);
-	    return NULL;
+	    field = tmp_internal_IndexHasField(idx, (char*)fields->Items[i]) - 1;
+	    if (field < 0 || !tmp_internal_IsKeyUsable(idx, field, (pExpression)values->Items[i], objlist))
+		return -1;
+	    key_values[field] = (pExpression)values->Items[i];
 	    }
 
-	/** Did we get them all, with values the keys can find? **/
-	for(i=0; i<idx->Fields.nItems; i++)
-	    {
-	    if (values[i] == NULL || !tmp_internal_IsKeyUsable(idx, i, values[i]))
-		{
-		nmFree(values, sizeof(pExpression) * idx->Fields.nItems);
-		return NULL;
-		}
-	    }
+	*node = tmp_internal_IndexLookup(idx, key_values, objlist);
 
-    return values;
+    return 0;
     }
 
 
@@ -967,10 +1021,10 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     {
     pObjTempData inf = (pObjTempData)(inf_v);
     pObjTempQuery qy;
-    pXArray props = NULL;
-    pXArray propnames = NULL;
-    int i;
-    pExpression* values;
+    pXArray fields = NULL;
+    pXArray values = NULL;
+    pObjTempIndex idx;
+    int has_other_terms = 1;
 
 	/** By default, no query criteria support **/
 	query->Flags &= ~OBJ_QY_F_FULLQUERY;
@@ -988,89 +1042,47 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->ObjQuery = query;
 	inf->TempObj->LinkCnt++;
 
-	/** Determine properties used by the query criteria **/
+	/** Look up rows by the criteria's ANDed `field = value` terms **/
 	if (query->Tree && inf->Data->nSubInf >= TMP_THRESHOLD)
 	    {
-	    /** Get both the explicit ID 0 and any "current" properties (-2) **/
-	    props = expGetPropsForObject(query->Tree, 0, NULL);
-	    expGetPropsForObject(query->Tree, -2, props);
-	    if (props)
+	    fields = xaNew(16);
+	    values = xaNew(16);
+	    if (!fields || !values)
+		goto error;
+	    has_other_terms = tmp_internal_AnalyzeCriteria_r(query->Tree, query->Tree, (pParamObjects)query->ObjList, fields, values);
+	    if (fields->nItems > 0)
 		{
-		/** Do we have an index yet? **/
-		propnames = xaNew(16);
-		if (!propnames)
-		    goto error;
-		for(i=0; i<props->nItems; i++)
-		    {
-		    if (!(((pExpProperty)props->Items[i])->Flags & EXPR_F_FREEZEEVAL))
-			xaAddItem(propnames, nmSysStrdup(((pExpProperty)props->Items[i])->PropName));
-		    }
-
-		/** Find a usable index **/
-		qy->UsingIndex = tmp_internal_FindIndex(qy->TempObj, propnames);
-
-		/** No matching index found?  Create one instead.  If the create
+		/** Find a usable index, or create one.  If the create
 		 ** fails, the query will fall back to a collection scan.
 		 **/
-		if (!qy->UsingIndex)
+		idx = tmp_internal_FindIndex(qy->TempObj, fields);
+		if (!idx)
 		    {
-		    qy->UsingIndex = tmp_internal_CreateIndex(qy->TempObj, propnames);
-
-		    /** Add our items to the index **/
-		    if (qy->UsingIndex)
-			{
-			if (tmp_internal_AddAllToIndex(qy->TempObj, qy->UsingIndex) < 0)
-			    qy->UsingIndex = NULL;
-			}
+		    idx = tmp_internal_CreateIndex(qy->TempObj, fields);
+		    if (idx && tmp_internal_AddAllToIndex(qy->TempObj, idx) < 0)
+			idx = NULL;
 		    }
 
-		/** Require a unique index **/
-		if (qy->UsingIndex && qy->UsingIndex->IsUnique == 0)
-		    qy->UsingIndex = NULL;
-
-		/** If we have an index, see if our criteria allow us to use it **/
-		if (qy->UsingIndex)
-		    {
-		    //printf("Using Index:");
-		    //for(i=0; i<qy->UsingIndex->Fields.nItems; i++)
-			//{
-			//printf(" %s", qy->UsingIndex->Fields.Items[i]);
-			//}
-		    //printf(" - collection size is %d", ((pStructInf)qy->TempObj->Data)->nSubInf);
-		    //printf(" - index size is %d", qy->UsingIndex->Index.nItems);
-		    values = tmp_internal_AnalyzeCriteria(qy->TempObj, qy->UsingIndex, query->Tree);
-		    if (values)
-			{
-			//printf(" - got values");
-			/** Ok, it is usable.  Do the lookup. **/
-			qy->IndexNode = tmp_internal_IndexLookup(qy->UsingIndex, values);
-			nmFree(values, sizeof(pExpression) * qy->UsingIndex->Fields.nItems);
-			values = NULL;
-			//if (qy->IndexNode) printf(" - got node");
-			}
-		    else
-			{
-			qy->UsingIndex = NULL;
-			}
-		    //printf("\n");
-		    }
-
-		expFreeProps(props);
-		props = NULL;
-		xaClear(propnames, (void*)nmSysFree, NULL);
-		xaFree(propnames);
+		/** Use it if it is unique and every value can use its keys **/
+		if (idx && idx->IsUnique && tmp_internal_LookupTerms(idx, fields, values, (pParamObjects)query->ObjList, &qy->IndexNode) == 0)
+		    qy->UsingIndex = idx;
 		}
+	    xaFree(fields);
+	    fields = NULL;
+	    xaFree(values);
+	    values = NULL;
+	    }
+
+	/** The ObjectSystem checks the other terms of the criteria **/
+	if (qy->UsingIndex && !has_other_terms)
+	    {
+	    query->Flags |= OBJ_QY_F_FULLQUERY;
 	    }
 
 	if (qy->UsingIndex)
-	    {
-	    query->Flags |= OBJ_QY_F_FULLQUERY;
 	    cxTestOutput(3, "TMP: Using index.\n");
-	    }
 	else
-	    {
 	    cxTestOutput(4, "TMP: Scanning collection.\n");
-	    }
 
 	return (void*)qy;
 
@@ -1081,15 +1093,10 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		qy->TempObj->LinkCnt--;
 	    nmFree(qy, sizeof(ObjTempQuery));
 	    }
-	if (props)
-	    {
-	    expFreeProps(props);
-	    }
-	if (propnames)
-	    {
-	    xaClear(propnames, (void*)nmSysFree, NULL);
-	    xaFree(propnames);
-	    }
+	if (fields)
+	    xaFree(fields);
+	if (values)
+	    xaFree(values);
 	return NULL;
     }
 
