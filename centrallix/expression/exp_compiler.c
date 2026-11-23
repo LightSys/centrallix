@@ -825,21 +825,26 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
 int
 exp_internal_FunctionCoverage(pExpression exp)
     {
-    int cm = 0;
+    int coverage_mask = 0;
 
 	if (exp->NodeType != EXPR_N_FUNCTION)
 	    return 0;
 
 	/** Values from outside the object list **/
-	if (strcmp(exp->Name, "getdate") == 0 || strcmp(exp->Name, "user_name") == 0 || strcmp(exp->Name, "row_number") == 0
-		|| strcmp(exp->Name, "eval") == 0 || strcmp(exp->Name, "rand") == 0)
-	    cm |= EXPR_MASK_EXTREF;
+	if (strcmp(exp->Name, "getdate") == 0
+	    || strcmp(exp->Name, "user_name") == 0
+	    || strcmp(exp->Name, "row_number") == 0
+	    || strcmp(exp->Name, "eval") == 0
+	    || strcmp(exp->Name, "rand") == 0
+	)   coverage_mask |= EXPR_MASK_EXTREF;
 
 	/** Values that can depend on any object, or on each call **/
-	if (strcmp(exp->Name, "eval") == 0 || strcmp(exp->Name, "substitute") == 0 || strcmp(exp->Name, "rand") == 0)
-	    cm |= EXPR_MASK_INDETERMINATE;
+	if (strcmp(exp->Name, "eval") == 0
+	    || strcmp(exp->Name, "substitute") == 0
+	    || strcmp(exp->Name, "rand") == 0
+	)   coverage_mask |= EXPR_MASK_INDETERMINATE;
 
-    return cm;
+    return coverage_mask;
     }
 
 
@@ -1122,4 +1127,3 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 
     return cm;
     }
-
