@@ -551,14 +551,14 @@ tmp_internal_IsRowIndependent(pExpression exp)
 	    return 0;
 	/** rand() changes per call, and eval() and substitute() can read the row **/
 	if (exp->NodeType == EXPR_N_FUNCTION && (
-	    !strcasecmp(exp->Name, "rand")
-	    || !strcasecmp(exp->Name, "eval")
-	    || !strcasecmp(exp->Name, "substitute")
+	    strcasecmp(exp->Name, "rand") == 0
+	    || strcasecmp(exp->Name, "eval") == 0
+	    || strcasecmp(exp->Name, "substitute") == 0
 	))
 	    return 0;
 	for(i=0; i<exp->Children.nItems; i++)
 	    {
-	    if (!tmp_internal_IsRowIndependent((pExpression)exp->Children.Items[i]))
+	    if (tmp_internal_IsRowIndependent((pExpression)exp->Children.Items[i]) == 0)
 		return 0;
 	    }
 
@@ -608,9 +608,9 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 	    for(i=0; i<query->Children.nItems; i++)
 		{
 		child = (pExpression)query->Children.Items[i];
-		if (!tmp_internal_IsRowIndependent(child))
+		if (tmp_internal_IsRowIndependent(child) == 0)
 		    {
-		    if (remaining)
+		    if (remaining != NULL)
 			return 1;
 		    remaining = child;
 		    }
@@ -625,7 +625,7 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 		    return 1;
 		    }
 		}
-	    if (remaining && tmp_internal_AnalyzeCriteria_r(root, remaining, objlist, fields, values) < 0)
+	    if (remaining != NULL && tmp_internal_AnalyzeCriteria_r(root, remaining, objlist, fields, values) < 0)
 		return -1;
 	    return 1; /* the ObjectSystem rechecks the whole OR */
 	    }
@@ -651,10 +651,10 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 		}
 
 	    /** Must be an obj/prop that we handle, and a constant-like value **/
-	    if ((tmp_internal_IsRowIndependent(i0) && (i1_id == 0 || i1_id == -2)) ||
-		(tmp_internal_IsRowIndependent(i1) && (i0_id == 0 || i0_id == -2)))
+	    if ((tmp_internal_IsRowIndependent(i0) != 0 && (i1_id == 0 || i1_id == -2)) ||
+		(tmp_internal_IsRowIndependent(i1) != 0 && (i0_id == 0 || i0_id == -2)))
 		{
-		if (tmp_internal_IsRowIndependent(i0))
+		if (tmp_internal_IsRowIndependent(i0) != 0)
 		    {
 		    /** swap **/
 		    it = i0; i0 = i1; i1 = it;
