@@ -849,13 +849,20 @@ exp_internal_FunctionCoverage(pExpression exp)
 
 
 /*** exp_internal_SetCoverageMask - calculates the object coverage mask
- *** for upper-level nodes.
+ *** for upper-level nodes.  Returns 0 on success or -1 on failure.
  ***/
 int
 exp_internal_SetCoverageMask(pExpression exp)
     {
     int i;
     pExpression subexp;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "EXP", "Failed to set expression coverage mask: resource exhaustion occurred.");
+	    return -1;
+	    }
 
     	/** Shortcut quit **/
 	if (exp->NodeType == EXPR_N_OBJECT || exp->NodeType == EXPR_N_PROPERTY) return 0;
@@ -864,7 +871,8 @@ exp_internal_SetCoverageMask(pExpression exp)
 	for(i=0;i<exp->Children.nItems;i++)
 	    {
 	    subexp = exp->Children.Items[i];
-	    exp_internal_SetCoverageMask(subexp);
+	    if (exp_internal_SetCoverageMask(subexp) < 0)
+		return -1;
 	    exp->ObjCoverageMask |= subexp->ObjCoverageMask;
 	    }
 
@@ -1012,7 +1020,11 @@ expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags)
 	if (!e) return NULL;
 	/*if (!(e->Flags & EXPR_F_DOMAINMASK)) e->Flags |= EXPR_F_RUNDEFAULT;*/
 	exp_internal_SetAggLevel(e);
-	exp_internal_SetCoverageMask(e);
+	if (exp_internal_SetCoverageMask(e) < 0)
+	    {
+	    expFreeExpression(e);
+	    return NULL;
+	    }
 	exp_internal_SetDomain(e);
 
 	/** Set SEQ ids. **/
@@ -1070,7 +1082,8 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
  *** object list.  'domain' specifies the requested bind domain, whether
  *** runstatic (EXP_F_RUNSTATIC), runserver (EXP_F_RUNSERVER), or runclient
  *** (EXP_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
- *** a domainless expression.
+ *** a domainless expression.  Sets each node's ObjCoverageMask, and returns
+ *** 0 on success or -1 on failure.
  ***/
 int
 expBindExpression(pExpression exp, pParamObjects objlist, int flags)
@@ -1078,6 +1091,14 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
     int i,cm=0;
     int idx;
     int domain = flags & EXPR_F_DOMAINMASK;
+    pExpression subexp;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "EXP", "Failed to bind expression: resource exhaustion occurred.");
+	    return -1;
+	    }
 
 	/** For a property node, check if the object should be set. **/
 	if (exp->NodeType == EXPR_N_PROPERTY && ((exp->Flags & domain) || !domain))
@@ -1122,8 +1143,14 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 	    }
 
 	/** Loop through subnodes in the tree to process them as well. **/
-	for(i=0;i<exp->Children.nItems;i++) cm |= expBindExpression((pExpression)(exp->Children.Items[i]), objlist, domain);
+	for(i=0;i<exp->Children.nItems;i++)
+	    {
+	    subexp = (pExpression)exp->Children.Items[i];
+	    if (expBindExpression(subexp, objlist, domain) < 0)
+		return -1;
+	    cm |= subexp->ObjCoverageMask;
+	    }
 	exp->ObjCoverageMask = cm;
 
-    return cm;
+    return 0;
     }
