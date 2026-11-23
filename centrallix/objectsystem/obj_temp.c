@@ -517,8 +517,11 @@ tmp_internal_IsRowIndependent(pExpression exp)
 	if (exp->Flags & (EXPR_F_AGGREGATEFN | EXPR_F_WINDOWFN))
 	    return 0;
 	/** rand() changes per call, and eval() and substitute() can read the row **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcasecmp(exp->Name, "rand") || !strcasecmp(exp->Name, "eval") ||
-		!strcasecmp(exp->Name, "substitute")))
+	if (exp->NodeType == EXPR_N_FUNCTION && (
+	    !strcasecmp(exp->Name, "rand")
+	    || !strcasecmp(exp->Name, "eval")
+	    || !strcasecmp(exp->Name, "substitute")
+	))
 	    return 0;
 	for(i=0; i<exp->Children.nItems; i++)
 	    {
