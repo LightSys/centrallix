@@ -459,20 +459,20 @@ pObjTempIndex
 tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
     {
     pObjTempIndex idx;
+    char* name;
     int order, i;
 
 	idx = (pObjTempIndex)nmMalloc(sizeof(ObjTempIndex));
 	if (!idx)
 	    return NULL;
+	memset(idx, 0, sizeof(ObjTempIndex));
 	idx->Types = (int*)nmSysMalloc(sizeof(int) * fields->nItems);
-	if (!idx->Types)
-	    {
-	    nmFree(idx, sizeof(ObjTempIndex));
-	    return NULL;
-	    }
+	if (idx->Types == NULL)
+	    goto error;
 	for(i=0; i<fields->nItems; i++)
 	    idx->Types[i] = DATA_T_UNAVAILABLE;
-	xaInit(&idx->Fields, 16);
+	if (xaInit(&idx->Fields, 16) < 0)
+	    goto error;
 	idx->IsUnique = 1;
 	order = ((pStructInf)tmp->Data)->nSubInf;
 
@@ -484,20 +484,53 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 	 ** to a B+ tree for this in the future).  This index uses
 	 ** variable length keys (asciz).
 	 **/
-	xhInit(&idx->Index, order, 0);
+	if (xhInit(&idx->Index, order, 0) < 0)
+	    {
+	    memset(&idx->Index, 0, sizeof(XHashTable));
+	    goto error;
+	    }
 
 	/** Copy the field list **/
 	for(i=0; i<fields->nItems; i++)
-	    xaAddItem(&idx->Fields, nmSysStrdup(fields->Items[i]));
+	    {
+	    name = nmSysStrdup(fields->Items[i]);
+	    if (name == NULL)
+		goto error;
+	    if (xaAddItem(&idx->Fields, name) < 0)
+		{
+		nmSysFree(name);
+		goto error;
+		}
+	    }
 
 	/** Create a param objects list **/
 	idx->OneObjList = expCreateParamList();
-	expAddParamToList(idx->OneObjList, NULL, NULL, EXPR_O_CURRENT);
+	if (idx->OneObjList == NULL)
+	    goto error;
+	if (expAddParamToList(idx->OneObjList, NULL, NULL, EXPR_O_CURRENT) < 0)
+	    goto error;
 
 	/** Add the index to the temp collection **/
-	xaAddItem(&tmp->Indexes, idx);
+	if (xaAddItem(&tmp->Indexes, idx) < 0)
+	    goto error;
 
-    return idx;
+	return idx;
+
+    error:
+	if (idx->OneObjList != NULL)
+	    expFreeParamList(idx->OneObjList);
+	if (idx->Index.nRows != 0)
+	    xhDeInit(&idx->Index);
+	if (idx->Fields.Items != NULL)
+	    {
+	    xaClear(&idx->Fields, (void*)nmSysFree, NULL);
+	    xaDeInit(&idx->Fields);
+	    }
+	if (idx->Types != NULL)
+	    nmSysFree(idx->Types);
+	mssClearError();
+	nmFree(idx, sizeof(ObjTempIndex));
+	return NULL;
     }
 
 
@@ -537,22 +570,32 @@ tmp_internal_IsRowIndependent(pExpression exp)
  *** in query criteria that an index lookup can answer, where each value is
  *** the same for every row.  Adds each term's field name to 'fields' and its
  *** value to 'values', using each field at most once.  Returns 1 if the
- *** criteria have other terms, 0 if not.  Neither is an error, and no error
- *** is left on the error stack.
+ *** criteria have other terms, 0 if not, or -1 on failure.  1 and 0 are not
+ *** errors, and leave no error on the error stack.
  ***/
 int
 tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObjects objlist, pXArray fields, pXArray values)
     {
-    int i, has_other_terms = 0;
+    int i, rval, has_other_terms = 0;
     pExpression i0, i1, it, child, remaining;
     int i0_id = -10, i1_id = -10;
+
+	/** Guard the recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "TMP", "Failed to analyze query criteria: resource exhaustion occurred.");
+	    return -1;
+	    }
 
 	/** AND? recurse if so. **/
 	if (query->NodeType == EXPR_N_AND)
 	    {
 	    for(i=0; i<query->Children.nItems; i++)
 		{
-		if (tmp_internal_AnalyzeCriteria_r(root, (pExpression)query->Children.Items[i], objlist, fields, values))
+		rval = tmp_internal_AnalyzeCriteria_r(root, (pExpression)query->Children.Items[i], objlist, fields, values);
+		if (rval < 0)
+		    return -1;
+		if (rval == 1)
 		    has_other_terms = 1;
 		}
 	    return has_other_terms;
@@ -582,8 +625,8 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 		    return 1;
 		    }
 		}
-	    if (remaining)
-		tmp_internal_AnalyzeCriteria_r(root, remaining, objlist, fields, values);
+	    if (remaining && tmp_internal_AnalyzeCriteria_r(root, remaining, objlist, fields, values) < 0)
+		return -1;
 	    return 1; /* the ObjectSystem rechecks the whole OR */
 	    }
 
@@ -595,7 +638,7 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 	    if (i0->NodeType == EXPR_N_PROPERTY)
 		{
 		i0_id = expObjID(i0,NULL);
-		if (root->Control && root->Control->Remapped) 
+		if (root->Control != NULL && root->Control->Remapped != 0 && i0_id >= 0)
 		    i0_id = root->Control->ObjMap[i0_id];
 		}
 	    i1 = (pExpression)query->Children.Items[1];
@@ -603,13 +646,13 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 	    if (i1->NodeType == EXPR_N_PROPERTY)
 		{
 		i1_id = expObjID(i1,NULL);
-		if (root->Control && root->Control->Remapped) 
+		if (root->Control != NULL && root->Control->Remapped != 0 && i1_id >= 0)
 		    i1_id = root->Control->ObjMap[i1_id];
 		}
 
 	    /** Must be an obj/prop that we handle, and a constant-like value **/
-	    if ((tmp_internal_IsRowIndependent(i0) && (i1_id == 0 || i1_id == -1 || i1_id == -2)) ||
-		(tmp_internal_IsRowIndependent(i1) && (i0_id == 0 || i0_id == -1 || i0_id == -2)))
+	    if ((tmp_internal_IsRowIndependent(i0) && (i1_id == 0 || i1_id == -2)) ||
+		(tmp_internal_IsRowIndependent(i1) && (i0_id == 0 || i0_id == -2)))
 		{
 		if (tmp_internal_IsRowIndependent(i0))
 		    {
@@ -620,11 +663,14 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 		/** Now i0 = property we handle, and i1 = constant **/
 		for(i=0; i<fields->nItems; i++)
 		    {
-		    if (!strcmp((char*)fields->Items[i], i0->Name))
+		    if (strcmp((char*)fields->Items[i], i0->Name) == 0)
 			return 1;
 		    }
-		xaAddItem(fields, i0->Name);
-		xaAddItem(values, i1);
+		if (xaAddItem(fields, i0->Name) < 0 || xaAddItem(values, i1) < 0)
+		    {
+		    mssError(1, "TMP", "Failed to add the index term for field '%s'.", i0->Name);
+		    return -1;
+		    }
 		return 0;
 		}
 	    }
@@ -682,7 +728,7 @@ tmp_internal_LookupTerms(pObjTempIndex idx, pXArray fields, pXArray values, pPar
 	for(i=0; i<fields->nItems; i++)
 	    {
 	    field = tmp_internal_IndexHasField(idx, (char*)fields->Items[i]) - 1;
-	    if (field < 0 || !tmp_internal_IsKeyUsable(idx, field, (pExpression)values->Items[i], objlist))
+	    if (field < 0 || tmp_internal_IsKeyUsable(idx, field, (pExpression)values->Items[i], objlist) == 0)
 		return -1;
 	    key_values[field] = (pExpression)values->Items[i];
 	    }
@@ -1017,24 +1063,29 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    fields = xaNew(16);
 	    values = xaNew(16);
-	    if (!fields || !values)
+	    if (fields == NULL || values == NULL)
+		{
+		mssError(1, "TMP", "Failed to allocate the query's index terms.");
 		goto error;
+		}
 	    has_other_terms = tmp_internal_AnalyzeCriteria_r(query->Tree, query->Tree, (pParamObjects)query->ObjList, fields, values);
+	    if (has_other_terms < 0)
+		goto error;
 	    if (fields->nItems > 0)
 		{
 		/** Find a usable index, or create one.  If the create
 		 ** fails, the query will fall back to a collection scan.
 		 **/
 		idx = tmp_internal_FindIndex(qy->TempObj, fields);
-		if (!idx)
+		if (idx == NULL)
 		    {
 		    idx = tmp_internal_CreateIndex(qy->TempObj, fields);
-		    if (idx && tmp_internal_AddAllToIndex(qy->TempObj, idx) < 0)
+		    if (idx != NULL && tmp_internal_AddAllToIndex(qy->TempObj, idx) < 0)
 			idx = NULL;
 		    }
 
 		/** Use it if it is unique and every value can use its keys **/
-		if (idx && idx->IsUnique && tmp_internal_LookupTerms(idx, fields, values, (pParamObjects)query->ObjList, &qy->IndexNode) == 0)
+		if (idx != NULL && idx->IsUnique != 0 && tmp_internal_LookupTerms(idx, fields, values, (pParamObjects)query->ObjList, &qy->IndexNode) == 0)
 		    qy->UsingIndex = idx;
 		}
 	    xaFree(fields);
@@ -1044,12 +1095,12 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    }
 
 	/** The ObjectSystem checks the other terms of the criteria **/
-	if (qy->UsingIndex && !has_other_terms)
+	if (qy->UsingIndex != NULL && has_other_terms == 0)
 	    {
 	    query->Flags |= OBJ_QY_F_FULLQUERY;
 	    }
 
-	if (qy->UsingIndex)
+	if (qy->UsingIndex != NULL)
 	    cxTestOutput(3, "TMP: Using index.\n");
 	else
 	    cxTestOutput(4, "TMP: Scanning collection.\n");
@@ -1061,11 +1112,13 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    if (qy->TempObj)
 		qy->TempObj->LinkCnt--;
+	    if (qy->Data != NULL)
+		stFreeInf(qy->Data);
 	    nmFree(qy, sizeof(ObjTempQuery));
 	    }
-	if (fields)
+	if (fields != NULL)
 	    xaFree(fields);
-	if (values)
+	if (values != NULL)
 	    xaFree(values);
 	return NULL;
     }
