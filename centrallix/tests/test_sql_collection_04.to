@@ -1,0 +1,16 @@
+##NAME SQL Temp Collection Indexing with Other Criteria
+
+# Enable index and scan output
+test 3,4
+
+query declare collection t scope application; insert into collection t select id = :s:id, abbrev = :s:abbrev, state = :s:full_name from /tests/States.csv/rows s; select :id, :abbrev from collection t where :id = 5 and :abbrev = 'CA'
+query select n = count(1) from collection t where :id = 5 and :abbrev != 'CA'
+query select n = count(1) from collection t where :id = 5 and substring(:state, 1, 3) = 'Cal'
+query select n = count(1) from collection t where :id = 5 and substring(:state, 1, 3) = 'Ala'
+query select n = count(1) from collection t where :id = 5 and (:abbrev = 'AK' or :abbrev = 'CA')
+query select n = count(1) from collection t where :id = 5 and :id = 6
+query select n = count(1) from collection t where :id = 5 and :id = 5
+query select n = count(1) from collection t where :id = 5 and :id > 4 and :id < 6
+query declare collection u scope application; insert into collection u select v = :s:id, w = :s:abbrev from /tests/States.csv/rows s where :s:id <= 40; select n = count(1) from collection u, collection t where :t:id = :u:v and :t:abbrev = :u:w and :t:state != 'Alaska'
+query select n = count(1) from collection u, collection t where :t:id = :u:v and right(:t:state, 1) = 'a'
+query select n = count(1) from collection u, collection t where :t:id = :u:v and :u:w != 'CA' and :t:state != 'Alaska' and :t:abbrev != 'AL'
