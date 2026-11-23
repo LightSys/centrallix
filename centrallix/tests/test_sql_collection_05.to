@@ -4,7 +4,7 @@
 test 3,4
 
 query declare collection t scope application; insert into collection t select id = :s:id, abbrev = :s:abbrev, state = :s:full_name from /tests/States.csv/rows s; declare collection u scope application; insert into collection u select p = condition(:s:id = 1, null, condition(:s:id = 2, 5, 99)), w = condition(:s:id = 2, 'CA', 'AK') from /tests/States.csv/rows s where :s:id <= 3; select n = count(1) from collection u, collection t where (:u:p is null or :t:id = :u:p)
-query select n = count(1) from collection u, collection t where (:u:p is null or :t:id = :u:p) and right(:t:state, 1) = 'a'
+query select n = count(1) from collection u, collection t where (:u:p is null or :t:id = :u:p) and :t:abbrev != :u:w
 query select n = count(1) from collection u, collection t where (:u:p is null or (:t:id = :u:p and :t:abbrev = :u:w))
 query select n = count(1) from collection u, collection t where (:t:id = :u:p or :u:p is null)
 query select n = count(1) from collection t where :id = convert(integer, '5') and :abbrev = upper('ca')
