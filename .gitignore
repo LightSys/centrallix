@@ -61,6 +61,7 @@ autom4te.cache
 /centrallix-ui-test/tests/__pycache__
 /centrallix-ui-test/tests/config.toml
 /centrallix/tests/*.bin
+/centrallix/tests/centrallix.conf-test
 /centrallix/tests/*.out
 /centrallix/tests/*.to.tmp
 /centrallix-temp
