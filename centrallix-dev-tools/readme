@@ -2,6 +2,19 @@ Developer Toolchain Recommendations
 ===================================
 See centrallix-sysdoc/DeveloperTools.md for suggestions on how to set up your Centrallix + Kardia development environment.
 
+Building and Running a Checkout
+===============================
+cx builds, runs, and tests Centrallix from the checkout it lives in, with no
+root needed. Each checkout or git worktree gets its own install prefix (.cx/),
+config, and HTTP port, so several can run servers side by side.
+
+    centrallix-dev-tools/cx build
+    centrallix-dev-tools/cx start
+    centrallix-dev-tools/cx help
+
+The server accepts your login name with the password stored in
+~/.config/centrallix/password (created on first build).
+
 Centrallix Syntax Highlighting
 ==============================
 

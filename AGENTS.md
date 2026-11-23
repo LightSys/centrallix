@@ -26,6 +26,18 @@ Some files use CRLF line endings (e.g. `centrallix-doc/Widgets/widgets.xml`). Pr
 Use `rg` (if available) instead of `grep`. It's faster, but skips gitignored, hidden, and binary files. The project symlinks files and directories, so add `-L`. `rg` treats structure files (e.g. `.app`, `.cmp`) as binary, so add `-a` for them. Combine flags as needed (e.g. `rg -La "pattern"`), or fall back to `grep`.
 
 
+# Building and Running
+
+Use `centrallix-dev-tools/cx` to build, run, and test the checkout you are in; `cx help` lists every action. Each checkout, including each git worktree, gets its own install prefix (`.cx/`), config, and port, so several can run servers at once. Nothing needs root: never use `sudo` or install to a system prefix.
+
+- `cx build` configures, builds, and installs into `.cx/`. `cx rebuild` reconfigures from scratch.
+- `cx start`, `cx stop`, `cx restart` (`--gdb` or `--valgrind`), `cx status`, `cx log` manage the server.
+- `cx query "SQL"` runs OSML SQL. `cx fetch /path` gets a page from this checkout's server.
+- `cx test obj|lib|js <filter|all>` runs a test suite.
+
+Server actions need the real process table and network, so run `cx` outside any agent sandbox.
+
+
 # Terms
 
 - **Centrallix** - An open-source web application server and data management engine developed by LightSys. It provides data abstraction, structural embedding, and dynamic widget-based HTML generation (DHTML), serving as the platform on which apps like Kardia are built.

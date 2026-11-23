@@ -93,3 +93,6 @@ perf.data.old
 .vscode
 */nbproject/
 *~
+
+# Per-checkout install prefix made by centrallix-dev-tools/cx
+/.cx/
