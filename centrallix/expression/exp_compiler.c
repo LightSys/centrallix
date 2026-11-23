@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -816,6 +816,33 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     }
 
 
+/*** exp_internal_FunctionCoverage() - return the coverage mask bits that a
+ *** function node adds to its arguments' bits: EXPR_MASK_EXTREF if its value
+ *** can change without any object changing, and EXPR_MASK_INDETERMINATE if
+ *** it can read objects that its arguments don't reference or its value
+ *** changes on every call.
+ ***/
+int
+exp_internal_FunctionCoverage(pExpression exp)
+    {
+    int cm = 0;
+
+	if (exp->NodeType != EXPR_N_FUNCTION)
+	    return 0;
+
+	/** Values from outside the object list **/
+	if (strcmp(exp->Name, "getdate") == 0 || strcmp(exp->Name, "user_name") == 0 || strcmp(exp->Name, "row_number") == 0
+		|| strcmp(exp->Name, "eval") == 0 || strcmp(exp->Name, "rand") == 0)
+	    cm |= EXPR_MASK_EXTREF;
+
+	/** Values that can depend on any object, or on each call **/
+	if (strcmp(exp->Name, "eval") == 0 || strcmp(exp->Name, "substitute") == 0 || strcmp(exp->Name, "rand") == 0)
+	    cm |= EXPR_MASK_INDETERMINATE;
+
+    return cm;
+    }
+
+
 /*** exp_internal_SetCoverageMask - calculates the object coverage mask
  *** for upper-level nodes.
  ***/
@@ -837,14 +864,7 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    }
 
 	/** Coverage mask for direct references (incl getdate() and user_name()) **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"row_number") || !strcmp(exp->Name, "eval")))
-	    {
-	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
-	    }
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"substitute")))
-	    {
-	    exp->ObjCoverageMask |= EXPR_MASK_INDETERMINATE;
-	    }
+	exp->ObjCoverageMask |= exp_internal_FunctionCoverage(exp);
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_INDETERMINATE;
@@ -1089,10 +1109,7 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 	    }
 
 	/** Check for absolute references in functions **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"row_number")))
-	    {
-	    cm |= EXPR_MASK_EXTREF;
-	    }
+	cm |= exp_internal_FunctionCoverage(exp);
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
 	    cm |= EXPR_MASK_INDETERMINATE;
