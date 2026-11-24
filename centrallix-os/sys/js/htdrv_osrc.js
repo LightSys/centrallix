@@ -2312,15 +2312,7 @@ function osrc_move_to_record_cb(recnum)
 	    {
 	    /* record is in a hole in the replica; fetch starting at it */
 	    this.startat = this.CurrentRecord;
-	    if (this.qid)
-		{
-		this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
-		this.qid = null;
-		}
-	    else
-		{
-		this.osrc_open_query_startat();
-		}
+	    this.OpenQueryAt();
 	    return 0;
 	    }
 	if(this.CurrentRecord < this.FirstRecord)
@@ -2344,7 +2336,16 @@ function osrc_move_to_record_cb(recnum)
 	    return 0;
 	    }
 	else
-	    { /* data is farther on, act normal */
+	    {
+	    /* data is far ahead: start a query there instead of reading up to it */
+	    if (this.CurrentRecord > this.LastRecord + this.replicasize && this.CurrentRecord != Number.MAX_VALUE && !this.query_ended)
+		{
+		this.startat = this.CurrentRecord;
+		this.OpenQueryAt();
+		return 0;
+		}
+
+	    /* data is farther on, act normal */
 	    if(this.qid)
 		{
 		if(this.CurrentRecord == Number.MAX_VALUE)
@@ -2407,6 +2408,21 @@ function osrc_open_query_startat()
     //this.LogStatus();
     //console.log('OSRC ' + this.__WgtrName + ': startat ' + this.startat + ', rowcount ' + this.querysize);
     this.DoRequest('multiquery', '/', {ls__startat:this.startat, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
+    }
+
+// osrc_open_query_at (OpenQueryAt) - open a new query starting at this.startat,
+// closing the currently open query first if there is one.
+function osrc_open_query_at()
+    {
+    if (this.qid)
+	{
+	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
+	this.qid = null;
+	}
+    else
+	{
+	this.osrc_open_query_startat();
+	}
     }
 
 function osrc_get_qid_startat()
@@ -2504,15 +2520,7 @@ function osrc_scroll_to(startrec, endrec)
 	    else
 		{
 		this.startat = hole;
-		if (this.qid)
-		    {
-		    this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
-		    this.qid = null;
-		    }
-		else
-		    {
-		    this.osrc_open_query_startat();
-		    }
+		this.OpenQueryAt();
 		}
 	    }
 	else
@@ -2548,6 +2556,14 @@ function osrc_scroll_to(startrec, endrec)
 	    }
 	else
 	    {
+	    /* data is far ahead: start a query there instead of reading up to it */
+	    if (this.TargetRecord[0] > this.LastRecord + this.replicasize && this.TargetRecord[1] != Number.MAX_VALUE && !this.query_ended)
+		{
+		this.startat = this.TargetRecord[0];
+		this.OpenQueryAt();
+		return 0;
+		}
+
 	    /* data is farther on, act normal */
 	    if(this.qid)
 		{
@@ -4252,6 +4268,7 @@ function osrc_init(param)
     loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
     loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
     loader.osrc_open_query_startat = osrc_open_query_startat;
+    loader.OpenQueryAt = osrc_open_query_at;
     loader.osrc_open_query_tail = osrc_open_query_tail;
     loader.osrc_action_modify_cb_2 = osrc_action_modify_cb_2;
     loader.ImportModifiedData = osrc_import_modified_data;
