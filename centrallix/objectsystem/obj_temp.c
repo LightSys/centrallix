@@ -535,8 +535,8 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 
 
 /*** tmp_internal_IsRowIndependent() - determine whether an expression has
- *** the same value for every row: it uses only constants, frozen values, and
- *** deterministic functions of them.
+ *** the same value for every row of a query, so it can be evaluated once
+ *** when the query opens.
  ***/
 int
 tmp_internal_IsRowIndependent(pExpression exp)
