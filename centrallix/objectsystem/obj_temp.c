@@ -1466,7 +1466,6 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     pObjTempData inf = (pObjTempData)(inf_v);
     pStructInf find_inf;
     int t;
-    int removed_indexes = 0;
     int added_attr = 0;
 
 	/** Choose the attr name **/
@@ -1503,13 +1502,6 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    return 0;
 	    }
 
-	/** Index update - part 1 **/
-	if (!inf->IsNew)
-	    {
-	    tmp_internal_RemoveFromMatchingIndexes(inf->TempObj, inf->Data, attrname);
-	    removed_indexes = 1;
-	    }
-
 	/** Otherwise, set the integer or string value **/
 	find_inf = stLookup(inf->Data, attrname);
 	if (!find_inf) 
@@ -1541,7 +1533,7 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
 	    goto error;
 	    }
 
-	/** Index update - part 2 **/
+	/** Move the object to its new key in the indexes **/
 	if (!inf->IsNew)
 	    tmp_internal_AddToMatchingIndexes(inf->TempObj, inf->Data, attrname);
 
@@ -1550,8 +1542,6 @@ tmpSetAttrValue(void* inf_v, char* attrname, int datatype, pObjData val, pObjTrx
     error:
 	if (added_attr)
 	    stRemoveInf(find_inf);
-	if (removed_indexes)
-	    tmp_internal_AddToMatchingIndexes(inf->TempObj, inf->Data, attrname);
 	return -1;
     }
 
