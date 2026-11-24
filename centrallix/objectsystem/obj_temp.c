@@ -115,7 +115,7 @@ char*
 tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[])
     {
     XString key;
-    char* rkey = NULL;
+    char* key_str = NULL;
 
 	if (xsInit(&key) < 0)
 	    {
@@ -130,8 +130,8 @@ tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[])
 	    goto end;
 	    }
 
-	rkey = nmSysStrdup(key.String);
-	if (rkey == NULL)
+	key_str = nmSysStrdup(key.String);
+	if (key_str == NULL)
 	    {
 	    mssError(1, "TMP", "Failed to copy the %d-byte index key.", key.Length);
 	    goto end;
@@ -139,7 +139,7 @@ tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[])
 
     end:
 	xsDeInit(&key);
-	return rkey;
+	return key_str;
     }
 
 
