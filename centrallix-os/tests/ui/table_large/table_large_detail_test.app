@@ -26,6 +26,7 @@ table_large_detail_test "widget/page"
 		    x = 10; y = 10; width = 598; height = 418;
 		    min_rowheight = 20;
 		    max_rowheight = 80;
+		    newrow_position = "auto";
 		    row1_bgcolor = "#ffffff";
 		    row2_bgcolor = "#e0e0e0";
 		    rowhighlight_bgcolor = "#000080";
@@ -44,6 +45,7 @@ table_large_detail_test "widget/page"
 		    detail "widget/table-row-detail"
 			{
 			height = 60;
+			show_on_new = 1;
 			detail_lbl "widget/label" { x = 10; y = 10; width = 400; height = 24; value = runclient("Detail for " + :osrc:Name); }
 			}
 		    }

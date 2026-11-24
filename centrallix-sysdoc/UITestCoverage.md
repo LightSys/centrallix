@@ -617,7 +617,7 @@ Tab Test PASS
 ## Table Large Result Set Test
 ### Properties Tested
 - osrc `replicasize`, `readahead`, `scrollahead` with a 1000 row result set (replica of 50 rows)
-- table `min_rowheight`, `max_rowheight`, column `wrap`, `widget/table-row-detail`
+- table `min_rowheight`, `max_rowheight`, `newrow_position`, column `wrap`, `widget/table-row-detail` (`show_on_new`)
 - osrc/form actions: `First`, `Last`, `Prev`, `Next`, `Refresh`, `New`, `Save`, `Discard`, `Delete`
 
 ### Files
@@ -625,7 +625,7 @@ Tab Test PASS
 - `tests/ui/table_large/table_large_detail_test.app`: same, with variable row height and a row detail.
 - `tests/ui/table_large/gen_table_large_csv.py`: generates `table_large.csv`, where `Id` equals the row's position in the result set.
 - `centrallix-ui-test/tests/table_large_test.py`: the tests. Optional `config.toml` keys are listed at the top of the file.
-- Destructive tests (7, 12, 16) run only with `destructive = true`, and undo their changes through the UI. The data ends up the same, but the datafile driver pads deleted rows in place, so the CSV still shows as modified in git. Regenerate it before committing.
+- Destructive tests (7, 12, 16, and the `Save` part of 18) run only with `destructive = true`, and undo their changes through the UI. The data ends up the same, but the datafile driver pads deleted rows in place, so the CSV still shows as modified in git. Regenerate it before committing.
 - The suite refuses to run if the data is not in its generated state. To reset it, stop the server, run the generator, and restart (the datafile driver caches the CSV, so rewriting it under a running server does not work).
 
 ### Invariants
@@ -654,13 +654,14 @@ A failing check prints the table/osrc state and a trace of recent table and osrc
 12. Save the current record from the form while the table is scrolled away from it. The view must not move.
 13. Detail app: select a row while the previously selected row (with its detail open) is above the view.
 14. Detail app: change the height of the first loaded row while it is above the view.
-15. `New` mid-list: the placeholder must appear in view without scrolling.
-16. `New` + `Save` mid-list: no scrolling, and no records skipped or duplicated afterwards.
+15. `New` with `newrow_position` `end` (default): the placeholder goes after the last loaded record and is in view. It takes no real record's slot, and `Discard` does not scroll.
+16. `New` + `Save` mid-list: the record stays where the placeholder was, with no scroll. Then a mid-list `Delete`. After each, walking to the end shows no skipped or duplicated records.
 17. Seeded random stress of wheel, thumb drag, clicks, navigation, `Refresh`, and `New`/`Discard`.
+18. Detail app, `newrow_position` `auto`: the placeholder goes after the selected row without scrolling, and shows its `show_on_new` row detail. `Save` keeps the record in place.
+19. `newrow_position` `start`: the placeholder goes before the first loaded record and is brought into view.
 
 ### Note
-- Tests 7, 8, 11, 12, 14, 15, 16 and 17 currently fail. They reproduce known table and osrc defects with large result sets, and should pass once those are fixed.
-- The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported.
+- The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported. A `Refresh` while the current record is past record 500 still shows it once, because the refresh re-reads the result set up to the current record.
 
 ----------
 

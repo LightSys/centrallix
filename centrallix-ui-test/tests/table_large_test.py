@@ -8,7 +8,7 @@
 #   chrome_binary  - Chrome/Chromium binary to drive.
 #   chromedriver   - chromedriver path (skips ChromeDriverManager).
 #   headless       - true to run without a visible browser window.
-#   destructive    - true to run tests that change data (7, 12, 16).  Each
+#   destructive    - true to run tests that change data (7, 12, 16, 18).  Each
 #                    one undoes its change through the UI.  If one stops
 #                    partway, stop the server, run
 #                    centrallix-os/tests/ui/table_large/gen_table_large_csv.py,
@@ -111,7 +111,7 @@ window.__tl = {
 	var have_data = o.LastRecord >= 1 && o.LastRecord >= o.FirstRecord;
 
 	// I1: something is drawn in the viewport.
-	if (have_data && scan.intersecting.length == 0)
+	if (have_data && scan.intersecting.length == 0 && !__tl.newrowInView(t))
 	    v.push('I1 blank: no row intersects the viewport (rows ' + t.rows.first + '..' + t.rows.last + ', scroll_y ' + t.scroll_y + ')');
 
 	// I2: rows form one contiguous, non-overlapping run.
@@ -122,6 +122,8 @@ window.__tl = {
 	    var n = t.rows[i+1];
 	    if (n && i < t.rows.last) {
 		var expect = __tl.relY(r) + $(r).height() + t.cellvspacing*2;
+		if (t.newrow && t.newrow.placed && i+1 == t.newrow_slot)
+		    expect += $(t.newrow).height() + t.cellvspacing*2;
 		if (Math.abs(__tl.relY(n) - expect) > 1)
 		    v.push('I2 row ' + (i+1) + ' at y=' + __tl.relY(n) + ', expected ' + expect + ' (after row ' + i + ')');
 	    }
@@ -183,7 +185,19 @@ window.__tl = {
 	    var i = scan.intersecting[k], r = t.rows[i];
 	    res.push({rownum: i, page_y: r.getBoundingClientRect().top, rel_y: __tl.relY(r), name: r.cols[nc].data, mode: r.disp_mode});
 	}
+	if (__tl.newrowInView(t)) {
+	    var nr = t.newrow;
+	    res.push({rownum: null, slot: t.newrow_slot, page_y: nr.getBoundingClientRect().top, rel_y: __tl.relY(nr), name: '', mode: 'newselect', height: $(nr).height()});
+	    res.sort(function(a, b) { return a.page_y - b.page_y; });
+	}
 	return res;
+    },
+
+    newrowInView: function(t) {
+	var nr = t.newrow;
+	if (!nr || !nr.placed || $(nr).css('visibility') == 'hidden') return false;
+	var cr = t.scrollctr.getBoundingClientRect(), rr = nr.getBoundingClientRect();
+	return rr.top >= cr.top - 1 && rr.bottom <= cr.bottom + 1;
     },
 
     replicaHoles: function(o) {
@@ -497,14 +511,17 @@ class Suite:
             self.check(s, 7, "table still scrolls after Delete", y1 != y0, "scroll_y %s -> %s" % (y0, y1))
         finally:
             if deleted:
-                self.recreate_record_1000()
+                self.recreate_record(TOTAL_ROWS)
 
-    def recreate_record_1000(self):
-        """Re-create record 1000 after test 7 deletes it."""
+    def recreate_record(self, n):
+        """Re-create record n with its generated values after a test deletes it."""
+        groups = ["Alpha", "Bravo", "Charlie", "Delta", "Echo"]
         s = self.session()
         s.click_button("new_btn")
         s.settle()
-        for eb, text in (("id_eb", "1000"), ("name_eb", "Row 1000"), ("grp_eb", "Alpha"), ("amount_eb", "0"), ("notes_eb", "Note 1000")):
+        values = (("id_eb", str(n)), ("name_eb", "Row %04d" % n), ("grp_eb", groups[n % 5]),
+                  ("amount_eb", str((n * 37) % 1000)), ("notes_eb", "Note %d" % n))
+        for eb, text in values:
             self.type_into(s, eb, text)
         s.click_button("save_btn")
         s.settle(30)
@@ -659,68 +676,124 @@ class Suite:
                    "row %s rel_y %s -> %s" % (ref, rel0, rel1))
         self.check_invariants(s, 14, "invariants after height change", thumb_tolerance=0.2)
 
+    def placeholder(self, s):
+        """The placeholder row as listed by viewport(), or None if not fully in view."""
+        ph = [r for r in s.viewport() if r["mode"] == "newselect"]
+        return ph[0] if ph else None
+
+    def above_slot(self, rows, slot):
+        """(rownum, page_y) of the real rows above the placeholder slot."""
+        return [(r["rownum"], round(r["page_y"])) for r in rows if r["rownum"] is not None and r["rownum"] < slot]
+
+    def collect_ids(self, s):
+        """Wheel to the end of the results, returning {Id: count} of the records seen."""
+        seen = {}
+        for i in range(150):
+            ids = s.js("(function(){ var ic = __tl.colIndex(t, 'Id'), nc = __tl.colIndex(t, 'Name'), r = []; for (var i = t.rows.first; i <= t.rows.last; i++) if (t.rows[i]) r.push([i, t.rows[i].cols[ic].data, t.rows[i].cols[nc].data]); return r; })()")
+            for rownum, rid, name in ids:
+                seen[rownum] = rid if rid not in ("", None) else ("name:" + name)
+            if s.js("t.osrc.FinalRecord !== null && t.rows.last >= t.osrc.FinalRecord"):
+                break
+            s.wheel(1600)
+            s.settle()
+        counts = {}
+        for rid in seen.values():
+            counts[str(rid)] = counts.get(str(rid), 0) + 1
+        return counts
+
+    def check_ids(self, s, test_no, label, counts, absent=(), extra=()):
+        """Check the walked records: every Id from the first one seen to the end, once each."""
+        ids = [int(k) for k in counts if not k.startswith("name:")]
+        first_id = min(ids) if ids else 1
+        dupes = sorted([k for k, c in counts.items() if c > 1])
+        missing = [i for i in range(first_id, TOTAL_ROWS + 1) if str(i) not in counts and i not in absent]
+        present = [i for i in absent if str(i) in counts]
+        self.check(s, test_no, label + ": no duplicated records", not dupes, "duplicated: %s" % dupes[:20])
+        self.check(s, test_no, label + ": no skipped records (from Id %d)" % first_id, not missing, "missing Ids: %s" % missing[:20])
+        if absent:
+            self.check(s, test_no, label + ": deleted record not shown", not present, "still shown: %s" % present)
+        for name in extra:
+            self.check(s, test_no, label + ": %s shown once" % name, counts.get("name:" + name) == 1, "count=%s" % counts.get("name:" + name))
+
     def test15(self):
-        reporter.add_test(15, "New record placeholder appears in view without scrolling")
+        reporter.add_test(15, "New row placeholder at the end of the loaded rows (newrow_position end)")
         s = self.session()
         self.check(s, 15, "wheel to record ~200", s.scroll_to_record(200))
-        before = [(r["rownum"], round(r["page_y"])) for r in s.viewport()]
+        last = s.js("t.osrc.LastRecord")
         s.click_button("new_btn")
         self.check_settled(s, 15, "after New")
-        vp = s.viewport()
-        ph = [r for r in vp if r["mode"] == "newselect"]
-        self.check(s, 15, "placeholder row is in the viewport", len(ph) == 1, "placeholder rows in view: %s" % ph)
-        after = [(r["rownum"], round(r["page_y"])) for r in vp if r["mode"] != "newselect"]
-        self.check(s, 15, "first visible record unchanged", before[:1] == after[:1], "before %s after %s" % (before[:1], after[:1]))
-        info = s.js("(function(){ for (var i = t.rows.first; i <= t.rows.last; i++) if (t.rows[i] && t.rows[i].disp_mode == 'newselect') return [i, __tl.replicaValue(t.osrc, i, 'Name')]; return null; })()")
-        print("  [test 15] placeholder slot / real record at that index: %s" % info)
+        self.check(s, 15, "placeholder slot is after the last loaded record", s.js("t.newrow_slot") == last + 1, "slot=%s LastRecord=%s" % (s.js("t.newrow_slot"), last))
+        ph = self.placeholder(s)
+        self.check(s, 15, "placeholder row is in the viewport", ph is not None)
+        self.check_invariants(s, 15, "invariants with the placeholder shown", check_order=True)
+        vp_new = s.viewport()
         s.click_button("cancel_btn")
         self.check_settled(s, 15, "after Cancel")
+        self.check(s, 15, "placeholder removed", s.js("t.newrow === null && t.newrow_slot === null"))
+        if ph:
+            vp = s.viewport()
+            self.check(s, 15, "Cancel does not scroll", self.above_slot(vp_new, ph["slot"])[:5] == self.above_slot(vp, ph["slot"])[:5],
+                       "before %s after %s" % (self.above_slot(vp_new, ph["slot"])[:3], self.above_slot(vp, ph["slot"])[:3]))
         self.check_invariants(s, 15, "invariants after Cancel", check_order=True)
 
+    def new_and_save(self, s, test_no, name):
+        """New + Save at the configured position; checks the record stays at the placeholder."""
+        s.click_button("new_btn")
+        s.settle()
+        ph = self.placeholder(s)
+        self.check(s, test_no, "placeholder row is in the viewport", ph is not None)
+        vp_new = s.viewport()
+        for eb, text in (("name_eb", name), ("amount_eb", "5")):
+            self.type_into(s, eb, text)
+        s.click_button("save_btn")
+        self.check_settled(s, test_no, "after Save", timeout=30)
+        vp = s.viewport()
+        created = [r for r in vp if r["name"] == name]
+        self.check(s, test_no, "created record visible", len(created) == 1, [r["name"] for r in vp])
+        if ph and created:
+            self.check(s, test_no, "created record is where the placeholder was", abs(created[0]["page_y"] - ph["page_y"]) <= 2 and created[0]["rownum"] == ph["slot"],
+                       "placeholder slot %s y %s, record row %s y %s" % (ph["slot"], ph["page_y"], created[0]["rownum"], created[0]["page_y"]))
+            self.check(s, test_no, "Save does not scroll", self.above_slot(vp_new, ph["slot"]) == self.above_slot(vp, ph["slot"]),
+                       "before %s after %s" % (self.above_slot(vp_new, ph["slot"])[:3], self.above_slot(vp, ph["slot"])[:3]))
+        self.check_invariants(s, test_no, "invariants after Save")
+        return ph
+
+    def delete_created(self, s, name):
+        if s.js("__tl.replicaValue(t.osrc, t.osrc.CurrentRecord, 'Name')") == name:
+            s.click_button("delete_btn")
+            s.settle(30)
+
     def test16(self):
-        reporter.add_test(16, "Save a new record mid-list")
+        reporter.add_test(16, "Create and delete mid-list without skipped or duplicated records")
         if not self.destructive_ok(16):
             return
+
+        # Create at the end of the loaded rows, then walk to the end.
         s = self.session()
         try:
             self.check(s, 16, "wheel to record ~200", s.scroll_to_record(200))
-            before = [(r["rownum"], round(r["page_y"])) for r in s.viewport()]
-            s.click_button("new_btn")
-            s.settle()
-            for eb, text in (("name_eb", "Created Row"), ("amount_eb", "5")):
-                self.type_into(s, eb, text)
-            s.click_button("save_btn")
-            self.check_settled(s, 16, "after Save", timeout=30)
-            vp = s.viewport()
-            self.check(s, 16, "created record visible", any(r["name"] == "Created Row" for r in vp), [r["name"] for r in vp])
-            after = [(r["rownum"], round(r["page_y"])) for r in vp]
-            self.check(s, 16, "first visible record unchanged", before[:1] == after[:1], "before %s after %s" % (before[:1], after[:1]))
-            self.check_invariants(s, 16, "invariants after Save")
-
-            # Walk to the end and look for skipped or duplicated records.
-            seen = {}
-            for i in range(120):
-                ids = s.js("(function(){ var ic = __tl.colIndex(t, 'Id'), r = []; for (var i = t.rows.first; i <= t.rows.last; i++) if (t.rows[i]) r.push([i, t.rows[i].cols[ic].data]); return r; })()")
-                for rownum, rid in ids:
-                    seen[rownum] = rid
-                if s.js("t.osrc.FinalRecord !== null && t.rows.last >= t.osrc.FinalRecord"):
-                    break
-                s.wheel(1600)
-                s.settle()
-            counts = {}
-            for rid in seen.values():
-                if rid not in ("", None):
-                    counts[str(rid)] = counts.get(str(rid), 0) + 1
-            dupes = sorted([k for k, c in counts.items() if c > 1], key=int)
-            missing = [i for i in range(1, TOTAL_ROWS + 1) if str(i) not in counts and i > 200]
-            self.check(s, 16, "no duplicated records after the created one", not dupes, "duplicated Ids: %s" % dupes[:20])
-            self.check(s, 16, "no skipped records after the created one", not missing, "missing Ids: %s" % missing[:20])
+            self.new_and_save(s, 16, "Created Row")
+            self.check_ids(s, 16, "after create", self.collect_ids(s), extra=("Created Row",))
         finally:
-            # Delete the created record, which is still the current record.
             s.settle()
-            if s.js("__tl.replicaValue(t.osrc, t.osrc.CurrentRecord, 'Name')") == "Created Row":
+            self.delete_created(s, "Created Row")
+
+        # Delete a record mid-list, then walk to the end.
+        s = self.session()
+        deleted = None
+        try:
+            self.check(s, 16, "wheel to record ~300", s.scroll_to_record(300))
+            target = [r["rownum"] for r in s.viewport() if r["rownum"] and r["rownum"] % 7 != 0][3]
+            s.click_row(target)
+            s.settle()
+            if s.js("t.osrc.CurrentRecord") == target:
                 s.click_button("delete_btn")
-                s.settle(30)
+                deleted = target
+                self.check_settled(s, 16, "after Delete", timeout=30)
+                self.check_ids(s, 16, "after delete", self.collect_ids(s), absent=(target,))
+        finally:
+            if deleted:
+                self.recreate_record(deleted)
 
     def test17(self):
         reporter.add_test(17, "Seeded random stress")
@@ -749,6 +822,55 @@ class Suite:
             if failure:
                 detail = "%s | steps: %s" % (failure, done)
             self.check(s if failure else None, 17, label, failure is None, detail)
+
+    def test18(self):
+        reporter.add_test(18, "New row in view without scrolling (newrow_position auto)")
+        s = self.session(DETAIL_APP)
+        self.check(s, 18, "wheel to record ~100", s.scroll_to_record(100))
+        sel = s.middle_visible_row()
+        s.click_row(sel)
+        s.settle()
+        vp0 = s.viewport()
+        s.click_button("new_btn")
+        self.check_settled(s, 18, "after New")
+        slot = s.js("t.newrow_slot")
+        self.check(s, 18, "placeholder slot is after the selected row", slot == sel + 1, "slot=%s selected=%s" % (slot, sel))
+        ph = self.placeholder(s)
+        self.check(s, 18, "placeholder row is in the viewport", ph is not None)
+        self.check(s, 18, "New does not scroll", self.above_slot(vp0, slot) == self.above_slot(s.viewport(), slot),
+                   "before %s after %s" % (self.above_slot(vp0, slot)[:3], self.above_slot(s.viewport(), slot)[:3]))
+        if ph:
+            self.check(s, 18, "placeholder shows its row detail", ph["height"] > 40, "height=%s" % ph["height"])
+        self.check_invariants(s, 18, "invariants with the placeholder shown", thumb_tolerance=0.2)
+        if self.config.get("destructive"):
+            s.click_button("cancel_btn")
+            s.settle()
+            s.click_row(sel)
+            s.settle()
+            try:
+                self.new_and_save(s, 18, "Auto Row")
+            finally:
+                s.settle()
+                self.delete_created(s, "Auto Row")
+        else:
+            s.click_button("cancel_btn")
+            self.check_settled(s, 18, "after Cancel")
+            self.check_invariants(s, 18, "invariants after Cancel", thumb_tolerance=0.2)
+
+    def test19(self):
+        reporter.add_test(19, "New row placeholder at the start of the loaded rows (newrow_position start)")
+        s = self.session()
+        s.js("(t.newrow_pos = 'start', 0)")
+        self.check(s, 19, "wheel to record ~200", s.scroll_to_record(200))
+        first = s.js("t.osrc.FirstRecord")
+        s.click_button("new_btn")
+        self.check_settled(s, 19, "after New")
+        self.check(s, 19, "placeholder slot is the first loaded record", s.js("t.newrow_slot") == first, "slot=%s FirstRecord=%s" % (s.js("t.newrow_slot"), first))
+        self.check(s, 19, "placeholder row is in the viewport", self.placeholder(s) is not None)
+        self.check_invariants(s, 19, "invariants with the placeholder shown", check_order=True)
+        s.click_button("cancel_btn")
+        self.check_settled(s, 19, "after Cancel")
+        self.check_invariants(s, 19, "invariants after Cancel", check_order=True)
 
     def stress_step(self, s, rng):
         kinds = ["wheel", "wheel", "wheel", "bigwheel", "drag", "click", "first", "last", "prev", "next", "refresh", "newcancel"]
@@ -787,7 +909,7 @@ class Suite:
 
     def run(self):
         only = self.config.get("only")
-        tests = [getattr(self, "test%d" % i) for i in range(1, 18) if not only or i in only]
+        tests = [getattr(self, "test%d" % i) for i in range(1, 20) if not only or i in only]
         try:
             if not self.data_is_clean(self.session()):
                 print("Test data is not in its generated state.  Stop the server, run")
