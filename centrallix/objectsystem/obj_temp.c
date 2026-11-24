@@ -961,9 +961,9 @@ tmp_i_FreeString(char* ptr)
     }
 
 
-/*** tmpOpenQuery - open a directory query.  This driver is pretty 
- *** unintelligent about queries.  So, we leave the query matching logic
- *** to the ObjectSystem management layer in this case.
+/*** tmpOpenQuery - open a query on the collection's rows.  Sets
+ *** OBJ_QY_F_FULLQUERY if every row returned matches the criteria;
+ *** otherwise the ObjectSystem checks each row.
  ***/
 void*
 tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
@@ -1029,9 +1029,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 
 	/** The ObjectSystem checks the other terms of the criteria **/
 	if (qy->UsingIndex != NULL && has_other_terms == 0)
-	    {
 	    query->Flags |= OBJ_QY_F_FULLQUERY;
-	    }
 
 	if (qy->UsingIndex != NULL)
 	    cxTestOutput(3, "TMP: Using index.\n");
