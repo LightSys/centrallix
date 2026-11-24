@@ -3636,7 +3636,7 @@ myTabControl "widget/tab"
 			
 			<property name="dragcols" type="integer">Whether to allow dragging of column boundaries to resize columns; set to 1 to allow it and 0 to disallow.  Default is 1.</property>
 
-			<property name="followcurrent" type="yes/no">Set to 'yes' to cause the table's current row to follow the currently selected object in the ObjectSource, and 'no' to disable this behavior.  Default is 'yes'.</property>
+			<property name="followcurrent" type="yes/no">Set to 'yes' to cause the table to scroll the ObjectSource's current object into view whenever the current object changes, and 'no' to disable this behavior.  The table does not scroll back to the current object merely because the user scrolled away from it.  Default is 'yes'.</property>
 
 			<property name="gridinemptyrows" type="integer">Whether to show the table's grid in rows which do not hold data.  Set to 1 to show the grid or 0 to not show it; default is 1.</property>
 

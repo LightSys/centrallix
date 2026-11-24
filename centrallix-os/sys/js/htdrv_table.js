@@ -360,6 +360,20 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	var max = this.osrc.LastRecord + this.is_new;
 	}
 
+    // Target rows not in the replica at all (e.g. after a refresh)?  Show the
+    // rows starting at the record to restore, or else the current record.
+    if (this.datamode != 1 && max >= min && (this.target_range.end < min || this.target_range.start > max))
+	{
+	var anchor = this.scroll_to_rec;
+	if (!(anchor >= min && anchor <= max && this.osrc.replica[anchor]))
+	    anchor = this.osrc.CurrentRecord;
+	if (!(anchor >= min && anchor <= max && this.osrc.replica[anchor]))
+	    anchor = min;
+	var end = Math.min(anchor + this.rowcache_size - 1, max);
+	this.target_range = {start:Math.max(min, Math.min(anchor, end - this.rowcache_size + 1)), end:end};
+	this.scroll_to_rec = anchor;
+	}
+
     // Draw only one contiguous run of loaded records, so the rows never have gaps.
     if (this.datamode != 1)
 	{
@@ -491,18 +505,15 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	return;
 	}
 
-    // Double check current record visibility
-    if (this.old_scroll_y && this.cr >= this.rows.first && this.cr <= this.rows.last)
+    // Follow the current record when it changes.
+    if (this.datamode != 1 && this.cr != this.followed_cr)
 	{
-	var new_y = this.old_scroll_y;
-	this.old_scroll_y = 0;
-	this.Scroll(new_y, false);
-	return;
-	}
-    if ((this.cr < this.rows.firstvis || this.cr > this.rows.lastvis) && this.osrc_last_op != 'ScrollTo')
-	{
-	this.BringIntoView(this.cr);
-	return;
+	this.followed_cr = this.cr;
+	if (this.followcurrent && this.cr)
+	    {
+	    this.BringIntoView(this.cr);
+	    return;
+	    }
 	}
 
     // space at bottom of table?
@@ -1036,15 +1047,17 @@ function tbld_replica_moved(osrc, target_start, target_end)
     {
     this.osrc_busy = false;
     this.RedrawAll(null, true);
-    this.osrc_last_op = null;
     }
 
 function tbld_replica_changed(dataobj, force_datafetch, why)
     {
     //this.log.push("ReplicaMoved / ObjectAvailable from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     this.osrc_busy = false;
+
+    // A move to a record (even the current one) brings it into view.
+    if (why == 'change')
+	this.followed_cr = null;
     this.RedrawAll(dataobj, force_datafetch);
-    this.osrc_last_op = null;
     }
 
 function tbld_operation_complete(stat, osrc)
@@ -1056,15 +1069,16 @@ function tbld_operation_complete(stat, osrc)
 
 function tbld_clear_rows(fromobj, why)
     {
+    var anchor = null;
     if (why == 'refresh')
 	{
 	this.crname = (this.cr && this.rows[this.cr])?this.rows[this.cr].name:null;
-	this.old_scroll_y = this.scroll_y;
+	anchor = (this.rows.firstvis !== null)?this.rows.firstvis:this.rows.first;
 	}
     else
 	{
 	this.crname = null;
-	this.old_scroll_y = 0;
+	this.followed_cr = null;
 	}
     for(var i=this.rows.first; i<=this.rows.last; i++)
 	{
@@ -1077,7 +1091,19 @@ function tbld_clear_rows(fromobj, why)
     this.scroll_maxrec = null;
     this.scroll_minheight = null;
     this.scroll_minrec = null;
-    this.target_range = {start:1, end:this.rowcache_size};
+    this.target_y = null;
+    this.bring_into_view = null;
+    if (anchor)
+	{
+	// Come back to the same record at the top of the view.
+	this.target_range = {start:anchor, end:anchor + this.rowcache_size - 1};
+	this.scroll_to_rec = anchor;
+	}
+    else
+	{
+	this.target_range = {start:1, end:this.rowcache_size};
+	this.scroll_to_rec = null;
+	}
     this.UpdateThumb(false);
     if (why != 'refresh')
 	this.initselect = this.initselect_orig;
@@ -2100,7 +2126,6 @@ function tbld_osrc_dispatch()
 	{
 	case 'ScrollTo':
 	    this.osrc_busy = true;
-	    this.osrc_last_op = item.type;
 	    //this.log.push("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    //console.log("Calling ScrollTo(" + item.start + "," + item.end + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.ScrollTo(item.start, item.end);
@@ -2108,7 +2133,6 @@ function tbld_osrc_dispatch()
 
 	case 'MoveToRecord':
 	    this.osrc_busy = true;
-	    this.osrc_last_op = item.type;
 	    //this.log.push("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    //console.log("Calling MoveToRecord(" + item.rownum + ") on osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
 	    this.osrc.MoveToRecord(item.rownum, this);
@@ -2246,7 +2270,6 @@ function tbld_init(param)
     t.Request = tbld_request;*/
     t.osrc_request_queue = [];
     t.osrc_busy = false;
-    t.osrc_last_op = null;
     //t.log = [];
     t.ttf_string = '';
     t.selected_row = null;
@@ -2397,6 +2420,7 @@ function tbld_init(param)
     t.bdr_width = (t.colsep > 0)?3:0;
     t.target_y = null;
     t.scroll_to_rec = null;
+    t.followed_cr = null;
     t.thumb_total = 0;
     t.thumb_per_view = 0;
 
