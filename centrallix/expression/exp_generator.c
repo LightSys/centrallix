@@ -351,6 +351,11 @@ exp_internal_GenerateText_cxsql(pExpression exp, pExpGen eg)
 		break;
 
 	    case EXPR_N_STRING:
+		if (exp->Flags & EXPR_F_PERMNULL)
+		    {
+		    exp_internal_WriteText(eg, "NULL");
+		    break;
+		    }
 	        if (eg->EscChar == '"')
 		    exp_internal_WriteText(eg, objDataToStringTmp(DATA_T_STRING, exp->String, DATA_F_QUOTED | DATA_F_SINGLE));
 		else
