@@ -876,7 +876,7 @@ exp_internal_SetCoverageMask(pExpression exp)
 	    exp->ObjCoverageMask |= subexp->ObjCoverageMask;
 	    }
 
-	/** Coverage mask for direct references (incl getdate() and user_name()) **/
+	/** Coverage from functions and subqueries **/
 	exp->ObjCoverageMask |= exp_internal_FunctionCoverage(exp);
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
@@ -1134,7 +1134,7 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 		}
 	    }
 
-	/** Check for absolute references in functions **/
+	/** Coverage from functions and subqueries **/
 	cm |= exp_internal_FunctionCoverage(exp);
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
