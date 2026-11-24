@@ -919,6 +919,8 @@ expCompareExpressions(pExpression exp1, pExpression exp2)
 	    if (expCompareExpressionValues(exp1, exp2) <= 0)
 		return 0;
 	    }
+	if (exp1->NodeType == EXPR_N_COMPARE && exp1->CompareType != exp2->CompareType)
+	    return 0;
 	if (exp1->NodeType == EXPR_N_FUNCTION || exp1->NodeType == EXPR_N_SUBQUERY)
 	    {
 	    if (strcmp(exp1->Name, exp2->Name) != 0)
