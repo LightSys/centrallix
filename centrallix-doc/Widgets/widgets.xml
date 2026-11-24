@@ -3666,6 +3666,8 @@ myTabControl "widget/tab"
 
 			<property name="newrow_bgcolor" type="string">A color, RGB or named, for the "new row" placeholder that is visible when a new object is being created.</property>
 
+			<property name="newrow_position" type="string">Where the "new row" placeholder appears, and where the new object stays once it is saved (until the data is refreshed): 'start' (before the first loaded row), 'end' (after the last loaded row), or 'auto' (in the visible area: after the selected row, or before the last visible row).  When only part of a large result set is loaded, 'start' and 'end' refer to the loaded rows.  The table scrolls at most once to show the placeholder, and 'auto' does not scroll.  Default is 'end'.</property>
+
 			<property name="objectsource" type="string">Identifies the OSRC that the table connects to.</property>
 			
 			<property name="outer_border" type="integer">width of the outer spacing around the outside of the table, in pixels.  Default0.</property>

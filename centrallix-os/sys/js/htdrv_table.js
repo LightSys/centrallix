@@ -307,27 +307,8 @@ function tbld_redraw_all(dataobj, force_datafetch)
     //this.log.push("tbld_redraw_all()");
     var new_rows = [];
 
-    // Creating a new record?  Give indication if so.
-    this.was_new = this.is_new;
-    this.is_new = ((this.was_new && dataobj === null) || (dataobj && dataobj.length == 0 && this.row_bgndnew))?1:0;
-    if (this.was_new && !this.is_new && this.rows.last)
-	{
-	var recnum = this.rows.last;
-	if (this.rows[recnum].disp_mode == 'newselect')
-	    {
-	    this.scroll_maxheight -= ($(this.rows[recnum]).height() + this.cellvspacing*2);
-	    this.scroll_maxrec--;
-	    this.RemoveRow(this.rows[recnum]);
-	    }
-	}
-
     // Note the current record.
     this.cr = this.osrc.CurrentRecord;
-    if (this.is_new)
-	{
-	this.cr = this.rows.last + 1 - this.was_new;
-	this.target_range = {start:this.rows.first, end:this.rows.last + 1 - this.was_new};
-	}
 
     // Presentation mode -- rows or propsheet?
     if (this.datamode == 1)
@@ -352,12 +333,12 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	{
 	// Rows mode.  OSRC says it has found the final record?
 	if (this.osrc.FinalRecord !== null)
-	    this.rows.lastosrc = this.osrc.FinalRecord + this.is_new;
+	    this.rows.lastosrc = this.osrc.FinalRecord;
 	if (this.rows.lastosrc !== null && this.scroll_maxrec > this.rows.lastosrc)
 	    this.scroll_maxrec = this.rows.lastosrc;
 
 	var min = this.osrc.FirstRecord;
-	var max = this.osrc.LastRecord + this.is_new;
+	var max = this.osrc.LastRecord;
 	}
 
     // Target rows not in the replica at all (e.g. after a refresh)?  Show the
@@ -378,10 +359,10 @@ function tbld_redraw_all(dataobj, force_datafetch)
     if (this.datamode != 1)
 	{
 	var run_start = Math.max(this.target_range.start, min);
-	while (run_start <= this.target_range.end && run_start <= max && !this.osrc.replica[run_start] && !(this.is_new && run_start == this.target_range.end))
+	while (run_start <= this.target_range.end && run_start <= max && !this.osrc.replica[run_start])
 	    run_start++;
 	var run_end = run_start;
-	while (run_end < this.target_range.end && run_end < max && (this.osrc.replica[run_end+1] || (this.is_new && run_end+1 == this.target_range.end)))
+	while (run_end < this.target_range.end && run_end < max && this.osrc.replica[run_end+1])
 	    run_end++;
 	if (run_start <= this.target_range.end && run_start <= max)
 	    this.target_range = {start:run_start, end:run_end};
@@ -417,7 +398,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
     var selected_position_changed = false;
     for(var i=this.target_range.start; i<=this.target_range.end; i++)
 	{
-	if (i >= min && i <= max && (this.datamode == 1 || this.osrc.replica[i] || (this.is_new && i == this.target_range.end)))
+	if (i >= min && i <= max && (this.datamode == 1 || this.osrc.replica[i]))
 	    {
 	    if (!this.rows[i])
 		{
@@ -427,7 +408,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 		}
 	    var row = this.rows[i];
 	    this.osrc.SetEvalRecord(i);
-	    this.SetupRowData(i, this.is_new && i == this.target_range.end);
+	    this.SetupRowData(i, false);
 	    if (this.cr == i)
 		{
 		if (this.initselect && this.crname && this.crname != row.name && !selected_position_changed)
@@ -437,8 +418,8 @@ function tbld_redraw_all(dataobj, force_datafetch)
 		//selected_position_changed = true;
 	    //if (this.crname == row.name && this.cr != i)
 	//	selected_position_changed = i;
-	    var is_selected = this.initselect && i == this.osrc.CurrentRecord && !this.is_new;
-	    this.FormatRow(i, is_selected, this.is_new && i == this.target_range.end);
+	    var is_selected = this.initselect && i == this.osrc.CurrentRecord && this.newrow_slot === null;
+	    this.FormatRow(i, is_selected, false);
 	    this.osrc.SetEvalRecord(null);
 	    }
 	else if (i > 0)
@@ -478,6 +459,10 @@ function tbld_redraw_all(dataobj, force_datafetch)
 //	{
 //	this.osrc.MoveToRecord(selected_position_changed);
 //	}
+
+    // New-row placeholder waiting for its neighbor rows?
+    if (this.newrow_slot !== null && !this.newrow && this.PlaceNewRow())
+	return;
 
     // Need to scroll?
     if (this.target_y != null)
@@ -531,24 +516,32 @@ function tbld_redraw_all(dataobj, force_datafetch)
 //
 function tbld_check_bottom()
     {
-    if (this.rows.lastvis > 0)
+    if (this.rows.lastvis === null || !this.rows[this.rows.lastvis])
+	return false;
+    var rowid = this.rows.lastvis;
+    if (this.rows[rowid+1] && this.rows[rowid+1].vis == 'partial')
+	rowid++;
+    var lastrow = this.rows[rowid];
+    var sy = this.scroll_y;
+    var bottom = getRelativeY(lastrow) + $(lastrow).height() + this.cellvspacing*2 + this.NewrowGap(rowid+1);
+    var y_space = this.vis_height - (bottom + sy);
+    if (y_space <= 0)
+	return false;
+
+    // More records past the loaded ones?  Load them to fill the space.
+    if (this.rows.lastosrc === null || this.rows.last < this.rows.lastosrc)
 	{
-	var rowid = this.rows.lastvis;
-	if (this.rows[rowid+1] && this.rows[rowid+1].vis == 'partial')
-	    rowid++;
-	var lastrow = this.rows[rowid];
-	var sy = this.scroll_y;
-	var y_space = this.vis_height - ($(lastrow).height() + getRelativeY(lastrow) + this.cellvspacing*2 + sy);
-	if (y_space > 0 && sy < (0-this.scroll_minheight))
-	    {
-	    if (y_space > -sy)
-		y_space = -sy;
-	    this.Scroll(sy + y_space, true);
-	    return true;
-	    }
+	this.Scroll(sy, false);
+	return true;
 	}
 
-    return false;
+    // Otherwise move up, but not past the first record.
+    if (this.rows.first == 1)
+	y_space = Math.min(y_space, (0 - sy) - (getRelativeY(this.rows[1]) - this.NewrowGap(1)));
+    if (y_space <= 0)
+	return false;
+    this.Scroll(sy + y_space, true);
+    return true;
     }
 
 
@@ -1015,12 +1008,223 @@ function tbld_object_created(recnum)
     //this.log.push("Object Created callback (" + recnum + ") from osrc, stat=" + (this.osrc.pending?'pending':'not-pending'));
     if (this.rows.lastosrc !== null && recnum > this.rows.lastosrc)
 	this.rows.lastosrc = recnum;
-    if (recnum < this.rows.first)
-	this.target_range = {start:recnum, end:this.rows.last};
-    else if (recnum > this.rows.last)
-	this.target_range = {start:this.rows.first, end:recnum};
+    var nr = this.newrow;
+    if (nr && recnum == this.newrow_slot)
+	{
+	// The osrc inserted the object at the placeholder's slot.  Number the
+	// rows from there on down one, and make the placeholder the new row.
+	this.newrow = null;
+	this.newrow_slot = null;
+	nr.placed = false;
+	if (this.rows.first !== null && recnum <= this.rows.last)
+	    {
+	    for(var j=this.rows.last; j>=recnum; j--)
+		{
+		if (this.rows[j])
+		    {
+		    this.rows[j+1] = this.rows[j];
+		    this.rows[j+1].rownum = j+1;
+		    }
+		else
+		    {
+		    delete this.rows[j+1];
+		    }
+		}
+	    this.rows.last++;
+	    }
+	this.rows[recnum] = nr;
+	nr.rownum = recnum;
+	nr.positioned = true;
+	nr.disp_mode = null;
+	nr.needs_redraw = true;
+	if (this.rows.first === null || recnum < this.rows.first)
+	    this.rows.first = recnum;
+	if (this.rows.last === null || recnum > this.rows.last)
+	    this.rows.last = recnum;
+	if (this.scroll_maxrec !== null && this.scroll_maxrec >= recnum)
+	    this.scroll_maxrec++;
+	if (this.scroll_minrec !== null && this.scroll_minrec > recnum)
+	    this.scroll_minrec++;
+	if (this.target_range.start > recnum)
+	    this.target_range.start++;
+	if (this.target_range.end >= recnum - 1)
+	    this.target_range.end++;
+	this.followed_cr = recnum;
+	}
+    else
+	{
+	this.EndNewRow(false);
+	if (recnum < this.rows.first)
+	    this.target_range = {start:recnum, end:this.rows.last};
+	else if (recnum > this.rows.last)
+	    this.target_range = {start:this.rows.first, end:recnum};
+	}
     this.osrc_busy = false;
     this.RedrawAll(null, true);
+    }
+
+
+// tbld_begin_newrow (BeginNewRow) - start showing the new-row placeholder,
+// at the slot chosen by the newrow_position property:
+//   start - before the first loaded record.
+//   end   - after the last loaded record (the default).
+//   auto  - in view: after the selected row, or before the last fully
+//           visible row.
+//
+function tbld_begin_newrow()
+    {
+    if (this.newrow_slot !== null)
+	return;
+    var o = this.osrc;
+    var have_data = (o.LastRecord >= 1 && o.LastRecord >= o.FirstRecord);
+    var k;
+    if (this.newrow_pos == 'start')
+	{
+	k = have_data?o.FirstRecord:1;
+	}
+    else if (this.newrow_pos == 'auto')
+	{
+	if (this.cr && this.rows[this.cr] && this.rows[this.cr].vis == 'full' && this.cr != this.rows.lastvis)
+	    k = this.cr + 1;
+	else if (this.rows.lastvis !== null)
+	    k = this.rows.lastvis;
+	else
+	    k = (this.rows.first !== null)?this.rows.first:1;
+	}
+    else
+	{
+	k = have_data?(o.LastRecord + 1):1;
+	}
+    this.newrow_slot = k;
+    o.SetCreatePosition(k);
+    this.RedrawAll(null, true);
+    }
+
+
+// tbld_place_newrow (PlaceNewRow) - create the placeholder row in its slot,
+// moving the rows below it down, and scroll it into view if needed.  If the
+// rows around the slot are not loaded yet, load them first.  Returns true if
+// it started a scroll or a load.
+//
+function tbld_place_newrow()
+    {
+    var k = this.newrow_slot;
+    var have_data = (this.osrc.LastRecord >= 1 && this.osrc.LastRecord >= this.osrc.FirstRecord);
+    var neighbor = (k > 1 && this.rows[k-1]) || this.rows[k];
+    if (!neighbor && have_data)
+	{
+	// Load a view's worth of rows next to the slot; placing it comes next.
+	if (k > 1 && this.newrow_pos != 'start')
+	    this.target_range = {start:Math.max(1, k - this.max_display), end:k - 1};
+	else
+	    this.target_range = {start:k, end:k + this.max_display - 1};
+	this.OsrcRequest('ScrollTo', {start:this.target_range.start, end:this.target_range.end});
+	return true;
+	}
+
+    // Build the placeholder.
+    var nr = this.InstantiateRow(this.scrolldiv, 0, 0);
+    nr.rownum = null;
+    for(var j in nr.cols)
+	{
+	nr.cols[j].data = '';
+	nr.cols[j].capdata = '';
+	nr.cols[j].titledata = '';
+	}
+    nr.needs_redraw = true;
+    nr.disp_mode = 'newselect';
+    this.newrow = nr;
+    nr.newselect();
+    this.UpdateHeight(nr);
+    nr.placed = true;
+    var gap = $(nr).height() + this.cellvspacing*2;
+
+    // Make room for it, then put it in the slot.
+    for(var j=k; this.rows.first !== null && j<=this.rows.last; j++)
+	if (this.rows[j] && this.rows[j].positioned)
+	    setRelativeY(this.rows[j], getRelativeY(this.rows[j]) + gap);
+    if (neighbor)
+	this.PlaceNewRowY();
+    else
+	setRelativeY(nr, 0 - this.scroll_y);
+    $(nr).css({visibility: "inherit"});
+    this.RescanRowVisibility();
+    this.UpdateThumb(false);
+
+    // Scroll only as far as needed to show it.
+    var top = getRelativeY(nr);
+    var bottom = top + gap;
+    if (top < 0 - this.scroll_y)
+	{
+	this.Scroll(0 - top, true);
+	return true;
+	}
+    if (bottom > this.vis_height - this.scroll_y)
+	{
+	this.Scroll(Math.max(this.vis_height - bottom, 0 - top), true);
+	return true;
+	}
+    return false;
+    }
+
+
+// tbld_place_newrow_y (PlaceNewRowY) - put the placeholder between the rows
+// before and at its slot, hiding it if neither is loaded.
+//
+function tbld_place_newrow_y()
+    {
+    var nr = this.newrow;
+    if (!nr || !nr.placed)
+	return;
+    var k = this.newrow_slot;
+    var prev = (k > 1)?this.rows[k-1]:null;
+    var next = this.rows[k];
+    if (prev && prev.positioned)
+	setRelativeY(nr, getRelativeY(prev) + $(prev).height() + this.cellvspacing*2);
+    else if (next && next.positioned)
+	setRelativeY(nr, getRelativeY(next) - $(nr).height() - this.cellvspacing*2);
+    else if (this.rows.first !== null)
+	{
+	$(nr).css({visibility: "hidden"});
+	return;
+	}
+    $(nr).css({visibility: "inherit"});
+    }
+
+
+// tbld_newrow_gap (NewrowGap) - space taken by the placeholder just before
+// the row with the given number.
+//
+function tbld_newrow_gap(rownum)
+    {
+    if (this.newrow && this.newrow.placed && rownum == this.newrow_slot)
+	return $(this.newrow).height() + this.cellvspacing*2;
+    return 0;
+    }
+
+
+// tbld_end_newrow (EndNewRow) - remove the placeholder.  Unless keep_space
+// is set, the rows below it move back up.
+//
+function tbld_end_newrow(keep_space)
+    {
+    var nr = this.newrow;
+    var k = this.newrow_slot;
+    this.newrow = null;
+    this.newrow_slot = null;
+    if (!nr)
+	return;
+    var gap = $(nr).height() + this.cellvspacing*2;
+    var was_placed = nr.placed;
+    nr.placed = false;
+    this.RemoveRow(nr);
+    if (was_placed && !keep_space)
+	{
+	for(var j=k; this.rows.first !== null && j<=this.rows.last; j++)
+	    if (this.rows[j] && this.rows[j].positioned)
+		setRelativeY(this.rows[j], getRelativeY(this.rows[j]) - gap);
+	}
+    this.RescanRowVisibility();
     }
 
 function tbld_object_deleted(recnum)
@@ -1057,6 +1261,15 @@ function tbld_replica_changed(dataobj, force_datafetch, why)
     // A move to a record (even the current one) brings it into view.
     if (why == 'change')
 	this.followed_cr = null;
+
+    // A new object is being created: show the placeholder row.
+    if (why == 'begincreate' && this.row_bgndnew && this.datamode != 1)
+	{
+	this.BeginNewRow();
+	return;
+	}
+    if (why == 'cancelcreate')
+	this.EndNewRow(false);
     this.RedrawAll(dataobj, force_datafetch);
     }
 
@@ -1471,6 +1684,13 @@ function tbld_scroll(y, animate)
     var scroll_start = getRelativeY(this.rows[this.rows.first]);
     var scroll_end = getRelativeY(this.rows[this.rows.last]) + $(this.rows[this.rows.last]).height() + this.cellvspacing*2;
     var at_end = (this.rows.lastosrc !== null && this.rows.last >= this.rows.lastosrc);
+    if (this.newrow && this.newrow.placed)
+	{
+	if (this.newrow_slot > this.rows.last)
+	    scroll_end += this.NewrowGap(this.newrow_slot);
+	if (this.newrow_slot <= this.rows.first)
+	    scroll_start -= this.NewrowGap(this.newrow_slot);
+	}
 
     // All of the data fits in the view?  Then it sits at the top.
     if (this.rows.first == 1 && at_end && scroll_end - scroll_start <= this.vis_height)
@@ -1911,7 +2131,7 @@ function tbld_position_rows(newrows, anchor_y)
 	    var prev = (row.rownum > 1)?this.rows[row.rownum-1]:null;
 	    if (prev && prev.positioned)
 		{
-		setRelativeY(row, getRelativeY(prev) + $(prev).height() + this.cellvspacing*2);
+		setRelativeY(row, getRelativeY(prev) + $(prev).height() + this.cellvspacing*2 + this.NewrowGap(row.rownum));
 		row.positioned = true;
 		pending.splice(i--, 1);
 		progress = true;
@@ -1925,7 +2145,7 @@ function tbld_position_rows(newrows, anchor_y)
 	    var next = this.rows[row.rownum+1];
 	    if (next && next.positioned)
 		{
-		setRelativeY(row, getRelativeY(next) - $(row).height() - this.cellvspacing*2);
+		setRelativeY(row, getRelativeY(next) - this.NewrowGap(next.rownum) - $(row).height() - this.cellvspacing*2);
 		row.positioned = true;
 		pending.splice(i, 1);
 		progress = true;
@@ -1940,6 +2160,7 @@ function tbld_position_rows(newrows, anchor_y)
 	    row.positioned = true;
 	    }
 	}
+    this.PlaceNewRowY();
     }
 
 
@@ -2235,7 +2456,6 @@ function tbld_init(param)
     t.demand_scrollbar = param.demand_sb;
     t.rowcache_size = param.rcsize?param.rcsize:0;
     t.cr = 0;
-    t.is_new = 0;
     t.rowdivcache = [];
     t.followcurrent = param.followcurrent>0?true:false;
     t.hdr_bgnd = param.hdrbgnd;
@@ -2330,6 +2550,11 @@ function tbld_init(param)
     t.Scroll = tbld_scroll;
     t.SchedScroll = tbld_sched_scroll;
     t.ThumbScroll = tbld_thumb_scroll;
+    t.BeginNewRow = tbld_begin_newrow;
+    t.EndNewRow = tbld_end_newrow;
+    t.PlaceNewRow = tbld_place_newrow;
+    t.PlaceNewRowY = tbld_place_newrow_y;
+    t.NewrowGap = tbld_newrow_gap;
     t.SchedThumbScroll = tbld_sched_thumb_scroll;
     t.CheckBottom = tbld_check_bottom;
     t.ApplyRowGeom = tbld_apply_row_geom;
@@ -2421,6 +2646,9 @@ function tbld_init(param)
     t.target_y = null;
     t.scroll_to_rec = null;
     t.followed_cr = null;
+    t.newrow = null;
+    t.newrow_slot = null;
+    t.newrow_pos = param.newrow_pos?param.newrow_pos:'end';
     t.thumb_total = 0;
     t.thumb_per_view = 0;
 

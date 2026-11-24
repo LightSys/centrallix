@@ -830,6 +830,7 @@ function osrc_delete_record(recnum, client)
     if(cr)
 	{
 	// Remove the deleted row
+	this.NoteLocalChange(cr, true);
 	delete this.replica[recnum];
 
 	// Adjust replica row id's to fill up the 'hole'
@@ -988,10 +989,38 @@ function osrc_action_create_cb()
     if(links && links[0] && links[0].target != 'ERR')
 	{
 	var oldcur = this.CurrentRecord;
-	if (this.FinalRecord == this.LastRecord)
-	    this.FinalRecord++;
-	this.LastRecord++;
-	this.CurrentRecord = this.LastRecord;
+	var pos = this.create_position;
+	this.create_position = null;
+	if (pos && pos >= this.FirstRecord && pos <= this.LastRecord + 1)
+	    {
+	    // Insert at the requested position, moving later records down one.
+	    for(var i=this.LastRecord; i>=pos; i--)
+		{
+		if (this.replica[i])
+		    {
+		    this.replica[i+1] = this.replica[i];
+		    this.replica[i+1].id = i+1;
+		    }
+		else
+		    {
+		    delete this.replica[i+1];
+		    }
+		}
+	    delete this.replica[pos];
+	    if (this.FinalRecord !== null)
+		this.FinalRecord++;
+	    if (this.OSMLRecord >= pos)
+		this.OSMLRecord++;
+	    this.LastRecord++;
+	    this.CurrentRecord = pos;
+	    }
+	else
+	    {
+	    if (this.FinalRecord == this.LastRecord)
+		this.FinalRecord++;
+	    this.LastRecord++;
+	    this.CurrentRecord = this.LastRecord;
+	    }
 	var recnum=this.CurrentRecord;
 	var cr=this.replica[this.CurrentRecord];
 	if(!cr) cr = [];
@@ -1014,7 +1043,7 @@ function osrc_action_create_cb()
 	var max_j = 0;
 	for(var i in server_rec)
 	    {
-	    found = 0;
+	    var found = 0;
 	    for(var j in cr)
 		{
 		if (j == 'oid') continue;
@@ -1043,7 +1072,7 @@ function osrc_action_create_cb()
 	for (var j in cr)
 	    {
 	    if (j == 'oid') continue;
-	    var oldrec = this.replica[this.oldcur];
+	    var oldrec = this.replica[oldcur];
 	    var oldval = null;
 	    if (oldrec)
 		{
@@ -1061,6 +1090,7 @@ function osrc_action_create_cb()
 	    }
 
 	//alert(this.replica[this.CurrentRecord].oid);
+	this.NoteLocalChange(cr, false);
 	this.in_create = false;
 	this.SyncID = osrc_syncid++;
 	if (this.initiating_client) this.initiating_client.OperationComplete(true, this);
@@ -1082,6 +1112,7 @@ function osrc_action_create_cb()
 	if (this.initiating_client) this.initiating_client.OperationComplete(false, this);
 	}
     this.initiating_client=null;
+    this.create_position = null;
     delete this.createddata;
     }
 
@@ -1724,6 +1755,40 @@ function osrc_clear_replica()
     this.LastRecord=0;
     this.FinalRecord=null;
     this.FirstRecord=1;
+    this.local_changes = 0;
+    this.deleted_names = {};
+    this.fetch_append = false;
+    }
+
+
+// osrc_set_create_position (SetCreatePosition) - record where the next
+// created object goes in the replica.  null means after the last record.
+function osrc_set_create_position(recnum)
+    {
+    this.create_position = recnum;
+    }
+
+
+// osrc_row_name - the 'name' attribute of a replica row, or null.
+function osrc_row_name(row)
+    {
+    if (!row) return null;
+    for(var j in row)
+	if (row[j] && typeof row[j] == 'object' && row[j].oid == 'name')
+	    return row[j].value;
+    return null;
+    }
+
+
+// osrc_note_local_change (NoteLocalChange) - count a record created or
+// deleted here since the last query, so the next query continuing past
+// the replica can be lined up with the server's result set.
+function osrc_note_local_change(row, is_delete)
+    {
+    this.local_changes++;
+    var name = osrc_row_name(row);
+    if (is_delete && name !== null)
+	this.deleted_names[name] = true;
     }
 
 function osrc_parse_one_row(lnk, i)
@@ -1863,6 +1928,16 @@ function osrc_fetch_next()
     var colnum=0;
     var i = this.data_start;
     var rowcnt = 0;
+    var known = null;
+    if (this.fetch_append)
+	{
+	known = {};
+	for(var r in this.replica)
+	    {
+	    var name = osrc_row_name(this.replica[r]);
+	    if (name !== null) known[name] = true;
+	    }
+	}
     while (i < lc)
 	{
 	if (lnk[i].target == 'QUERYCLOSED')
@@ -1877,6 +1952,18 @@ function osrc_fetch_next()
 	    i++;
 	    this.querysize++; // indicate that we hit end of result set
 	    continue;
+	    }
+	if (known)
+	    {
+	    // Record already here, or deleted here?  Skip it.
+	    var peek = this.ParseOneRow(lnk, i);
+	    var name = osrc_row_name(peek);
+	    if (name !== null && (known[name] || this.deleted_names[name]))
+		{
+		rowcnt++;
+		i += peek.length;
+		continue;
+		}
 	    }
 	this.OSMLRecord++; // this holds the last record we got, so now will hold current record number
 	this.replica[this.OSMLRecord] =
@@ -2400,6 +2487,14 @@ function osrc_open_query_tail()
 
 function osrc_open_query_startat()
     {
+    // After local creates/deletes, the server's positions past the replica
+    // may be shifted.  Start a little earlier and skip records we have.
+    this.fetch_append = false;
+    if (this.local_changes > 0 && this.startat == this.LastRecord + 1)
+	{
+	this.fetch_append = true;
+	this.startat = Math.max(1, this.startat - this.local_changes);
+	}
     if(this.FirstRecord > this.startat && this.FirstRecord - this.startat < this.replicasize)
 	this.querysize = this.FirstRecord - this.startat;
     else
@@ -2438,6 +2533,8 @@ function osrc_get_qid_startat()
 	return;
 	}
     this.OSMLRecord=(startat)?(startat-1):0;
+    if (this.fetch_append)
+	this.OSMLRecord = this.LastRecord;
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
@@ -2962,6 +3059,7 @@ function osrc_action_begincreate(aparam)
 function osrc_action_cancelcreate(aparam)
     {
     // We ignore this if we're not actually still in a create operation.
+    this.create_position = null;
     if (this.in_create)
 	{
 	this.in_create = false;
@@ -4277,6 +4375,8 @@ function osrc_init(param)
     loader.NewReplicaObj = osrc_new_replica_object;
     loader.PruneReplica = osrc_prune_replica;
     loader.ClearReplica = osrc_clear_replica;
+    loader.SetCreatePosition = osrc_set_create_position;
+    loader.NoteLocalChange = osrc_note_local_change;
     loader.ClearTarget = osrc_clear_target;
     loader.ApplyRelationships = osrc_apply_rel;
     loader.ApplyKeys = osrc_apply_keys;
