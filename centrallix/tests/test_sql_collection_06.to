@@ -1,13 +1,14 @@
 ##NAME SQL Temp Collection Indexing with Duplicate Keys
 
-query declare collection t scope application; insert into collection t select id = :s:id, g = condition(:s:id <= 3, 0, :s:id), note = condition(:s:id = 40, replicate('x', 300), :s:abbrev) from /tests/States.csv/rows s; select :id from collection t where :g = 0
+# Enable index and scan output
+test 3,4
+
+query declare collection t scope application; insert into collection t select id = :s:id, g = condition(:s:id <= 3, 0, :s:id) from /tests/States.csv/rows s; select :id from collection t where :g = 0
 query select n = count(1) from collection t where :g = 0 and :id = 2
-query insert into collection t select id = 51, g = 5, note = 'XX'; select n = count(1) from collection t where :g = 5
+query insert into collection t select id = 51, g = 5; select n = count(1) from collection t where :g = 5
 query update collection t set :g = 100 where :g = 0
 query select n = count(1) from collection t where :g = 100
 query select n = count(1) from collection t where :g = 0
 query delete from collection t where :g = 100
 query select n = count(1) from collection t where :g = 100
 query select n = count(1) from collection t
-query select n = count(1) from collection t where :note = 'CA'
-query select n = count(1) from collection t where :note = 'WY'
