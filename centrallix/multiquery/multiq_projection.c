@@ -393,6 +393,8 @@ mqpAnalyze(pQueryStatement stmt)
     int has_aggregates;
     int has_assignments;
     int num_sources = 0;
+    int n_old_trees = stmt->Trees.nItems;
+    pQueryElement old_tree = stmt->Tree;
 
 	/** Tally up our source count **/
 	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
@@ -519,8 +521,7 @@ mqpAnalyze(pQueryStatement stmt)
 			if (new_exp == NULL)
 			    {
 			    mssError(0, "MQP", "Failed to copy a GROUP BY item for source '%s'", from_qs->Source);
-			    mq_internal_FreeQE(qe);
-			    return -1;
+			    goto error;
 			    }
 			expRemapID(new_exp, src_idx, 0);
 
@@ -545,8 +546,7 @@ mqpAnalyze(pQueryStatement stmt)
 			    {
 			    expFreeExpression(new_exp);
 			    mssError(1, "MQP", "Failed to sort source '%s' on more than %d GROUP BY items", from_qs->Source, OBJSYS_SORT_MAX);
-			    mq_internal_FreeQE(qe);
-			    return -1;
+			    goto error;
 			    }
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
@@ -596,8 +596,7 @@ mqpAnalyze(pQueryStatement stmt)
 			    {
 			    expFreeExpression(new_exp);
 			    mssError(1, "MQP", "Failed to sort source '%s' on more than %d ORDER BY items", from_qs->Source, OBJSYS_SORT_MAX);
-			    mq_internal_FreeQE(qe);
-			    return -1;
+			    goto error;
 			    }
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
 			    {
@@ -675,6 +674,17 @@ mqpAnalyze(pQueryStatement stmt)
 	    }
 
     return 0;
+
+    error:
+	/** Free this source's element and those this call already added **/
+	mq_internal_FreeQE(qe);
+	while (stmt->Trees.nItems > n_old_trees)
+	    {
+	    mq_internal_FreeQE((pQueryElement)(stmt->Trees.Items[stmt->Trees.nItems - 1]));
+	    xaRemoveItem(&stmt->Trees, stmt->Trees.nItems - 1);
+	    }
+	stmt->Tree = old_tree;
+	return -1;
     }
 
 
