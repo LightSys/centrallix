@@ -132,7 +132,10 @@ tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[])
 
 	rkey = nmSysStrdup(key.String);
 	if (rkey == NULL)
+	    {
 	    mssError(1, "TMP", "Failed to copy the %d-byte index key.", key.Length);
+	    goto end;
+	    }
 
     end:
 	xsDeInit(&key);
