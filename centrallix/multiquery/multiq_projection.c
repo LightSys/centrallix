@@ -515,16 +515,36 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(groupby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		        {
+			new_exp = exp_internal_CopyTree(item->Expr);
+			if (!new_exp) break;
+			expRemapID(new_exp, src_idx, 0);
+
+			/** Check to see if it is already in the list **/
+			found = 0;
+			for(j=0;qe->OrderBy[j];j++)
+			    {
+			    if (expCompareExpressions(new_exp, qe->OrderBy[j]))
+				{
+				found = 1;
+				break;
+				}
+			    }
+			if (found)
+			    {
+			    expFreeExpression(new_exp);
+			    continue;
+			    }
+
 			/** The objectsystem can only sort on OBJSYS_SORT_MAX items **/
 			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
 			    {
-			    fprintf(stderr, "Warning: Cannot sort source on more than %d GROUP BY items; grouping may produce duplicate rows.\n", OBJSYS_SORT_MAX);
-			    break;
+			    expFreeExpression(new_exp);
+			    mssError(1, "MQP", "Failed to sort source '%s' on more than %d GROUP BY items", from_qs->Source, OBJSYS_SORT_MAX);
+			    mq_internal_FreeQE(qe);
+			    return -1;
 			    }
-			new_exp = exp_internal_CopyTree(item->Expr);
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			expRemapID(new_exp, src_idx, 0);
 			}
 		    }
 		}
@@ -570,9 +590,9 @@ mqpAnalyze(pQueryStatement stmt)
 			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
 			    {
 			    expFreeExpression(new_exp);
-			    has_unhandled_orderby = 1;
-			    fprintf(stderr, "Warning: Cannot sort source on more than %d ORDER BY items.\n", OBJSYS_SORT_MAX);
-			    break;
+			    mssError(1, "MQP", "Failed to sort source '%s' on more than %d ORDER BY items", from_qs->Source, OBJSYS_SORT_MAX);
+			    mq_internal_FreeQE(qe);
+			    return -1;
 			    }
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
 			    {
