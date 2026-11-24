@@ -61,6 +61,10 @@ table_large_test "widget/page"
 		cancel_btn "widget/textbutton" { x = 210; y = 166; width = 90; height = 28; bgcolor = "#c0c0c0"; text = "Cancel"; cancel_cn "widget/connector" { event = Click; target = form; action = Discard; } }
 		delete_btn "widget/textbutton" { x = 10; y = 204; width = 90; height = 28; bgcolor = "#c0c0c0"; text = "Delete"; delete_cn "widget/connector" { event = Click; target = form; action = Delete; } }
 
+		id_eb "widget/editbox" { x = 10; y = 290; width = 200; height = 24; fieldname = "Id"; bgcolor = "white"; }
+		grp_eb "widget/editbox" { x = 10; y = 324; width = 200; height = 24; fieldname = "Grp"; bgcolor = "white"; }
+		notes_eb "widget/editbox" { x = 10; y = 358; width = 300; height = 24; fieldname = "Notes"; bgcolor = "white"; }
+
 		cur_lbl "widget/label" { x = 10; y = 250; width = 300; height = 24; value = runclient(:osrc:Name); }
 		}
 	    }

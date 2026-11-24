@@ -8,17 +8,18 @@
 #   chrome_binary  - Chrome/Chromium binary to drive.
 #   chromedriver   - chromedriver path (skips ChromeDriverManager).
 #   headless       - true to run without a visible browser window.
-#   os_root        - local path of centrallix-os; enables destructive tests
-#                    (7, 12, 16), which reset the test CSV afterwards.
+#   destructive    - true to run tests that change data (7, 12, 16).  Each
+#                    one undoes its change through the UI.  If one stops
+#                    partway, stop the server, run
+#                    centrallix-os/tests/ui/table_large/gen_table_large_csv.py,
+#                    and restart it (the server caches the CSV).
 #   stress_seeds   - list of seeds for the random stress test (17).
 #   stress_steps   - steps per stress seed (default 150).
 #   stress_exclude - stress actions to leave out, e.g. ["refresh"].
 #   only           - list of test numbers to run (default: all).
 
 import json
-import os
 import random
-import subprocess
 import sys
 import time
 
@@ -27,6 +28,7 @@ from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 from selenium.webdriver.support.ui import WebDriverWait
 from test_reporter import TestReporter
@@ -332,14 +334,24 @@ class Suite:
         self.last_session = Session(self.driver, self.base_url, app)
         return self.last_session
 
-    def reset_data(self):
-        """Regenerate the test CSV; returns False if os_root is not configured."""
-        root = self.config.get("os_root")
-        if not root:
-            return False
-        gen = os.path.join(root, "tests", "ui", "table_large", "gen_table_large_csv.py")
-        subprocess.run([sys.executable, gen, str(TOTAL_ROWS)], check=True)
-        return True
+    def destructive_ok(self, test_no):
+        if self.config.get("destructive"):
+            return True
+        print("  [test %d] SKIP: set destructive = true in config.toml to run this test" % test_no)
+        reporter.record_check(test_no, "skipped (destructive tests disabled)", True)
+        return False
+
+    def type_into(self, s, eb, text, clear=False):
+        el = s.d.execute_script("return wgtrFind(arguments[0]);", eb)
+        chain = ActionChains(s.d).click(el)
+        if clear:
+            chain = chain.key_down(Keys.CONTROL).send_keys("a").key_up(Keys.CONTROL).send_keys(Keys.BACKSPACE)
+        chain.send_keys(text).perform()
+        time.sleep(0.2)
+
+    def data_is_clean(self, s):
+        """True if the first loaded rows are the generated, unmodified data."""
+        return not s.invariants(check_order=True) and s.js("__tl.replicaValue(t.osrc, 5, 'Amount')") == "185"
 
     # ---- reporting helpers ----
 
@@ -462,12 +474,11 @@ class Suite:
 
     def test7(self):
         reporter.add_test(7, "Delete the current record while it is out of the DOM")
-        if not self.reset_data():
-            print("  [test 7] SKIP: destructive test needs os_root in config.toml")
-            reporter.record_check(7, "skipped (no os_root)", True)
+        if not self.destructive_ok(7):
             return
+        s = self.session()
+        deleted = False
         try:
-            s = self.session()
             s.click_button("last_btn")
             self.check_settled(s, 7, "after Last", timeout=30)
             for i in range(10):
@@ -476,6 +487,7 @@ class Suite:
             in_dom = s.js("!!t.rows[%d]" % TOTAL_ROWS)
             self.check(s, 7, "current record left the DOM", not in_dom)
             s.click_button("delete_btn")
+            deleted = True
             self.check_settled(s, 7, "after Delete", timeout=30)
             self.check_invariants(s, 7, "invariants after Delete")
             y0 = s.js("t.scroll_y")
@@ -484,7 +496,18 @@ class Suite:
             y1 = s.js("t.scroll_y")
             self.check(s, 7, "table still scrolls after Delete", y1 != y0, "scroll_y %s -> %s" % (y0, y1))
         finally:
-            self.reset_data()
+            if deleted:
+                self.recreate_record_1000()
+
+    def recreate_record_1000(self):
+        """Re-create record 1000 after test 7 deletes it."""
+        s = self.session()
+        s.click_button("new_btn")
+        s.settle()
+        for eb, text in (("id_eb", "1000"), ("name_eb", "Row 1000"), ("grp_eb", "Alpha"), ("amount_eb", "0"), ("notes_eb", "Note 1000")):
+            self.type_into(s, eb, text)
+        s.click_button("save_btn")
+        s.settle(30)
 
     def test8(self):
         reporter.add_test(8, "Replica hole left by the Last (tail) fetch")
@@ -577,26 +600,28 @@ class Suite:
 
     def test12(self):
         reporter.add_test(12, "No snap-back to the current record when the form saves it")
-        if not self.reset_data():
-            print("  [test 12] SKIP: destructive test needs os_root in config.toml")
-            reporter.record_check(12, "skipped (no os_root)", True)
+        if not self.destructive_ok(12):
             return
+        s = self.session()
         try:
-            s = self.session()
             s.click_row(5)
             s.settle()
             s.wheel(600)
             s.settle()
             before = [(r["rownum"], round(r["page_y"])) for r in s.viewport()]
             self.check(s, 12, "current record scrolled out of view", 5 not in [r[0] for r in before])
-            ActionChains(s.d).click(s.d.execute_script("return wgtrFind('amount_eb');")).send_keys("1").perform()
-            time.sleep(0.2)
+            self.type_into(s, "amount_eb", "186", clear=True)
             s.click_button("save_btn")
             self.check_settled(s, 12, "after Save")
             after = [(r["rownum"], round(r["page_y"])) for r in s.viewport()]
             self.check(s, 12, "view unchanged after Save", before == after, "before %s.. after %s.." % (before[:3], after[:3]))
         finally:
-            self.reset_data()
+            # Restore record 5's original Amount.
+            s.settle()
+            if s.js("t.osrc.CurrentRecord") == 5:
+                self.type_into(s, "amount_eb", "185", clear=True)
+                s.click_button("save_btn")
+                s.settle(30)
 
     def test13(self):
         reporter.add_test(13, "Selecting a row while a row with detail is above the view")
@@ -654,19 +679,16 @@ class Suite:
 
     def test16(self):
         reporter.add_test(16, "Save a new record mid-list")
-        if not self.reset_data():
-            print("  [test 16] SKIP: destructive test needs os_root in config.toml")
-            reporter.record_check(16, "skipped (no os_root)", True)
+        if not self.destructive_ok(16):
             return
+        s = self.session()
         try:
-            s = self.session()
             self.check(s, 16, "wheel to record ~200", s.scroll_to_record(200))
             before = [(r["rownum"], round(r["page_y"])) for r in s.viewport()]
             s.click_button("new_btn")
             s.settle()
             for eb, text in (("name_eb", "Created Row"), ("amount_eb", "5")):
-                ActionChains(s.d).click(s.d.execute_script("return wgtrFind(arguments[0]);", eb)).send_keys(text).perform()
-                time.sleep(0.2)
+                self.type_into(s, eb, text)
             s.click_button("save_btn")
             self.check_settled(s, 16, "after Save", timeout=30)
             vp = s.viewport()
@@ -694,7 +716,11 @@ class Suite:
             self.check(s, 16, "no duplicated records after the created one", not dupes, "duplicated Ids: %s" % dupes[:20])
             self.check(s, 16, "no skipped records after the created one", not missing, "missing Ids: %s" % missing[:20])
         finally:
-            self.reset_data()
+            # Delete the created record, which is still the current record.
+            s.settle()
+            if s.js("__tl.replicaValue(t.osrc, t.osrc.CurrentRecord, 'Name')") == "Created Row":
+                s.click_button("delete_btn")
+                s.settle(30)
 
     def test17(self):
         reporter.add_test(17, "Seeded random stress")
@@ -763,6 +789,10 @@ class Suite:
         only = self.config.get("only")
         tests = [getattr(self, "test%d" % i) for i in range(1, 18) if not only or i in only]
         try:
+            if not self.data_is_clean(self.session()):
+                print("Test data is not in its generated state.  Stop the server, run")
+                print("centrallix-os/tests/ui/table_large/gen_table_large_csv.py, and restart it.")
+                return False
             for t in tests:
                 print("Running %s" % t.__name__)
                 num = int(t.__name__[4:])
