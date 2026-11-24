@@ -625,7 +625,7 @@ Tab Test PASS
 - `tests/ui/table_large/table_large_detail_test.app`: same, with variable row height and a row detail.
 - `tests/ui/table_large/gen_table_large_csv.py`: generates `table_large.csv`, where `Id` equals the row's position in the result set.
 - `centrallix-ui-test/tests/table_large_test.py`: the tests. Optional `config.toml` keys are listed at the top of the file.
-- Destructive tests (7, 12, 16) run only with `destructive = true`, and undo their changes through the UI.
+- Destructive tests (7, 12, 16) run only with `destructive = true`, and undo their changes through the UI. The data ends up the same, but the datafile driver pads deleted rows in place, so the CSV still shows as modified in git. Regenerate it before committing.
 - The suite refuses to run if the data is not in its generated state. To reset it, stop the server, run the generator, and restart (the datafile driver caches the CSV, so rewriting it under a running server does not work).
 
 ### Invariants
