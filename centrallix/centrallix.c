@@ -3,6 +3,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
+#include <dirent.h>
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -287,6 +290,141 @@ cxRemovePidFile()
     }
 
 
+/*** cx_internal_ParseConfigFile - parse one config file, printing a message
+ *** and returning NULL on failure.
+ ***/
+static pStructInf
+cx_internal_ParseConfigFile(char* path)
+    {
+    pFile fd;
+    pStructInf inf;
+
+	fd = fdOpen(path, O_RDONLY, 0600);
+	if (fd == NULL)
+	    {
+	    printf("centrallix: could not open config file '%s'\n", path);
+	    return NULL;
+	    }
+	inf = stParseMsg(fd, 0);
+	fdClose(fd, 0);
+	if (inf == NULL)
+	    {
+	    printf("centrallix: error parsing config file '%s'\n", path);
+	    return NULL;
+	    }
+
+    return inf;
+    }
+
+
+/*** cx_internal_IsDropInConfig - scandir() filter for the drop-in config
+ *** files in an include_dir: visible files named "*.conf".
+ ***/
+static int
+cx_internal_IsDropInConfig(const struct dirent* entry)
+    {
+    size_t len = strlen(entry->d_name);
+
+	if (entry->d_name[0] == '.') return 0;
+
+    return (len > 5 && strcmp(entry->d_name + len - 5, ".conf") == 0);
+    }
+
+
+/*** cx_internal_CompareNames - scandir() sort by byte order of file name,
+ *** independent of locale.
+ ***/
+static int
+cx_internal_CompareNames(const struct dirent** a, const struct dirent** b)
+    {
+    return strcmp((*a)->d_name, (*b)->d_name);
+    }
+
+
+/*** cxLoadConfig - load the config file named by CxGlobals.ConfigFileName
+ *** into CxGlobals.ParsedConfig.  If that file sets include_dir, each visible
+ *** "*.conf" file in that directory is then merged into it in name order
+ *** (see stMergeInf()), so later files override earlier ones.  Those files
+ *** cannot set include_dir.
+ ***
+ *** Prints a message and returns -1 on failure, 0 on success.
+ ***/
+int
+cxLoadConfig()
+    {
+    pStructInf include_inf;
+    pStructInf drop_in;
+    char* include_dir = NULL;
+    char* path = NULL;
+    struct dirent** entries = NULL;
+    int n_entries = 0;
+    int rval = -1;
+    int i;
+
+	/** Load the main config file **/
+	CxGlobals.ParsedConfig = cx_internal_ParseConfigFile(CxGlobals.ConfigFileName);
+	if (CxGlobals.ParsedConfig == NULL) goto end;
+
+	/** Find the drop-in directory, if any **/
+	include_inf = stLookup(CxGlobals.ParsedConfig, "include_dir");
+	if (include_inf == NULL)
+	    {
+	    rval = 0;
+	    goto end;
+	    }
+	stAttrValue(include_inf, NULL, &include_dir, 0);
+	if (include_dir == NULL)
+	    {
+	    printf("centrallix: failed to read include_dir in config file '%s': it must be a string\n", CxGlobals.ConfigFileName);
+	    goto end;
+	    }
+
+	/** List the drop-in files in name order **/
+	n_entries = scandir(include_dir, &entries, cx_internal_IsDropInConfig, cx_internal_CompareNames);
+	if (n_entries < 0)
+	    {
+	    printf("centrallix: failed to read include_dir '%s': %s\n", include_dir, strerror(errno));
+	    n_entries = 0;
+	    goto end;
+	    }
+
+	/** Merge each drop-in file **/
+	path = nmMalloc(PATH_MAX);
+	if (path == NULL) goto end;
+	for(i=0; i<n_entries; i++)
+	    {
+	    if (snprintf(path, PATH_MAX, "%s/%s", include_dir, entries[i]->d_name) >= PATH_MAX)
+		{
+		printf("centrallix: failed to load config file '%s' in include_dir '%s': the path is too long\n", entries[i]->d_name, include_dir);
+		goto end;
+		}
+	    if (!CxGlobals.QuietInit) printf("centrallix: loading config file '%s'\n", path);
+	    drop_in = cx_internal_ParseConfigFile(path);
+	    if (drop_in == NULL) goto end;
+	    if (stLookup(drop_in, "include_dir") != NULL)
+		{
+		printf("centrallix: failed to load config file '%s': only '%s' can set include_dir\n", path, CxGlobals.ConfigFileName);
+		stFreeInf(drop_in);
+		goto end;
+		}
+	    if (stMergeInf(CxGlobals.ParsedConfig, drop_in) < 0)
+		{
+		printf("centrallix: failed to merge config file '%s'\n", path);
+		goto end;
+		}
+	    }
+
+	rval = 0;
+
+    end:
+	if (path != NULL) nmFree(path, PATH_MAX);
+	for(i=0; i<n_entries; i++) free(entries[i]);
+	if (entries != NULL) free(entries);
+
+    return rval;
+    }
+
+
 void
 cxSetupGlobals(int argc, char* argv[])
     {
@@ -311,7 +449,6 @@ cxSetupGlobals(int argc, char* argv[])
 int
 cxInitialize(void* v)
     {
-    pFile cxconf;
     pStructInf mss_conf;
     pStructInf http_conf;
     char* authmethod;
@@ -355,20 +492,8 @@ cxInitialize(void* v)
 	    printf("\n");
 	    }
 
-	/** Load the configuration file **/
-	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
-	if (!cxconf)
-	    {
-	    printf("centrallix: could not open config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	CxGlobals.ParsedConfig = stParseMsg(cxconf, 0);
-	if (!CxGlobals.ParsedConfig)
-	    {
-	    printf("centrallix: error parsing config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	fdClose(cxconf, 0);
+	/** Load the configuration **/
+	if (cxLoadConfig() < 0) thExit();
 
 	/** Debug log **/
 	if (stAttrValue(stLookup(CxGlobals.ParsedConfig, "debug_log_file"), NULL, &debugfile, 0) < 0)
