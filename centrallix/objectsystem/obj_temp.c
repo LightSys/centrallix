@@ -536,12 +536,19 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 
 /*** tmp_internal_IsRowIndependent() - determine whether an expression has
  *** the same value for every row of a query, so it can be evaluated once
- *** when the query opens.
+ *** when the query opens.  Returns 1 if so, 0 if not, or -1 on failure.
  ***/
 int
 tmp_internal_IsRowIndependent(pExpression exp)
     {
-    int i;
+    int i, rval;
+
+	/** Guard the recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "TMP", "Failed to check whether an expression depends on the row: resource exhaustion occurred.");
+	    return -1;
+	    }
 
 	if (exp->Flags & EXPR_F_FREEZEEVAL)
 	    return 1;
@@ -553,8 +560,9 @@ tmp_internal_IsRowIndependent(pExpression exp)
 	    return 0;
 	for(i=0; i<exp->Children.nItems; i++)
 	    {
-	    if (tmp_internal_IsRowIndependent((pExpression)exp->Children.Items[i]) == 0)
-		return 0;
+	    rval = tmp_internal_IsRowIndependent((pExpression)exp->Children.Items[i]);
+	    if (rval <= 0)
+		return rval;
 	    }
 
     return 1;
@@ -574,6 +582,7 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
     int i, rval, has_other_terms = 0;
     pExpression i0, i1, it, child, remaining;
     int i0_id = -10, i1_id = -10;
+    int i0_independent, i1_independent;
 
 	/** Guard the recursion **/
 	if (thExcessiveRecursion())
@@ -603,7 +612,10 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 	    for(i=0; i<query->Children.nItems; i++)
 		{
 		child = (pExpression)query->Children.Items[i];
-		if (tmp_internal_IsRowIndependent(child) == 0)
+		rval = tmp_internal_IsRowIndependent(child);
+		if (rval < 0)
+		    return -1;
+		if (rval == 0)
 		    {
 		    if (remaining != NULL)
 			return 1;
@@ -646,10 +658,16 @@ tmp_internal_AnalyzeCriteria_r(pExpression root, pExpression query, pParamObject
 		}
 
 	    /** Must be an obj/prop that we handle, and a constant-like value **/
-	    if ((tmp_internal_IsRowIndependent(i0) != 0 && (i1_id == 0 || i1_id == -2)) ||
-		(tmp_internal_IsRowIndependent(i1) != 0 && (i0_id == 0 || i0_id == -2)))
+	    i0_independent = tmp_internal_IsRowIndependent(i0);
+	    if (i0_independent < 0)
+		return -1;
+	    i1_independent = tmp_internal_IsRowIndependent(i1);
+	    if (i1_independent < 0)
+		return -1;
+	    if ((i0_independent != 0 && (i1_id == 0 || i1_id == -2)) ||
+		(i1_independent != 0 && (i0_id == 0 || i0_id == -2)))
 		{
-		if (tmp_internal_IsRowIndependent(i0) != 0)
+		if (i0_independent != 0)
 		    {
 		    /** swap **/
 		    it = i0; i0 = i1; i1 = it;
