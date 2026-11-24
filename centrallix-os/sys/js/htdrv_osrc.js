@@ -1538,6 +1538,7 @@ function osrc_open_query()
 	return 0;
 	}
     this.query_ended = false;
+    this.fetch_count = 0;
     var oldoids = this.oldoids.join();
     this.oldoids = [];
     var reqobj =
@@ -1911,9 +1912,11 @@ function osrc_fetch_next()
 	    }
 
 	// Wow - how many records does the user want?
-	if ((this.LastRecord % 500) < ((this.LastRecord - this.querysize) % 500))
+	var prev_count = this.fetch_count;
+	this.fetch_count += rowcnt;
+	if (Math.floor(this.fetch_count / 500) > Math.floor(prev_count / 500))
 	    {
-	    if (!confirm("You have already retrieved " + this.LastRecord + " records.  Do you want to continue?"))
+	    if (!confirm("You have already retrieved " + this.fetch_count + " records.  Do you want to continue?"))
 		{
 		// pause here.
 		this.FoundRecord();
@@ -2201,7 +2204,8 @@ function osrc_give_all_current_record(why)
     this.ChangeCurrentRecord();
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord] && this.replica[this.LastRecord].__osrc_is_last)
 	{
-	this.replica[this.CurrentRecord].__osrc_last_record = this.LastRecord;
+	if (this.replica[this.CurrentRecord])
+	    this.replica[this.CurrentRecord].__osrc_last_record = this.LastRecord;
 	this.FinalRecord = this.LastRecord;
 	}
     for(var i in this.child)
@@ -2293,7 +2297,8 @@ function osrc_move_to_record_cb(recnum)
 /* If we're here, we're ready to go */
     this.TargetRecord = [recnum, recnum];
     this.CurrentRecord = recnum;
-    if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)
+    this.fetch_count = 0;
+    if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord && this.replica[this.CurrentRecord])
 	{
 	this.GiveAllCurrentRecord('change');
 	this.SetPending(false);
@@ -2303,6 +2308,21 @@ function osrc_move_to_record_cb(recnum)
 	}
     else
 	{
+	if (this.CurrentRecord >= this.FirstRecord && this.CurrentRecord <= this.LastRecord)
+	    {
+	    /* record is in a hole in the replica; fetch starting at it */
+	    this.startat = this.CurrentRecord;
+	    if (this.qid)
+		{
+		this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
+		this.qid = null;
+		}
+	    else
+		{
+		this.osrc_open_query_startat();
+		}
+	    return 0;
+	    }
 	if(this.CurrentRecord < this.FirstRecord)
 	    { /* data is further back, need new query */
 	    if(this.FirstRecord-this.CurrentRecord<this.readahead)
@@ -2392,6 +2412,7 @@ function osrc_open_query_startat()
 function osrc_get_qid_startat()
     {
     var lnk = pg_links(this);
+    var startat = this.startat;
     this.qid=lnk[0].target;
     if (!this.qid)
 	{
@@ -2400,7 +2421,7 @@ function osrc_get_qid_startat()
 	this.SetPending(false);
 	return;
 	}
-    this.OSMLRecord=(this.startat)?(this.startat-1):0;
+    this.OSMLRecord=(startat)?(startat-1):0;
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
@@ -2410,16 +2431,9 @@ function osrc_get_qid_startat()
 	}
     else
 	{
-	if(this.FirstRecord - this.startat < this.replicasize)
-	    {
-	    this.DoFetch(this.FirstRecord - this.startat, false);
-	    }
-	else
-	    {
-	    this.DoFetch(this.replicasize, false);
-	    }
+	this.DoFetch(this.querysize, false);
+	this.startat = null;
 	}
-    this.startat=null;
     }
 
 
@@ -2467,6 +2481,7 @@ function osrc_scroll_to(startrec, endrec)
     this.moveop=false;
     this.TargetRecord = [startrec, endrec];
     this.SyncID = osrc_syncid++;
+    this.fetch_count = 0;
     if((this.TargetRecord[1] <= this.LastRecord || this.query_ended) && this.TargetRecord[0] >= this.FirstRecord)
 	{
 	// check for a 'hole' in the replica
@@ -2489,7 +2504,15 @@ function osrc_scroll_to(startrec, endrec)
 	    else
 		{
 		this.startat = hole;
-		this.osrc_open_query_startat();
+		if (this.qid)
+		    {
+		    this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
+		    this.qid = null;
+		    }
+		else
+		    {
+		    this.osrc_open_query_startat();
+		    }
 		}
 	    }
 	else
@@ -4179,6 +4202,7 @@ function osrc_init(param)
     loader.readahead=param.readahead;
     loader.scrollahead=param.scrollahead;
     loader.replicasize=param.replicasize;
+    loader.fetch_count = 0;
     loader.initreplicasize = param.replicasize;
     loader.ind_act = param.ind_act;
     loader.req_ind_act = true;
