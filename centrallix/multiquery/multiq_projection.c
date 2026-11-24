@@ -516,7 +516,12 @@ mqpAnalyze(pQueryStatement stmt)
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		        {
 			new_exp = exp_internal_CopyTree(item->Expr);
-			if (!new_exp) break;
+			if (new_exp == NULL)
+			    {
+			    mssError(0, "MQP", "Failed to copy a GROUP BY item for source '%s'", from_qs->Source);
+			    mq_internal_FreeQE(qe);
+			    return -1;
+			    }
 			expRemapID(new_exp, src_idx, 0);
 
 			/** Check to see if it is already in the list **/
