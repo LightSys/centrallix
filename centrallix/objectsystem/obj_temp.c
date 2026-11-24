@@ -256,24 +256,24 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
 
 	/** Look it up **/
 	entry = (pObjTempIdxEntry)xhLookup(&idx->Entries, (char*)&tuple);
-	if (!entry)
+	if (entry == NULL)
 	    return -1;
 	xhRemove(&idx->Entries, (char*)&tuple);
 
 	/** Unlink it from its key's entries **/
 	node = entry->Node;
-	if (entry->Prev)
+	if (entry->Prev != NULL)
 	    entry->Prev->Next = entry->Next;
 	else
 	    node->First = entry->Next;
-	if (entry->Next)
+	if (entry->Next != NULL)
 	    entry->Next->Prev = entry->Prev;
 	else
 	    node->Last = entry->Prev;
 	tmp_internal_FreeIndexEntry(entry);
 
 	/** Free the node with its last entry **/
-	if (!node->First)
+	if (node->First == NULL)
 	    {
 	    xhRemove(&idx->Index, node->Key);
 	    tmp_internal_FreeIndexNode(node);
@@ -340,14 +340,14 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 
 	/** Find the key's node, or add one **/
 	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
-	if (node)
+	if (node != NULL)
 	    {
 	    nmSysFree(key);
 	    }
 	else
 	    {
 	    node = (pObjTempIdxNode)nmMalloc(sizeof(ObjTempIdxNode));
-	    if (!node)
+	    if (node == NULL)
 		{
 		nmSysFree(key);
 		goto error;
@@ -365,7 +365,7 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 
 	/** Add the entry after the key's other entries **/
 	entry = (pObjTempIdxEntry)nmMalloc(sizeof(ObjTempIdxEntry));
-	if (!entry)
+	if (entry == NULL)
 	    goto error;
 	entry->Tuple = tuple;
 	entry->Node = node;
@@ -376,7 +376,7 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 	    }
 	entry->Next = NULL;
 	entry->Prev = node->Last;
-	if (node->Last)
+	if (node->Last != NULL)
 	    node->Last->Next = entry;
 	else
 	    node->First = entry;
@@ -386,7 +386,7 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 	return 0;
 
     error:
-	if (node && !node->First)
+	if (node != NULL && node->First == NULL)
 	    {
 	    xhRemove(&idx->Index, node->Key);
 	    tmp_internal_FreeIndexNode(node);
@@ -1078,7 +1078,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->ObjQuery = query;
 	inf->TempObj->LinkCnt++;
 	qy->Matches = xaNew(16);
-	if (!qy->Matches)
+	if (qy->Matches == NULL)
 	    {
 	    mssError(1, "TMP", "Failed to allocate the query's index matches.");
 	    goto error;
@@ -1121,7 +1121,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 		    }
 
 		/** Require a complete index **/
-		if (qy->UsingIndex && !qy->UsingIndex->IsComplete)
+		if (qy->UsingIndex != NULL && !qy->UsingIndex->IsComplete)
 		    qy->UsingIndex = NULL;
 
 		/** If we have an index, see if our criteria allow us to use it **/
@@ -1147,9 +1147,9 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			    mssError(0, "TMP", "Failed to look up the query criteria in the index.");
 			    goto error;
 			    }
-			if (node)
+			if (node != NULL)
 			    {
-			    for(entry=node->First; entry; entry=entry->Next)
+			    for(entry=node->First; entry != NULL; entry=entry->Next)
 				{
 				if (xaAddItem(qy->Matches, entry->Tuple) < 0)
 				    {
@@ -1191,12 +1191,12 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    if (qy->TempObj)
 		qy->TempObj->LinkCnt--;
-	    if (qy->Matches)
+	    if (qy->Matches != NULL)
 		{
 		xaClear(qy->Matches, (void*)stFreeInf, NULL);
 		xaFree(qy->Matches);
 		}
-	    if (qy->Data)
+	    if (qy->Data != NULL)
 		stFreeInf(qy->Data);
 	    nmFree(qy, sizeof(ObjTempQuery));
 	    }
@@ -1225,7 +1225,7 @@ tmpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (qy->UsingIndex)
 	    {
 	    /** Yes, using an index.  Skip rows deleted since the lookup. **/
-	    while(qy->ItemCnt < qy->Matches->nItems && !((pStructInf)qy->Matches->Items[qy->ItemCnt])->Parent)
+	    while(qy->ItemCnt < qy->Matches->nItems && ((pStructInf)qy->Matches->Items[qy->ItemCnt])->Parent == NULL)
 		qy->ItemCnt++;
 	    if (qy->ItemCnt >= qy->Matches->nItems)
 		return NULL;
