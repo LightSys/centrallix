@@ -330,7 +330,7 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 	if (!idx->IsComplete)
 	    return -1;
 
-	/** Indexed before its values were set? **/
+	/** Already indexed under an older key? **/
 	tmp_internal_RemoveFromIndex(idx, tuple);
 
 	/** Determine the lookup key **/
