@@ -420,6 +420,7 @@ typedef struct _OF
 typedef struct _TI
     {
     XArray	Fields;		/* List of fields in this index */
+    int*	Types;		/* Per field: DATA_T_xxx of the non-NULL values added, or -1 if mixed */
     XHashTable	Index;		/* FIXME: replace with B+ tree in the future */
     XHashTable	Entries;	/* index entries, keyed by tuple pointer */
     void*	OneObjList;	/* pParamObjects; for convenience */

@@ -14,6 +14,7 @@
 #include "stparse.h"
 #include "cxss/cxss.h"
 #include "cxlib/strtcpy.h"
+#include "centrallix.h"
 
 /************************************************************************/
 /* Centrallix Application Server System 				*/
@@ -52,6 +53,7 @@
 #define	TMP_MIN_ORDER	(513)	/* min buckets in index hash table */
 #define TMP_MAX_ORDER	(3001)	/* max buckets in index hash table */
 #define	TMP_MAX_KEY	(512)	/* max internal key size for hash table */
+#define	TMP_TYPE_MIXED	(-1)	/* index field holds values of several types */
 
 typedef struct
     {
@@ -268,6 +270,37 @@ tmp_internal_RemoveFromIndex(pObjTempIndex idx, pStructInf tuple)
     }
 
 
+/*** tmp_internal_RecordTypes() - record the data type of each non-NULL
+ *** index field in a tuple, marking a field mixed once its types differ.
+ ***/
+int
+tmp_internal_RecordTypes(pObjTempIndex idx, pStructInf tuple)
+    {
+    pExpression exp;
+    int i;
+
+	for(i=0; i<idx->Fields.nItems; i++)
+	    {
+	    exp = stGetExpression(stLookup(tuple, (char*)idx->Fields.Items[i]), 0);
+	    if (!exp)
+		continue;
+	    if (expEvalTree(exp, idx->OneObjList) < 0)
+		{
+		mssClearError();
+		idx->Types[i] = TMP_TYPE_MIXED;
+		}
+	    else if (exp->Flags & EXPR_F_NULL)
+		continue;
+	    else if (idx->Types[i] == DATA_T_UNAVAILABLE)
+		idx->Types[i] = exp->DataType;
+	    else if (idx->Types[i] != exp->DataType)
+		idx->Types[i] = TMP_TYPE_MIXED;
+	    }
+
+    return 0;
+    }
+
+
 /*** tmp_internal_AddToIndex() - add one object in the collection to the index,
  *** or update its key if it is already there.  On failure, the index no
  *** longer has every object, so queries stop using it, and this returns -1.
@@ -334,6 +367,7 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 	else
 	    node->First = entry;
 	node->Last = entry;
+	tmp_internal_RecordTypes(idx, tuple);
 
 	return 0;
 
@@ -433,6 +467,7 @@ tmp_internal_FreeIndex(pObjTempIndex idx)
 	xaDeInit(&idx->Fields);
 	xhDeInit(&idx->Entries);
 	xhDeInit(&idx->Index);
+	nmSysFree(idx->Types);
 	nmFree(idx, sizeof(ObjTempIndex));
 
     return 0;
@@ -483,18 +518,27 @@ tmp_internal_FindIndex(pObjTemp tmp, pXArray fields)
     }
 
 
-/*** tmp_internal_CreateIndex() - create an index on a collection
+/*** tmp_internal_CreateIndex() - create an index on a collection.  Returns
+ *** NULL if it can't, which is not an error: the caller scans instead.
  ***/
 pObjTempIndex
 tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
     {
     pObjTempIndex idx;
+    char* name;
     int order, i;
 
 	idx = (pObjTempIndex)nmMalloc(sizeof(ObjTempIndex));
 	if (!idx)
 	    return NULL;
-	xaInit(&idx->Fields, 16);
+	memset(idx, 0, sizeof(ObjTempIndex));
+	idx->Types = (int*)nmSysMalloc(sizeof(int) * fields->nItems);
+	if (idx->Types == NULL)
+	    goto error;
+	for(i=0; i<fields->nItems; i++)
+	    idx->Types[i] = DATA_T_UNAVAILABLE;
+	if (xaInit(&idx->Fields, 16) < 0)
+	    goto error;
 	idx->IsComplete = 1;
 	order = ((pStructInf)tmp->Data)->nSubInf;
 
@@ -506,21 +550,60 @@ tmp_internal_CreateIndex(pObjTemp tmp, pXArray fields)
 	 ** to a B+ tree for this in the future).  This index uses
 	 ** variable length keys (asciz).
 	 **/
-	xhInit(&idx->Index, order, 0);
-	xhInit(&idx->Entries, order, sizeof(pStructInf));
+	if (xhInit(&idx->Index, order, 0) < 0)
+	    {
+	    memset(&idx->Index, 0, sizeof(XHashTable));
+	    goto error;
+	    }
+	if (xhInit(&idx->Entries, order, sizeof(pStructInf)) < 0)
+	    {
+	    memset(&idx->Entries, 0, sizeof(XHashTable));
+	    goto error;
+	    }
 
 	/** Copy the field list **/
 	for(i=0; i<fields->nItems; i++)
-	    xaAddItem(&idx->Fields, nmSysStrdup(fields->Items[i]));
+	    {
+	    name = nmSysStrdup(fields->Items[i]);
+	    if (name == NULL)
+		goto error;
+	    if (xaAddItem(&idx->Fields, name) < 0)
+		{
+		nmSysFree(name);
+		goto error;
+		}
+	    }
 
 	/** Create a param objects list **/
 	idx->OneObjList = expCreateParamList();
-	expAddParamToList(idx->OneObjList, NULL, NULL, EXPR_O_CURRENT);
+	if (idx->OneObjList == NULL)
+	    goto error;
+	if (expAddParamToList(idx->OneObjList, NULL, NULL, EXPR_O_CURRENT) < 0)
+	    goto error;
 
 	/** Add the index to the temp collection **/
-	xaAddItem(&tmp->Indexes, idx);
+	if (xaAddItem(&tmp->Indexes, idx) < 0)
+	    goto error;
 
-    return idx;
+	return idx;
+
+    error:
+	if (idx->OneObjList != NULL)
+	    expFreeParamList(idx->OneObjList);
+	if (idx->Index.nRows != 0)
+	    xhDeInit(&idx->Index);
+	if (idx->Entries.nRows != 0)
+	    xhDeInit(&idx->Entries);
+	if (idx->Fields.Items != NULL)
+	    {
+	    xaClear(&idx->Fields, (void*)nmSysFree, NULL);
+	    xaDeInit(&idx->Fields);
+	    }
+	if (idx->Types != NULL)
+	    nmSysFree(idx->Types);
+	mssClearError();
+	nmFree(idx, sizeof(ObjTempIndex));
+	return NULL;
     }
 
 /*** tmp_internal_AnalyzeCriteria_r() - see below.  This does the actual
@@ -588,11 +671,45 @@ tmp_internal_AnalyzeCriteria_r(pObjTemp tmp, pObjTempIndex idx, pExpression root
     }
 
 
+/*** tmp_internal_IsKeyUsable() - determine whether looking up a value in
+ *** an index field finds exactly the rows whose field compares equal to it.
+ *** Returns 1 if so, 0 if not.  0 is not an error: the caller scans instead,
+ *** and no error is left on the error stack.
+ ***/
+int
+tmp_internal_IsKeyUsable(pObjTempIndex idx, int field, pExpression value)
+    {
+    int type = idx->Types[field];
+
+	if (expEvalTree(value, idx->OneObjList) < 0)
+	    {
+	    mssClearError();
+	    return 0;
+	    }
+
+	/** NULL never compares equal **/
+	if (value->Flags & EXPR_F_NULL)
+	    return 0;
+
+	/** Equal values of different types have different keys **/
+	if (type == TMP_TYPE_MIXED || (type != DATA_T_UNAVAILABLE && type != value->DataType))
+	    return 0;
+
+	/** Equal doubles can have different keys (-0.0 and 0.0, NaN and anything) **/
+	if (type == DATA_T_DOUBLE)
+	    return 0;
+
+    return 1;
+    }
+
+
 /*** tmp_internal_AnalyzeCriteria() - given an expression tree with search
  *** criteria in it, we determine whether we can handle the criteria, and if
  *** so, with what field values.  This adds to what expGetPropsForObject()
  *** already does (it lets us find the index).  Returns an array of expressions,
- *** which can then be passed to tmp_internal_IndexLookup().
+ *** which can then be passed to tmp_internal_IndexLookup(), or NULL if the
+ *** index can't be used.  NULL is not an error: the caller scans instead, and
+ *** no error is left on the error stack.
  ***/
 pExpression*
 tmp_internal_AnalyzeCriteria(pObjTemp tmp, pObjTempIndex idx, pExpression query)
@@ -613,10 +730,10 @@ tmp_internal_AnalyzeCriteria(pObjTemp tmp, pObjTempIndex idx, pExpression query)
 	    return NULL;
 	    }
 
-	/** Did we get them all? **/
+	/** Did we get them all, with values the keys can find? **/
 	for(i=0; i<idx->Fields.nItems; i++)
 	    {
-	    if (values[i] == NULL)
+	    if (values[i] == NULL || !tmp_internal_IsKeyUsable(idx, i, values[i]))
 		{
 		nmFree(values, sizeof(pExpression) * idx->Fields.nItems);
 		return NULL;
@@ -1033,8 +1150,13 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	if (qy->UsingIndex)
 	    {
 	    query->Flags |= OBJ_QY_F_FULLQUERY;
+	    cxTestOutput(3, "TMP: Using index.\n");
 	    }
-    
+	else
+	    {
+	    cxTestOutput(4, "TMP: Scanning collection.\n");
+	    }
+
 	return (void*)qy;
 
     error:
@@ -1590,4 +1712,3 @@ tmpInitialize()
 
     return 0;
     }
-
