@@ -177,24 +177,25 @@ tmp_internal_GenerateKeyFromInf(pObjTempIndex idx, pStructInf tuple)
     }
 
 
-/*** tmp_internal_IndexLookup() - find an object via the index
+/*** tmp_internal_IndexLookup() - find the objects with the given field
+ *** values via the index.  Sets *node to their node, or to NULL if there
+ *** are none.  Returns 0 on success or -1 on failure.
  ***/
-pObjTempIdxNode
-tmp_internal_IndexLookup(pObjTempIndex idx, pExpression fields[])
+int
+tmp_internal_IndexLookup(pObjTempIndex idx, pExpression fields[], pObjTempIdxNode* node)
     {
     char* key;
-    pObjTempIdxNode node;
 
 	/** Determine the lookup key **/
 	key = tmp_internal_GenerateKey(idx, fields);
 	if (!key)
-	    return NULL;
+	    return -1;
 
 	/** Look it up **/
-	node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
+	*node = (pObjTempIdxNode)xhLookup(&idx->Index, key);
 	nmSysFree(key);
 
-    return node;
+    return 0;
     }
 
 
@@ -1060,6 +1061,7 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
     pExpression* values;
     pObjTempIdxNode node;
     pObjTempIdxEntry entry;
+    int rval;
 
 	/** By default, no query criteria support **/
 	query->Flags &= ~OBJ_QY_F_FULLQUERY;
@@ -1137,9 +1139,14 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			{
 			//printf(" - got values");
 			/** Ok, it is usable.  Do the lookup. **/
-			node = tmp_internal_IndexLookup(qy->UsingIndex, values);
+			rval = tmp_internal_IndexLookup(qy->UsingIndex, values, &node);
 			nmFree(values, sizeof(pExpression) * qy->UsingIndex->Fields.nItems);
 			values = NULL;
+			if (rval < 0)
+			    {
+			    mssError(0, "TMP", "Failed to look up the query criteria in the index.");
+			    goto error;
+			    }
 			if (node)
 			    {
 			    for(entry=node->First; entry; entry=entry->Next)
