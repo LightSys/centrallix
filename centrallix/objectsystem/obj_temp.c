@@ -78,7 +78,7 @@ typedef struct _TIE
 typedef struct _TIN
     {
     char*	Key;
-    pObjTempIdxEntry First;	/* entries with this key, in the order added */
+    pObjTempIdxEntry First;	/* Entries with this key, in the order added */
     pObjTempIdxEntry Last;
     }
     ObjTempIdxNode, *pObjTempIdxNode;
@@ -90,7 +90,7 @@ typedef struct
     pStructInf	CurInf;
     pObjTemp	TempObj;
     pObjTempIndex UsingIndex;
-    pXArray	Matches;	/* of pStructInf, linked; rows found by the index */
+    pXArray	Matches;	/* Rows found by the index, linked */
     pObjQuery	ObjQuery;
     }
     ObjTempQuery, *pObjTempQuery;
