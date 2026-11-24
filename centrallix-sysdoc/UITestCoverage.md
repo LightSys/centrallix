@@ -614,6 +614,54 @@ Tab Test PASS
 
 ----------
 
+## Table Large Result Set Test
+### Properties Tested
+- osrc `replicasize`, `readahead`, `scrollahead` with a 1000 row result set (replica of 50 rows)
+- table `min_rowheight`, `max_rowheight`, column `wrap`, `widget/table-row-detail`
+- osrc/form actions: `First`, `Last`, `Prev`, `Next`, `Refresh`, `New`, `Save`, `Discard`, `Delete`
+
+### Files
+- `tests/ui/table_large/table_large_test.app`: fixed row height table, form, and action buttons.
+- `tests/ui/table_large/table_large_detail_test.app`: same, with variable row height and a row detail.
+- `tests/ui/table_large/gen_table_large_csv.py`: generates `table_large.csv`, where `Id` equals the row's position in the result set.
+- `centrallix-ui-test/tests/table_large_test.py`: the tests. Optional `config.toml` keys are listed at the top of the file. Destructive tests (7, 12, 16) run only when `os_root` is set, and regenerate the CSV afterwards.
+
+### Invariants
+After each step, once the table and osrc are idle, the tests check:
+- I1: at least one row is drawn inside the visible area.
+- I2: loaded rows are contiguous and do not overlap.
+- I3: `firstvis`/`lastvis` and `scroll_y` match the DOM.
+- I4: every drawn row shows its own replica record. Where requested, row N must show Id N.
+- I5: the scrollbar thumb is shown when needed, and its position matches the visible records.
+- I6: no scroll target or osrc request is left pending.
+
+A failing check prints the table/osrc state and a trace of recent table and osrc calls.
+
+### Tests
+1. Baseline: wheel within the first replica window. Should pass.
+2. Wheel to record ~400, then `First`.
+3. `Last` from the top.
+4. Wheel to ~400, `Last`, then wheel up a little.
+5. Jump to record 500 with `MoveToRecord`, from the top and after `Last`.
+6. Drag the thumb to 80% once the result set size is known.
+7. Delete the current record while it is out of the DOM. Table must not go blank and must still scroll.
+8. Wheel up into the replica hole left by `Last`'s tail fetch, then `First`; `MoveToRecord` into the hole.
+9. Wheel during a slow (800ms latency) `Refresh`.
+10. Recover from blocked fetch requests.
+11. Click a row after a `Refresh` deep in the results.
+12. Save the current record from the form while the table is scrolled away from it. The view must not move.
+13. Detail app: select a row while the previously selected row (with its detail open) is above the view.
+14. Detail app: change the height of the first loaded row while it is above the view.
+15. `New` mid-list: the placeholder must appear in view without scrolling.
+16. `New` + `Save` mid-list: no scrolling, and no records skipped or duplicated afterwards.
+17. Seeded random stress of wheel, thumb drag, clicks, navigation, `Refresh`, and `New`/`Discard`.
+
+### Note
+- Tests 7, 8, 11, 12, 14, 15, 16 and 17 currently fail. They reproduce known table and osrc defects with large result sets, and should pass once those are fixed.
+- The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported.
+
+----------
+
 ## Textarea Test
 ### Properties Tested
 - **Page readiness:** `document.readyState`
