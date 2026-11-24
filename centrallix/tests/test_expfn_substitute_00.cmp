@@ -63,6 +63,5 @@ Attribute [column_000]:   string   "$5	Violet	Semi-Gloss"
 Attribute [column_000]:   string   "$5	Violet	Gloss" 
 Attribute [column_000]:   string   "" 
 Attribute [column_000]:   string   "" 
-Attribute [column_000]:   string   "this is a longer test" 
 Attribute [column_000]:   string   "short test" 
 Attribute [substitute(null,null)]:   string  NULL

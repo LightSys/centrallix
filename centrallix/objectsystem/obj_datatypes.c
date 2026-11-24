@@ -1658,7 +1658,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
     pDateTime dt;
     pStringVec sv,sv2;
     pIntVec iv,iv2;
-    int intval;
+    int intval, intval2;
     char* strval;
     DateTime dt_v;
     MoneyType m_v;
@@ -1694,11 +1694,13 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 		switch(data_type_2)
 		    {
 		    case DATA_T_INTEGER:
-		        cmp_value = intval - *(int*)data_ptr_2;
+		        intval2 = *(int*)data_ptr_2;
+			cmp_value = (intval > intval2) - (intval < intval2);
 			break;
 
 		    case DATA_T_STRING:
-		        cmp_value = intval - strtoi((char*)data_ptr_2, NULL, 0);
+		        intval2 = strtoi((char*)data_ptr_2, NULL, 0);
+			cmp_value = (intval > intval2) - (intval < intval2);
 			break;
 
 		    case DATA_T_DOUBLE:
@@ -1725,7 +1727,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 			if (iv->nIntegers != 1)
 			    err = 1;
 			else
-			    cmp_value = intval - iv->Integers[0];
+			    cmp_value = (intval > iv->Integers[0]) - (intval < iv->Integers[0]);
 			break;
 
 		    default:
@@ -1893,7 +1895,7 @@ objDataCompare(int data_type_1, void* data_ptr_1, int data_type_2, void* data_pt
 				cmp_value = -1;
 				break;
 				}
-			    cmp_value = iv->Integers[i] - iv2->Integers[i];
+			    cmp_value = (iv->Integers[i] > iv2->Integers[i]) - (iv->Integers[i] < iv2->Integers[i]);
 			    if (cmp_value != 0) break;
 			    }
 			break;
