@@ -90,7 +90,7 @@ typedef struct
     pStructInf	CurInf;
     pObjTemp	TempObj;
     pObjTempIndex UsingIndex;
-    XArray	Matches;	/* of pStructInf, linked; rows found by the index */
+    pXArray	Matches;	/* of pStructInf, linked; rows found by the index */
     pObjQuery	ObjQuery;
     }
     ObjTempQuery, *pObjTempQuery;
@@ -321,7 +321,7 @@ tmp_internal_RecordTypes(pObjTempIndex idx, pStructInf tuple)
 int
 tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
     {
-    pObjTempIdxNode node;
+    pObjTempIdxNode node = NULL;
     pObjTempIdxEntry entry;
     char* key;
 
@@ -357,6 +357,7 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 	    if (xhAdd(&idx->Index, node->Key, (void*)node) < 0)
 		{
 		tmp_internal_FreeIndexNode(node);
+		node = NULL;
 		goto error;
 		}
 	    }
@@ -364,13 +365,13 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 	/** Add the entry after the key's other entries **/
 	entry = (pObjTempIdxEntry)nmMalloc(sizeof(ObjTempIdxEntry));
 	if (!entry)
-	    goto error_node;
+	    goto error;
 	entry->Tuple = tuple;
 	entry->Node = node;
 	if (xhAdd(&idx->Entries, (char*)&entry->Tuple, (void*)entry) < 0)
 	    {
 	    tmp_internal_FreeIndexEntry(entry);
-	    goto error_node;
+	    goto error;
 	    }
 	entry->Next = NULL;
 	entry->Prev = node->Last;
@@ -383,13 +384,12 @@ tmp_internal_AddToIndex(pObjTempIndex idx, pStructInf tuple)
 
 	return 0;
 
-    error_node:
-	if (!node->First)
+    error:
+	if (node && !node->First)
 	    {
 	    xhRemove(&idx->Index, node->Key);
 	    tmp_internal_FreeIndexNode(node);
 	    }
-    error:
 	mssClearError();
 	idx->IsComplete = 0;
 	return -1;
@@ -1073,9 +1073,14 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	qy->ItemCnt = 0;
 	qy->TempObj = inf->TempObj;
 	qy->UsingIndex = NULL;
-	xaInit(&qy->Matches, 16);
 	qy->ObjQuery = query;
 	inf->TempObj->LinkCnt++;
+	qy->Matches = xaNew(16);
+	if (!qy->Matches)
+	    {
+	    mssError(1, "TMP", "Failed to allocate the query's index matches.");
+	    goto error;
+	    }
 
 	/** Determine properties used by the query criteria **/
 	if (query->Tree && inf->Data->nSubInf >= TMP_THRESHOLD)
@@ -1139,8 +1144,11 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 			    {
 			    for(entry=node->First; entry; entry=entry->Next)
 				{
-				if (xaAddItem(&qy->Matches, entry->Tuple) < 0)
+				if (xaAddItem(qy->Matches, entry->Tuple) < 0)
+				    {
+				    mssError(1, "TMP", "Failed to add index match %d to the query.", qy->Matches->nItems + 1);
 				    goto error;
+				    }
 				stLinkInf(entry->Tuple);
 				}
 			    }
@@ -1176,8 +1184,13 @@ tmpOpenQuery(void* inf_v, pObjQuery query, pObjTrxTree* oxt)
 	    {
 	    if (qy->TempObj)
 		qy->TempObj->LinkCnt--;
-	    xaClear(&qy->Matches, (void*)stFreeInf, NULL);
-	    xaDeInit(&qy->Matches);
+	    if (qy->Matches)
+		{
+		xaClear(qy->Matches, (void*)stFreeInf, NULL);
+		xaFree(qy->Matches);
+		}
+	    if (qy->Data)
+		stFreeInf(qy->Data);
 	    nmFree(qy, sizeof(ObjTempQuery));
 	    }
 	if (props)
@@ -1205,11 +1218,11 @@ tmpQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (qy->UsingIndex)
 	    {
 	    /** Yes, using an index.  Skip rows deleted since the lookup. **/
-	    while(qy->ItemCnt < qy->Matches.nItems && !((pStructInf)qy->Matches.Items[qy->ItemCnt])->Parent)
+	    while(qy->ItemCnt < qy->Matches->nItems && !((pStructInf)qy->Matches->Items[qy->ItemCnt])->Parent)
 		qy->ItemCnt++;
-	    if (qy->ItemCnt >= qy->Matches.nItems)
+	    if (qy->ItemCnt >= qy->Matches->nItems)
 		return NULL;
-	    qy->CurInf = (pStructInf)qy->Matches.Items[qy->ItemCnt];
+	    qy->CurInf = (pStructInf)qy->Matches->Items[qy->ItemCnt];
 	    }
 	else
 	    {
@@ -1246,8 +1259,8 @@ tmpQueryClose(void* qy_v, pObjTrxTree* oxt)
     pObjTempQuery qy = ((pObjTempQuery)(qy_v));
 
 	/** Free the structure **/
-	xaClear(&qy->Matches, (void*)stFreeInf, NULL);
-	xaDeInit(&qy->Matches);
+	xaClear(qy->Matches, (void*)stFreeInf, NULL);
+	xaFree(qy->Matches);
 	obj_internal_CloseTempObj(qy->TempObj);
 	stFreeInf(qy->Data);
 	nmFree(qy, sizeof(ObjTempQuery));
