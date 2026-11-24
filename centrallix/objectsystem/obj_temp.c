@@ -556,7 +556,7 @@ tmp_internal_IsRowIndependent(pExpression exp)
 	    return 0;
 	if (exp->Flags & (EXPR_F_AGGREGATEFN | EXPR_F_WINDOWFN))
 	    return 0;
-	if (exp->ObjCoverageMask & EXPR_MASK_INDETERMINATE)
+	if (exp->ObjCoverageMask & (EXPR_MASK_EXTREF | EXPR_MASK_INDETERMINATE))
 	    return 0;
 	for(i=0; i<exp->Children.nItems; i++)
 	    {
