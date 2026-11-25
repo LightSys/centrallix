@@ -979,6 +979,10 @@ function tbld_update_thumb(anim)
 	    }
 	}
 
+    // Going to a record that is still loading?  Show where we are going.
+    if (this.scroll_to_rec)
+	top_rec = this.scroll_to_rec - 1;
+
     // Thumb geometry.
     var scrollable = total - per_view;
     if (scrollable <= 0)
@@ -1647,7 +1651,7 @@ function tbld_sched_thumb_scroll(frac)
     if (this.scroll_timeout)
 	pg_delsched(this.scroll_timeout);
     $(this.scrolldiv).stop(false, true);
-    $(this.box).stop(false, true);
+    $(this.box).stop(true, false);
     this.scroll_timeout = pg_addsched_fn(this, "ThumbScroll", [frac], 0);
     }
 
@@ -3347,6 +3351,7 @@ function tbld_mousedown(e)
             }
 	if (ly.subkind == 'box')
 	    {
+	    $(ly).stop(true, false);
 	    tbldx_current = ly;
 	    tbldx_start = e.pageY;
 	    tbldx_tstart = getPosition(ly).top;

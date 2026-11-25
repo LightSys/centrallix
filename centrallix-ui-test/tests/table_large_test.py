@@ -1007,6 +1007,67 @@ class Suite:
         fv1 = s.js("__tl.scanVis(t).firstvis")
         self.check(s, 23, "view stays put after scrolling", fv0 == fv1, "firstvis %s -> %s" % (fv0, fv1))
 
+    def drag_thumb_sampled(self, s, frac, steps=8):
+        """Drag the thumb to frac of its track in several moves while sampling its position.
+
+        Returns (start_top, target_top, samples) where samples are the thumb's
+        top every 15ms from just before the drag until the table settles.
+        """
+        avail, height, top = s.js("[t.thumb_avail, t.thumb_height, __tl.relY(t.scrollbar.b)]")
+        target = 18 + frac * (avail - height)
+        s.js("(__tl.samp = [], __tl.dragStarted = false, __tl.sampTimer = setInterval(function(){ __tl.samp.push(__tl.relY(t.scrollbar.b)); if (window.tbldx_current) __tl.dragStarted = true; }, 15), 0)")
+        chain = ActionChains(s.d).click_and_hold(s.js("t.scrollbar.b"))
+        for i in range(steps):
+            chain = chain.move_by_offset(0, int(round((target - top) / steps))).pause(0.04)
+        chain.release().perform()
+        s.settle(60)
+        samples = s.js("(clearInterval(__tl.sampTimer), __tl.samp)")
+        return top, target, samples
+
+    def check_thumb_samples(self, s, test_no, label, start, target, samples):
+        lo, hi = min(start, target) - 30, max(start, target) + 30
+        strays = [round(y) for y in samples if y < lo or y > hi]
+        self.check(s, test_no, label + ": thumb stays between its start and drop positions", not strays,
+                   "start %d, drop %d, out of range: %s" % (start, target, strays[:10]))
+        reached = [i for i, y in enumerate(samples) if abs(y - target) <= 10]
+        back = [round(y) for y in samples[reached[0]:] if abs(y - target) > 30] if reached else []
+        self.check(s, test_no, label + ": thumb reaches its drop position", bool(reached), "drop %d, samples %s" % (target, [round(y) for y in samples[-10:]]))
+        self.check(s, test_no, label + ": thumb does not snap back", not back, "drop %d, later samples %s" % (target, back[:10]))
+        final = s.js("__tl.relY(t.scrollbar.b)")
+        self.check(s, test_no, label + ": thumb ends at its drop position", abs(final - target) <= 10, "drop %d, final %d" % (target, final))
+
+    def test24(self):
+        reporter.add_test(24, "Thumb stays where it is dragged")
+
+        # Slow data: the thumb must not follow the old view while the jump loads.
+        s = self.session()
+        s.click_button("last_btn")
+        s.settle(30)
+        s.click_button("first_btn")
+        s.settle(30)
+        s.d.execute_cdp_cmd("Network.enable", {})
+        s.d.execute_cdp_cmd("Network.emulateNetworkConditions", {"offline": False, "latency": 500, "downloadThroughput": -1, "uploadThroughput": -1})
+        try:
+            start, target, samples = self.drag_thumb_sampled(s, 0.3)
+        finally:
+            s.d.execute_cdp_cmd("Network.emulateNetworkConditions", {"offline": False, "latency": 0, "downloadThroughput": -1, "uploadThroughput": -1})
+        self.check_thumb_samples(s, 24, "slow load", start, target, samples)
+        self.check_invariants(s, 24, "invariants after the slow-load drag", check_order=True)
+
+        # A thumb animation still running when the drag starts (as after First).
+        s = self.session()
+        s.click_button("last_btn")
+        s.settle(30)
+        s.click_button("first_btn")
+        s.settle(30)
+        # Slow enough that the press still lands on the (small) moving thumb.
+        s.js("(setRelativeY(t.scrollbar.b, t.thumb_avail - t.thumb_height + 18), $(t.scrollbar.b).animate({top: '18px'}, 6000), 0)")
+        time.sleep(0.3)
+        start, target, samples = self.drag_thumb_sampled(s, 0.3)
+        self.check(s, 24, "running animation: the drag started", s.js("__tl.dragStarted"), "the press did not land on the thumb")
+        self.check_thumb_samples(s, 24, "running animation", start, target, samples)
+        self.check_invariants(s, 24, "invariants after dragging during an animation", check_order=True)
+
     def stress_step(self, s, rng):
         kinds = ["wheel", "wheel", "wheel", "bigwheel", "drag", "click", "first", "last", "prev", "next", "refresh", "newcancel"]
         exclude = self.config.get("stress_exclude") or []
@@ -1044,7 +1105,7 @@ class Suite:
 
     def run(self):
         only = self.config.get("only")
-        tests = [getattr(self, "test%d" % i) for i in range(1, 24) if not only or i in only]
+        tests = [getattr(self, "test%d" % i) for i in range(1, 25) if not only or i in only]
         try:
             if not self.data_is_clean(self.session()):
                 print("Test data is not in its generated state.  Stop the server, run")
