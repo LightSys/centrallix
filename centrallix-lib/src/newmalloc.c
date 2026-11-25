@@ -34,6 +34,7 @@
 
 #include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -235,6 +236,9 @@ nmCheckAll(void)
 void*
 nmDebugMalloc(size_t size)
     {
+	/** Reject sizes too large to fit the wrapper. **/
+	if (size > SIZE_MAX - EXTRA_MEM) return NULL;
+	
 	/** Allocate space for the data. **/
 	pMemStruct tmp = (pMemStruct)malloc(size + EXTRA_MEM);
 	if (tmp == NULL) return NULL;
@@ -795,6 +799,9 @@ nmSysMalloc(size_t size)
 	return (void*)nmDebugMalloc(size);
 #else
 	
+	/** Reject sizes too large to fit the size number. **/
+	if (size > SIZE_MAX - sizeof(size_t)) return NULL;
+	
 	/** Allocate the requested space, plus the initial size number. **/
 	char* ptr = (char*)nmDebugMalloc(sizeof(size_t) + size);
 	if (ptr == NULL) return NULL;
@@ -863,6 +870,9 @@ nmSysRealloc(void* ptr, size_t new_size)
 	/** If the memory block size does not change, do nothing. **/
 	const size_t size = nm_internal_ReadSysSize(ptr);
 	if (size == new_size) return ptr;
+	
+	/** Reject sizes too large to fit the size number. **/
+	if (new_size > SIZE_MAX - sizeof(size_t)) return NULL;
 	
 	/** Realloc the given memory with space for the initial size number. **/
 	void* buffer_ptr = ((char*)ptr) - sizeof(size_t);
