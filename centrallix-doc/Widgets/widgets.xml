@@ -3636,7 +3636,7 @@ myTabControl "widget/tab"
 			
 			<property name="dragcols" type="integer">Whether to allow dragging of column boundaries to resize columns; set to 1 to allow it and 0 to disallow.  Default is 1.</property>
 
-			<property name="followcurrent" type="yes/no">Set to 'yes' to cause the table's current row to follow the currently selected object in the ObjectSource, and 'no' to disable this behavior.  Default is 'yes'.</property>
+			<property name="followcurrent" type="yes/no">Set to 'yes' to cause the table to scroll the ObjectSource's current object into view whenever the current object changes, and 'no' to disable this behavior.  The table does not scroll back to the current object merely because the user scrolled away from it.  Default is 'yes'.</property>
 
 			<property name="gridinemptyrows" type="integer">Whether to show the table's grid in rows which do not hold data.  Set to 1 to show the grid or 0 to not show it; default is 1.</property>
 
@@ -3665,6 +3665,8 @@ myTabControl "widget/tab"
 			<property name="newrow_background" type="string">A background image for the "new row" placeholder that is visible when a new object is being created.</property>
 
 			<property name="newrow_bgcolor" type="string">A color, RGB or named, for the "new row" placeholder that is visible when a new object is being created.</property>
+
+			<property name="newrow_position" type="string">Where the "new row" placeholder appears, and where the new object stays once it is saved (until the data is refreshed): 'start' (before the first loaded row), 'end' (after the last loaded row), or 'auto' (in the visible area: after the selected row, or before the last visible row).  When only part of a large result set is loaded, 'start' and 'end' refer to the loaded rows.  The table scrolls at most once to show the placeholder, and 'auto' does not scroll.  Default is 'end'.</property>
 
 			<property name="objectsource" type="string">Identifies the OSRC that the table connects to.</property>
 			

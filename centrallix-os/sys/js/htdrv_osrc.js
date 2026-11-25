@@ -830,6 +830,7 @@ function osrc_delete_record(recnum, client)
     if(cr)
 	{
 	// Remove the deleted row
+	this.NoteLocalChange(cr, true);
 	delete this.replica[recnum];
 
 	// Adjust replica row id's to fill up the 'hole'
@@ -988,10 +989,39 @@ function osrc_action_create_cb()
     if(links && links[0] && links[0].target != 'ERR')
 	{
 	var oldcur = this.CurrentRecord;
-	if (this.FinalRecord == this.LastRecord)
-	    this.FinalRecord++;
-	this.LastRecord++;
-	this.CurrentRecord = this.LastRecord;
+	var oldrec = this.replica[oldcur];
+	var pos = this.create_position;
+	this.create_position = null;
+	if (pos && pos >= this.FirstRecord && pos <= this.LastRecord + 1)
+	    {
+	    // Insert at the requested position, moving later records down one.
+	    for(var i=this.LastRecord; i>=pos; i--)
+		{
+		if (this.replica[i])
+		    {
+		    this.replica[i+1] = this.replica[i];
+		    this.replica[i+1].id = i+1;
+		    }
+		else
+		    {
+		    delete this.replica[i+1];
+		    }
+		}
+	    delete this.replica[pos];
+	    if (this.FinalRecord !== null)
+		this.FinalRecord++;
+	    if (this.OSMLRecord >= pos)
+		this.OSMLRecord++;
+	    this.LastRecord++;
+	    this.CurrentRecord = pos;
+	    }
+	else
+	    {
+	    if (this.FinalRecord == this.LastRecord)
+		this.FinalRecord++;
+	    this.LastRecord++;
+	    this.CurrentRecord = this.LastRecord;
+	    }
 	var recnum=this.CurrentRecord;
 	var cr=this.replica[this.CurrentRecord];
 	if(!cr) cr = [];
@@ -1014,7 +1044,7 @@ function osrc_action_create_cb()
 	var max_j = 0;
 	for(var i in server_rec)
 	    {
-	    found = 0;
+	    var found = 0;
 	    for(var j in cr)
 		{
 		if (j == 'oid') continue;
@@ -1043,7 +1073,6 @@ function osrc_action_create_cb()
 	for (var j in cr)
 	    {
 	    if (j == 'oid') continue;
-	    var oldrec = this.replica[this.oldcur];
 	    var oldval = null;
 	    if (oldrec)
 		{
@@ -1061,6 +1090,7 @@ function osrc_action_create_cb()
 	    }
 
 	//alert(this.replica[this.CurrentRecord].oid);
+	this.NoteLocalChange(cr, false);
 	this.in_create = false;
 	this.SyncID = osrc_syncid++;
 	if (this.initiating_client) this.initiating_client.OperationComplete(true, this);
@@ -1082,6 +1112,7 @@ function osrc_action_create_cb()
 	if (this.initiating_client) this.initiating_client.OperationComplete(false, this);
 	}
     this.initiating_client=null;
+    this.create_position = null;
     delete this.createddata;
     }
 
@@ -1538,6 +1569,8 @@ function osrc_open_query()
 	return 0;
 	}
     this.query_ended = false;
+    this.fetch_count = 0;
+    this.gap_startat = null;
     var oldoids = this.oldoids.join();
     this.oldoids = [];
     var reqobj =
@@ -1723,6 +1756,65 @@ function osrc_clear_replica()
     this.LastRecord=0;
     this.FinalRecord=null;
     this.FirstRecord=1;
+    this.local_changes = 0;
+    this.deleted_names = Object.create(null);
+    this.fetch_append = false;
+    }
+
+
+// osrc_set_create_position (SetCreatePosition) - record where the next
+// created object goes in the replica.  null means after the last record.
+function osrc_set_create_position(recnum)
+    {
+    this.create_position = recnum;
+    }
+
+
+// osrc_row_name - the 'name' attribute of a replica row, or null.
+function osrc_row_name(row)
+    {
+    if (!row) return null;
+    for(var j in row)
+	if (row[j] && typeof row[j] == 'object' && row[j].oid == 'name')
+	    return row[j].value;
+    return null;
+    }
+
+
+// osrc_replica_names - the names of the rows in the replica, as a map with
+// no prototype (so names like 'constructor' are not already "present").
+function osrc_replica_names(osrc)
+    {
+    var names = Object.create(null);
+    for(var r in osrc.replica)
+	{
+	var name = osrc_row_name(osrc.replica[r]);
+	if (name !== null)
+	    names[name] = true;
+	}
+    return names;
+    }
+
+
+// osrc_skip_fetched_name - true if a fetched row with this name is already
+// in the replica (known) or was deleted here.
+function osrc_skip_fetched_name(osrc, known, name)
+    {
+    if (name === null)
+	return false;
+    return Object.prototype.hasOwnProperty.call(known, name) || Object.prototype.hasOwnProperty.call(osrc.deleted_names, name);
+    }
+
+
+// osrc_note_local_change (NoteLocalChange) - count a record created or
+// deleted here since the last query, so the next query continuing past
+// the replica can be lined up with the server's result set.
+function osrc_note_local_change(row, is_delete)
+    {
+    this.local_changes++;
+    var name = osrc_row_name(row);
+    if (is_delete && name !== null)
+	this.deleted_names[name] = true;
     }
 
 function osrc_parse_one_row(lnk, i)
@@ -1856,12 +1948,18 @@ function osrc_fetch_next()
     //confirm(this.baseobj + " ==> " + lc + " links");
     if(lc <= this.data_start)
 	{ // query over
+	if (this.gap_startat !== null)
+	    {
+	    this.FindLastPage();
+	    return 0;
+	    }
 	this.EndQuery();
 	return 0;
 	}
     var colnum=0;
     var i = this.data_start;
     var rowcnt = 0;
+    var known = this.fetch_append?osrc_replica_names(this):null;
     while (i < lc)
 	{
 	if (lnk[i].target == 'QUERYCLOSED')
@@ -1877,7 +1975,20 @@ function osrc_fetch_next()
 	    this.querysize++; // indicate that we hit end of result set
 	    continue;
 	    }
+	if (known)
+	    {
+	    // Record already here, or deleted here?  Skip it.
+	    var peek = this.ParseOneRow(lnk, i);
+	    var name = osrc_row_name(peek);
+	    if (osrc_skip_fetched_name(this, known, name))
+		{
+		rowcnt++;
+		i += peek.length;
+		continue;
+		}
+	    }
 	this.OSMLRecord++; // this holds the last record we got, so now will hold current record number
+	this.gap_startat = null;
 	this.replica[this.OSMLRecord] =
 		this.NewReplicaObj(this.OSMLRecord, lnk[i].target);
 	this.PruneReplica(this.OSMLRecord);
@@ -1906,14 +2017,21 @@ function osrc_fetch_next()
 	// didn't get a full fetch?  end query if so
 	if (rowcnt < this.querysize)
 	    {
+	    if (this.gap_startat !== null)
+		{
+		this.FindLastPage();
+		return 0;
+		}
 	    this.EndQuery();
 	    return 0;
 	    }
 
 	// Wow - how many records does the user want?
-	if ((this.LastRecord % 500) < ((this.LastRecord - this.querysize) % 500))
+	var prev_count = this.fetch_count;
+	this.fetch_count += rowcnt;
+	if (Math.floor(this.fetch_count / 500) > Math.floor(prev_count / 500))
 	    {
-	    if (!confirm("You have already retrieved " + this.LastRecord + " records.  Do you want to continue?"))
+	    if (!confirm("You have already retrieved " + this.fetch_count + " records.  Do you want to continue?"))
 		{
 		// pause here.
 		this.FoundRecord();
@@ -2201,7 +2319,8 @@ function osrc_give_all_current_record(why)
     this.ChangeCurrentRecord();
     if (this.LastRecord >= this.FirstRecord && this.replica[this.LastRecord] && this.replica[this.LastRecord].__osrc_is_last)
 	{
-	this.replica[this.CurrentRecord].__osrc_last_record = this.LastRecord;
+	if (this.replica[this.CurrentRecord])
+	    this.replica[this.CurrentRecord].__osrc_last_record = this.LastRecord;
 	this.FinalRecord = this.LastRecord;
 	}
     for(var i in this.child)
@@ -2293,7 +2412,8 @@ function osrc_move_to_record_cb(recnum)
 /* If we're here, we're ready to go */
     this.TargetRecord = [recnum, recnum];
     this.CurrentRecord = recnum;
-    if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord)
+    this.fetch_count = 0;
+    if(this.CurrentRecord <= this.LastRecord && this.CurrentRecord >= this.FirstRecord && this.replica[this.CurrentRecord])
 	{
 	this.GiveAllCurrentRecord('change');
 	this.SetPending(false);
@@ -2303,6 +2423,13 @@ function osrc_move_to_record_cb(recnum)
 	}
     else
 	{
+	if (this.CurrentRecord >= this.FirstRecord && this.CurrentRecord <= this.LastRecord)
+	    {
+	    /* record is in a hole in the replica; fetch starting at it */
+	    this.startat = this.CurrentRecord;
+	    this.OpenQueryAt();
+	    return 0;
+	    }
 	if(this.CurrentRecord < this.FirstRecord)
 	    { /* data is further back, need new query */
 	    if(this.FirstRecord-this.CurrentRecord<this.readahead)
@@ -2324,7 +2451,16 @@ function osrc_move_to_record_cb(recnum)
 	    return 0;
 	    }
 	else
-	    { /* data is farther on, act normal */
+	    {
+	    /* data is far ahead: start a query there instead of reading up to it */
+	    if (this.CurrentRecord > this.LastRecord + this.replicasize && this.CurrentRecord != Number.MAX_VALUE && !this.query_ended)
+		{
+		this.startat = this.CurrentRecord;
+		this.OpenQueryAt();
+		return 0;
+		}
+
+	    /* data is farther on, act normal */
 	    if(this.qid)
 		{
 		if(this.CurrentRecord == Number.MAX_VALUE)
@@ -2374,11 +2510,22 @@ function osrc_open_query_tail()
     else*/
 	this.querysize = this.replicasize;
     this.query_ended = false;
+    this.gap_startat = null;
+    this.fetch_append = false;
     this.DoRequest('multiquery', '/', {ls__tail:1, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 
 function osrc_open_query_startat()
     {
+    // After local creates/deletes, the server's positions past the replica
+    // may be shifted.  Start a little earlier and skip records we have.
+    this.fetch_append = false;
+    if (this.local_changes > 0 && this.startat == this.LastRecord + 1)
+	{
+	this.fetch_append = true;
+	this.startat = Math.max(1, this.startat - this.local_changes);
+	}
+    this.gap_startat = (this.startat > this.LastRecord + 1)?this.startat:null;
     if(this.FirstRecord > this.startat && this.FirstRecord - this.startat < this.replicasize)
 	this.querysize = this.FirstRecord - this.startat;
     else
@@ -2389,9 +2536,43 @@ function osrc_open_query_startat()
     this.DoRequest('multiquery', '/', {ls__startat:this.startat, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 
+// osrc_open_query_at (OpenQueryAt) - open a new query starting at this.startat,
+// closing the currently open query first if there is one.
+function osrc_open_query_at()
+    {
+    if (this.qid)
+	{
+	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_startat);
+	this.qid = null;
+	}
+    else
+	{
+	this.osrc_open_query_startat();
+	}
+    }
+
+// osrc_find_last_page (FindLastPage) - a query started past the loaded rows
+// found nothing there, so the result set ends somewhere before it.  Fetch
+// the actual last page rather than ending at the last loaded record.
+function osrc_find_last_page()
+    {
+    this.gap_startat = null;
+    this.startat = null;
+    if (this.qid)
+	{
+	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_tail);
+	this.qid = null;
+	}
+    else
+	{
+	this.osrc_open_query_tail();
+	}
+    }
+
 function osrc_get_qid_startat()
     {
     var lnk = pg_links(this);
+    var startat = this.startat;
     this.qid=lnk[0].target;
     if (!this.qid)
 	{
@@ -2400,7 +2581,9 @@ function osrc_get_qid_startat()
 	this.SetPending(false);
 	return;
 	}
-    this.OSMLRecord=(this.startat)?(this.startat-1):0;
+    this.OSMLRecord=(startat)?(startat-1):0;
+    if (this.fetch_append)
+	this.OSMLRecord = this.LastRecord;
     if (lnk.length > 1)
 	{
 	// did an autofetch - we have the data already
@@ -2410,16 +2593,9 @@ function osrc_get_qid_startat()
 	}
     else
 	{
-	if(this.FirstRecord - this.startat < this.replicasize)
-	    {
-	    this.DoFetch(this.FirstRecord - this.startat, false);
-	    }
-	else
-	    {
-	    this.DoFetch(this.replicasize, false);
-	    }
+	this.DoFetch(this.querysize, false);
+	this.startat = null;
 	}
-    this.startat=null;
     }
 
 
@@ -2467,6 +2643,7 @@ function osrc_scroll_to(startrec, endrec)
     this.moveop=false;
     this.TargetRecord = [startrec, endrec];
     this.SyncID = osrc_syncid++;
+    this.fetch_count = 0;
     if((this.TargetRecord[1] <= this.LastRecord || this.query_ended) && this.TargetRecord[0] >= this.FirstRecord)
 	{
 	// check for a 'hole' in the replica
@@ -2489,7 +2666,7 @@ function osrc_scroll_to(startrec, endrec)
 	    else
 		{
 		this.startat = hole;
-		this.osrc_open_query_startat();
+		this.OpenQueryAt();
 		}
 	    }
 	else
@@ -2525,6 +2702,14 @@ function osrc_scroll_to(startrec, endrec)
 	    }
 	else
 	    {
+	    /* data is far ahead: start a query there instead of reading up to it */
+	    if (this.TargetRecord[0] > this.LastRecord + this.replicasize && this.TargetRecord[1] != Number.MAX_VALUE && !this.query_ended)
+		{
+		this.startat = this.TargetRecord[0];
+		this.OpenQueryAt();
+		return 0;
+		}
+
 	    /* data is farther on, act normal */
 	    if(this.qid)
 		{
@@ -2923,6 +3108,7 @@ function osrc_action_begincreate(aparam)
 function osrc_action_cancelcreate(aparam)
     {
     // We ignore this if we're not actually still in a create operation.
+    this.create_position = null;
     if (this.in_create)
 	{
 	this.in_create = false;
@@ -4179,6 +4365,8 @@ function osrc_init(param)
     loader.readahead=param.readahead;
     loader.scrollahead=param.scrollahead;
     loader.replicasize=param.replicasize;
+    loader.fetch_count = 0;
+    loader.gap_startat = null;
     loader.initreplicasize = param.replicasize;
     loader.ind_act = param.ind_act;
     loader.req_ind_act = true;
@@ -4228,6 +4416,8 @@ function osrc_init(param)
     loader.osrc_oldoid_cleanup = osrc_oldoid_cleanup;
     loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
     loader.osrc_open_query_startat = osrc_open_query_startat;
+    loader.OpenQueryAt = osrc_open_query_at;
+    loader.FindLastPage = osrc_find_last_page;
     loader.osrc_open_query_tail = osrc_open_query_tail;
     loader.osrc_action_modify_cb_2 = osrc_action_modify_cb_2;
     loader.ImportModifiedData = osrc_import_modified_data;
@@ -4236,6 +4426,8 @@ function osrc_init(param)
     loader.NewReplicaObj = osrc_new_replica_object;
     loader.PruneReplica = osrc_prune_replica;
     loader.ClearReplica = osrc_clear_replica;
+    loader.SetCreatePosition = osrc_set_create_position;
+    loader.NoteLocalChange = osrc_note_local_change;
     loader.ClearTarget = osrc_clear_target;
     loader.ApplyRelationships = osrc_apply_rel;
     loader.ApplyKeys = osrc_apply_keys;
