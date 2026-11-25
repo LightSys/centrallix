@@ -95,7 +95,7 @@ size_t nmMallocLargest;
 
 #ifdef BLK_LEAK_CHECK
 void* blks[MAX_BLOCKS];
-int blksiz[MAX_BLOCKS];
+size_t blksiz[MAX_BLOCKS];
 #endif
 
 bool is_init = false;

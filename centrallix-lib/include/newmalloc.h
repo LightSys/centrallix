@@ -64,7 +64,7 @@ typedef struct _ov
 #ifdef BLK_LEAK_CHECK
 #define MAX_BLOCKS	65536
 extern void* blks[MAX_BLOCKS];
-extern int blksiz[MAX_BLOCKS];
+extern size_t blksiz[MAX_BLOCKS];
 #endif
 extern pOverlay lists[MAX_SIZE+1];
 
