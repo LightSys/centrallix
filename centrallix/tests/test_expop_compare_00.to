@@ -235,3 +235,7 @@ query select '$1.99 > $2' = $1.99 > $2
 query select '$1.99 = $2' = $1.99 = $2
 query select '$-1.99 > $2' = $-1.99 > $2
 query select '$-1.99 > $-2' = $-1.99 > $-2
+
+# Integers far enough apart to overflow a subtraction
+query select '2000000000 > -2000000000' = 2000000000 > -2000000000
+query select '-2000000000 < 2000000000' = -2000000000 < 2000000000
