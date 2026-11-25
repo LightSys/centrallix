@@ -1347,6 +1347,17 @@ function tbld_clear_rows(fromobj, why)
 	{
 	this.RemoveRow(this.rows[i]);
 	}
+
+    // Drop scrolling still under way for the old data.
+    $(this.scrolldiv).stop(true, false);
+    $(this.scrollbar.b).stop(true, false);
+    if (this.scroll_timeout)
+	{
+	pg_delsched(this.scroll_timeout);
+	this.scroll_timeout = null;
+	}
+    this.osrc_request_queue = [];
+    this.scroll_to_end = false;
     setRelativeY(this.scrolldiv,0);
     this.scroll_y = 0;
     this.rows.lastosrc = null;

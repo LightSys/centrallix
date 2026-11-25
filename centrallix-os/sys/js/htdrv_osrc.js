@@ -98,18 +98,25 @@ function osrc_refresh_timer()
 
 function osrc_action_refresh(aparam)
     {
-    var tr = this.CurrentRecord;
+    // A new query (cx__new_query) starts at the top; a refresh keeps the
+    // current record, found again by name.
+    var new_query = aparam.cx__new_query?true:false;
+    var tr = new_query?1:this.CurrentRecord;
     if (!tr || tr < 1) tr = 1;
-    this.doing_refresh = true;
 
     // Carry the current sort over to the new query
     if (!this.pendingorderobject && this.orderobject)
 	this.pendingorderobject = this.orderobject;
 
     // Keep track of current object by name
-    if (aparam.find_object)
+    var objname = null;
+    if (new_query)
 	{
-	this.refresh_objname = aparam.find_object;
+	objname = null;
+	}
+    else if (aparam.find_object)
+	{
+	objname = aparam.find_object;
 	}
     else if (this.replica[this.CurrentRecord])
 	{
@@ -117,18 +124,17 @@ function osrc_action_refresh(aparam)
 	    {
 	    if (this.replica[this.CurrentRecord][j].oid == 'name')
 		{
-		this.refresh_objname = this.replica[this.CurrentRecord][j].value;
+		objname = this.replica[this.CurrentRecord][j].value;
 		break;
 		}
 	    }
 	}
-    else
-	this.refresh_objname = null;
 
+    var refresh = new_query?0:1;
     if (this.querytext)
-	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr, use_having:this.querytext_use_having});
+	this.ifcProbe(ifAction).Invoke("QueryText", {query:this.querytext, client:null, ro:this.readonly, field_list:this.querytext_fields, cx__case_insensitive:this.querytext_icase, targetrec:tr, use_having:this.querytext_use_having, cx__refresh:refresh, cx__refresh_objname:objname});
     else
-	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr});
+	this.ifcProbe(ifAction).Invoke("QueryObject", {query:this.queryobject, client:null, ro:this.readonly, targetrec:tr, cx__refresh:refresh, cx__refresh_objname:objname});
     }
 
 
@@ -157,7 +163,7 @@ function osrc_action_change_source(aparam)
     this.query = s;
     this.baseobj = aparam.Source;
     if (typeof aparam.Refresh == 'undefined' || aparam.Refresh)
-	this.ifcProbe(ifAction).Invoke("Refresh", {});
+	this.ifcProbe(ifAction).Invoke("Refresh", {cx__new_query:1});
     }
 
 
@@ -201,6 +207,8 @@ function osrc_query_text_handler(aparam)
 	var min_length = 2;
 
     this.move_target = aparam.targetrec;
+    this.doing_refresh = aparam.cx__refresh?true:false;
+    this.refresh_objname = aparam.cx__refresh_objname?aparam.cx__refresh_objname:null;
     this.find_target = null;
 
     if (!aparam.fromsync)
@@ -338,11 +346,8 @@ function osrc_query_object_handler(aparam)
 	}
 
     this.move_target = aparam.targetrec;
-    if (aparam.find)
-	{
-	this.doing_refresh = true;
-	this.refresh_objname = aparam.find;
-	}
+    this.doing_refresh = (aparam.cx__refresh || aparam.find)?true:false;
+    this.refresh_objname = aparam.find?aparam.find:(aparam.cx__refresh_objname?aparam.cx__refresh_objname:null);
 
     if (typeof q != 'undefined' && q !== null) this.ApplyRelationships(q, false, false);
 
@@ -1218,6 +1223,7 @@ function osrc_refresh_object_cb()
 	    this.GiveAllCurrentRecord('refresh');
 	    }
 	}
+    this.doing_refresh = false;
     }
 
 function osrc_action_modify(aparam) //up,initiating_client)
