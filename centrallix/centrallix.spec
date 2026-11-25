@@ -126,6 +126,7 @@ echo "<html><head><title>Centrallix</title></head><body>Centrallix" %{version} "
 /usr/share/doc/centrallix-%{version}/CHANGELOG
 %verify(not md5 size mtime) %config(noreplace) /etc/centrallix.conf
 %verify(not md5 size mtime) %config(noreplace) /etc/centrallix/rootnode
+%dir /etc/centrallix/conf.d
 %config /etc/centrallix/useragent.cfg
 %config /etc/centrallix/types.cfg
 /etc/rc.d/init.d/centrallix
