@@ -103,21 +103,21 @@ test(char** name)
 	"    mtsession \"system/config\" { auth_method = \"altpasswd\"; }\n"
 	"    }\n"));
     assert(rval == 0);
-    assert(strcmp(base->Name, "centrallix") == 0);				// base keeps its name
-    assert(base->nSubInf == 5);							// one group added
-    assert(strcmp(base->SubInf[1]->Name, "enable_send_credentials") == 0);	// attribute keeps its place
-    assert(int_value(base, "enable_send_credentials") == 1);			// attribute replaced
+    assert(strcmp(base->Name, "centrallix") == 0);					// base keeps its name
+    assert(base->nSubInf == 5);								// one group added
+    assert(strcmp(base->SubInf[1]->Name, "enable_send_credentials") == 0);		// attribute keeps its place
+    assert(int_value(base, "enable_send_credentials") == 1);				// attribute replaced
     assert(strcmp(str_value(base, "debug_log_file", 0), "/var/log/cx_debug_log") == 0); // untouched attribute kept
     assert(strcmp(str_value(stLookup(base, "mtsession"), "auth_method", 0), "altpasswd") == 0); // new group added
-    assert(strcmp(base->SubInf[4]->Name, "mtsession") == 0);			// new group at the end
+    assert(strcmp(base->SubInf[4]->Name, "mtsession") == 0);				// new group at the end
     http = stLookup(base, "net_http");
-    assert(http == base->SubInf[2]);						// first duplicate merged
-    assert(int_value(http, "listen_port") == 800);				// nested attribute kept
-    assert(int_value(http, "accept_localhost_only") == 0);			// nested attribute replaced
-    assert(strcmp(str_value(http, "dir_index", 0), "index.app") == 0);	// list replaced...
-    assert(str_value(http, "dir_index", 1) == NULL);				// ...not appended to
-    assert(strcmp(str_value(http, "upload_dirs", 0), "/apps/kardia/files") == 0); // nested attribute added
-    assert(int_value(base->SubInf[3], "listen_port") == 1);			// second duplicate untouched
+    assert(http == base->SubInf[2]);							// first duplicate merged
+    assert(int_value(http, "listen_port") == 800);					// nested attribute kept
+    assert(int_value(http, "accept_localhost_only") == 0);				// nested attribute replaced
+    assert(strcmp(str_value(http, "dir_index", 0), "index.app") == 0);			// list replaced...
+    assert(str_value(http, "dir_index", 1) == NULL);					// ...not appended to
+    assert(strcmp(str_value(http, "upload_dirs", 0), "/apps/kardia/files") == 0);	// nested attribute added
+    assert(int_value(base->SubInf[3], "listen_port") == 1);				// second duplicate untouched
     stFreeInf(base);
 
     /** Group types must match **/

@@ -936,4 +936,3 @@ cxLinkSigningSetup(pStructInf my_config)
 
     return 0;
     }
-
