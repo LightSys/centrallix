@@ -355,21 +355,36 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	this.scroll_to_rec = anchor;
 	}
 
-    // Draw only one contiguous run of loaded records, so the rows never have gaps.
+    // A record to scroll to that is no longer in the target was superseded.
+    if (this.scroll_to_rec && (this.scroll_to_rec < this.target_range.start || this.scroll_to_rec > this.target_range.end))
+	this.scroll_to_rec = null;
+
+    // Draw only one contiguous run of loaded records, so the rows never have
+    // gaps.  If none of the target's records are loaded yet, they are still
+    // on their way, so keep the rows already shown.
+    var draw = {start:this.target_range.start, end:this.target_range.end};
+    var waiting = false;
     if (this.datamode != 1)
 	{
-	var run_start = Math.max(this.target_range.start, min);
-	while (run_start <= this.target_range.end && run_start <= max && !this.osrc.replica[run_start])
+	var run_start = Math.max(draw.start, min);
+	while (run_start <= draw.end && run_start <= max && !this.osrc.replica[run_start])
 	    run_start++;
 	var run_end = run_start;
-	while (run_end < this.target_range.end && run_end < max && this.osrc.replica[run_end+1])
+	while (run_end < draw.end && run_end < max && this.osrc.replica[run_end+1])
 	    run_end++;
-	if (run_start <= this.target_range.end && run_start <= max)
-	    this.target_range = {start:run_start, end:run_end};
+	if (run_start <= draw.end && run_start <= max)
+	    {
+	    draw = {start:run_start, end:run_end};
+	    }
+	else if (this.rows.first !== null)
+	    {
+	    draw = {start:this.rows.first, end:this.rows.last};
+	    waiting = true;
+	    }
 	}
 
     // Target rows don't adjoin the loaded rows?  Start over at the top of the view.
-    if (this.rows.first !== null && (this.target_range.end < this.rows.first - 1 || this.target_range.start > this.rows.last + 1))
+    if (!waiting && this.rows.first !== null && (draw.end < this.rows.first - 1 || draw.start > this.rows.last + 1))
 	{
 	var old_first = this.rows.first;
 	var old_last = this.rows.last;
@@ -396,7 +411,7 @@ function tbld_redraw_all(dataobj, force_datafetch)
 
     // (re)draw the loaded records
     var selected_position_changed = false;
-    for(var i=this.target_range.start; i<=this.target_range.end; i++)
+    for(var i=draw.start; i<=draw.end; i++)
 	{
 	if (i >= min && i <= max && (this.datamode == 1 || this.osrc.replica[i]))
 	    {
@@ -439,17 +454,20 @@ function tbld_redraw_all(dataobj, force_datafetch)
 	return;
 
     if (this.rows.first === null)
+	{
+	this.OsrcDispatch();
 	return;
+	}
 
     // Remove unneeded rows
     if (this.rows.first != null)
 	{
-	for(var i=this.rows.first; i<this.target_range.start && i<=this.rows.last; i++)
+	for(var i=this.rows.first; i<draw.start && i<=this.rows.last; i++)
 	    this.RemoveRow(this.rows[i]);
 	}
     if (this.rows.last != null)
 	{
-	for(var i=this.rows.last; i>this.target_range.end && i>=this.rows.first; i--)
+	for(var i=this.rows.last; i>draw.end && i>=this.rows.first; i--)
 	    this.RemoveRow(this.rows[i]);
 	}
 
@@ -981,13 +999,14 @@ function tbld_update_thumb(anim)
     this.thumb_total = total;
     this.thumb_per_view = per_view;
 
-    // Move the scroll thumb
-    if (anim)
+    // Move the scroll thumb, unless the user is dragging it.
+    var dragging = (window.tbldx_current && window.tbldx_current.table == this);
+    if (!dragging && anim)
 	{
 	$(this.scrollbar.b).stop(false, false);
 	$(this.scrollbar.b).animate({"top": (18+Math.round(this.thumb_pos))+"px", "height": (Math.round(this.thumb_height)-2)+"px"}, 250, anim, null);
 	}
-    else
+    else if (!dragging)
 	{
 	setRelativeY(this.scrollbar.b, 18 + Math.round(this.thumb_pos));
 	$(this.scrollbar.b).height(Math.round(this.thumb_height) - 2);
