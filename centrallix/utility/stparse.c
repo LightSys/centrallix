@@ -608,9 +608,9 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
  ***   - An attribute replaces that attribute's value, keeping its position.
  ***   - A group merges recursively into that group, which must have the
  ***     same type.
- ***   - A child with no match is added to the end of base.
- *** Merging different kinds of nodes, or any node that is not an attribute
- *** or group, fails.
+ ***   - Merging different kinds of nodes, or any node that is not an
+ ***     attribute or group, fails.
+ *** A child with no match, of any kind, is moved to the end of base.
  ***
  *** Releases the caller's reference to overlay, even on failure.  On failure,
  *** base may be partially merged.  Returns 0 on success, -1 on failure.
