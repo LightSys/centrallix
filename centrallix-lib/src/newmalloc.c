@@ -766,6 +766,16 @@ nmDeltas(void)
     }
 
 
+#ifdef NM_USE_SYSMALLOC
+/** Read the size stored in front of a non-NULL nmSysXYZ() block. **/
+static size_t
+nm_internal_ReadSysSize(void* ptr)
+    {
+    return *(size_t*)(((char*)ptr) - sizeof(size_t));
+    }
+#endif
+
+
 /*** Allocate memory without using block caching.  The size of the allocated
  *** memory is stored at the start of the memory block for debugging.
  *** 
@@ -818,7 +828,7 @@ nmSysFree(void* ptr)
 	
  /** Count sized blocks, if enabled. **/
  #ifdef SIZED_BLK_COUNTING
-	const size_t size = nmSysGetSize(ptr);
+	const size_t size = nm_internal_ReadSysSize(ptr);
 	if (size > 0 && size <= MAX_SIZE) nmsys_outcnt[size]--;
  #endif
 	
@@ -851,7 +861,7 @@ nmSysRealloc(void* ptr, size_t new_size)
 	if (ptr == NULL) return nmSysMalloc(new_size);
 	
 	/** If the memory block size does not change, do nothing. **/
-	const size_t size = nmSysGetSize(ptr);
+	const size_t size = nm_internal_ReadSysSize(ptr);
 	if (size == new_size) return ptr;
 	
 	/** Realloc the given memory with space for the initial size number. **/
@@ -922,20 +932,19 @@ nmSysStrdup(const char* str)
  *** @param ptr A pointer to the memory buffer to be checked.  The function's
  *** 	behavior is undefined if this pointer is a nonNULL value which does
  *** 	NOT point to the start of a valid memory block from an `nmSysXYZ()`.
- *** @returns The size of the memory buffer, if it can be found, or
- *** 	0 if the size of the buffer was not stored, or
- *** 	0 if `ptr` is NULL.
+ *** @param size Set to the size of the memory buffer, or 0 if `ptr` is NULL
+ *** 	or the size was not stored.
+ *** @returns 0 on success, or -1 if the size of the buffer was not stored.
  ***/
-size_t
-nmSysGetSize(void* ptr)
+int
+nmSysGetSize(void* ptr, size_t* size)
     {
 #ifndef NM_USE_SYSMALLOC
-	return 0lu; /* Value not stored. */
+	(void)ptr;
+	*size = 0lu;
+	return -1; /* Value not stored. */
 #else
-	if (ptr == NULL) return 0lu;
-	
-	/** Read the size from the start of the nmSys block. **/
-	const void* buffer_ptr = ((char*)ptr) - sizeof(size_t);
-	return *(size_t*)buffer_ptr;
+	*size = (ptr == NULL) ? 0lu : nm_internal_ReadSysSize(ptr);
+	return 0;
 #endif
     }

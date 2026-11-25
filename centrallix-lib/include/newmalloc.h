@@ -81,7 +81,7 @@ void* nmSysMalloc(size_t size);
 void nmSysFree(void* ptr);
 void* nmSysRealloc(void* ptr, size_t new_size);
 char* nmSysStrdup(const char* str);
-size_t nmSysGetSize(void* ptr);
+int nmSysGetSize(void* ptr, size_t* size);
 
 /** Tagging system (not implemented). **/
 void nmEnableTagging();
