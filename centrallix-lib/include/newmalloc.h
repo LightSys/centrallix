@@ -26,6 +26,8 @@
 /*		facilities for effective memory management.		*/
 /************************************************************************/
 
+#include <stddef.h>
+
 
 /** A cacheable block's first bytes: Magic marks it free or allocated, and Next links free blocks in the cache. **/
 typedef struct _ov
