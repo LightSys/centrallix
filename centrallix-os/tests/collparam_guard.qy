@@ -1,0 +1,8 @@
+$Version=2$
+collparam_guard "system/query"
+    {
+    src "query/parameter" { type = collection; }
+    id "query/parameter" { type = integer; }
+
+    sql = "select n = count(1) from collection src s where (:parameters:id is null or :s:id = :parameters:id)";
+    }
