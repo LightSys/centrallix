@@ -82,7 +82,6 @@ pMemStruct startMemList;
 #endif
 
 /** List of overlay structs, used for caching allocated memory. **/
-/** TODO: Greg - This is over 327 KB of variables, is that a problem? (On the stack, this would be a seg fault!!) **/
 pOverlay lists[MAX_SIZE+1];
 unsigned long long int listcnt[MAX_SIZE+1];
 unsigned long long int outcnt[MAX_SIZE+1];
@@ -433,7 +432,7 @@ nmMalloc(size_t size)
 	    {
 /** Handle counting. **/
 #ifdef GLOBAL_BLK_COUNTING
-	    nmMallocTooBig++; /* TODO: Greg - Couldn't the memory also be too small to cache? */
+	    nmMallocTooBig++;
 	    if (size > nmMallocLargest) nmMallocLargest = size;
 #endif
 	    
@@ -810,14 +809,6 @@ nmSysMalloc(size_t size)
     
     return NULL; /** Unreachable. **/
     }
-
-/*** TODO: Greg - I believe that the above code is the best way to satisfy my interpretation of
- *** requirement 2 of the coding style: "Every function must have a return
- *** line at the end, even if the function never reaches that return."
- *** Without the goofy unreachable return, the last line will be an #endif.
- *** Am I following the style correctly?
- ***/
-
 
 /*** Free a memory buffer allocated using `nmSysMalloc()` (or similar).
  *** 
