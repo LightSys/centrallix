@@ -347,7 +347,9 @@ cx_internal_CompareNames(const struct dirent** a, const struct dirent** b)
  *** (see stMergeInf()), so later files override earlier ones.  Those files
  *** cannot set include_dir.
  ***
- *** Prints a message and returns -1 on failure, 0 on success.
+ *** Runs before mssInitialize(), which mssError() needs, so it reports
+ *** failures with printf().  Returns 0 on success.  On failure, returns -1
+ *** and CxGlobals.ParsedConfig may be NULL or partially loaded.
  ***/
 int
 cxLoadConfig()
@@ -372,8 +374,7 @@ cxLoadConfig()
 	    rval = 0;
 	    goto end;
 	    }
-	stAttrValue(include_inf, NULL, &include_dir, 0);
-	if (include_dir == NULL)
+	if (stAttrValue(include_inf, NULL, &include_dir, 0) != 0 || include_dir == NULL)
 	    {
 	    printf("centrallix: failed to read include_dir in config file '%s': "
 		    "it must be a string\n", CxGlobals.ConfigFileName);
@@ -392,7 +393,12 @@ cxLoadConfig()
 
 	/** Merge each included file **/
 	path = nmMalloc(PATH_MAX);
-	if (path == NULL) goto end;
+	if (path == NULL)
+	    {
+	    printf("centrallix: failed to allocate a path buffer for include_dir '%s'\n",
+		    include_dir);
+	    goto end;
+	    }
 	for(i=0; i<n_entries; i++)
 	    {
 	    if (snprintf(path, PATH_MAX, "%s/%s", include_dir, entries[i]->d_name) >= PATH_MAX)
