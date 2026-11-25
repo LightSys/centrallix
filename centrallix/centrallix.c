@@ -375,7 +375,8 @@ cxLoadConfig()
 	stAttrValue(include_inf, NULL, &include_dir, 0);
 	if (include_dir == NULL)
 	    {
-	    printf("centrallix: failed to read include_dir in config file '%s': it must be a string\n", CxGlobals.ConfigFileName);
+	    printf("centrallix: failed to read include_dir in config file '%s': "
+		    "it must be a string\n", CxGlobals.ConfigFileName);
 	    goto end;
 	    }
 
@@ -383,7 +384,8 @@ cxLoadConfig()
 	n_entries = scandir(include_dir, &entries, cx_internal_IsDropInConfig, cx_internal_CompareNames);
 	if (n_entries < 0)
 	    {
-	    printf("centrallix: failed to read include_dir '%s': %s\n", include_dir, strerror(errno));
+	    printf("centrallix: failed to read include_dir '%s': %s\n",
+		    include_dir, strerror(errno));
 	    n_entries = 0;
 	    goto end;
 	    }
@@ -395,7 +397,8 @@ cxLoadConfig()
 	    {
 	    if (snprintf(path, PATH_MAX, "%s/%s", include_dir, entries[i]->d_name) >= PATH_MAX)
 		{
-		printf("centrallix: failed to load config file '%s' in include_dir '%s': the path is too long\n", entries[i]->d_name, include_dir);
+		printf("centrallix: failed to load config file '%s' in include_dir '%s': "
+			"the path is too long\n", entries[i]->d_name, include_dir);
 		goto end;
 		}
 	    if (!CxGlobals.QuietInit) printf("centrallix: loading config file '%s'\n", path);
@@ -403,7 +406,8 @@ cxLoadConfig()
 	    if (drop_in == NULL) goto end;
 	    if (stLookup(drop_in, "include_dir") != NULL)
 		{
-		printf("centrallix: failed to load config file '%s': only '%s' can set include_dir\n", path, CxGlobals.ConfigFileName);
+		printf("centrallix: failed to load config file '%s': "
+			"only '%s' can set include_dir\n", path, CxGlobals.ConfigFileName);
 		stFreeInf(drop_in);
 		goto end;
 		}

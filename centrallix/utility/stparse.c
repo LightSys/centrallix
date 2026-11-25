@@ -526,7 +526,8 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
 	/** Check recursion **/
 	if (thExcessiveRecursion())
 	    {
-	    mssError(1, "ST", "Failed to merge group '%s': resource exhaustion occurred", overlay->Name);
+	    mssError(1, "ST", "Failed to merge group '%s': resource exhaustion occurred",
+		    overlay->Name);
 	    return -1;
 	    }
 
@@ -535,7 +536,8 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
 	overlay_type = (overlay->UsrType != NULL) ? overlay->UsrType : "";
 	if (strcmp(base_type, overlay_type) != 0)
 	    {
-	    mssError(1, "ST", "Failed to merge group '%s': type '%s' does not match type '%s'", overlay->Name, overlay_type, base_type);
+	    mssError(1, "ST", "Failed to merge group '%s': type '%s' does not match type '%s'",
+		    overlay->Name, overlay_type, base_type);
 	    return -1;
 	    }
 
@@ -552,7 +554,8 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
 		stRemoveInf(new_inf);
 		if (stAddInf(base, new_inf) < 0)
 		    {
-		    mssError(1, "ST", "Failed to add '%s' to group '%s': the group is full", new_inf->Name, base->Name);
+		    mssError(1, "ST", "Failed to add '%s' to group '%s': the group is full",
+			    new_inf->Name, base->Name);
 		    stFreeInf(new_inf);
 		    return -1;
 		    }
@@ -564,7 +567,8 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
 	    if (st_internal_Kind(base_inf) != kind)
 		{
 		mssError(1, "ST", "Failed to merge %s '%s' into %s '%s'",
-			st_internal_KindName(new_inf), new_inf->Name, st_internal_KindName(base_inf), base_inf->Name);
+			st_internal_KindName(new_inf), new_inf->Name,
+			st_internal_KindName(base_inf), base_inf->Name);
 		return -1;
 		}
 
@@ -585,7 +589,8 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
 		}
 	    else
 		{
-		mssError(1, "ST", "Failed to merge %s '%s': only attributes and groups can be merged",
+		mssError(1, "ST", "Failed to merge %s '%s': "
+			"only attributes and groups can be merged",
 			st_internal_KindName(new_inf), new_inf->Name);
 		return -1;
 		}
@@ -622,7 +627,8 @@ stMergeInf(pStructInf base, pStructInf overlay)
 	if (st_internal_Kind(base) != ST_F_GROUP || st_internal_Kind(overlay) != ST_F_GROUP)
 	    {
 	    mssError(1, "ST", "Failed to merge %s '%s' into %s '%s'",
-		    st_internal_KindName(overlay), overlay->Name, st_internal_KindName(base), base->Name);
+		    st_internal_KindName(overlay), overlay->Name,
+		    st_internal_KindName(base), base->Name);
 	    goto end;
 	    }
 
