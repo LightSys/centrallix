@@ -623,9 +623,10 @@ Tab Test PASS
 ### Files
 - `tests/ui/table_large/table_large_test.app`: fixed row height table, form, and action buttons.
 - `tests/ui/table_large/table_large_detail_test.app`: same, with variable row height and a row detail.
+- `tests/ui/table_large/table_large_empty_test.app`: the detail app with a query that returns no rows.
 - `tests/ui/table_large/gen_table_large_csv.py`: generates `table_large.csv`, where `Id` equals the row's position in the result set.
 - `centrallix-ui-test/tests/table_large_test.py`: the tests. Optional `config.toml` keys are listed at the top of the file.
-- Destructive tests (7, 12, 16, and the `Save` part of 18) run only with `destructive = true`, and undo their changes through the UI. The data ends up the same, but the datafile driver pads deleted rows in place, so the CSV still shows as modified in git. Regenerate it before committing.
+- Destructive tests (7, 12, 16, and the `Save` parts of 18, 19 and 22) run only with `destructive = true`, and undo their changes through the UI. The data ends up the same, but the datafile driver pads deleted rows in place, so the CSV still shows as modified in git. Regenerate it before committing.
 - The suite refuses to run if the data is not in its generated state. To reset it, stop the server, run the generator, and restart (the datafile driver caches the CSV, so rewriting it under a running server does not work).
 
 ### Invariants
@@ -658,9 +659,10 @@ A failing check prints the table/osrc state and a trace of recent table and osrc
 16. `New` + `Save` mid-list: the record stays where the placeholder was, with no scroll. Then a mid-list `Delete`. After each, walking to the end shows no skipped or duplicated records.
 17. Seeded random stress of wheel, thumb drag, clicks, navigation, `Refresh`, and `New`/`Discard`.
 18. Detail app, `newrow_position` `auto`: the placeholder goes after the selected row without scrolling, and shows its `show_on_new` row detail. `Save` keeps the record in place.
-19. `newrow_position` `start`: the placeholder goes before the first loaded record and is brought into view.
+19. `newrow_position` `start`: the placeholder goes before the first loaded record and is brought into view. The destructive part saves a record at the current record's slot, and checks that the osrc's value-change notifications report the previous record's values as the old values.
 20. `MoveToRecord` and `ScrollTo` past the end of the results: the osrc finds the real last page (record 1000), and the records before it stay reachable.
 21. The create/delete reconciliation keeps records named like `Object.prototype` members (`constructor`, `__proto__`, ...), and still skips loaded and deleted ones.
+22. Empty result set (`table_large_empty_test.app`): `New` shows the placeholder with its `show_on_new` row detail and hides the "no data" message, and `Discard` brings the message back. The destructive part saves the first record as row 1 and deletes it again.
 
 ### Note
 - The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported. A `Refresh` while the current record is past record 500 still shows it once, because the refresh re-reads the result set up to the current record.

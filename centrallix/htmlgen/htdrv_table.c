@@ -419,7 +419,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    strcpy(t->newrow_position,"end");
+	    strtcpy(t->newrow_position, "end", sizeof(t->newrow_position));
 	    }
 
 	if (wgtrGetPropertyValue(tree,"objectsource",DATA_T_STRING,POD(&ptr)) == 0)

@@ -434,6 +434,10 @@ function tbld_redraw_all(dataobj, force_datafetch)
     if (this.rows.first != null && this.rows.last != null)
 	this.RescanRowVisibility();
 
+    // New-row placeholder waiting to be shown (also when there are no rows)?
+    if (this.newrow_slot !== null && !this.newrow && this.PlaceNewRow())
+	return;
+
     if (this.rows.first === null)
 	return;
 
@@ -459,10 +463,6 @@ function tbld_redraw_all(dataobj, force_datafetch)
 //	{
 //	this.osrc.MoveToRecord(selected_position_changed);
 //	}
-
-    // New-row placeholder waiting for its neighbor rows?
-    if (this.newrow_slot !== null && !this.newrow && this.PlaceNewRow())
-	return;
 
     // Need to scroll?
     if (this.target_y != null)
@@ -1148,6 +1148,7 @@ function tbld_place_newrow()
     else
 	setRelativeY(nr, 0 - this.scroll_y);
     $(nr).css({visibility: "inherit"});
+    $(this).children('#ndm').hide();
     this.RescanRowVisibility();
     this.UpdateThumb(false);
 

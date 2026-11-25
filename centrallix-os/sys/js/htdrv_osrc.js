@@ -989,6 +989,7 @@ function osrc_action_create_cb()
     if(links && links[0] && links[0].target != 'ERR')
 	{
 	var oldcur = this.CurrentRecord;
+	var oldrec = this.replica[oldcur];
 	var pos = this.create_position;
 	this.create_position = null;
 	if (pos && pos >= this.FirstRecord && pos <= this.LastRecord + 1)
@@ -1072,7 +1073,6 @@ function osrc_action_create_cb()
 	for (var j in cr)
 	    {
 	    if (j == 'oid') continue;
-	    var oldrec = this.replica[oldcur];
 	    var oldval = null;
 	    if (oldrec)
 		{

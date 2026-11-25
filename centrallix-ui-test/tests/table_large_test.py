@@ -37,6 +37,7 @@ reporter = TestReporter("TableLarge")
 
 APP = "/tests/ui/table_large/table_large_test.app"
 DETAIL_APP = "/tests/ui/table_large/table_large_detail_test.app"
+EMPTY_APP = "/tests/ui/table_large/table_large_empty_test.app"
 TOTAL_ROWS = 1000
 
 # Helpers injected into the page.  Nothing here changes table or osrc
@@ -249,11 +250,12 @@ window.__tl = {
 class Session:
     """One page load of a test app, with helpers to drive and inspect it."""
 
-    def __init__(self, driver, base_url, app):
+    def __init__(self, driver, base_url, app, empty=False):
         self.d = driver
         self.d.get(base_url + app)
+        loaded = "wgtrFind('table').osrc.FinalRecord !== null" if empty else "wgtrFind('table').rows.last > 0"
         WebDriverWait(self.d, 30).until(lambda d: d.execute_script(
-            "return document.readyState == 'complete' && !!window.pg_isloaded && !!wgtrFind('table') && wgtrFind('table').rows.last > 0"))
+            "return document.readyState == 'complete' && !!window.pg_isloaded && !!wgtrFind('table') && " + loaded))
         self.d.execute_script(HELPERS_JS)
         self.d.execute_script("__tl.traceOn(__tl.tbl());")
         self.table = self.d.execute_script("return __tl.tbl();")
@@ -342,10 +344,10 @@ class Suite:
             service = Service(ChromeDriverManager().install())
         return webdriver.Chrome(service=service, options=opts)
 
-    def session(self, app=APP):
+    def session(self, app=APP, empty=False):
         if self.driver is None:
             self.driver = self.make_driver()
-        self.last_session = Session(self.driver, self.base_url, app)
+        self.last_session = Session(self.driver, self.base_url, app, empty)
         return self.last_session
 
     def destructive_ok(self, test_no):
@@ -736,14 +738,14 @@ class Suite:
                        "before %s after %s" % (self.above_slot(vp_new, ph["slot"])[:3], self.above_slot(vp, ph["slot"])[:3]))
         self.check_invariants(s, 15, "invariants after Cancel", check_order=True)
 
-    def new_and_save(self, s, test_no, name):
+    def new_and_save(self, s, test_no, name, fields=()):
         """New + Save at the configured position; checks the record stays at the placeholder."""
         s.click_button("new_btn")
         s.settle()
         ph = self.placeholder(s)
         self.check(s, test_no, "placeholder row is in the viewport", ph is not None)
         vp_new = s.viewport()
-        for eb, text in (("name_eb", name), ("amount_eb", "5")):
+        for eb, text in tuple(fields) + (("name_eb", name), ("amount_eb", "5")):
             self.type_into(s, eb, text)
         s.click_button("save_btn")
         self.check_settled(s, test_no, "after Save", timeout=30)
@@ -786,7 +788,9 @@ class Suite:
             target = [r["rownum"] for r in s.viewport() if r["rownum"] and r["rownum"] % 7 != 0][3]
             s.click_row(target)
             s.settle()
-            if s.js("t.osrc.CurrentRecord") == target:
+            cur = s.js("t.osrc.CurrentRecord")
+            self.check(s, 16, "record to delete became the current record", cur == target, "CurrentRecord=%s target=%s" % (cur, target))
+            if cur == target:
                 s.click_button("delete_btn")
                 deleted = target
                 self.check_settled(s, 16, "after Delete", timeout=30)
@@ -871,6 +875,23 @@ class Suite:
         s.click_button("cancel_btn")
         self.check_settled(s, 19, "after Cancel")
         self.check_invariants(s, 19, "invariants after Cancel", check_order=True)
+        if not self.config.get("destructive"):
+            return
+
+        # Insert at the current record's slot: Changing must report the
+        # previous current record's values as the old values.
+        cur, first = s.js("[t.osrc.CurrentRecord, t.osrc.FirstRecord]")
+        self.check(s, 19, "current record is the first loaded record", cur == first == 1, "CurrentRecord=%s FirstRecord=%s" % (cur, first))
+        s.js("""(function(){ var iv = t.osrc.ifcProbe(ifValue); var orig = iv.Changing; __tl.changes = [];
+            iv.Changing = function(n, nv, f, ov) { __tl.changes.push([n, nv, ov]); return orig.apply(this, arguments); }; return 0; })()""")
+        try:
+            self.new_and_save(s, 19, "Start Row")
+            names = [c for c in s.js("__tl.changes") if c[0] == "Name" and c[1] == "Start Row"]
+            self.check(s, 19, "Changing reports the previous record's Name as the old value",
+                       len(names) >= 1 and all(c[2] == "Row 0001" for c in names), "Name changes (attr, new, old): %s" % names)
+        finally:
+            s.settle()
+            self.delete_created(s, "Start Row")
 
     def test20(self):
         reporter.add_test(20, "Jump past the end of the results")
@@ -916,6 +937,32 @@ class Suite:
         for n in ("constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"):
             self.check(s, 21, "record named %s is kept" % n, res[n] is False, res)
 
+    def test22(self):
+        reporter.add_test(22, "First record in an empty result set")
+        s = self.session(EMPTY_APP, empty=True)
+        ndm = "$(t).children('#ndm').is(':visible')"
+        self.check(s, 22, "no data message shown", s.js(ndm))
+        s.click_button("new_btn")
+        self.check_settled(s, 22, "after New")
+        ph = self.placeholder(s)
+        self.check(s, 22, "placeholder row is in the viewport", ph is not None)
+        if ph:
+            self.check(s, 22, "placeholder shows its row detail", ph["height"] > 40, "height=%s" % ph["height"])
+        self.check(s, 22, "no data message hidden", not s.js(ndm))
+        s.click_button("cancel_btn")
+        self.check_settled(s, 22, "after Cancel")
+        self.check(s, 22, "placeholder removed", s.js("t.newrow === null && t.newrow_slot === null"))
+        self.check(s, 22, "no data message shown again", s.js(ndm))
+        if not self.config.get("destructive"):
+            return
+        try:
+            # Id -1 matches the app's query (Id < 0), which the server re-runs to find the new record.
+            ph = self.new_and_save(s, 22, "First Row", fields=(("id_eb", "-1"),))
+            self.check(s, 22, "created record is row 1", s.js("t.rows.first === 1 && t.rows.last === 1"), "rows %s..%s" % (s.js("t.rows.first"), s.js("t.rows.last")))
+        finally:
+            s.settle()
+            self.delete_created(s, "First Row")
+
     def stress_step(self, s, rng):
         kinds = ["wheel", "wheel", "wheel", "bigwheel", "drag", "click", "first", "last", "prev", "next", "refresh", "newcancel"]
         exclude = self.config.get("stress_exclude") or []
@@ -953,7 +1000,7 @@ class Suite:
 
     def run(self):
         only = self.config.get("only")
-        tests = [getattr(self, "test%d" % i) for i in range(1, 22) if not only or i in only]
+        tests = [getattr(self, "test%d" % i) for i in range(1, 23) if not only or i in only]
         try:
             if not self.data_is_clean(self.session()):
                 print("Test data is not in its generated state.  Stop the server, run")
