@@ -74,7 +74,7 @@ typedef struct _mem
 /** Converts a MemStruct pointer to a pointer to the wrapped data. **/
 #define MEMDATA(x) ((void*)((char*)(x) + sizeof(MemStruct)))
 /** Gets the magic value from the end of a wrapped data buffer. **/
-#define ENDMAGIC(x) (*(int*)((char*)MEMDATA(x) + ((pMemStruct)(x))->size))
+#define ENDMAGIC(x) (*(Magic_t*)((char*)MEMDATA(x) + ((pMemStruct)(x))->size))
 /** Converts a data buffer to a pointer to the wrapping MemStruct. **/
 #define MEMDATATOSTRUCT(x) ((pMemStruct)((char*)(x) - sizeof(MemStruct)))
 pMemStruct startMemList;
