@@ -1570,6 +1570,7 @@ function osrc_open_query()
 	}
     this.query_ended = false;
     this.fetch_count = 0;
+    this.gap_startat = null;
     var oldoids = this.oldoids.join();
     this.oldoids = [];
     var reqobj =
@@ -1756,7 +1757,7 @@ function osrc_clear_replica()
     this.FinalRecord=null;
     this.FirstRecord=1;
     this.local_changes = 0;
-    this.deleted_names = {};
+    this.deleted_names = Object.create(null);
     this.fetch_append = false;
     }
 
@@ -1777,6 +1778,31 @@ function osrc_row_name(row)
 	if (row[j] && typeof row[j] == 'object' && row[j].oid == 'name')
 	    return row[j].value;
     return null;
+    }
+
+
+// osrc_replica_names - the names of the rows in the replica, as a map with
+// no prototype (so names like 'constructor' are not already "present").
+function osrc_replica_names(osrc)
+    {
+    var names = Object.create(null);
+    for(var r in osrc.replica)
+	{
+	var name = osrc_row_name(osrc.replica[r]);
+	if (name !== null)
+	    names[name] = true;
+	}
+    return names;
+    }
+
+
+// osrc_skip_fetched_name - true if a fetched row with this name is already
+// in the replica (known) or was deleted here.
+function osrc_skip_fetched_name(osrc, known, name)
+    {
+    if (name === null)
+	return false;
+    return Object.prototype.hasOwnProperty.call(known, name) || Object.prototype.hasOwnProperty.call(osrc.deleted_names, name);
     }
 
 
@@ -1922,22 +1948,18 @@ function osrc_fetch_next()
     //confirm(this.baseobj + " ==> " + lc + " links");
     if(lc <= this.data_start)
 	{ // query over
+	if (this.gap_startat !== null)
+	    {
+	    this.FindLastPage();
+	    return 0;
+	    }
 	this.EndQuery();
 	return 0;
 	}
     var colnum=0;
     var i = this.data_start;
     var rowcnt = 0;
-    var known = null;
-    if (this.fetch_append)
-	{
-	known = {};
-	for(var r in this.replica)
-	    {
-	    var name = osrc_row_name(this.replica[r]);
-	    if (name !== null) known[name] = true;
-	    }
-	}
+    var known = this.fetch_append?osrc_replica_names(this):null;
     while (i < lc)
 	{
 	if (lnk[i].target == 'QUERYCLOSED')
@@ -1958,7 +1980,7 @@ function osrc_fetch_next()
 	    // Record already here, or deleted here?  Skip it.
 	    var peek = this.ParseOneRow(lnk, i);
 	    var name = osrc_row_name(peek);
-	    if (name !== null && (known[name] || this.deleted_names[name]))
+	    if (osrc_skip_fetched_name(this, known, name))
 		{
 		rowcnt++;
 		i += peek.length;
@@ -1966,6 +1988,7 @@ function osrc_fetch_next()
 		}
 	    }
 	this.OSMLRecord++; // this holds the last record we got, so now will hold current record number
+	this.gap_startat = null;
 	this.replica[this.OSMLRecord] =
 		this.NewReplicaObj(this.OSMLRecord, lnk[i].target);
 	this.PruneReplica(this.OSMLRecord);
@@ -1994,6 +2017,11 @@ function osrc_fetch_next()
 	// didn't get a full fetch?  end query if so
 	if (rowcnt < this.querysize)
 	    {
+	    if (this.gap_startat !== null)
+		{
+		this.FindLastPage();
+		return 0;
+		}
 	    this.EndQuery();
 	    return 0;
 	    }
@@ -2482,6 +2510,8 @@ function osrc_open_query_tail()
     else*/
 	this.querysize = this.replicasize;
     this.query_ended = false;
+    this.gap_startat = null;
+    this.fetch_append = false;
     this.DoRequest('multiquery', '/', {ls__tail:1, ls__autoclose_sr:1, ls__autofetch:1, ls__objmode:0, ls__notify:this.request_updates, ls__rowcount:this.querysize, ls__sql:this.query, ls__sqlparam:this.EncodeParams()}, osrc_get_qid_startat);
     }
 
@@ -2495,6 +2525,7 @@ function osrc_open_query_startat()
 	this.fetch_append = true;
 	this.startat = Math.max(1, this.startat - this.local_changes);
 	}
+    this.gap_startat = (this.startat > this.LastRecord + 1)?this.startat:null;
     if(this.FirstRecord > this.startat && this.FirstRecord - this.startat < this.replicasize)
 	this.querysize = this.FirstRecord - this.startat;
     else
@@ -2517,6 +2548,24 @@ function osrc_open_query_at()
     else
 	{
 	this.osrc_open_query_startat();
+	}
+    }
+
+// osrc_find_last_page (FindLastPage) - a query started past the loaded rows
+// found nothing there, so the result set ends somewhere before it.  Fetch
+// the actual last page rather than ending at the last loaded record.
+function osrc_find_last_page()
+    {
+    this.gap_startat = null;
+    this.startat = null;
+    if (this.qid)
+	{
+	this.DoRequest('queryclose', '/', {ls__qid:this.qid}, osrc_open_query_tail);
+	this.qid = null;
+	}
+    else
+	{
+	this.osrc_open_query_tail();
 	}
     }
 
@@ -4317,6 +4366,7 @@ function osrc_init(param)
     loader.scrollahead=param.scrollahead;
     loader.replicasize=param.replicasize;
     loader.fetch_count = 0;
+    loader.gap_startat = null;
     loader.initreplicasize = param.replicasize;
     loader.ind_act = param.ind_act;
     loader.req_ind_act = true;
@@ -4367,6 +4417,7 @@ function osrc_init(param)
     loader.osrc_oldoid_cleanup_cb = osrc_oldoid_cleanup_cb;
     loader.osrc_open_query_startat = osrc_open_query_startat;
     loader.OpenQueryAt = osrc_open_query_at;
+    loader.FindLastPage = osrc_find_last_page;
     loader.osrc_open_query_tail = osrc_open_query_tail;
     loader.osrc_action_modify_cb_2 = osrc_action_modify_cb_2;
     loader.ImportModifiedData = osrc_import_modified_data;

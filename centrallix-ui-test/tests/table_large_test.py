@@ -872,6 +872,50 @@ class Suite:
         self.check_settled(s, 19, "after Cancel")
         self.check_invariants(s, 19, "invariants after Cancel", check_order=True)
 
+    def test20(self):
+        reporter.add_test(20, "Jump past the end of the results")
+        s = self.session()
+        s.js("(setTimeout(function(){ t.osrc.MoveToRecord(2000, t); }, 0), 0)")
+        self.check_settled(s, 20, "after MoveToRecord(2000)", timeout=30)
+        final, cur = s.js("[t.osrc.FinalRecord, t.osrc.CurrentRecord]")
+        self.check(s, 20, "end of results found at record %d" % TOTAL_ROWS, final == TOTAL_ROWS, "FinalRecord=%s" % final)
+        self.check(s, 20, "current record is the last record", cur == TOTAL_ROWS, "CurrentRecord=%s" % cur)
+        scan = s.js("__tl.scanVis(t)")
+        self.check(s, 20, "last record visible", scan["lastvis"] == TOTAL_ROWS, "scan lastvis=%s" % scan["lastvis"])
+        self.check_invariants(s, 20, "invariants after the jump", check_order=True)
+        s.js("(setTimeout(function(){ t.osrc.MoveToRecord(500, t); }, 0), 0)")
+        self.check_settled(s, 20, "after MoveToRecord(500)", timeout=30)
+        scan = s.js("__tl.scanVis(t)")
+        self.check(s, 20, "record 500 still reachable", scan["firstvis"] is not None and scan["firstvis"] <= 500 <= scan["lastvis"],
+                   "scan firstvis/lastvis=%s/%s" % (scan["firstvis"], scan["lastvis"]))
+        self.check_invariants(s, 20, "invariants at record 500", check_order=True)
+
+        s = self.session()
+        s.js("(setTimeout(function(){ t.osrc_busy = true; t.osrc.ScrollTo(1500, 1540); }, 0), 0)")
+        self.check_settled(s, 20, "after ScrollTo(1500, 1540)", timeout=30)
+        final = s.js("t.osrc.FinalRecord")
+        self.check(s, 20, "ScrollTo past the end keeps the real end", final is None or final == TOTAL_ROWS, "FinalRecord=%s" % final)
+        self.check_invariants(s, 20, "invariants after ScrollTo past the end", check_order=True)
+
+    def test21(self):
+        reporter.add_test(21, "Reconciliation keeps records with Object.prototype names")
+        s = self.session()
+        res = s.js("""(function(){
+            var o = t.osrc;
+            var real = __tl.replicaValue(o, 1, 'name');
+            o.deleted_names[String(__tl.replicaValue(o, 2, 'name'))] = true;
+            var known = osrc_replica_names(o);
+            var r = [['real', osrc_skip_fetched_name(o, known, real)], ['deleted', osrc_skip_fetched_name(o, known, __tl.replicaValue(o, 2, 'name'))]];
+            ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf'].forEach(function(n){ r.push([n, osrc_skip_fetched_name(o, known, n)]); });
+            delete o.deleted_names[String(__tl.replicaValue(o, 2, 'name'))];
+            return r;
+            })()""")
+        res = dict(res)
+        self.check(s, 21, "loaded record is skipped", res["real"] is True, res)
+        self.check(s, 21, "deleted record is skipped", res["deleted"] is True, res)
+        for n in ("constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"):
+            self.check(s, 21, "record named %s is kept" % n, res[n] is False, res)
+
     def stress_step(self, s, rng):
         kinds = ["wheel", "wheel", "wheel", "bigwheel", "drag", "click", "first", "last", "prev", "next", "refresh", "newcancel"]
         exclude = self.config.get("stress_exclude") or []
@@ -909,7 +953,7 @@ class Suite:
 
     def run(self):
         only = self.config.get("only")
-        tests = [getattr(self, "test%d" % i) for i in range(1, 20) if not only or i in only]
+        tests = [getattr(self, "test%d" % i) for i in range(1, 22) if not only or i in only]
         try:
             if not self.data_is_clean(self.session()):
                 print("Test data is not in its generated state.  Stop the server, run")

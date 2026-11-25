@@ -659,6 +659,8 @@ A failing check prints the table/osrc state and a trace of recent table and osrc
 17. Seeded random stress of wheel, thumb drag, clicks, navigation, `Refresh`, and `New`/`Discard`.
 18. Detail app, `newrow_position` `auto`: the placeholder goes after the selected row without scrolling, and shows its `show_on_new` row detail. `Save` keeps the record in place.
 19. `newrow_position` `start`: the placeholder goes before the first loaded record and is brought into view.
+20. `MoveToRecord` and `ScrollTo` past the end of the results: the osrc finds the real last page (record 1000), and the records before it stay reachable.
+21. The create/delete reconciliation keeps records named like `Object.prototype` members (`constructor`, `__proto__`, ...), and still skips loaded and deleted ones.
 
 ### Note
 - The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported. A `Refresh` while the current record is past record 500 still shows it once, because the refresh re-reads the result set up to the current record.
