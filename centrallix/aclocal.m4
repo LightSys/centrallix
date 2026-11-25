@@ -1248,22 +1248,6 @@ AC_DEFUN(CHECK_HARDENING,
     ]
 )
 
-dnl Check whether the compiler can zero-initialize automatic variables.
-AC_DEFUN(CHECK_AUTOINIT,
-    [
-    AC_MSG_CHECKING(if automatic variables should be zero-initialized)
-    AUTOINIT_CFLAGS=""
-    saved_cflags="$CFLAGS"
-    CFLAGS="$CFLAGS -ftrivial-auto-var-init=zero"
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [])],
-	[AUTOINIT_CFLAGS="-ftrivial-auto-var-init=zero"; AC_MSG_RESULT(yes)],
-	[AC_MSG_RESULT([no (unsupported by compiler)])]
-    )
-    CFLAGS="$saved_cflags"
-    AC_SUBST(AUTOINIT_CFLAGS)
-    ]
-)
-
 dnl check if optimization should be done
 dnl this check must follow the hardening check in configure.ac.
 dnl The USING_blahblah defines are to force a recompile if those options
