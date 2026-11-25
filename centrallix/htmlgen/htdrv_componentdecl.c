@@ -168,9 +168,9 @@ htcmpdRender(pHtSession s, pWgtrNode tree, int z)
 	    }
 	else
 	    {
-	    strcpy(gbuf,"");
-	    gname="";
-	    htrAddWgtrCtrLinkage(s, tree, "_parentctr");
+	    mssError(1,"HTCMPD", "Failed to render component '%s': it must be loaded by a widget/component, not opened directly", name);
+	    rval = -1;
+	    goto htcmpd_cleanup;
 	    }
 
 	/** Init component **/
