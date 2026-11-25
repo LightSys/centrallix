@@ -134,14 +134,14 @@ pRegisteredBlockType blknames[MAX_SIZE+1];
 void
 nmInitialize(void)
     {
-	for (int i = 0; i <= MAX_SIZE; i++) lists[i] = NULL;
-	for (int i = 0; i <= MAX_SIZE; i++) listcnt[i] = 0;
-	for (int i = 0; i <= MAX_SIZE; i++) outcnt[i] = 0;
-	for (int i = 0; i <= MAX_SIZE; i++) outcnt_delta[i] = 0;
-	for (int i = 0; i <= MAX_SIZE; i++) blknames[i] = NULL;
-	for (int i = 0; i <= MAX_SIZE; i++) usagecnt[i] = 0;
-	for (int i = 0; i <= MAX_SIZE; i++) nmsys_outcnt[i] = 0;
-	for (int i = 0; i <= MAX_SIZE; i++) nmsys_outcnt_delta[i] = 0;
+	for (size_t i = 0; i <= MAX_SIZE; i++) lists[i] = NULL;
+	for (size_t i = 0; i <= MAX_SIZE; i++) listcnt[i] = 0;
+	for (size_t i = 0; i <= MAX_SIZE; i++) outcnt[i] = 0;
+	for (size_t i = 0; i <= MAX_SIZE; i++) outcnt_delta[i] = 0;
+	for (size_t i = 0; i <= MAX_SIZE; i++) blknames[i] = NULL;
+	for (size_t i = 0; i <= MAX_SIZE; i++) usagecnt[i] = 0;
+	for (size_t i = 0; i <= MAX_SIZE; i++) nmsys_outcnt[i] = 0;
+	for (size_t i = 0; i <= MAX_SIZE; i++) nmsys_outcnt_delta[i] = 0;
 	
 #ifdef BLK_LEAK_CHECK
 	for (int i = 0; i < MAX_BLOCKS; i++) blks[i] = NULL;
