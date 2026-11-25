@@ -63,22 +63,29 @@ typedef struct _mem
     {
     size_t size;
     struct _mem* next;
-    Magic_t magic_start;
     /** Data after the struct. **/
+    // char padding[]; /* Pads the header to MEMHDR_SIZE. */
+    // Magic_t magic_start; /* The last bytes of the header. */
     // char data[size]; /* The wrapped memory buffer. */
     // Magic_t magic_end;
     }
     MemStruct, *pMemStruct;
+/** Strictest alignment of a basic type, which wrapped blocks must keep. **/
+#define NM_ALIGNMENT (__alignof__(long double))
+/** Header size: the struct plus the start magic, rounded up to NM_ALIGNMENT. **/
+#define MEMHDR_SIZE ((sizeof(MemStruct) + sizeof(Magic_t) + NM_ALIGNMENT - 1) & ~(NM_ALIGNMENT - 1))
 /*** The amount of additional memory consumed by each memory buffer, in bytes,
  *** when the buffer overflow checking wrapper is enabled.
  ***/
-#define EXTRA_MEM (sizeof(MemStruct) + sizeof(Magic_t))
+#define EXTRA_MEM (MEMHDR_SIZE + sizeof(Magic_t))
 /** Converts a MemStruct pointer to a pointer to the wrapped data. **/
-#define MEMDATA(x) ((void*)((char*)(x) + sizeof(MemStruct)))
+#define MEMDATA(x) ((void*)((char*)(x) + MEMHDR_SIZE))
+/** Gets the magic value from just before a wrapped data buffer. **/
+#define STARTMAGIC(x) (*(Magic_t*)((char*)MEMDATA(x) - sizeof(Magic_t)))
 /** Gets the magic value from the end of a wrapped data buffer. **/
 #define ENDMAGIC(x) (*(Magic_t*)((char*)MEMDATA(x) + ((pMemStruct)(x))->size))
 /** Converts a data buffer to a pointer to the wrapping MemStruct. **/
-#define MEMDATATOSTRUCT(x) ((pMemStruct)((char*)(x) - sizeof(MemStruct)))
+#define MEMDATATOSTRUCT(x) ((pMemStruct)((char*)(x) - MEMHDR_SIZE))
 pMemStruct startMemList;
 #endif
 
@@ -178,11 +185,11 @@ nmCheckItem(pMemStruct mem)
     int ret = 0;
     
 	/** Check the starting magic value. **/
-	if (mem->magic_start != MGK_MEMSTART)
+	if (STARTMAGIC(mem) != MGK_MEMSTART)
 	    {
 	    fprintf(stderr,
 		"ERROR: Bad magic_start at %p (%p) -- 0x%08x != 0x%08x\n",
-		MEMDATA(mem), mem, mem->magic_start, MGK_MEMSTART
+		MEMDATA(mem), mem, STARTMAGIC(mem), MGK_MEMSTART
 	    );
 	    ret = -1;
 	    }
@@ -245,7 +252,7 @@ nmDebugMalloc(size_t size)
 	
 	/** Initialize data in the memory struct (including magic values). **/
 	tmp->size = size;
-	tmp->magic_start = MGK_MEMSTART;
+	STARTMAGIC(tmp) = MGK_MEMSTART;
 	ENDMAGIC(tmp) = MGK_MEMEND;
 	
 	/** Prepend this mem struct to the MemList linked list. **/
