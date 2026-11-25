@@ -1145,6 +1145,69 @@ class Suite:
         self.check_settled(s, 26, "after dragging back to the bottom", timeout=60)
         self.check_at_end(s, 26, "dragged back to the bottom")
 
+    def check_new_set(self, s, test_no, label, first_name):
+        """After loading a different data set: its first record at the top of the view, thumb at the top."""
+        self.check_settled(s, test_no, label, timeout=60)
+        firstvis, name, first_y, thumb = s.js("""[__tl.scanVis(t).firstvis, __tl.replicaValue(t.osrc, 1, 'Name'),
+            t.rows[1] ? __tl.relY(t.rows[1]) + t.scroll_y : null, t.thumb_pos]""")
+        self.check(s, test_no, label + ": first record of the new data is %s" % first_name, name == first_name, "record 1 is %s" % name)
+        self.check(s, test_no, label + ": view at the top", firstvis == 1 and first_y is not None and abs(first_y) <= 1,
+                   "firstvis=%s, record 1 at %s" % (firstvis, first_y))
+        self.check(s, test_no, label + ": thumb at the top", thumb is not None and abs(thumb) <= 0.25, "thumb_pos=%s" % thumb)
+        self.check_invariants(s, test_no, "invariants " + label)
+
+    def query_charlie(self, s, also=""):
+        """A different data set: the 200 records with Grp 'Charlie' (record 1 is Row 0002)."""
+        s.d.execute_script("var o = wgtrFind('osrc'); o.ifcProbe(ifAction).Invoke('QueryParam', {Grp: 'Charlie'}); " + also)
+
+    def select_deep_row(self, s):
+        """Scroll to about record 150 and make a visible row there the current record."""
+        s.scroll_to_record(150)
+        s.click_row(s.middle_visible_row())
+        s.settle()
+
+    def test27(self):
+        reporter.add_test(27, "A different data set starts at the top")
+
+        # (a) Plain new query after scrolling down.
+        s = self.session()
+        s.scroll_to_record(150)
+        self.query_charlie(s)
+        self.check_new_set(s, 27, "after a new query", "Row 0002")
+
+        # (b) A RefreshObject that found no changes, then a new query.  (RefreshObject
+        # needs a query made with the Query action.)
+        s = self.session()
+        s.d.execute_script("wgtrFind('osrc').ifcProbe(ifAction).Invoke('Query', {query: 'SELECT :Id, :Name, :Grp, :Amount, :Notes FROM /tests/ui/table_large/table_large.csv/rows ORDER BY :Id'});")
+        s.settle(30)
+        s.click_row(5)
+        s.settle()
+        s.invoke("osrc", "RefreshObject")
+        s.settle()
+        s.scroll_to_record(150)
+        self.query_charlie(s)
+        self.check_new_set(s, 27, "after RefreshObject then a new query", "Row 0002")
+
+        # (c) A new query while a wheel scroll is still animating.
+        s = self.session()
+        s.scroll_to_record(150)
+        s.wheel(600)
+        self.query_charlie(s)
+        self.check_new_set(s, 27, "after a new query during a scroll", "Row 0002")
+
+        # (d) A Refresh queued right behind a new query.
+        s = self.session()
+        self.select_deep_row(s)
+        self.query_charlie(s, "o.ifcProbe(ifAction).Invoke('Refresh', {});")
+        self.check_new_set(s, 27, "after a new query with a Refresh behind it", "Row 0002")
+
+        # (e) ChangeSource loads the new source as a new query.
+        s = self.session()
+        self.select_deep_row(s)
+        s.invoke("osrc", "ChangeSource", {"Source": "/tests/ui/table_large/./table_large.csv/rows"})
+        self.check_new_set(s, 27, "after ChangeSource", "Row 0001")
+        self.check(s, 27, "after ChangeSource: current record is 1", s.js("t.osrc.CurrentRecord") == 1, "CurrentRecord=%s" % s.js("t.osrc.CurrentRecord"))
+
     def stress_step(self, s, rng):
         kinds = ["wheel", "wheel", "wheel", "bigwheel", "drag", "click", "first", "last", "prev", "next", "refresh", "newcancel"]
         exclude = self.config.get("stress_exclude") or []
@@ -1182,7 +1245,7 @@ class Suite:
 
     def run(self):
         only = self.config.get("only")
-        tests = [getattr(self, "test%d" % i) for i in range(1, 27) if not only or i in only]
+        tests = [getattr(self, "test%d" % i) for i in range(1, 28) if not only or i in only]
         try:
             if not self.data_is_clean(self.session()):
                 print("Test data is not in its generated state.  Stop the server, run")

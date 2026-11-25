@@ -668,6 +668,7 @@ A failing check prints the table/osrc state and a trace of recent table and osrc
 24. After `Last` then `First`, drag the thumb while its position is sampled every 15ms: once with 500ms network latency, and once while a thumb animation is still running. The thumb must stay between its start and drop positions, must not snap back once it reaches the drop position, and must end there.
 25. Fixed-height rows with a 200px row detail (`table_large_rowdetail_test.app`): after `Last`, and again with the detail expanded on a row above the view, scrolling to the end puts the thumb exactly at the bottom of its track with the last row fully shown. `First` puts it exactly at the top.
 26. Dragging the thumb to the bottom of its track shows the last record, both before the end of the results is known and after it is. Dragging it to the top shows record 1.
+27. Loading a different data set (`QueryParam` for one group) starts at its first record with the thumb at the top: after scrolling down, after a `RefreshObject` (with a query made by `Query`), during a wheel scroll's animation, with a `Refresh` queued right behind the new query, and after `ChangeSource` (which loads the new source as a new query, current record 1).
 
 ### Note
 - The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported. A `Refresh` while the current record is past record 500 still shows it once, because the refresh re-reads the result set up to the current record.
