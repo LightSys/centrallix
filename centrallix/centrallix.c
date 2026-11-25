@@ -387,6 +387,7 @@ cxLoadConfig()
 	    {
 	    printf("centrallix: failed to read include_dir '%s': %s\n",
 		    include_dir, strerror(errno));
+	    entries = NULL;
 	    n_entries = 0;
 	    goto end;
 	    }
