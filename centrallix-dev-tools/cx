@@ -1,0 +1,1417 @@
+#!/usr/bin/env python3
+# cx - build, run, and inspect the Centrallix dev server for this checkout.
+#
+# Each checkout (main or git worktree) gets its own install prefix in
+# <checkout>/.cx, its own config, and its own HTTP port, so several checkouts
+# can each run a server on one machine. Nothing here needs root.
+#
+# Built for AI agents as well as people: every action is one of a fixed set,
+# no shell is ever invoked, credentials never reach argv or output, and fetch
+# can only reach this checkout's server on localhost.
+
+from __future__ import annotations
+
+import contextlib
+import difflib
+import fcntl
+import getpass
+import http.cookiejar
+import os
+import posixpath
+import re
+import secrets
+import signal
+import socket
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import NoReturn
+
+TREE = Path(__file__).resolve().parent.parent
+LIB_DIR = TREE / "centrallix-lib"
+APP_DIR = TREE / "centrallix"
+OS_ROOT = TREE / "centrallix-os"
+
+PREFIX = TREE / ".cx"
+CONF = PREFIX / "etc" / "centrallix.conf"
+ETC_CX = PREFIX / "etc" / "centrallix"
+PASSWD = ETC_CX / "cxpasswd"
+SERVER_BIN = PREFIX / "sbin" / "centrallix"
+CXPASSWD_BIN = PREFIX / "sbin" / "cxpasswd"
+TEST_OBJ = PREFIX / "bin" / "test_obj"
+VAR = PREFIX / "var"
+LOG_DIR = VAR / "log"
+SERVER_LOG = LOG_DIR / "server.log"
+ACCESS_LOG = LOG_DIR / "access.log"
+DEBUG_LOG = LOG_DIR / "debug.log"
+BUILD_LOG = LOG_DIR / "build.log"
+TEST_LOG = LOG_DIR / "test.log"
+VALGRIND_LOG = LOG_DIR / "valgrind.log"
+VALGRIND_TEST_LOG_DIR = LOG_DIR / "valgrind-tests"
+PORT_FILE = PREFIX / "port"
+MODE_FILE = VAR / "server-mode"
+LOCK_FILE = VAR / "lock"
+SESSION_COOKIE_FILE = VAR / "session-cookie"
+
+# The password every checkout's server accepts for CX_USER. Shared, so one
+# browser login works on all of them; kept out of the checkouts themselves.
+AUTH_PATH = Path(
+    os.environ.get("CX_AUTH_PATH") or Path.home() / ".config" / "centrallix" / "password"
+)
+# Where agents should report tooling problems, if the developer keeps a list.
+ISSUES_FILE = os.environ.get("CX_ISSUES_FILE", "")
+
+# Configure flags cx always passes. Extra flags from 'cx rebuild' come after.
+LIB_BASE_FLAGS = [f"--prefix={PREFIX}", "--with-hardening=low"]
+APP_BASE_FLAGS = [
+    f"--prefix={PREFIX}",
+    f"--with-centrallix-os={OS_ROOT}",
+    "--with-static-libcentrallix",
+    "--disable-pop3",
+]
+REPOS = {"lib": (LIB_DIR, LIB_BASE_FLAGS), "app": (APP_DIR, APP_BASE_FLAGS)}
+
+# HTTP gets the even port, HTTPS the odd one after it.
+PORT_FIRST = 8800
+PORT_LAST = 9798
+
+READY_TIMEOUT = 30.0
+STOP_TIMEOUT = 15.0
+POLL = 0.25
+SERVER_LOG_MAX = 20 * 1024 * 1024
+
+MAX_FETCH_BYTES = 100 * 1024
+FETCH_TIMEOUT = 30.0
+# htmlgen picks its widget driver set by matching the User-Agent against
+# useragent.cfg. urllib's default matches nothing, which makes every .app
+# render fail with "HTR: Class not defined", so claim to be Firefox.
+FETCH_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
+# Without cx__geom, a page request only gets a snippet that measures the
+# browser and reloads (net_http.c, nht_i_GetGeom). Five hex16 fields: width,
+# height, char width, char height, paragraph height (1753x972, 9x19 chars).
+DEFAULT_GEOM = "06d903cc000900130013"
+DEFAULT_LOG_LINES = 40
+
+VALGRIND_FLAGS = [
+    "--leak-check=full", "--show-leak-kinds=definite,indirect,possible",
+    "--child-silent-after-fork=yes", "--track-origins=yes",
+    "--keep-stacktraces=alloc-and-free", "--num-callers=40", "--error-limit=no",
+    "--read-inline-info=yes", "--read-var-info=yes",
+]
+GDB_ARGS = [
+    "gdb", "-q", "-batch",
+    "-ex", "handle SIG33 nostop noprint",
+    "-ex", "handle SIGPIPE nostop noprint",
+    "-ex", "run",
+    "-ex", "bt",
+]
+
+# Build output worth showing. Everything goes to BUILD_LOG.
+BUILD_KEEP = re.compile(
+    r"error:|warning:|undefined reference|No rule to make target"
+    r"|Permission denied|make(\[\d+\])?: \*\*\*|\bError \d+|cannot find -l",
+    re.IGNORECASE,
+)
+# Lines in the server log that carry real signal.
+LOG_KEEP = re.compile(
+    r"\bError\b|WARNING:|Notice:|Critical|Fatal|Segmentation fault|SIGSEGV|SIGABRT"
+    r"|Assertion|Program received signal|\.c:\d+:",
+)
+CRASH_MARK = re.compile(r"Program received signal|Segmentation fault|Aborted")
+# test_obj prints this on every query even when the query authenticated.
+BENIGN_TEST_OBJ = re.compile(r"auth failed, running outside session context")
+# Query failures in test_obj output, which still exits 0 for them.
+QUERY_ERROR = re.compile(r"^centrallix: |^(csv|query): could not open query!$")
+
+
+def die(msg: str) -> NoReturn:
+    print(f"cx: {msg}", file=sys.stderr)
+    if ISSUES_FILE:
+        print(
+            f"cx: if this is a bug in the tooling rather than in your command, "
+            f"log it in {ISSUES_FILE}",
+            file=sys.stderr,
+        )
+    sys.exit(1)
+
+
+def read_text(path, default=""):
+    try:
+        return Path(path).read_text(errors="replace")
+    except OSError:
+        return default
+
+
+def in_sandbox() -> bool:
+    """True inside an agent sandbox, which has its own network and /proc."""
+    return os.environ.get("SANDBOX_RUNTIME") == "1"
+
+
+def refuse_in_sandbox(action: str) -> None:
+    if in_sandbox():
+        die(
+            f"{action} must see the real process table and network, which the "
+            f"agent sandbox hides. Run cx outside the sandbox (if the sandbox "
+            f"exempts it by name, as a command of its own with no pipe or chain)."
+        )
+
+
+def jobs() -> str:
+    return str(os.cpu_count() or 2)
+
+
+def cx_user() -> str:
+    return os.environ.get("CX_USER") or os.environ.get("USER") or getpass.getuser()
+
+
+@contextlib.contextmanager
+def exclusive(action: str):
+    """Serialize actions that change this checkout's build or server."""
+    VAR.mkdir(parents=True, exist_ok=True)
+    fd = os.open(LOCK_FILE, os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            holder = os.read(fd, 256).decode(errors="replace").strip() or "another process"
+            die(f"{action}: already in progress in this checkout ({holder}); wait for it")
+        os.ftruncate(fd, 0)
+        os.write(fd, f"{action} pid {os.getpid()} since {time.strftime('%H:%M:%S')}".encode())
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            os.ftruncate(fd, 0)
+        os.close(fd)
+
+
+# ------------------------------------------------------------------- password
+
+
+def auth_password() -> str:
+    """The shared dev password, created at random the first time."""
+    if not AUTH_PATH.exists():
+        AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(AUTH_PATH, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(secrets.token_urlsafe(12) + "\n")
+        print(f"cx: created a dev password for user {cx_user()} in {AUTH_PATH}")
+    st = AUTH_PATH.stat()
+    # test_obj and the server read this with a blocking read; a FIFO would hang.
+    if not stat.S_ISREG(st.st_mode):
+        die(f"{AUTH_PATH} is not a regular file")
+    password = read_text(AUTH_PATH).strip()
+    if not password:
+        die(f"{AUTH_PATH} is empty")
+    return password
+
+
+# ----------------------------------------------------------------------- port
+
+
+def checkout_paths() -> list[Path]:
+    """Every checkout of this repository: the main one and its worktrees."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(TREE), "worktree", "list", "--porcelain"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return [TREE]
+    return [Path(line[len("worktree "):]) for line in out.splitlines() if line.startswith("worktree ")]
+
+
+def port_free(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            s.bind(("", port))
+        except OSError:
+            return False
+    return True
+
+
+@contextlib.contextmanager
+def port_lock():
+    """Serialize port picking across every checkout of this repository."""
+    common = subprocess.run(
+        ["git", "-C", str(TREE), "rev-parse", "--git-common-dir"],
+        stdout=subprocess.PIPE, text=True, check=True,
+    ).stdout.strip()
+    fd = os.open(TREE / common if not os.path.isabs(common) else common, os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
+def server_port() -> int:
+    """This checkout's HTTP port, claiming the first free pair if it has none.
+
+    A port stays claimed while a listed checkout's .cx/port names it, so
+    removing a worktree releases its port.
+    """
+    text = read_text(PORT_FILE).strip()
+    if text.isdigit():
+        return int(text)
+    refuse_in_sandbox("picking a port")
+    with port_lock():
+        claimed = set()
+        for tree in checkout_paths():
+            t = read_text(tree / ".cx" / "port").strip()
+            if t.isdigit():
+                claimed.add(int(t))
+        for port in range(PORT_FIRST, PORT_LAST + 1, 2):
+            if port in claimed or not (port_free(port) and port_free(port + 1)):
+                continue
+            PREFIX.mkdir(parents=True, exist_ok=True)
+            PORT_FILE.write_text(f"{port}\n")
+            return port
+    die(f"no free port pair between {PORT_FIRST} and {PORT_LAST + 1}")
+
+
+# ---------------------------------------------------------------------- build
+
+
+def configured_prefix(repo_dir: Path) -> str | None:
+    m = re.search(r"--prefix=([^' ]+)", read_text(repo_dir / "config.status"))
+    return m.group(1) if m else None
+
+
+def needs_configure(repo_dir: Path) -> bool:
+    return configured_prefix(repo_dir) != str(PREFIX)
+
+
+# Files whose changes need configure to run again.
+CONFIGURE_INPUTS = ("configure.ac", "Makefile.in", "aclocal.m4", "configure")
+
+
+def stale_configure() -> list[str]:
+    """Configure inputs newer than their repo's config.status."""
+    stale = []
+    for repo_dir, _flags in REPOS.values():
+        try:
+            configured = (repo_dir / "config.status").stat().st_mtime
+        except OSError:
+            continue
+        for name in CONFIGURE_INPUTS:
+            with contextlib.suppress(OSError):
+                if (repo_dir / name).stat().st_mtime > configured:
+                    stale.append(f"{repo_dir.name}/{name}")
+    return stale
+
+
+class BuildLog:
+    """Streams subprocess output to BUILD_LOG, echoing only the useful lines."""
+
+    def __init__(self, verbose: bool):
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        self.verbose = verbose
+        self.file = BUILD_LOG.open("w")
+        self.tail: list[str] = []
+
+    def run(self, argv: list[str], cwd: Path) -> int:
+        self.write(f"+ (cd {cwd} && {' '.join(argv)})\n", show=True)
+        try:
+            proc = subprocess.Popen(
+                argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL, text=True, errors="replace",
+            )
+        except FileNotFoundError:
+            die(f"cannot run {argv[0]}: not found")
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            self.write(line, show=self.verbose or bool(BUILD_KEEP.search(line)))
+        return proc.wait()
+
+    def write(self, line: str, show: bool) -> None:
+        self.file.write(line)
+        self.file.flush()
+        self.tail.append(line)
+        del self.tail[:-30]
+        if show:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+
+    def fail(self, what: str, rc: int) -> int:
+        print(f"{what} FAILED (exit {rc}), last lines:", file=sys.stderr)
+        sys.stderr.write("".join(self.tail))
+        print(f"full log: {BUILD_LOG}", file=sys.stderr)
+        stale = stale_configure()
+        if stale:
+            print(
+                f"hint: {', '.join(stale)} changed since the last configure; "
+                f"try 'cx rebuild'",
+                file=sys.stderr,
+            )
+        return rc
+
+
+def ensure_json_include() -> None:
+    """Centrallix includes "json/json.h", but json-c installs json-c/json.h on
+    some distros. Bridge the gap inside the prefix instead of system-wide."""
+    if Path("/usr/include/json/json.h").exists() or not Path("/usr/include/json-c/json.h").exists():
+        return
+    link = PREFIX / "include" / "json"
+    if not link.is_symlink():
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to("/usr/include/json-c")
+
+
+def build(verbose: bool, configure_flags: dict[str, list[str]] | None = None, clean: bool = False) -> int:
+    """Configure each repo when needed (or when flags are given), then build and
+    install lib, then centrallix, into PREFIX. The lib must be installed before
+    centrallix configures, because that configure looks for it in PREFIX."""
+    log = BuildLog(verbose)
+    for key, (repo_dir, base_flags) in REPOS.items():
+        name = repo_dir.name
+        if clean and (repo_dir / "Makefile").exists():
+            # distclean fails harmlessly on a tree that was never configured.
+            log.run(["make", "distclean"], repo_dir)
+        if configure_flags is not None or needs_configure(repo_dir):
+            if key == "app":
+                ensure_json_include()
+            extra = (configure_flags or {}).get(key, configured_extra_flags(key))
+            rc = log.run(["./configure", *base_flags, *extra], repo_dir)
+            if rc != 0:
+                return log.fail(f"configure {name}", rc)
+        rc = log.run(["make", "-j", jobs(), "install"], repo_dir)
+        if rc != 0:
+            return log.fail(f"build {name}", rc)
+    write_runtime_config()
+    print(f"build OK; installed in {PREFIX} ({BUILD_LOG})")
+    return 0
+
+
+def sub_once(text: str, pattern: str, repl: str, what: str) -> str:
+    """Replace exactly one match, so a change to centrallix.conf.in that moves
+    a setting fails loudly instead of leaving the system default in place."""
+    new, n = re.subn(pattern, repl, text, flags=re.M)
+    if n != 1:
+        die(f"config: expected one {what} in {APP_DIR / 'etc/centrallix.conf'}, found {n}")
+    return new
+
+
+def write_runtime_config() -> None:
+    """Derive this checkout's config from the one the build generated.
+
+    Regenerated on every build, so it follows centrallix.conf.in. Changes:
+    the HTTP/HTTPS ports, altpasswd auth, and log and cache paths in .cx/var.
+    """
+    port = server_port()
+    text = read_text(APP_DIR / "etc" / "centrallix.conf")
+    if not text:
+        die("config: the build did not produce centrallix/etc/centrallix.conf")
+    edits = [
+        (r'^(\s*)listen_port = 800;', rf"\g<1>listen_port = {port};", "net_http listen_port"),
+        (r'^(\s*)ssl_listen_port = 843;', rf"\g<1>ssl_listen_port = {port + 1};", "ssl_listen_port"),
+        (r'^(\s*)auth_method = "system";', r'\g<1>auth_method = "altpasswd";', "auth_method"),
+        (r'^(\s*)//\s*auth_method = "altpasswd";\n', "", "commented altpasswd auth_method"),
+        (r'^(\s*)//\s*altpasswd_file = .*$', rf'\g<1>altpasswd_file = "{PASSWD}";', "altpasswd_file"),
+        (r'^(\s*)debug_log_file = .*$', rf'\g<1>debug_log_file = "{DEBUG_LOG}";', "debug_log_file"),
+        (r'^(\s*)transaction_log_file = .*$', rf'\g<1>transaction_log_file = "{LOG_DIR / "transaction.log"}";', "transaction_log_file"),
+        (r'^(\s*)cache_dir = .*$', rf'\g<1>cache_dir = "{VAR / "cache"}";', "cache_dir"),
+        (r'^(\s*)access_log = .*$', rf'\g<1>access_log = "{ACCESS_LOG}";', "access_log"),
+    ]
+    for pattern, repl, what in edits:
+        text = sub_once(text, pattern, repl, what)
+    first, _, rest = text.partition("\n")
+    text = (
+        f"{first}\n// Generated by cx from centrallix/etc/centrallix.conf on every "
+        f"build; edits here are lost.\n{rest}"
+    )
+    (VAR / "cache").mkdir(parents=True, exist_ok=True)
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = CONF.with_name(CONF.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, CONF)
+    write_passwd()
+
+
+def write_passwd() -> None:
+    """Regenerate the altpasswd file with one user: CX_USER."""
+    password = auth_password()
+    tmp = PASSWD.with_name(PASSWD.name + ".tmp")
+    with contextlib.suppress(FileNotFoundError):
+        tmp.unlink()
+    proc = subprocess.run(
+        [str(CXPASSWD_BIN), "-f", str(tmp), "-u", cx_user(), "-P"],
+        input=password + "\n", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    if proc.returncode != 0 or not tmp.exists():
+        die(f"cxpasswd failed (exit {proc.returncode}): {proc.stdout.strip()}")
+    os.replace(tmp, PASSWD)
+
+
+# ---------------------------------------------------------- configure flags
+
+# --enable-x and --disable-x set the same option; likewise --with-y/--without-y.
+OPTION_PREFIXES = (
+    ("enable-", "enable_"),
+    ("disable-", "enable_"),
+    ("with-", "with_"),
+    ("without-", "with_"),
+)
+# One configure option, optionally with a value. Strict, since it reaches argv.
+CONFIGURE_FLAG_RE = re.compile(r"^--[a-z][a-z0-9-]*(=[A-Za-z0-9_.,:/+-]+)?$")
+_configure_cache: dict[str, str] = {}
+
+
+def flag_key(flag: str) -> str:
+    """The option a flag sets, so --disable-x replaces an inherited --enable-x."""
+    name = flag[2:].split("=", 1)[0]
+    for prefix, _var in OPTION_PREFIXES:
+        if name.startswith(prefix):
+            return name[len(prefix):]
+    return name
+
+
+def base_keys(key: str) -> set[str]:
+    return {flag_key(f) for f in REPOS[key][1]}
+
+
+def configure_text(key: str) -> str:
+    if key not in _configure_cache:
+        _configure_cache[key] = read_text(REPOS[key][0] / "configure")
+    return _configure_cache[key]
+
+
+def repo_supports(key: str, flag: str) -> bool:
+    """Whether this repo's configure knows the option. autoconf only warns
+    about unknown options, so a flag can look applied and do nothing."""
+    name = flag[2:].split("=", 1)[0]
+    for prefix, var in OPTION_PREFIXES:
+        if name.startswith(prefix):
+            var += name[len(prefix):].replace("-", "_")
+            return re.search(rf"\b{re.escape(var)}\b", configure_text(key)) is not None
+    return True
+
+
+def known_options() -> list[str]:
+    opts = set()
+    for key in REPOS:
+        opts.update(re.findall(r"--(?:enable|disable|with|without)-[a-z0-9-]+", configure_text(key)))
+    return sorted(o for o in opts if len(o) > 9)
+
+
+def configured_extra_flags(key: str) -> list[str]:
+    """Flags beyond cx's own that the repo was last configured with."""
+    m = re.search(r'^ac_cs_config="(.*)"$', read_text(REPOS[key][0] / "config.status"), re.M)
+    if not m:
+        return []
+    flags = [f for f in re.findall(r"'([^']*)'", m.group(1)) if CONFIGURE_FLAG_RE.match(f)]
+    return [f for f in flags if flag_key(f) not in base_keys(key) and repo_supports(key, f)]
+
+
+def rebuild_flags(passed: list[str], inherit: bool) -> dict[str, list[str]]:
+    """Per-repo extra configure flags: inherited ones, then passed ones."""
+    for flag in passed:
+        if not any(repo_supports(k, flag) for k in REPOS):
+            hint = difflib.get_close_matches(flag, known_options(), n=3)
+            hint = f"; did you mean {', '.join(hint)}?" if hint else ""
+            die(f"rebuild: no configure in {TREE} accepts {flag}{hint}")
+        if any(flag_key(flag) in base_keys(k) for k in REPOS):
+            die(f"rebuild: cx always sets {flag_key(flag)} itself")
+    chosen = {}
+    for key, (repo_dir, _base) in REPOS.items():
+        flags: dict[str, tuple[str, str]] = {}
+        if inherit:
+            for f in configured_extra_flags(key):
+                flags[flag_key(f)] = (f, "inherited")
+        for f in passed:
+            if repo_supports(key, f):
+                flags[flag_key(f)] = (f, "passed")
+        chosen[key] = [f for f, _origin in flags.values()]
+        shown = ", ".join(f"{f} ({origin})" for f, origin in flags.values()) or "none"
+        print(f"rebuild: {repo_dir.name} extra flags: {shown}")
+    return chosen
+
+
+def act_build(args: list[str]) -> int:
+    verbose = False
+    for a in args:
+        if a in ("-v", "--verbose"):
+            verbose = True
+        else:
+            die(f"build: unexpected argument {a!r} (only --verbose)")
+    with exclusive("build"):
+        return build(verbose)
+
+
+def act_rebuild(args: list[str]) -> int:
+    verbose, inherit, passed = False, True, []
+    for a in args:
+        if a in ("-v", "--verbose"):
+            verbose = True
+        elif a == "--reset-flags":
+            inherit = False
+        elif CONFIGURE_FLAG_RE.match(a):
+            passed.append(a)
+        else:
+            die(f"rebuild: unexpected argument {a!r} (--verbose, --reset-flags, "
+                "or a plain --enable-x/--with-y=z configure flag)")
+    flags = rebuild_flags(passed, inherit)
+    with exclusive("rebuild"):
+        return build(verbose, flags, clean=True)
+
+
+# --------------------------------------------------------------------- server
+
+
+def find_servers() -> list[int]:
+    """Pids of this checkout's server: processes run with '-c <our conf>'.
+
+    gdb's own process carries the same arguments after --args, so it is
+    skipped; its inferior is the server.
+    """
+    conf = str(CONF)
+    found = []
+    for p in Path("/proc").iterdir():
+        if not p.name.isdigit():
+            continue
+        argv = [a for a in read_text(p / "cmdline").split("\0") if a]
+        if not argv or posixpath.basename(argv[0]) == "gdb":
+            continue
+        if any(a == "-c" and b == conf for a, b in zip(argv, argv[1:])) and str(SERVER_BIN) in argv:
+            found.append(int(p.name))
+    return sorted(found)
+
+
+def proc_info(pid: int) -> dict | None:
+    stat_line = read_text(f"/proc/{pid}/stat")
+    if ") " not in stat_line:
+        return None
+    fields = stat_line.rsplit(") ", 1)[1].split()
+    btime = 0
+    for line in read_text("/proc/stat").splitlines():
+        if line.startswith("btime "):
+            btime = int(line.split()[1])
+            break
+    return {
+        "state": fields[0],
+        "ppid": int(fields[1]),
+        "started": btime + int(fields[19]) // os.sysconf("SC_CLK_TCK"),
+    }
+
+
+def is_listening(port: int) -> bool:
+    hexport = f"{port:04X}"
+    for proc_file in ("/proc/net/tcp", "/proc/net/tcp6"):
+        for line in read_text(proc_file).splitlines()[1:]:
+            f = line.split()
+            if len(f) > 3 and f[3] == "0A" and f[1].split(":")[1] == hexport:
+                return True
+    return False
+
+
+def parse_wait_args(action: str, args: list[str], extra: tuple[str, ...] = ()) -> tuple[bool, float, list[str]]:
+    wait, timeout, flags = True, READY_TIMEOUT, []
+    rest = list(args)
+    while rest:
+        a = rest.pop(0)
+        if a == "--no-wait":
+            wait = False
+        elif a == "--timeout":
+            if not rest or not rest[0].replace(".", "", 1).isdigit():
+                die(f"{action}: --timeout needs a number of seconds")
+            timeout = float(rest.pop(0))
+        elif a in extra:
+            flags.append(a)
+        else:
+            allowed = ", ".join(("--no-wait", "--timeout N", *extra))
+            die(f"{action}: unexpected argument {a!r} (only {allowed})")
+    return wait, timeout, flags
+
+
+def start_server(mode: str, wait: bool, timeout: float) -> int:
+    if find_servers():
+        die("start: already running; use 'cx restart'")
+    if not SERVER_BIN.exists() or not CONF.exists():
+        die("start: not built yet; run 'cx build'")
+    port = server_port()
+    for p in (port, port + 1):
+        if not port_free(p):
+            die(f"start: port {p} is in use by another process ('ss -ltnp' shows which)")
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        if SERVER_LOG.stat().st_size > SERVER_LOG_MAX:
+            SERVER_LOG.replace(SERVER_LOG.with_suffix(".log.1"))
+    server = [str(SERVER_BIN), "-c", str(CONF)]
+    argv = {
+        "normal": server,
+        "gdb": [*GDB_ARGS, "--args", *server],
+        "valgrind": ["valgrind", *VALGRIND_FLAGS, f"--log-file={VALGRIND_LOG}", *server],
+    }[mode]
+    with SERVER_LOG.open("a") as logf:
+        logf.write(f"\n===== cx start ({mode}) {time.strftime('%Y-%m-%d %H:%M:%S')} =====\n")
+        logf.flush()
+        offset = logf.tell()
+        try:
+            # Own session, so the server outlives the shell that started it.
+            subprocess.Popen(
+                argv, cwd=VAR, stdin=subprocess.DEVNULL, stdout=logf,
+                stderr=subprocess.STDOUT, start_new_session=True,
+            )
+        except FileNotFoundError:
+            die(f"start: cannot run {argv[0]}: not found")
+    MODE_FILE.write_text(mode + "\n")
+    if not wait:
+        return 0
+    return wait_ready(offset, timeout * (4 if mode == "valgrind" else 1))
+
+
+def wait_ready(offset: int, timeout: float) -> int:
+    """Block until the server listens, crashes, or exits."""
+    port = server_port()
+    deadline = time.monotonic() + timeout
+    while True:
+        pids = find_servers()
+        if pids and is_listening(port):
+            print(f"server ready (pid {pids[0]}, port {port}): http://localhost:{port}/")
+            return 0
+        if CRASH_MARK.search(read_text(SERVER_LOG)[offset:]):
+            return start_failed("took a fatal signal while starting", offset)
+        if not pids and time.monotonic() > deadline - timeout + 2:
+            return start_failed("exited while starting", offset)
+        if time.monotonic() >= deadline:
+            return start_failed(f"not listening on port {port} after {timeout:.0f}s", offset)
+        time.sleep(POLL)
+
+
+def start_failed(what: str, offset: int) -> int:
+    print(f"start: server {what}; log since start:", file=sys.stderr)
+    for line in read_text(SERVER_LOG)[offset:].splitlines()[-30:]:
+        print(f"  {line}", file=sys.stderr)
+    return 1
+
+
+def stop_server(timeout: float) -> int:
+    pids = find_servers()
+    if not pids:
+        print("server not running")
+        return 0
+    for pid in pids:
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(pid, signal.SIGTERM)
+    deadline = time.monotonic() + timeout
+    while find_servers():
+        if time.monotonic() >= deadline:
+            for pid in find_servers():
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(pid, signal.SIGKILL)
+            time.sleep(POLL)
+            if find_servers():
+                die(f"stop: pid {find_servers()[0]} survived SIGKILL")
+            print(f"server killed (did not exit within {timeout:.0f}s of SIGTERM)")
+            return 0
+        time.sleep(POLL)
+    print("server stopped")
+    return 0
+
+
+MODES = ("--gdb", "--valgrind")
+
+
+def act_start(args: list[str]) -> int:
+    refuse_in_sandbox("start")
+    wait, timeout, flags = parse_wait_args("start", args, MODES)
+    if len(flags) > 1:
+        die("start: pick one of --gdb and --valgrind")
+    mode = flags[0][2:] if flags else "normal"
+    with exclusive("start"):
+        return start_server(mode, wait, timeout)
+
+
+def act_stop(args: list[str]) -> int:
+    refuse_in_sandbox("stop")
+    _wait, timeout, _flags = parse_wait_args("stop", args)
+    with exclusive("stop"):
+        return stop_server(timeout if timeout != READY_TIMEOUT else STOP_TIMEOUT)
+
+
+def act_restart(args: list[str]) -> int:
+    refuse_in_sandbox("restart")
+    wait, timeout, flags = parse_wait_args("restart", args, MODES)
+    if len(flags) > 1:
+        die("restart: pick one of --gdb and --valgrind")
+    if flags:
+        mode = flags[0][2:]
+    else:
+        mode = read_text(MODE_FILE).strip() or "normal"
+    with exclusive("restart"):
+        rc = stop_server(STOP_TIMEOUT)
+        if rc != 0:
+            return rc
+        return start_server(mode, wait, timeout)
+
+
+def fmt_duration(seconds: int) -> str:
+    h, rem = divmod(max(seconds, 0), 3600)
+    return f"{h}:{rem // 60:02d}:{rem % 60:02d}"
+
+
+def fmt_mtime(path: Path) -> str:
+    try:
+        return time.strftime("%Y-%m-%d %H:%M", time.localtime(path.stat().st_mtime))
+    except OSError:
+        return "missing"
+
+
+def act_status(args: list[str]) -> int:
+    if args:
+        die(f"status: takes no arguments (got {' '.join(args)!r})")
+    refuse_in_sandbox("status")
+    pids = find_servers()
+    port_text = read_text(PORT_FILE).strip()
+    port = int(port_text) if port_text.isdigit() else None
+    mode = read_text(MODE_FILE).strip() or "normal"
+    if not pids:
+        print("centrallix: not running")
+    else:
+        print(f"centrallix: running ({mode})")
+        info = proc_info(pids[0])
+        print(f"  pid:      {pids[0]}")
+        if len(pids) > 1:
+            print(f"  WARNING:  more than one server for this checkout (also {pids[1:]})")
+        if info:
+            print(f"  uptime:   {fmt_duration(int(time.time()) - info['started'])}")
+            # 'started' is whole seconds from btime, so allow for rounding.
+            if SERVER_BIN.exists() and SERVER_BIN.stat().st_mtime > info["started"] + 2:
+                print("  stale:    binary is newer than the running server; 'cx restart'")
+    if port is None:
+        print("  port:     none yet (assigned by 'cx build')")
+    else:
+        listening = "yes" if is_listening(port) else "no"
+        print(f"  port:     {port}  (https {port + 1})   listening: {listening}")
+        print(f"  url:      http://localhost:{port}/")
+    print(f"  checkout: {TREE}")
+    print(f"  config:   {CONF}")
+    print(f"  user:     {cx_user()}  (password in {AUTH_PATH})")
+    print(f"  binary:   {SERVER_BIN}  (built {fmt_mtime(SERVER_BIN)})")
+    for label, p in (("server", SERVER_LOG), ("access", ACCESS_LOG), ("debug", DEBUG_LOG)):
+        print(f"  {label + ':':<10}{p}{'' if p.exists() else '  (missing)'}")
+    if not SERVER_BIN.exists():
+        print("  hint:     'cx build'")
+    elif not pids:
+        print("  hint:     'cx start'")
+    return 0
+
+
+def act_log(args: list[str]) -> int:
+    count, errors_only = DEFAULT_LOG_LINES, False
+    for a in args:
+        if a == "--errors":
+            errors_only = True
+        elif a.isdigit() and int(a) > 0:
+            count = int(a)
+        else:
+            die(f"log: unexpected argument {a!r} (usage: log [N] [--errors])")
+    shown = False
+    for p in (SERVER_LOG, ACCESS_LOG, DEBUG_LOG, VALGRIND_LOG):
+        lines = read_text(p).splitlines()
+        if errors_only:
+            # Filter the whole file, then tail; the log is noisy.
+            lines = [ln for ln in lines if LOG_KEEP.search(ln)]
+        lines = lines[-count:]
+        if lines:
+            shown = True
+            print(f"=== {p} ===")
+            print("\n".join(lines))
+    if not shown:
+        print("cx: no matching log lines", file=sys.stderr)
+    return 0
+
+
+# ---------------------------------------------------------------------- query
+
+
+def split_statements(sql: str) -> list[str]:
+    """Statements of sql, split at each ';' outside a quoted string."""
+    statements, current, quote = [], [], None
+    chars = iter(sql)
+    for c in chars:
+        if quote and c == "\\":
+            current.append(c + next(chars, ""))
+            continue
+        if c == ";" and not quote:
+            statements.append("".join(current))
+            current = []
+            continue
+        if c in "'\"" and quote in (None, c):
+            quote = None if quote else c
+        current.append(c)
+    statements.append("".join(current))
+    return [s.strip() for s in statements if s.strip()]
+
+
+def act_query(args: list[str]) -> int:
+    attrs = "--attrs" in args
+    args = [a for a in args if a != "--attrs"]
+    if len(args) != 1:
+        die('query: takes exactly one SQL string, e.g. cx query "SELECT ..."')
+    sql = args[0].strip().rstrip(";").strip()
+    if not sql:
+        die('query: empty SQL string, e.g. cx query "SELECT ..."')
+    if not TEST_OBJ.exists() or not CONF.exists():
+        die("query: not built yet; run 'cx build'")
+    # test_obj's default config is this checkout's (built in as PREFIX/etc).
+    # Commands go through -f: -C copies into a fixed 1024-byte buffer. -f runs
+    # one command per line, so newlines become spaces. One command per
+    # statement, so each gets its own header; DECLARE only lives for one query.
+    statements = [sql] if re.search(r"\bdeclare\b", sql, re.I) else split_statements(sql)
+    verb = "query" if attrs else "csv"
+    cmd = "".join(f"{verb} {re.sub(r'[\r\n]+', ' ', s)}\n" for s in statements)
+    password = auth_password()
+    with tempfile.TemporaryDirectory(prefix="cx-query-") as tmp:
+        cmd_file = Path(tmp) / "cmd"
+        cmd_file.write_text(cmd)
+        pw_file = Path(tmp) / "pw"
+        fd = os.open(pw_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(password + "\n")
+        proc = subprocess.run(
+            [str(TEST_OBJ), "-q", "-c", str(CONF), "-u", cx_user(), "-P", str(pw_file),
+             "-f", str(cmd_file)],
+            cwd=APP_DIR, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True,
+            # Drivers can return latin1 bytes; pass them through unchanged.
+            errors="surrogateescape", timeout=300,
+        )
+    sys.stdout.reconfigure(errors="surrogateescape")
+    sys.stderr.reconfigure(errors="surrogateescape")
+    errors = 0
+    for line in proc.stdout.splitlines():
+        if BENIGN_TEST_OBJ.search(line):
+            continue
+        is_error = bool(QUERY_ERROR.match(line))
+        if is_error or line.startswith("Warning: "):
+            errors += is_error
+            sys.stdout.flush()
+            print(line, file=sys.stderr, flush=True)
+        else:
+            print(line)
+    if proc.returncode == 0 and errors:
+        return 1
+    return proc.returncode
+
+
+# ---------------------------------------------------------------------- fetch
+
+
+def validate_fetch_path(raw: str) -> str:
+    """Accept only an absolute ObjectSystem path, rejecting anything that tries
+    to escape the tree rather than normalizing it."""
+    if not raw.startswith("/"):
+        die("fetch: path must start with '/' (it is an ObjectSystem path, not a URL)")
+    if raw.startswith("//"):
+        die("fetch: '//' is not allowed (would be read as a host)")
+    for bad in ("://", "\\", "~", "\x00", "\n", "\r", " "):
+        if bad in raw:
+            die(f"fetch: {bad!r} is not allowed anywhere in {raw!r}")
+    path, sep, query = raw.partition("?")
+    low = path.lower()
+    for enc in ("%2e", "%2f", "%5c", "%00"):
+        if enc in low:
+            die(f"fetch: encoded escape {enc!r} is not allowed in {path!r}")
+    if any(seg in ("..", ".") for seg in path.split("/")):
+        die(f"fetch: '..' and '.' segments are not allowed in {path!r}")
+    if sep and not re.fullmatch(r"[A-Za-z0-9._~%+=&,:/@!$'()*-]*", query):
+        die(f"fetch: query string {query!r} has a character outside the allowed set")
+    if path != "/" and posixpath.normpath(path) != path.rstrip("/"):
+        die(f"fetch: path {path!r} is not in normal form (check for repeated '/')")
+    # Centrallix cuts a query value at a raw '/', so send it encoded.
+    return path + sep + query.replace("/", "%2F")
+
+
+def add_default_geom(path: str) -> str:
+    query = path.partition("?")[2]
+    if any(p.split("=", 1)[0] == "cx__geom" for p in query.split("&")):
+        return path
+    return f"{path}{'&' if query else '?'}cx__geom={DEFAULT_GEOM}"
+
+
+def positive_number(action: str, flag: str, value: str, integer: bool) -> float:
+    try:
+        n = int(value) if integer else float(value)
+    except ValueError:
+        n = 0
+    if not n > 0:
+        die(f"{action}: {flag} needs a positive number (got {value!r})")
+    return n
+
+
+def default_fetch_limit() -> int | None:
+    """The cap when no flag was given; CX_FETCH_MAX_BYTES overrides it."""
+    v = os.environ.get("CX_FETCH_MAX_BYTES", "").strip()
+    if not v:
+        return MAX_FETCH_BYTES
+    if v.lower() in ("0", "full", "none"):
+        return None
+    if not v.isdigit():
+        die(f"fetch: CX_FETCH_MAX_BYTES must be a positive byte count or 'full' (got {v!r})")
+    return int(v)
+
+
+def load_cookie_jar() -> http.cookiejar.LWPCookieJar:
+    """The cached session cookie. Reusing it keeps one server-side session
+    instead of a new one per request."""
+    jar = http.cookiejar.LWPCookieJar(str(SESSION_COOKIE_FILE))
+    try:
+        jar.load(ignore_discard=True)
+    except FileNotFoundError:
+        pass
+    except (OSError, http.cookiejar.LoadError):
+        jar.clear()
+    return jar
+
+
+def save_cookie_jar(jar: http.cookiejar.LWPCookieJar) -> None:
+    tmp = SESSION_COOKIE_FILE.with_name(f"{SESSION_COOKIE_FILE.name}.{os.getpid()}.tmp")
+    try:
+        jar.save(str(tmp), ignore_discard=True)
+        os.replace(tmp, SESSION_COOKIE_FILE)
+    except OSError as e:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        print(f"cx: could not cache the session cookie: {e}", file=sys.stderr)
+
+
+def act_fetch(args: list[str]) -> int:
+    raw, limit, timeout, rest = False, default_fetch_limit(), FETCH_TIMEOUT, []
+    argq = list(args)
+    while argq:
+        a = argq.pop(0)
+        flag, eq, val = a.partition("=")
+        if a == "--raw":
+            raw = True
+        elif a == "--full":
+            limit = None
+        elif flag in ("--max-bytes", "--timeout"):
+            if not eq:
+                if not argq:
+                    die(f"fetch: {flag} needs a value")
+                val = argq.pop(0)
+            if flag == "--max-bytes":
+                limit = int(positive_number("fetch", flag, val, integer=True))
+            else:
+                timeout = positive_number("fetch", flag, val, integer=False)
+        elif a.startswith("-"):
+            die(f"fetch: unexpected argument {a!r} (only --raw, --full, --max-bytes N, --timeout N)")
+        else:
+            rest.append(a)
+    if len(rest) != 1:
+        die("fetch: takes exactly one path, e.g. cx fetch /samples/index.app")
+    path = validate_fetch_path(rest[0])
+    if not raw:
+        path = add_default_geom(path)
+
+    refuse_in_sandbox("fetch")
+    port = server_port()
+    if not find_servers() or not is_listening(port):
+        die(f"fetch: this checkout's server is not listening on port {port}; see 'cx status'")
+
+    url = f"http://127.0.0.1:{port}{path}"
+    # Not sent up front: the server rejects credentials on a request that has
+    # no session cookie yet, and its 401 is what sets one.
+    mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+    mgr.add_password(None, url, cx_user(), auth_password())
+    jar = load_cookie_jar()
+
+    def read_body(resp):
+        # One byte past the cap, so len() tells "at the limit" from "more".
+        return resp.read() if limit is None else resp.read(limit + 1)
+
+    def timed_out() -> NoReturn:
+        print(
+            f"cx: fetch: server did not answer within {timeout:g}s (hung?); check "
+            f"'cx status' and 'cx log --errors', or pass --timeout N for a slow page",
+            file=sys.stderr,
+        )
+        sys.exit(5)
+
+    def get(jar):
+        req = urllib.request.Request(url, headers={"User-Agent": FETCH_USER_AGENT})
+        opener = urllib.request.build_opener(
+            urllib.request.HTTPBasicAuthHandler(mgr),
+            urllib.request.HTTPCookieProcessor(jar),
+            urllib.request.ProxyHandler({}),
+        )
+        try:
+            with opener.open(req, timeout=timeout) as resp:
+                return resp.status, resp.reason, resp.headers, read_body(resp)
+        except urllib.error.HTTPError as e:
+            return e.code, e.reason, e.headers, read_body(e)
+        except urllib.error.URLError as e:
+            if isinstance(e.reason, TimeoutError):
+                timed_out()
+            die(f"fetch: {url}: {e.reason}")
+        except TimeoutError:
+            timed_out()
+
+    had_cookie = len(jar) > 0
+    status, reason, headers, body = get(jar)
+    if status == 401 and had_cookie:
+        # The cached session died with a server restart; start a new one.
+        jar = http.cookiejar.LWPCookieJar(str(SESSION_COOKIE_FILE))
+        status, reason, headers, body = get(jar)
+    save_cookie_jar(jar)
+
+    # Status goes to stderr so stdout is the body alone.
+    print(f"HTTP {status} {reason}  {url}", file=sys.stderr)
+    if 200 <= status < 400:
+        print(f"Content-Type: {headers.get('Content-Type', '?')}", file=sys.stderr)
+    elif status == 401:
+        print(f"  (auth rejected; check CX_USER and {AUTH_PATH})", file=sys.stderr)
+    truncated = limit is not None and len(body) > limit
+    sys.stdout.flush()
+    sys.stdout.buffer.write(body if not truncated else body[:limit])
+    sys.stdout.buffer.flush()
+    if truncated:
+        print(
+            f"\n\n[truncated at {limit} bytes; re-run with --full for the whole "
+            f"page, or --max-bytes N for a bigger cap]",
+            file=sys.stderr,
+        )
+    if not 200 <= status < 400:
+        return 1
+    return 4 if truncated else 0
+
+
+# ---------------------------------------------------------------------- tests
+
+SUITES = {
+    "obj": (APP_DIR, "centrallix tests (centrallix/tests/test_*.to and test_*.c)"),
+    "lib": (LIB_DIR, "centrallix-lib C unit tests"),
+    "js": (APP_DIR, "cxjs client-side JS tests (node:test)"),
+}
+# tput emits color and charset escapes even when piped.
+ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]|\x1b\([A-Z]")
+# Both harnesses print '%-62.62s  RESULT', so the result word sits at column 64.
+# centrallix's t_driver prints the name before the test runs, so test output
+# can push the result word onto a line of its own. The lookahead skips the obj
+# suite's summary lines ('PASS    8'); lib results end in ops/sec.
+RESULT = re.compile(
+    r"^(?!(?:PASS|FAIL|SKIP|CRASH|ABORT|LOCKUP) +\d+$)(?:.{62}  )?(PASS|FAIL|SKIP|CRASH|ABORT|LOCKUP)\b"
+)
+# 00baseline tests check the harness itself, so each expects a given result.
+BASELINE_WANT = re.compile(r"\*\* SHOULD ([A-Z]+) \*\*")
+MISSING_BIN = re.compile(r"(tests/test_\w+\.bin): No such file or directory")
+VALGRIND_ERRORS = re.compile(r"^==\d+== ERROR SUMMARY: [1-9]")
+# Generated, but older branches track it with /usr/local paths, so make never
+# rebuilds it there.
+TEST_CONF = APP_DIR / "tests" / "centrallix.conf-test"
+TEST_CONF_BACKUP = VAR / "centrallix.conf-test.orig"
+
+
+@contextlib.contextmanager
+def checkout_test_conf():
+    """Point the obj suite at this checkout's prefix for one run.
+
+    Regenerates TEST_CONF with the Makefile's own rule, then restores the
+    tracked bytes. The backup outlives a killed run and is restored next time.
+    """
+    if TEST_CONF_BACKUP.exists():
+        os.replace(TEST_CONF_BACKUP, TEST_CONF)
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", TEST_CONF.name], cwd=TEST_CONF.parent,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    if not tracked:
+        yield
+        return
+    TEST_CONF_BACKUP.write_bytes(TEST_CONF.read_bytes())
+    try:
+        target = TEST_CONF.relative_to(APP_DIR)
+        proc = subprocess.run(
+            ["make", "-W", f"{target}.in", str(target)], cwd=APP_DIR,
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+        if proc.returncode != 0:
+            die(f"test: regenerating {target} failed: {proc.stdout.strip()}")
+        yield
+    finally:
+        os.replace(TEST_CONF_BACKUP, TEST_CONF)
+
+
+def check_filter(filt: str) -> None:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", filt):
+        die(f"test: filter {filt!r} may only contain letters, digits, '.', '_', '-'")
+
+
+def suite_prefixes(suite: str) -> list[str]:
+    """TONLY values: TONLY is a prefix applied right after 'test_'."""
+    repo_dir = SUITES[suite][0]
+    globs = ("test_*.c",) if suite == "lib" else ("test_*.to", "test_*.c")
+    names = set()
+    for g in globs:
+        for f in (repo_dir / "tests").glob(g):
+            names.add(re.sub(r"_\d+$", "", f.name[len("test_"):].rsplit(".", 1)[0]))
+    return sorted(names)
+
+
+def act_test(args: list[str]) -> int:
+    verbose = "-v" in args or "--verbose" in args
+    valgrind = "--valgrind" in args
+    args = [a for a in args if a not in ("-v", "--verbose", "--valgrind")]
+    if not args:
+        print("usage: cx test <suite> <filter|all> [--valgrind] [--verbose]")
+        for name, (_d, desc) in SUITES.items():
+            print(f"  {name:4}  {desc}")
+        return 2
+    suite = args[0]
+    if suite not in SUITES:
+        die(f"test: unknown suite {suite!r} (choose from: {', '.join(SUITES)})")
+    if valgrind and suite != "lib":
+        die(f"test: --valgrind is only for the lib suite (got {suite!r})")
+    if len(args) > 2:
+        die(f"test: takes a suite and at most one filter (got {len(args)} args)")
+    filt = args[1] if len(args) == 2 else None
+    if filt:
+        # For js this lands in NODE_OPTIONS, where '--require=' would run code.
+        check_filter(filt)
+    if suite != "js":
+        if filt is None:
+            print(f"usage: cx test {suite} <filter|all>   (full runs are slow)")
+            print("filters: " + " ".join(suite_prefixes(suite)))
+            return 2
+        if filt == "all":
+            filt = None
+        if not TEST_OBJ.exists():
+            die("test: not built yet; run 'cx build'")
+
+    repo_dir = SUITES[suite][0]
+    env = dict(os.environ, TERM="dumb")
+    if suite == "js":
+        if not re.search(r"^test-js\s*:", read_text(APP_DIR / "Makefile"), re.M):
+            die("test: this branch's Makefile has no 'test-js' target")
+        argv = ["make", "test-js"]
+        if filt:
+            env["NODE_OPTIONS"] = f"{env.get('NODE_OPTIONS', '')} --test-name-pattern={filt}".strip()
+        return run_tests(argv, repo_dir, env, verbose, suite, filt)
+    argv = ["make", "-j", jobs(), "valtest" if valgrind else "test"]
+    if filt:
+        argv.append(f"TONLY={filt}")
+    with exclusive(f"test {suite}"):
+        if suite != "obj":
+            return run_tests(argv, repo_dir, env, verbose, suite, filt)
+        with checkout_test_conf():
+            return run_tests(argv, repo_dir, env, verbose, suite, filt)
+
+
+def run_tests(argv, cwd, env, verbose: bool, suite: str, filt) -> int:
+    """Run a suite, showing failures with the output just before them.
+
+    Diagnostics (the obj harness's diff, a test's own chatter) come BEFORE the
+    result line, so they are buffered and printed only for a failure.
+    """
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        proc = subprocess.Popen(
+            argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True, errors="replace",
+        )
+    except FileNotFoundError:
+        die(f"cannot run {argv[0]}: not found")
+    assert proc.stdout is not None
+
+    passed, failed, skipped, missing, leaky, context = 0, 0, 0, [], [], []
+    baseline, baseline_ok = 0, 0
+    in_failures = False
+    with TEST_LOG.open("w") as logf:
+        for raw in proc.stdout:
+            logf.write(raw)
+            if verbose:
+                sys.stdout.write(raw)
+                continue
+            line = ANSI.sub("", raw).rstrip()
+            if suite == "js":
+                if m := re.match(r"ℹ (pass|fail) (\d+)$", line):
+                    if m.group(1) == "pass":
+                        passed = int(m.group(2))
+                    else:
+                        failed = int(m.group(2))
+                elif line == "✖ failing tests:":
+                    in_failures = True
+                if in_failures:
+                    print(line)
+                context.append(line)
+                del context[:-40]
+                continue
+            if (m := MISSING_BIN.search(line)) and m.group(1) not in missing:
+                missing.append(m.group(1))
+            if VALGRIND_ERRORS.match(line):
+                leaky.append(line)
+            m = RESULT.match(line)
+            if not m:
+                context.append(line)
+                del context[:-40]
+                continue
+            want = BASELINE_WANT.search(line)
+            if want:
+                baseline += 1
+            if want and want.group(1) == m.group(1):
+                baseline_ok += 1
+            elif want is None and m.group(1) == "PASS":
+                passed += 1
+            elif want is None and m.group(1) == "SKIP":
+                skipped += 1
+            else:
+                failed += 1
+                for c in context:
+                    if c.strip():
+                        print(c)
+                print(line)
+            context = []
+    rc = proc.wait()
+
+    if verbose:
+        return rc
+    summary = f"{passed} passed, {failed} failed"
+    if baseline:
+        summary += f", baseline {baseline_ok}/{baseline} as expected"
+    if skipped:
+        summary += f", {skipped} skipped"
+    if missing:
+        summary += f", {len(missing)} not run"
+    if leaky:
+        summary += f", {len(leaky)} with valgrind errors"
+    # The lib Makefile prints nothing for a test that dies from a signal.
+    silent = 0
+    if suite == "lib":
+        silent = len(list((LIB_DIR / "tests").glob(f"test_{filt or ''}*.c"))) - passed - failed - skipped
+    if silent > 0:
+        summary += f", {silent} died without a result"
+    print(f"\n{summary} ({TEST_LOG})", flush=True)
+    if missing:
+        print(f"not run, test binary missing (try 'cx rebuild'): {' '.join(missing)}", file=sys.stderr)
+    tail = [c for c in context if c.strip()][-20:]
+    if rc != 0 and not failed:
+        when = "before any test ran" if not passed else "with no failed test"
+        print(f"make exited {rc} {when}; last output:", file=sys.stderr)
+        for c in tail:
+            print(f"  {c}", file=sys.stderr)
+    elif not passed and not failed and not missing and not baseline:
+        if filt and suite != "js":
+            all_p = suite_prefixes(suite)
+            near = [p for p in all_p if p.startswith(filt[:4])] or [p for p in all_p if filt[:4] in p]
+            hint = " ".join(near[:12]) if near else f"'cx test {suite}' lists them"
+            print(
+                f"filter {filt!r} matched no tests; it is a prefix applied right "
+                f"after 'test_'.\ndid you mean: {hint}",
+                file=sys.stderr,
+            )
+        else:
+            print("no test results parsed; re-run with --verbose", file=sys.stderr)
+        return rc or 1
+    if silent > 0:
+        print(
+            f"{silent} lib test(s) printed no result, probably killed by a signal; "
+            "run the tests/test_*.bin files in centrallix-lib directly to find them",
+            file=sys.stderr,
+        )
+    if rc == 0 and (failed or leaky or silent > 0):
+        return 1
+    return rc
+
+
+# ----------------------------------------------------------------------- help
+
+
+def act_help(_args=None) -> int:
+    print(
+        f"""cx - build, run, and inspect the Centrallix server for this checkout
+
+Checkout: {TREE}
+Each checkout (main or worktree) installs into its own .cx/ and runs its own
+server on its own port, so checkouts never interfere. No sudo.
+
+Usage: cx <action> [args]
+
+  build [--verbose]     Configure (first time only), build, and install lib and
+                        centrallix into .cx/, then regenerate the server config
+                        and password file. Shows errors and warnings; full log
+                        in {BUILD_LOG.relative_to(TREE)}.
+  rebuild [--verbose]   distclean, configure, and build from scratch. Use when a
+       [--enable-x]     build fails on left-over generated files, or after
+       [--with-y=z]     changing configure.ac or Makefile.in. Extra configure
+       [--reset-flags]  flags go to whichever repo accepts them and persist
+                        across rebuilds; --reset-flags drops the old ones.
+  start [--gdb|--valgrind]
+                        Start the server and wait until it listens. --gdb runs
+                        it under gdb in batch mode, so a crash writes a
+                        backtrace to the server log. --valgrind writes to
+                        {VALGRIND_LOG.relative_to(TREE)}.
+  stop                  Stop the server (SIGTERM, then SIGKILL).
+  restart [--gdb|--valgrind]
+                        Stop, then start in the same mode as before unless
+                        one is given. Run after a build.
+       [--no-wait] [--timeout N]   (start/restart) Don't wait, or wait N s.
+  status                Running or not, pid, uptime, port, URL, paths, and
+                        whether the binary is newer than the server.
+  log [N] [--errors]    Last N (default {DEFAULT_LOG_LINES}) lines of each log. --errors
+                        filters the whole file first, then tails.
+  query "SQL" [--attrs] Run OSML SQL through test_obj as the dev user. Any
+                        statement, including INSERT/UPDATE/DELETE. Several
+                        statements separated by ';' each print their own CSV
+                        header. --attrs prints one line per attribute with
+                        its type instead. Errors go to stderr and exit 1.
+  fetch /path           HTTP GET from this checkout's server, e.g.
+                        /samples/index.app. stdout is the raw body; status
+                        and Content-Type go to stderr.
+       [--raw]          Send the path as is (otherwise adds a default cx__geom
+                        so an app renders instead of its viewport probe).
+       [--full]         Lift the {MAX_FETCH_BYTES}-byte output cap (a cut page
+       [--max-bytes N]  exits 4), or set it.
+       [--timeout N]    Seconds to wait (default {FETCH_TIMEOUT:g}); no answer exits 5.
+  test <suite> <filter|all> [--verbose]
+                        Suites: obj, lib, js. The filter is a test name prefix
+                        (after 'test_'); run 'cx test obj' to list them.
+       [--valgrind]     lib only: run the tests under valgrind.
+  help                  This message.
+
+Login: user {cx_user()} (CX_USER), password in {AUTH_PATH}
+(CX_AUTH_PATH; created at random on first build). Every checkout shares it.
+Env: CX_FETCH_MAX_BYTES sets the fetch cap ('full' for none)."""
+    )
+    return 0
+
+
+ACTIONS = {
+    "build": act_build,
+    "rebuild": act_rebuild,
+    "start": act_start,
+    "stop": act_stop,
+    "restart": act_restart,
+    "status": act_status,
+    "log": act_log,
+    "query": act_query,
+    "fetch": act_fetch,
+    "test": act_test,
+    "help": act_help,
+}
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) < 2:
+        act_help()
+        return 2
+    if any(a in ("-h", "--help") for a in argv[1:]):
+        return act_help()
+    action = argv[1]
+    if action not in ACTIONS:
+        print(f"cx: unknown action {action!r}", file=sys.stderr)
+        print(f"  actions: {', '.join(ACTIONS)}", file=sys.stderr)
+        return 2
+    if not (APP_DIR / "configure.ac").exists():
+        die(f"{TREE} is not a Centrallix checkout")
+    return ACTIONS[action](argv[2:])
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
