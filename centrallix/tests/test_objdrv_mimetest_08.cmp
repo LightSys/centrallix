@@ -1,0 +1,18 @@
+Attribute [name]:   string   "EM6.2.eml" 
+Attribute [inner_type]:   string   "multipart/alternative" 
+Attribute [name]:   string   "rfc1521.txt" 
+Attribute [inner_type]:   string   "message/external-body" 
+Attribute [access]:   string   "anon-ftp" 
+Attribute [site]:   string   "ftp.ripe.net" 
+Attribute [directory]:   string   "rfc" 
+Attribute [server]:   string  NULL
+Attribute [name]:   string   "attachment2" 
+Attribute [inner_type]:   string   "message/external-body" 
+Attribute [access]:   string   "mail-server" 
+Attribute [site]:   string  NULL
+Attribute [directory]:   string  NULL
+Attribute [server]:   string   "mailserv@ds.internic.net" 
+Attribute [name]:   string   "rfc1521.txt" 
+Attribute [start]:   string   "Content-Type: text/plain" 
+Attribute [name]:   string   "attachment2" 
+Attribute [start]:   string   "Content-Type: text/plain" 

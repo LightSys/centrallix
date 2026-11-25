@@ -1,0 +1,15 @@
+From: tester@example.com
+Subject: Malformed base64 parts
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain
+Content-Transfer-Encoding: base64
+
+SGVsbG8sIHdvcmxkIQ
+--b1
+Content-Type: text/plain
+Content-Transfer-Encoding: base64
+
+SG=sbG8=
+--b1--

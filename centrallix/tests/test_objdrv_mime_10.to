@@ -1,0 +1,4 @@
+##NAME Part names that include a directory
+
+query select :name from /tests/MimeNameWithPath.eml
+print /tests/MimeNameWithPath.eml/report.txt

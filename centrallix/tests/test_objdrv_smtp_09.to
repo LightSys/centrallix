@@ -1,0 +1,5 @@
+##NAME SMTP objects only see their own emails
+##UNDO /tests/spool/smtp
+
+query select :name from /tests/smtp/other.smtp
+query select :name from /tests/smtp/emails.smtp where :name = 'Other.eml' or :name = 'Sent.eml'

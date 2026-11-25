@@ -1,0 +1,5 @@
+##NAME ON DUP clause, IF MODIFIED after copying objcontent
+##UNDO /tests/upsert_content/dst
+
+query insert into /tests/upsert_content/dst select :name from /tests/upsert_content/src t1 on duplicate :name update set :objcontent = :t1:objcontent, :annotation = 'modified' if modified
+csv select :name, :annotation, :size, content = condition(:size < 100, :objcontent, null) from /tests/upsert_content/dst order by :name

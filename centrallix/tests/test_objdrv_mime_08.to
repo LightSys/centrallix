@@ -1,0 +1,4 @@
+##NAME Outer and inner types
+
+query select :name, :outer_type, :inner_type from object /tests/MimePartTypes.eml
+query select :name, :outer_type, :inner_type from /tests/MimePartTypes.eml

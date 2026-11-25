@@ -1,0 +1,7 @@
+##NAME MimeTest transfer encodings
+
+query select :name, cte = :"Content-Transfer-Encoding" from object /tests/mimetest/M2.eml
+query select :name, cte = :"Content-Transfer-Encoding" from object /tests/mimetest/M3-2.eml
+query select :name, cte = :"Content-Transfer-Encoding" from object /tests/mimetest/M4.1.3.eml
+query select :name, cte = :"Content-Transfer-Encoding" from object /tests/mimetest/M4.4.1.eml
+query select :name, cte = :"Content-Transfer-Encoding" from object /tests/mimetest/S1.eml

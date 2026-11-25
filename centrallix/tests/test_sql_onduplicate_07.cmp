@@ -1,0 +1,7 @@
+"name","annotation","size","content"
+"changed.txt","modified",12,"New content."
+"large_changed.txt","modified",660,
+"large_same.txt","",660,
+"longer.txt","modified",18,"Content plus more."
+"same.txt","",18,"Unchanged content."
+"shorter.txt","modified",7,"Content"

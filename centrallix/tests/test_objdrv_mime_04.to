@@ -1,0 +1,3 @@
+##NAME Base64 content read twice
+
+query select :name, first = :objcontent, second = :objcontent from /tests/MimeBase64Reread.eml

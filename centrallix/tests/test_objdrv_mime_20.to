@@ -1,0 +1,5 @@
+##NAME CRLF line endings
+
+query select :name, :inner_type from object /tests/MimeCrlf.eml
+query select :name, charset = :"Content-Type.charset", note = :"X-Note", start = substring(:objcontent, 1, 11) from object /tests/MimeCrlf.eml/attachment1.txt
+query select :name, c = :objcontent from object /tests/MimeCrlf.eml/attachment2.txt

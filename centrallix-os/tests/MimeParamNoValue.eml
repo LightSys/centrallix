@@ -1,0 +1,9 @@
+From: tester@example.com
+Subject: Parameters without values
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain; flowed; charset=us-ascii; delsp
+
+Body.
+--b1--

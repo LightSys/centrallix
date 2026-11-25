@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "obj.h"
+#include "cxlib/expect.h"
 #include "cxlib/mtask.h"
 #include "cxlib/xarray.h"
 #include "cxlib/xhash.h"
@@ -755,6 +756,10 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 	    /** If the driver "claimed" the last path element, we're done. **/
 	    if (this->SubPtr + this->SubCnt - 1 > this->Pathname->nElements) break;
 
+	    /** Driver telling us not to cascade another driver on during the open? **/
+	    if (this->SubPtr + this->SubCnt - 1 == this->Pathname->nElements && this->Flags & OBJ_F_NOCASCADE)
+		break;
+
 	    /** Determine the apparent/perceived type from the name **/
 	    apparent_type = NULL;
 
@@ -1079,7 +1084,8 @@ obj_internal_PathPart(pPathname path, int start_element, int length)
     int i;
 
     	/** Off end of path? **/
-	if (start_element >= path->nElements) return NULL;
+	if (UNLIKELY(start_element >= path->nElements))
+	    return NULL;
 
 	/** Restricted length? **/
 	if (length != 0)
@@ -1103,7 +1109,18 @@ obj_internal_PathPart(pPathname path, int start_element, int length)
 		}
 	    }
 
-    return path->Elements[start_element];
+	/** Get the path element. **/
+	char* element = path->Elements[start_element];
+	if (UNLIKELY(element == NULL))
+	    {
+	    mssError(1, "OBJ",
+		"Fail! Path element #%d/%d is NULL.",
+		start_element, path->nElements
+	    );
+	    return NULL;
+	    }
+
+    return element;
     }
 
 
