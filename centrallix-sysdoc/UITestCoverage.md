@@ -624,6 +624,7 @@ Tab Test PASS
 - `tests/ui/table_large/table_large_test.app`: fixed row height table, form, and action buttons.
 - `tests/ui/table_large/table_large_detail_test.app`: same, with variable row height and a row detail.
 - `tests/ui/table_large/table_large_empty_test.app`: the detail app with a query that returns no rows.
+- `tests/ui/table_large/table_large_rowdetail_test.app`: the main app's fixed-height rows plus a 200px row detail.
 - `tests/ui/table_large/gen_table_large_csv.py`: generates `table_large.csv`, where `Id` equals the row's position in the result set.
 - `centrallix-ui-test/tests/table_large_test.py`: the tests. Optional `config.toml` keys are listed at the top of the file.
 - Destructive tests (7, 12, 16, and the `Save` parts of 18, 19 and 22) run only with `destructive = true`, and undo their changes through the UI. The data ends up the same, but the datafile driver pads deleted rows in place, so the CSV still shows as modified in git. Regenerate it before committing.
@@ -665,6 +666,8 @@ A failing check prints the table/osrc state and a trace of recent table and osrc
 22. Empty result set (`table_large_empty_test.app`): `New` shows the placeholder with its `show_on_new` row detail and hides the "no data" message, and `Discard` brings the message back. The destructive part saves the first record as row 1 and deletes it again.
 23. After `Last` (which leaves most records unloaded), drag the thumb to the middle with many small mouse moves, and separately make two thumb jumps in a row. The table must not go blank, must show records near the thumb's position, and must not jump again after a later wheel scroll.
 24. After `Last` then `First`, drag the thumb while its position is sampled every 15ms: once with 500ms network latency, and once while a thumb animation is still running. The thumb must stay between its start and drop positions, must not snap back once it reaches the drop position, and must end there.
+25. Fixed-height rows with a 200px row detail (`table_large_rowdetail_test.app`): after `Last`, and again with the detail expanded on a row above the view, scrolling to the end puts the thumb exactly at the bottom of its track with the last row fully shown. `First` puts it exactly at the top.
+26. Dragging the thumb to the bottom of its track shows the last record, both before the end of the results is known and after it is. Dragging it to the top shows record 1.
 
 ### Note
 - The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported. A `Refresh` while the current record is past record 500 still shows it once, because the refresh re-reads the result set up to the current record.
