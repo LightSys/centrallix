@@ -18,7 +18,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -477,6 +477,167 @@ stFind(pStructInf this, char* name)
 	ASSERTMAGIC(find_inf, MGK_STRUCTINF);
 
     return find_inf;
+    }
+
+
+/*** st_internal_Kind - return the kind of a node: ST_F_SCRIPT, ST_F_ATTRIB,
+ *** ST_F_GROUP, or 0 if it is none of these.
+ ***/
+static int
+st_internal_Kind(pStructInf inf)
+    {
+	if (inf->Flags & ST_F_SCRIPT) return ST_F_SCRIPT;
+	if (inf->Flags & ST_F_ATTRIB) return ST_F_ATTRIB;
+	if (inf->Flags & ST_F_GROUP) return ST_F_GROUP;
+
+    return 0;
+    }
+
+
+/*** st_internal_KindName - name the kind of a node, for error messages.
+ ***/
+static char*
+st_internal_KindName(pStructInf inf)
+    {
+	switch (st_internal_Kind(inf))
+	    {
+	    case ST_F_SCRIPT: return "script";
+	    case ST_F_ATTRIB: return "attribute";
+	    case ST_F_GROUP: return "group";
+	    default: return "unknown";
+	    }
+    }
+
+
+/*** st_internal_MergeGroup - merge the children of the 'overlay' group into
+ *** the 'base' group, as described for stMergeInf().  Children with no match
+ *** in base are moved out of overlay.
+ ***/
+static int
+st_internal_MergeGroup(pStructInf base, pStructInf overlay)
+    {
+    pStructInf new_inf, base_inf;
+    pExpression value;
+    char* base_type;
+    char* overlay_type;
+    int kind;
+    int i;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "ST", "Failed to merge group '%s': resource exhaustion occurred",
+		    overlay->Name);
+	    return -1;
+	    }
+
+	/** Check that the group types match **/
+	base_type = (base->UsrType != NULL) ? base->UsrType : "";
+	overlay_type = (overlay->UsrType != NULL) ? overlay->UsrType : "";
+	if (strcmp(base_type, overlay_type) != 0)
+	    {
+	    mssError(1, "ST", "Failed to merge group '%s': type '%s' does not match type '%s'",
+		    overlay->Name, overlay_type, base_type);
+	    return -1;
+	    }
+
+	i = 0;
+	while (i < overlay->nSubInf)
+	    {
+	    new_inf = overlay->SubInf[i];
+	    base_inf = stLookup(base, new_inf->Name);
+
+	    /** Move a new entry to the end of base **/
+	    if (base_inf == NULL)
+		{
+		stLinkInf(new_inf);
+		stRemoveInf(new_inf);
+		if (stAddInf(base, new_inf) < 0)
+		    {
+		    mssError(1, "ST", "Failed to add '%s' to group '%s': the group is full",
+			    new_inf->Name, base->Name);
+		    stFreeInf(new_inf);
+		    return -1;
+		    }
+		continue;
+		}
+
+	    /** Check that both entries are the same kind **/
+	    kind = st_internal_Kind(new_inf);
+	    if (st_internal_Kind(base_inf) != kind)
+		{
+		mssError(1, "ST", "Failed to merge %s '%s' into %s '%s'",
+			st_internal_KindName(new_inf), new_inf->Name,
+			st_internal_KindName(base_inf), base_inf->Name);
+		return -1;
+		}
+
+	    /** Merge the entry by its kind **/
+	    if (kind == ST_F_ATTRIB)
+		{
+		value = base_inf->Value;
+		base_inf->Value = new_inf->Value;
+		new_inf->Value = value;
+		}
+	    else if (kind == ST_F_GROUP)
+		{
+		if (st_internal_MergeGroup(base_inf, new_inf) < 0)
+		    {
+		    mssError(0, "ST", "Failed to merge group '%s'", new_inf->Name);
+		    return -1;
+		    }
+		}
+	    else
+		{
+		mssError(1, "ST", "Failed to merge %s '%s': "
+			"only attributes and groups can be merged",
+			st_internal_KindName(new_inf), new_inf->Name);
+		return -1;
+		}
+	    i++;
+	    }
+
+    return 0;
+    }
+
+
+/*** stMergeInf - merge the 'overlay' tree into the 'base' tree.  Both must
+ *** be groups of the same type; their names are ignored.  For each child of
+ *** overlay, the first child of base with the same name (the one stLookup()
+ *** finds) is merged with it:
+ ***   - An attribute replaces that attribute's value, keeping its position.
+ ***   - A group merges recursively into that group, which must have the
+ ***     same type.
+ ***   - Merging different kinds of nodes, or any node that is not an
+ ***     attribute or group, fails.
+ *** A child with no match, of any kind, is moved to the end of base.
+ ***
+ *** Releases the caller's reference to overlay, even on failure.  On failure,
+ *** base may be partially merged.  Returns 0 on success, -1 on failure.
+ ***/
+int
+stMergeInf(pStructInf base, pStructInf overlay)
+    {
+    int rval = -1;
+
+	ASSERTMAGIC(base, MGK_STRUCTINF);
+	ASSERTMAGIC(overlay, MGK_STRUCTINF);
+
+	/** Only groups can be merged **/
+	if (st_internal_Kind(base) != ST_F_GROUP || st_internal_Kind(overlay) != ST_F_GROUP)
+	    {
+	    mssError(1, "ST", "Failed to merge %s '%s' into %s '%s'",
+		    st_internal_KindName(overlay), overlay->Name,
+		    st_internal_KindName(base), base->Name);
+	    goto end;
+	    }
+
+	rval = st_internal_MergeGroup(base, overlay);
+
+    end:
+	stFreeInf(overlay);
+
+    return rval;
     }
 
 
@@ -1787,5 +1948,3 @@ stPrint_ne(pStruct inf)
     {
     return stPrint_ne_r(inf, 0);
     }
-
-

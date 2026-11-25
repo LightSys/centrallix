@@ -20,6 +20,11 @@ centrallix "system/config"
     transaction_log_file = "/var/log/cx_transaction_log";
     ssl_cipherlist = "DEFAULT";
 
+    // Each "*.conf" file in this directory overrides this file, in name order.
+    // Use an absolute path: a relative one is resolved against the working
+    // directory.
+    include_dir = "##SYSCONFDIR##/centrallix/conf.d";
+
     // Set this to 1 to allow Centrallix to send a user's login credentials
     // to another server, as a part of "single sign on" type authentication.
     // This is disabled here because it is dangerous apart from the RBAC

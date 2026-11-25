@@ -981,7 +981,6 @@ start(void* v)
     char* ptr;
     char* user;
     char* pwd;
-    pFile cxconf;
     pStructInf mss_conf;
     char* authmethod;
     char* authmethodfile;
@@ -997,20 +996,8 @@ start(void* v)
         /** Initialize security subsystem **/
         cxssInitialize();
 
-	/** Load the configuration file **/
-	cxconf = fdOpen(CxGlobals.ConfigFileName, O_RDONLY, 0600);
-	if (!cxconf)
-	    {
-	    printf("centrallix: could not open config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	CxGlobals.ParsedConfig = stParseMsg(cxconf, 0);
-	if (!CxGlobals.ParsedConfig)
-	    {
-	    printf("centrallix: error parsing config file '%s'\n", CxGlobals.ConfigFileName);
-	    thExit();
-	    }
-	fdClose(cxconf, 0);
+	/** Load the configuration **/
+	if (cxLoadConfig() < 0) thExit();
 
 	/** Init the session handler.  We have to extract the config data for this 
 	 ** module ourselves, because mtsession is in the centrallix-lib, and thus can't

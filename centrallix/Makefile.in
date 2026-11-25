@@ -507,6 +507,7 @@ config: etc/rootnode etc/centrallix.conf etc/centrallix.init
 
 config_install: config
 	@mkdir -p "${sysconfdir}/centrallix"
+	@mkdir -p "${sysconfdir}/centrallix/conf.d"
 	@for CFILE in $(CONFFILES) ; do \
 		if ! [ -a "$(sysconfdir)/centrallix/$${CFILE}" ] ; then \
 			echo "Installing default version of $${CFILE}" ; \

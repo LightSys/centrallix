@@ -133,6 +133,7 @@ void* stGetValueList(pStructInf this, int type, unsigned int* nval);
 int stAttrIsList(pStructInf this);
 int stAttrIsNull(pStructInf this);
 pStructInf stFind(pStructInf this, char* name);
+int stMergeInf(pStructInf base, pStructInf overlay);
 
 #endif /* _STPARSE_H */
 
