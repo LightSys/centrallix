@@ -440,20 +440,14 @@ nmMalloc(size_t size)
 	    tmp = (void*)nmDebugMalloc(size);
 	    }
 	
-	/** TODO: Greg - We might need more docs for overlays. **/
-	/*** It seems like this code block is doing too many different things. It
-	 *** uses overlays, which I don't fully understand, so I wasn't able to
-	 *** simplify it.
-	 ***/
+	/** Report a failed allocation. **/
 	if (tmp == NULL)
 	    {
-	    if (err_fn) err_fn("Insufficient system memory for operation.");
+	    if (err_fn != NULL) err_fn("Insufficient system memory for operation.");
 	    }
-	else
-	    {
-	    if (size >= MIN_SIZE)
-		OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
-	    }
+	/** Mark the block allocated so nmFree() can catch a double free. **/
+	else if (size >= MIN_SIZE)
+	    OVERLAY(tmp)->Magic = MGK_ALLOCMEM;
 	
 /** Handle overflow check. **/
 #ifdef BUFFER_OVERFLOW_CHECKING
