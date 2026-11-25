@@ -1,0 +1,3 @@
+##NAME LIKE operator
+
+query select a = 'Blue' like 'B%', b = 'Blue' like 'b%', c = 'Blue' like 'B_ue', d = 'Blue' like '%l%e', e = 'Blue' like '_', f = 'Blue' like '%x%'

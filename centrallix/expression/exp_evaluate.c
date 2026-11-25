@@ -16,7 +16,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -184,6 +184,82 @@ expEvalContains(pExpression tree, pParamObjects objlist)
 	if (exp_internal_EvalTree(i0,objlist) <0) return -1;
 
 	/** not quite done ;) **/
+
+    return 0;
+    }
+
+
+/*** exp_internal_LikeMatch - return 1 if str matches a LIKE pattern, where
+ *** '%' matches any run of characters and '_' matches any one character.
+ ***/
+static int
+exp_internal_LikeMatch(char* str, char* pattern)
+    {
+    char* after_pct = NULL;
+    char* pct_str = NULL;
+
+	while (*str != '\0')
+	    {
+	    if (*pattern == '%')
+		{
+		after_pct = ++pattern;
+		pct_str = str;
+		}
+	    else if (*pattern == '_' || *pattern == *str)
+		{
+		pattern++;
+		str++;
+		}
+	    else if (after_pct)
+		{
+		/** Let the last '%' absorb one more character and retry **/
+		pattern = after_pct;
+		str = ++pct_str;
+		}
+	    else
+		{
+		return 0;
+		}
+	    }
+	while (*pattern == '%') pattern++;
+
+    return (*pattern == '\0');
+    }
+
+
+/*** expEvalLike - evaluate a LIKE node, a case-sensitive pattern match.
+ ***/
+int
+expEvalLike(pExpression tree, pParamObjects objlist)
+    {
+    pExpression i0, i1;
+
+	/** Verify item cnt **/
+	if (tree->Children.nItems != 2)
+	    {
+	    mssError(1,"EXP","The LIKE operator requires two operands");
+	    return -1;
+	    }
+
+	/** Evaluate the children first **/
+	tree->DataType = DATA_T_INTEGER;
+	tree->Integer = 0;
+	i0 = ((pExpression)(tree->Children.Items[0]));
+	i1 = ((pExpression)(tree->Children.Items[1]));
+	if (exp_internal_EvalTree(i0,objlist) < 0) return -1;
+	if (exp_internal_EvalTree(i1,objlist) < 0) return -1;
+	if ((i0->Flags | i1->Flags) & EXPR_F_NULL)
+	    {
+	    tree->Flags |= EXPR_F_NULL;
+	    return 0;
+	    }
+	if (i0->DataType != DATA_T_STRING || i1->DataType != DATA_T_STRING)
+	    {
+	    mssError(1,"EXP","Failed to evaluate LIKE: operand types %d and %d are not both strings", i0->DataType, i1->DataType);
+	    return -1;
+	    }
+
+	tree->Integer = exp_internal_LikeMatch(i0->String, i1->String);
 
     return 0;
     }
@@ -2118,7 +2194,7 @@ exp_internal_DefineNodeEvals()
 	EXP.EvalFunctions[EXPR_N_MINUS] = expEvalMinus;
 	EXP.EvalFunctions[EXPR_N_COMPARE] = expEvalCompare;
 	EXP.EvalFunctions[EXPR_N_IN] = expEvalIn;
-	EXP.EvalFunctions[EXPR_N_LIKE] = NULL;
+	EXP.EvalFunctions[EXPR_N_LIKE] = expEvalLike;
 	EXP.EvalFunctions[EXPR_N_CONTAINS] = NULL;
 	EXP.EvalFunctions[EXPR_N_ISNULL] = expEvalIsNull;
 	EXP.EvalFunctions[EXPR_N_ISNOTNULL] = expEvalIsNotNull;
