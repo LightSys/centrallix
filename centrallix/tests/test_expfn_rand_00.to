@@ -1,0 +1,4 @@
+##NAME rand() function
+
+query select rows = condition(count(1) > 0 and count(1) < 50, 'some', 'all or none') from /tests/States.csv/rows where rand() < 0.5
+query declare collection randc scope application; insert into collection randc select r = rand() from /tests/States.csv/rows; select r_values = condition(min(:r) < max(:r), 'vary', 'same') from collection randc

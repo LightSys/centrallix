@@ -1,0 +1,16 @@
+##NAME GROUP BY with no groups returns no rows
+
+# An aggregate with GROUP BY and no matching rows has no groups, so no rows.
+csv SELECT n = count(:Color) FROM /tests/TestLevel1.csv/rows WHERE :Color = 'Nonexistent' GROUP BY :ColorGroup
+
+# Without GROUP BY, the aggregate still returns one row.
+csv SELECT n = count(:Color) FROM /tests/TestLevel1.csv/rows WHERE :Color = 'Nonexistent'
+
+# A two-level aggregate collapses all groups, so it still returns one row.
+csv SELECT n = count(count(:Color)) FROM /tests/TestLevel1.csv/rows WHERE :Color = 'Nonexistent' GROUP BY :ColorGroup
+
+# Without a FROM clause, a false WHERE with GROUP BY also returns no rows.
+csv SELECT n = count(1) WHERE 1 = 0 GROUP BY 1
+
+# Groups that do exist are still returned.
+csv SELECT n = count(:Color) FROM /tests/TestLevel1.csv/rows GROUP BY :ColorGroup

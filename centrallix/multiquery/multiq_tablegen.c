@@ -625,7 +625,8 @@ mqtNextItem(pQueryElement qe, pQueryStatement stmt)
 		    }
 		if (rval == 0)
 		    {
-		    if (md->AggLevel > 0)
+		    /** Aggregates with no groups (or two-level aggregates) still yield one row **/
+		    if (md->AggLevel > 0 && (md->GroupByItems.nItems == 0 || md->AggLevel >= 2))
 		        {
 		        md->IsLastRow = 1;
 		        return 1;

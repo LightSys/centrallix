@@ -20,7 +20,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1998-2012 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1998-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -75,6 +75,8 @@ typedef struct
     char*	SQL;
     char*	NameExpression;
     pParamObjects   ObjList;
+    pObjDataScope Scope;	/* collection parameters, visible to the query */
+    XArray	HeldCollections; /* opens that keep passed temp collections alive */
     }
     QyData, *pQyData;
 
@@ -82,6 +84,7 @@ typedef struct
 /*** Flags for QyData and QyQuery ***/
 #define QY_F_USEHAVING_NAME		1	/* use HAVING clause when looking up by NAME */
 #define QY_F_USEHAVING_CRITERIA		2	/* use HAVING clause when applying additional criteria */
+#define QY_F_VOLATILE			4	/* results could differ if run again ("volatile" attribute) */
 
 
 #define QY(x) ((pQyData)(x))
@@ -179,15 +182,26 @@ qy_internal_Close(pQyData inf)
 	    {
 	    if (inf->MultiQueryObject)
 		objClose(inf->MultiQueryObject);
-	    for(i=0;i<inf->Parameters.nItems;i++)
-		paramFree((pParam)inf->Parameters.Items[i]);
-	    xaDeInit(&inf->Parameters);
+	    if (inf->Parameters.Items)
+		{
+		for(i=0;i<inf->Parameters.nItems;i++)
+		    paramFree((pParam)inf->Parameters.Items[i]);
+		xaDeInit(&inf->Parameters);
+		}
 	    if (inf->SQL)
 		nmSysFree(inf->SQL);
 	    if (inf->Node)
 		inf->Node->OpenCnt--;
 	    if (inf->ObjList)
 		expFreeParamList(inf->ObjList);
+	    if (inf->HeldCollections.Items)
+		{
+		for(i=0;i<inf->HeldCollections.nItems;i++)
+		    objClose((pObject)inf->HeldCollections.Items[i]);
+		xaDeInit(&inf->HeldCollections);
+		}
+	    if (inf->Scope)
+		objScopeRelease(inf->Scope);
 	    if (inf->Name)
 		{
 		nmSysFree(inf->Name);
@@ -270,6 +284,139 @@ qy_internal_SetParamValue(void* inf_v, char* attrname, int datatype, pObjData va
     }
 
 
+/*** qy_internal_FindOpenCtlValue() - get the string value supplied for a
+ *** parameter in the open-ctl of the .qy's path element, or NULL.
+ ***/
+char*
+qy_internal_FindOpenCtlValue(pObject obj, char* name)
+    {
+    pStruct open_ctl, one_open_ctl;
+    char* str;
+    int j;
+
+	open_ctl = obj->Pathname->OpenCtl[obj->SubPtr-1];
+	if (!open_ctl)
+	    return NULL;
+	for(j=0; j<open_ctl->nSubInf; j++)
+	    {
+	    one_open_ctl = open_ctl->SubInf[j];
+	    if (!strcmp(one_open_ctl->Name, name))
+		{
+		str = NULL;
+		stAttrValue_ne(one_open_ctl, &str);
+		return str;
+		}
+	    }
+
+    return NULL;
+    }
+
+
+/*** qy_internal_SetupCollectionParam() - set up a parameter of type
+ *** "collection".  Its value must be a data scope token passed by the
+ *** caller (see EXEC and FROM parameter lists in multiquery), which is
+ *** resolved in the scope the .qy was opened with.  Without a value, a
+ *** nullable parameter gets an empty collection.  The collection is added
+ *** to the .qy's own scope under the parameter's name.
+ ***/
+int
+qy_internal_SetupCollectionParam(pQyData inf, pObject obj, pStructInf param_inf)
+    {
+    char* name;
+    char* value;
+    int notnull;
+    pObjPresentationHints hints;
+    pObjDataItem item;
+    pObject held = NULL;
+    handle_t tempobj = XHN_INVALID_HANDLE;
+
+	/** Name and nullability **/
+	if (stGetAttrValue(stLookup(param_inf, "name"), DATA_T_STRING, POD(&name), 0) != 0)
+	    name = param_inf->Name;
+	hints = objInfToHints(param_inf, DATA_T_STRING);
+	notnull = (hints && (hints->Style & OBJ_PH_STYLE_NOTNULL));
+	if (hints)
+	    objFreeHints(hints);
+
+	value = qy_internal_FindOpenCtlValue(obj, name);
+	if (value && *value)
+	    {
+	    /** Passed collection or path **/
+	    item = objScopeResolveToken(obj->DataScope, obj->Session, value);
+	    if (!item || item->Type != OBJ_DI_T_COLLECTION)
+		{
+		mssError(1, "QY", "Invalid collection binding for parameter '%s'", name);
+		goto error;
+		}
+	    if (item->Flags & OBJ_DI_F_PATH)
+		{
+		if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | (item->Flags & (OBJ_DI_F_PATH | OBJ_DI_F_READONLY)), XHN_INVALID_HANDLE, item->Path, NULL))
+		    goto error;
+		}
+	    else
+		{
+		held = objOpenTempObject(obj->Session, item->TempObj, OBJ_O_RDONLY);
+		if (!held)
+		    {
+		    mssError(1, "QY", "Could not open collection for parameter '%s'", name);
+		    goto error;
+		    }
+		objUnmanageObject(obj->Session, held);
+		if (xaAddItem(&inf->HeldCollections, (void*)held) < 0)
+		    goto error;
+		held = NULL; /* now closed by qy_internal_Close() */
+		if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | (item->Flags & OBJ_DI_F_READONLY), item->TempObj, NULL, NULL))
+		    goto error;
+		}
+	    }
+	else if (notnull)
+	    {
+	    mssError(1, "QY", "Collection parameter '%s' requires a collection", name);
+	    goto error;
+	    }
+	else
+	    {
+	    /** No collection passed: use an empty one **/
+	    tempobj = objCreateTempObject();
+	    if (tempobj == XHN_INVALID_HANDLE)
+		goto error;
+	    if (!objScopeAdd(inf->Scope, name, OBJ_DI_T_COLLECTION, OBJ_DI_F_PARAM | OBJ_DI_F_OWNED, tempobj, NULL, NULL))
+		goto error;
+	    }
+
+	return 0;
+
+    error:
+	if (held)
+	    objClose(held);
+	if (tempobj != XHN_INVALID_HANDLE)
+	    objDeleteTempObject(tempobj);
+	return -1;
+    }
+
+
+/*** qy_internal_IsVolatileNode() - check the .qy's "volatile" attribute
+ *** (yes, true, or 1).
+ ***/
+int
+qy_internal_IsVolatileNode(pStructInf node)
+    {
+    pStructInf attr;
+    char* str;
+    int n;
+
+	attr = stLookup(node, "volatile");
+	if (!attr)
+	    return 0;
+	if (stGetAttrValue(attr, DATA_T_STRING, POD(&str), 0) == 0)
+	    return (!strcasecmp(str, "yes") || !strcasecmp(str, "true") || !strcmp(str, "1"));
+	if (stGetAttrValue(attr, DATA_T_INTEGER, POD(&n), 0) == 0)
+	    return (n != 0);
+
+    return 0;
+    }
+
+
 /*** qyOpen - open an object.
  ***/
 void*
@@ -285,6 +432,8 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
     pStruct one_open_ctl, open_ctl;
     pObjQuery lookup_qy;
     char* endorsement_name;
+    char* type_str;
+    char* value;
 
 	/** Allocate the structure **/
 	inf = (pQyData)nmMalloc(sizeof(QyData));
@@ -292,7 +441,8 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 
 	/** Zero out the structure **/
 	memset(inf,0,sizeof(QyData));
-	xaInit(&inf->Parameters, 16);
+	if (xaInit(&inf->Parameters, 16) < 0 || xaInit(&inf->HeldCollections, 4) < 0)
+	    goto error;
 
 	/** Set the parent Object **/
 	inf->Obj = obj;
@@ -311,6 +461,12 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	expAddParamToList(inf->ObjList,"this",NULL,EXPR_O_CURRENT);
 	expAddParamToList(inf->ObjList,"parameters",(void*)inf,0);
 	expSetParamFunctions(inf->ObjList, "parameters", qy_internal_GetParamType, qy_internal_GetParamValue, qy_internal_SetParamValue);
+
+	/** The query sees collection parameters, but not the caller's scope **/
+	inf->Scope = objScopeCreate(obj->Session, NULL);
+	if (!inf->Scope)
+	    goto error;
+	inf->ObjList->DataScope = inf->Scope;
 
 	/** If CREAT and EXCL, we only create, failing if already exists. **/
 	if ((obj->Mode & O_CREAT) && (obj->Mode & O_EXCL) && (obj->SubPtr == obj->Pathname->nElements))
@@ -363,12 +519,24 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 	    }
 	inf->NameExpression = nmSysStrdup(name_expr);
 
+	/** Volatile query?  Its results must not be cached for reuse. **/
+	if (qy_internal_IsVolatileNode(inf->Node->Data))
+	    inf->Flags |= QY_F_VOLATILE;
+
 	/** Get parameter list **/
 	for(i=0; i<inf->Node->Data->nSubInf; i++)
 	    {
 	    param_inf = inf->Node->Data->SubInf[i];
 	    if (stStructType(param_inf) == ST_T_SUBGROUP && !strcmp(param_inf->UsrType,"query/parameter"))
 		{
+		/** Collection parameters are handled separately **/
+		if (stGetAttrValue(stLookup(param_inf, "type"), DATA_T_STRING, POD(&type_str), 0) == 0 && !strcmp(type_str, "collection"))
+		    {
+		    if (qy_internal_SetupCollectionParam(inf, obj, param_inf) < 0)
+			goto error;
+		    continue;
+		    }
+
 		/** Found a parameter.  Now set it up **/
 		one_param = paramCreateFromInf(param_inf);
 		if (!one_param) goto error;
@@ -383,6 +551,14 @@ qyOpen(pObject obj, int mask, pContentType systype, char* usrtype, pObjTrxTree* 
 			one_open_ctl = open_ctl->SubInf[j];
 			if (!strcmp(one_open_ctl->Name, one_param->Name))
 			    {
+			    /** A passed collection never becomes a scalar value **/
+			    value = NULL;
+			    stAttrValue_ne(one_open_ctl, &value);
+			    if (value && objScopeResolveToken(obj->DataScope, obj->Session, value))
+				{
+				mssError(1, "QY", "Parameter '%s' is not a collection", one_param->Name);
+				goto error;
+				}
 			    paramSetValueFromInfNe(one_param, one_open_ctl, 0, NULL, obj->Session);
 			    break;
 			    }
@@ -589,17 +765,21 @@ void*
 qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
     {
     pQyQuery qy = ((pQyQuery)(qy_v));
-    pQyData inf;
+    pQyData inf = NULL;
     char* ptr;
 
 	/** Alloc the structure **/
 	inf = (pQyData)nmMalloc(sizeof(QyData));
 	if (!inf) return NULL;
 	memset(inf, 0, sizeof(QyData));
-	xaInit(&inf->Parameters, 16);
+	if (xaInit(&inf->Parameters, 16) < 0 || xaInit(&inf->HeldCollections, 4) < 0)
+	    {
+	    goto error;
+	    }
 	strcpy(inf->Pathname, obj->Pathname->Pathbuf);
 	inf->Node = qy->Data->Node;
 	inf->Mode = mode;
+	inf->Flags |= (qy->Data->Flags & QY_F_VOLATILE);
 
 	/** increase count of open objects to the node **/
 	inf->Node->OpenCnt++;
@@ -612,8 +792,7 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	if (!inf->MultiQueryObject)
 	    {
 	    /** if no more items, return NULL **/
-	    qy_internal_Close(inf);
-	    return NULL;
+	    goto end_of_results;
 	    }
 	objUnmanageObject(inf->Obj->Session, inf->MultiQueryObject);
 	qy->ItemCnt++;
@@ -623,18 +802,22 @@ qyQueryFetch(void* qy_v, pObject obj, int mode, pObjTrxTree* oxt)
 	objGetAttrValue(inf->MultiQueryObject, "name", DATA_T_STRING, POD(&ptr));
 	if (!ptr)
 	    {
-	    qy_internal_Close(inf);
-	    return NULL;
+	    mssError(1, "QUERY", "Query result has no 'name' attribute");
+	    goto error;
 	    }
 	if (obj_internal_AddToPath(obj->Pathname, ptr) < 0)
 	    {
 	    mssError(1,"QUERY","Query result pathname exceeds internal limits");
-	    qy_internal_Close(inf);
-	    return NULL;
+	    goto error;
 	    }
 	inf->Name = nmSysStrdup(ptr);
 
-    return (void*)inf;
+	return (void*)inf;
+
+    end_of_results:
+    error:
+	if (inf) qy_internal_Close(inf);
+	return NULL;
     }
 
 
@@ -893,8 +1076,17 @@ qyInfo(void* inf_v, pObjectInfo info)
 	    if (ll_info)
 		{
 		memcpy(info, ll_info, sizeof(ObjectInfo));
+		if (inf->Flags & QY_F_VOLATILE)
+		    info->Flags |= OBJ_INFO_F_VOLATILE;
 		return 0;
 		}
+	    }
+
+	/** A volatile .qy reports so even when it returns no rows **/
+	if (inf->Flags & QY_F_VOLATILE)
+	    {
+	    info->Flags |= OBJ_INFO_F_VOLATILE;
+	    return 0;
 	    }
 
     return -1;

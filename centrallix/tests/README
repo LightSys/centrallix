@@ -17,8 +17,8 @@ the $TONLY environment variable to the category in question.  For example,
     $ make test
 
 The test_00baseline_NN tests only validate that the test suite itself is
-operating correctly.  The tests in this category will pass, fail, crash, and
-lockup, just to ensure that the test suite is correctly reporting the test
+operating correctly.  The tests in this category will pass, skip, fail, crash,
+and lockup, just to ensure that the test suite is correctly reporting the test
 results.
 
 Or, to just run the SQL engine tests:

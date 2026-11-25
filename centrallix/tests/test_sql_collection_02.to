@@ -1,0 +1,8 @@
+##NAME SQL Temp Collection Indexing with NULL
+
+# Enable index and scan output
+test 3,4
+
+query declare collection t scope application; insert into collection t select id = :s:id, f = condition(:s:id = 7, null, :s:id) from /tests/States.csv/rows s; select n = count(1) from collection t where :f = null
+query select n = count(1) from collection t where :id = 7 and :f = null
+query declare collection u scope application; insert into collection u select v = null; select n = count(1) from collection u, collection t where :t:f = :u:v

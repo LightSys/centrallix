@@ -463,14 +463,27 @@ function form_cb_object_modified(recnum, dataobj)
 // the form into a new or modify or search mode, as appropriate.
 function form_action_setvalue(aparam)
     {
-    if (!aparam.Field)
-	return;
+    if (aparam.Field)
+	{
+	var data = [{oid:aparam.Field, value:aparam.Value}];
+	}
+    else
+	{
+	var data = [];
+	for(var p in aparam)
+	    {
+	    if (p != '_Origin' && p != '_EventName' && p != '_this' && p != '_context')
+		{
+		data.push({oid:p, value:aparam[p]});
+		}
+	    }
+	}
 
     // Switch the form into the appropriate data modification mode
     this.FocusNotify(null);
 
     // Load the field
-    this.LoadFields([{oid:aparam.Field, value:aparam.Value}], true, true, aparam.Field);
+    this.LoadFields(data, true, true, aparam.Field);
     }
 
 /** Moves form to "NoData" mode **/
@@ -1704,7 +1717,11 @@ function form_init(form,param)
     form.is_savable = false;
     form.is_discardable = false;
     form.is_editable = false;
-    form.is_newable = form.allownew?true:false;
+    // New is a special case since it has to be valid before any data or operations are processed.
+    if (form.allownew == -1)
+	form.is_newable = htr_boolean(wgtrGetServerProperty(form,'allow_new',1));
+    else
+	form.is_newable = form.allownew?true:false;
     form.is_queryable = form.allowquery?true:false;
     form.is_queryexecutable = false;
     form.is_focusable = form.is_newable || form.is_editable || form.is_queryable;

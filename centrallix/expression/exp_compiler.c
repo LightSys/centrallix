@@ -15,7 +15,7 @@
 /* Centrallix Application Server System 				*/
 /* Centrallix Core       						*/
 /* 									*/
-/* Copyright (C) 1999-2001 LightSys Technology Services, Inc.		*/
+/* Copyright (C) 1999-2026 LightSys Technology Services, Inc.		*/
 /* 									*/
 /* This program is free software; you can redistribute it and/or modify	*/
 /* it under the terms of the GNU General Public License as published by	*/
@@ -816,14 +816,53 @@ exp_internal_CompileExpression_r(pLxSession lxs, int level, pParamObjects objlis
     }
 
 
+/*** exp_internal_FunctionCoverage() - return the coverage mask bits that a
+ *** function node adds to its arguments' bits: EXPR_MASK_EXTREF if its value
+ *** can change without any object changing, and EXPR_MASK_INDETERMINATE if
+ *** it can read objects that its arguments don't reference or its value
+ *** changes on every call.
+ ***/
+int
+exp_internal_FunctionCoverage(pExpression exp)
+    {
+    int coverage_mask = 0;
+
+	if (exp->NodeType != EXPR_N_FUNCTION)
+	    return 0;
+
+	/** Values from outside the object list **/
+	if (strcmp(exp->Name, "getdate") == 0
+	    || strcmp(exp->Name, "user_name") == 0
+	    || strcmp(exp->Name, "row_number") == 0
+	    || strcmp(exp->Name, "eval") == 0
+	    || strcmp(exp->Name, "rand") == 0
+	)   coverage_mask |= EXPR_MASK_EXTREF;
+
+	/** Values that can depend on any object, or on each call **/
+	if (strcmp(exp->Name, "eval") == 0
+	    || strcmp(exp->Name, "substitute") == 0
+	    || strcmp(exp->Name, "rand") == 0
+	)   coverage_mask |= EXPR_MASK_INDETERMINATE;
+
+    return coverage_mask;
+    }
+
+
 /*** exp_internal_SetCoverageMask - calculates the object coverage mask
- *** for upper-level nodes.
+ *** for upper-level nodes.  Returns 0 on success or -1 on failure.
  ***/
 int
 exp_internal_SetCoverageMask(pExpression exp)
     {
     int i;
     pExpression subexp;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "EXP", "Failed to set expression coverage mask: resource exhaustion occurred.");
+	    return -1;
+	    }
 
     	/** Shortcut quit **/
 	if (exp->NodeType == EXPR_N_OBJECT || exp->NodeType == EXPR_N_PROPERTY) return 0;
@@ -832,19 +871,13 @@ exp_internal_SetCoverageMask(pExpression exp)
 	for(i=0;i<exp->Children.nItems;i++)
 	    {
 	    subexp = exp->Children.Items[i];
-	    exp_internal_SetCoverageMask(subexp);
+	    if (exp_internal_SetCoverageMask(subexp) < 0)
+		return -1;
 	    exp->ObjCoverageMask |= subexp->ObjCoverageMask;
 	    }
 
-	/** Coverage mask for direct references (incl getdate() and user_name()) **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"row_number") || !strcmp(exp->Name, "eval")))
-	    {
-	    exp->ObjCoverageMask |= EXPR_MASK_EXTREF;
-	    }
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"substitute")))
-	    {
-	    exp->ObjCoverageMask |= EXPR_MASK_INDETERMINATE;
-	    }
+	/** Coverage from functions and subqueries **/
+	exp->ObjCoverageMask |= exp_internal_FunctionCoverage(exp);
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
 	    exp->ObjCoverageMask |= EXPR_MASK_INDETERMINATE;
@@ -987,7 +1020,11 @@ expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags)
 	if (!e) return NULL;
 	/*if (!(e->Flags & EXPR_F_DOMAINMASK)) e->Flags |= EXPR_F_RUNDEFAULT;*/
 	exp_internal_SetAggLevel(e);
-	exp_internal_SetCoverageMask(e);
+	if (exp_internal_SetCoverageMask(e) < 0)
+	    {
+	    expFreeExpression(e);
+	    return NULL;
+	    }
 	exp_internal_SetDomain(e);
 
 	/** Set SEQ ids. **/
@@ -1045,7 +1082,8 @@ expCompileExpression(char* text, pParamObjects objlist, int lxflags, int cmpflag
  *** object list.  'domain' specifies the requested bind domain, whether
  *** runstatic (EXP_F_RUNSTATIC), runserver (EXP_F_RUNSERVER), or runclient
  *** (EXP_F_RUNCLIENT).  'domain' can also be -0-, in which case we rebind
- *** a domainless expression.
+ *** a domainless expression.  Sets each node's ObjCoverageMask, and returns
+ *** 0 on success or -1 on failure.
  ***/
 int
 expBindExpression(pExpression exp, pParamObjects objlist, int flags)
@@ -1053,6 +1091,14 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
     int i,cm=0;
     int idx;
     int domain = flags & EXPR_F_DOMAINMASK;
+    pExpression subexp;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1, "EXP", "Failed to bind expression: resource exhaustion occurred.");
+	    return -1;
+	    }
 
 	/** For a property node, check if the object should be set. **/
 	if (exp->NodeType == EXPR_N_PROPERTY && ((exp->Flags & domain) || !domain))
@@ -1088,11 +1134,8 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 		}
 	    }
 
-	/** Check for absolute references in functions **/
-	if (exp->NodeType == EXPR_N_FUNCTION && (!strcmp(exp->Name,"getdate") || !strcmp(exp->Name,"user_name") || !strcmp(exp->Name,"row_number")))
-	    {
-	    cm |= EXPR_MASK_EXTREF;
-	    }
+	/** Coverage from functions and subqueries **/
+	cm |= exp_internal_FunctionCoverage(exp);
 	if (exp->NodeType == EXPR_N_SUBQUERY)
 	    {
 	    cm |= EXPR_MASK_INDETERMINATE;
@@ -1100,9 +1143,14 @@ expBindExpression(pExpression exp, pParamObjects objlist, int flags)
 	    }
 
 	/** Loop through subnodes in the tree to process them as well. **/
-	for(i=0;i<exp->Children.nItems;i++) cm |= expBindExpression((pExpression)(exp->Children.Items[i]), objlist, domain);
+	for(i=0;i<exp->Children.nItems;i++)
+	    {
+	    subexp = (pExpression)exp->Children.Items[i];
+	    if (expBindExpression(subexp, objlist, domain) < 0)
+		return -1;
+	    cm |= subexp->ObjCoverageMask;
+	    }
 	exp->ObjCoverageMask = cm;
 
-    return cm;
+    return 0;
     }
-

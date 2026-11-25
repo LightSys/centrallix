@@ -1,0 +1,11 @@
+##NAME Collection parameters: passing collections and paths
+
+csv declare collection c; insert into collection c select :abbrev, :full_name from /tests/States.csv/rows where :abbrev < 'C'; exec /tests/collparam.qy (src = collection c)
+csv declare collection c; insert into collection c select :abbrev, :full_name from /tests/States.csv/rows where :abbrev < 'C'; exec /tests/collparam.qy (src = collection "c", prefix = 'A')
+csv declare collection c; insert into collection c select :abbrev, :full_name from /tests/States.csv/rows where :abbrev < 'C'; exec /tests/collparam.qy src = collection c, prefix = 'A'
+csv declare collection c; insert into collection c select :abbrev, :full_name from /tests/States.csv/rows where :abbrev < 'C'; select :q:abbrev, :s:id from /tests/collparam.qy (src = collection c) q, /tests/States.csv/rows s where :s:abbrev = :q:abbrev
+csv exec /tests/collparam.qy (src = path /tests/States.csv/rows, prefix = 'W')
+csv exec /tests/collparam.qy (prefix = 'V', src = path "/tests/States.csv/rows")
+csv exec /tests/collparam.qy (src = path /tests/States.csv/rows)
+csv declare collection c; insert into collection c select :abbrev, :full_name from /tests/States.csv/rows; exec /tests/collparam_chain.qy (src2 = collection c)
+csv exec /tests/collparam_chain.qy (src2 = path /tests/States.csv/rows)
