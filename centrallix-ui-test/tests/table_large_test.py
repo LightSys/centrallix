@@ -1060,12 +1060,14 @@ class Suite:
         s.settle(30)
         s.click_button("first_btn")
         s.settle(30)
-        # Slow enough that the press still lands on the (small) moving thumb.
-        s.js("(setRelativeY(t.scrollbar.b, t.thumb_avail - t.thumb_height + 18), $(t.scrollbar.b).animate({top: '18px'}, 6000), 0)")
+        # Slow enough that the press lands on the small moving thumb.
+        s.js("(setRelativeY(t.scrollbar.b, t.thumb_avail - t.thumb_height + 18), $(t.scrollbar.b).animate({top: '18px'}, 60000), 0)")
         time.sleep(0.3)
         start, target, samples = self.drag_thumb_sampled(s, 0.3)
-        self.check(s, 24, "running animation: the drag started", s.js("__tl.dragStarted"), "the press did not land on the thumb")
-        self.check_thumb_samples(s, 24, "running animation", start, target, samples)
+        started = s.js("__tl.dragStarted")
+        self.check(s, 24, "running animation: the drag started", started, "the press did not land on the thumb")
+        if started:
+            self.check_thumb_samples(s, 24, "running animation", start, target, samples)
         self.check_invariants(s, 24, "invariants after dragging during an animation", check_order=True)
 
     def stress_step(self, s, rng):
