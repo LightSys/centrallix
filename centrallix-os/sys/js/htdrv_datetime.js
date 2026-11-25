@@ -367,6 +367,7 @@ function dt_drawmonth(l, d) {
 		l.VisLayer.Areas.shift();
 	}
 	pg_removearea(l.VisLayer.NullArea);
+	pg_removearea(l.VisLayer.TodayArea);
 
 	var cur_dy = null;
 	if (l.myid != 'PaneLayer2' && l.ml.DateObj && TmpDate.getMonth() == l.ml.DateObj.getMonth() && TmpDate.getYear() == l.ml.DateObj.getYear())
