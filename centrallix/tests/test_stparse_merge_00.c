@@ -57,7 +57,7 @@ str_value(pStructInf group, char* name, int nval)
     return str;
     }
 
-/*** stMergeInf() merges a drop-in config over a base config: attributes
+/*** stMergeInf() merges an included config over a base config: attributes
  *** replace values in place, groups merge recursively, and unmatched
  *** entries are appended.  Mismatched kinds or group types fail.
  ***/

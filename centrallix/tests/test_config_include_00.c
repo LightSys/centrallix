@@ -96,7 +96,7 @@ test(char** name)
     strcpy(CxGlobals.ConfigFileName, test_path("centrallix.conf"));
     CxGlobals.QuietInit = 1;
 
-    /** Drop-ins override in name order; other files are ignored **/
+    /** Included files override in name order; other files are ignored **/
     assert(mkdir(test_path("conf.d"), 0700) == 0);
     write_main_config("conf.d");
     write_file("conf.d/90-local.conf", "$Version=2$\nlocal \"system/config\" { net_http \"system/config\" { listen_port = 8443; } }\n");

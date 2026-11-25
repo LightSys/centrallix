@@ -317,11 +317,11 @@ cx_internal_ParseConfigFile(char* path)
     }
 
 
-/*** cx_internal_IsDropInConfig - scandir() filter for the drop-in config
- *** files in an include_dir: visible files named "*.conf".
+/*** cx_internal_IsConfig - scandir() filter for the included config files
+ *** in an include_dir: visible files named "*.conf".
  ***/
 static int
-cx_internal_IsDropInConfig(const struct dirent* entry)
+cx_internal_IsConfig(const struct dirent* entry)
     {
     size_t len = strlen(entry->d_name);
 
@@ -353,7 +353,7 @@ int
 cxLoadConfig()
     {
     pStructInf include_inf;
-    pStructInf drop_in;
+    pStructInf included;
     char* include_dir = NULL;
     char* path = NULL;
     struct dirent** entries = NULL;
@@ -365,7 +365,7 @@ cxLoadConfig()
 	CxGlobals.ParsedConfig = cx_internal_ParseConfigFile(CxGlobals.ConfigFileName);
 	if (CxGlobals.ParsedConfig == NULL) goto end;
 
-	/** Find the drop-in directory, if any **/
+	/** Find the include directory, if any **/
 	include_inf = stLookup(CxGlobals.ParsedConfig, "include_dir");
 	if (include_inf == NULL)
 	    {
@@ -380,8 +380,8 @@ cxLoadConfig()
 	    goto end;
 	    }
 
-	/** List the drop-in files in name order **/
-	n_entries = scandir(include_dir, &entries, cx_internal_IsDropInConfig, cx_internal_CompareNames);
+	/** List the included files in name order **/
+	n_entries = scandir(include_dir, &entries, cx_internal_IsConfig, cx_internal_CompareNames);
 	if (n_entries < 0)
 	    {
 	    printf("centrallix: failed to read include_dir '%s': %s\n",
@@ -390,7 +390,7 @@ cxLoadConfig()
 	    goto end;
 	    }
 
-	/** Merge each drop-in file **/
+	/** Merge each included file **/
 	path = nmMalloc(PATH_MAX);
 	if (path == NULL) goto end;
 	for(i=0; i<n_entries; i++)
@@ -402,16 +402,16 @@ cxLoadConfig()
 		goto end;
 		}
 	    if (!CxGlobals.QuietInit) printf("centrallix: loading config file '%s'\n", path);
-	    drop_in = cx_internal_ParseConfigFile(path);
-	    if (drop_in == NULL) goto end;
-	    if (stLookup(drop_in, "include_dir") != NULL)
+	    included = cx_internal_ParseConfigFile(path);
+	    if (included == NULL) goto end;
+	    if (stLookup(included, "include_dir") != NULL)
 		{
 		printf("centrallix: failed to load config file '%s': "
 			"only '%s' can set include_dir\n", path, CxGlobals.ConfigFileName);
-		stFreeInf(drop_in);
+		stFreeInf(included);
 		goto end;
 		}
-	    if (stMergeInf(CxGlobals.ParsedConfig, drop_in) < 0)
+	    if (stMergeInf(CxGlobals.ParsedConfig, included) < 0)
 		{
 		printf("centrallix: failed to merge config file '%s'\n", path);
 		goto end;
