@@ -482,6 +482,14 @@ function tbld_redraw_all(dataobj, force_datafetch)
 //	this.osrc.MoveToRecord(selected_position_changed);
 //	}
 
+    // Waiting to show the end of the results, which is now known?
+    if (this.scroll_to_end && this.rows.lastosrc !== null)
+	{
+	this.scroll_to_end = false;
+	this.BringIntoView(this.rows.lastosrc);
+	return;
+	}
+
     // Need to scroll?
     if (this.target_y != null)
 	{
@@ -952,56 +960,74 @@ function tbld_update_thumb(anim)
     if (total === null || total === undefined)
 	total = Math.max(this.osrc.LastRecord, this.rows.last || 0) + 2*this.rowcache_size;
 
-    // Fractional record at the top of the view, and records per view.
+    // Fractional record numbers at the top and bottom edges of the view, from
+    // the actual row positions (so the ends line up exactly whatever the row
+    // heights or expanded row details).
     var top_rec = 0;
-    var per_view = total;
+    var bottom_rec = total;
     if (this.rows.first !== null && this.rows[this.rows.first] && this.rows[this.rows.last])
 	{
 	var first_y = getRelativeY(this.rows[this.rows.first]);
 	var last_row = this.rows[this.rows.last];
-	var span = getRelativeY(last_row) + $(last_row).height() + this.cellvspacing*2 - first_y;
-	var avg_h = span / (this.rows.last - this.rows.first + 1);
-	if (avg_h > 0)
-	    per_view = this.vis_height / avg_h;
-	var view_y = 0 - this.scroll_y;
-	top_rec = this.rows.first - 1 + (view_y - first_y) / avg_h;
-	for(var i=this.rows.first; i<=this.rows.last; i++)
+	var last_bottom = getRelativeY(last_row) + $(last_row).height() + this.cellvspacing*2;
+	var avg_h = (last_bottom - first_y) / (this.rows.last - this.rows.first + 1);
+	var rec_at = (y) =>
 	    {
-	    var r = this.rows[i];
-	    if (!r) continue;
-	    var ry = getRelativeY(r);
-	    var rh = $(r).height() + this.cellvspacing*2;
-	    if (view_y >= ry && view_y < ry + rh)
+	    if (y <= first_y)
+		return this.rows.first - 1 - (first_y - y) / avg_h;
+	    if (y >= last_bottom)
+		return this.rows.last + (y - last_bottom) / avg_h;
+	    for(var i=this.rows.first; i<=this.rows.last; i++)
 		{
-		top_rec = i - 1 + (view_y - ry) / rh;
-		break;
+		var r = this.rows[i];
+		if (!r) continue;
+		var ry = getRelativeY(r);
+		var rh = $(r).height() + this.cellvspacing*2;
+		if (y < ry)
+		    return i - 1;
+		if (y < ry + rh)
+		    return i - 1 + (y - ry) / rh;
 		}
-	    }
+	    return this.rows.last;
+	    };
+	var view_y = 0 - this.scroll_y;
+	top_rec = Math.min(Math.max(rec_at(view_y), 0), total);
+	bottom_rec = Math.min(Math.max(rec_at(view_y + this.vis_height), 0), total);
+	}
+    var visible = bottom_rec - top_rec;
+
+    // Going to a record (or the end) that is still loading?  Show where we are going.
+    if (this.scroll_to_end)
+	{
+	top_rec = Math.max(0, total - visible);
+	bottom_rec = total;
+	}
+    else if (this.scroll_to_rec)
+	{
+	top_rec = Math.min(this.scroll_to_rec - 1, total - visible);
+	bottom_rec = top_rec + visible;
 	}
 
-    // Going to a record that is still loading?  Show where we are going.
-    if (this.scroll_to_rec)
-	top_rec = this.scroll_to_rec - 1;
-
-    // Thumb geometry.
-    var scrollable = total - per_view;
-    if (scrollable <= 0)
+    // Thumb geometry: its position is the share of records above the view
+    // out of all records not in view.
+    var above = top_rec;
+    var below = Math.max(0, total - bottom_rec);
+    if (above + below <= 0)
 	{
 	this.thumb_height = this.thumb_avail;
 	this.thumb_pos = 0;
 	}
     else
 	{
-	this.thumb_height = this.thumb_avail * per_view / total;
+	this.thumb_height = this.thumb_avail * visible / total;
 	if (this.thumb_height < 10)
 	    this.thumb_height = 10;
-	var frac = top_rec / scrollable;
-	if (frac < 0) frac = 0;
-	if (frac > 1) frac = 1;
-	this.thumb_pos = Math.round((this.thumb_avail - this.thumb_height) * frac);
+	if (this.thumb_height > this.thumb_avail)
+	    this.thumb_height = this.thumb_avail;
+	this.thumb_pos = (this.thumb_avail - this.thumb_height) * above / (above + below);
 	}
     this.thumb_total = total;
-    this.thumb_per_view = per_view;
+    this.thumb_per_view = visible;
 
     // Move the scroll thumb, unless the user is dragging it.
     var dragging = (window.tbldx_current && window.tbldx_current.table == this);
@@ -1662,7 +1688,27 @@ function tbld_sched_thumb_scroll(frac)
 function tbld_thumb_scroll(frac)
     {
     this.scroll_timeout = null;
-    var pos = frac * Math.max(this.thumb_total - this.thumb_per_view, 0);
+    this.scroll_to_end = false;
+
+    // Bottom of the track: show the last record, finding the end first if
+    // the osrc has not reached it yet.
+    if (frac >= 1)
+	{
+	this.scroll_to_rec = null;
+	this.target_y = null;
+	if (this.rows.lastosrc !== null)
+	    {
+	    this.BringIntoView(this.rows.lastosrc);
+	    }
+	else
+	    {
+	    this.scroll_to_end = true;
+	    this.OsrcRequest('ScrollTo', {start:Number.MAX_VALUE, end:Number.MAX_VALUE});
+	    }
+	return;
+	}
+
+    var pos = Math.max(frac, 0) * Math.max(this.thumb_total - this.thumb_per_view, 0);
     var recnum = Math.floor(pos) + 1;
     if (this.rows.lastosrc !== null && recnum > this.rows.lastosrc)
 	recnum = this.rows.lastosrc;
@@ -1696,6 +1742,7 @@ function tbld_scroll(y, animate)
 	animate = 'swing';
     //this.log.push("tbld_scroll(" + y + ")");
     this.target_y = null;
+    this.scroll_to_end = false;
 
     // No rows currently accessible?
     if (!this.rows.first || !this.rows.last || !this.rows[this.rows.first] || !this.rows[this.rows.last])
@@ -2669,6 +2716,7 @@ function tbld_init(param)
     t.bdr_width = (t.colsep > 0)?3:0;
     t.target_y = null;
     t.scroll_to_rec = null;
+    t.scroll_to_end = false;
     t.followed_cr = null;
     t.newrow = null;
     t.newrow_slot = null;
@@ -3581,7 +3629,14 @@ function tbld_mousemove(e)
 	setRelativeY(t.box, tbldx_tstart + incr);
 	if (t.thumb_avail > t.thumb_height)
 	    {
-	    t.SchedThumbScroll((tbldx_tstart + incr - 18) / (t.thumb_avail - t.thumb_height));
+	    // Within a pixel of either end of its travel counts as that end.
+	    var box_top = tbldx_tstart + incr;
+	    var frac = (box_top - 18) / (t.thumb_avail - t.thumb_height);
+	    if (box_top <= 18 + 1)
+		frac = 0;
+	    else if (box_top >= $(t.scrollbar).height() - 18 - 3 - $(t.box).height() - 1)
+		frac = 1;
+	    t.SchedThumbScroll(frac);
 	    }
 	}
 
@@ -3643,7 +3698,10 @@ function tbld_mouseup(e)
         }
     if (tbldx_current)
 	{
+	// End of a thumb drag: size and place the thumb for the current view.
+	var t = tbldx_current.table;
 	tbldx_current = null;
+	t.UpdateThumb(false);
 	}
     if(ly.kind && ly.kind=='tabledynamic')
         {

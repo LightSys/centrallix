@@ -38,6 +38,7 @@ reporter = TestReporter("TableLarge")
 APP = "/tests/ui/table_large/table_large_test.app"
 DETAIL_APP = "/tests/ui/table_large/table_large_detail_test.app"
 EMPTY_APP = "/tests/ui/table_large/table_large_empty_test.app"
+ROWDETAIL_APP = "/tests/ui/table_large/table_large_rowdetail_test.app"
 TOTAL_ROWS = 1000
 
 # Helpers injected into the page.  Nothing here changes table or osrc
@@ -87,7 +88,7 @@ window.__tl = {
     settled: function(t) {
 	var o = t.osrc;
 	return !t.osrc_busy && !o.pending && !(o.masters_pending && o.masters_pending.length) &&
-	    !$(t.scrolldiv).queue().length && !(window.pg_loadqueue && pg_loadqueue.length) &&
+	    !$(t.scrolldiv).queue().length && !$(t.scrollbar.b).queue().length && !(window.pg_loadqueue && pg_loadqueue.length) &&
 	    t.target_y == null;
     },
 
@@ -1070,6 +1071,80 @@ class Suite:
             self.check_thumb_samples(s, 24, "running animation", start, target, samples)
         self.check_invariants(s, 24, "invariants after dragging during an animation", check_order=True)
 
+    def check_at_end(self, s, test_no, label):
+        """The content is scrolled to its end, the last record is fully shown, and the thumb is at the bottom."""
+        gap, lastvis, thumb_gap = s.js("""[(function(){ var r = t.rows[t.rows.last]; return (0 - t.scroll_y + t.vis_height) - (__tl.relY(r) + $(r).height() + t.cellvspacing*2); })(),
+            __tl.scanVis(t).lastvis, (t.thumb_avail - t.thumb_height) - t.thumb_pos]""")
+        self.check(s, test_no, label + ": last record fully shown", lastvis == TOTAL_ROWS, "scan lastvis=%s" % lastvis)
+        self.check(s, test_no, label + ": content at its end", abs(gap) <= 1, "space below the last row: %.1fpx" % gap)
+        self.check(s, test_no, label + ": thumb at the bottom of its track", abs(thumb_gap) <= 0.25, "thumb %.2fpx above the bottom" % thumb_gap)
+
+    def check_at_start(self, s, test_no, label):
+        first_y, firstvis, thumb_top = s.js("[__tl.relY(t.rows[1] || t.scrolldiv) + t.scroll_y, __tl.scanVis(t).firstvis, t.thumb_pos]")
+        self.check(s, test_no, label + ": record 1 at the top", firstvis == 1 and abs(first_y) <= 1, "firstvis=%s, record 1 at %.1fpx" % (firstvis, first_y))
+        self.check(s, test_no, label + ": thumb at the top of its track", abs(thumb_top) <= 0.25, "thumb %.2fpx below the top" % thumb_top)
+
+    def test25(self):
+        reporter.add_test(25, "Thumb reaches the bottom with a row detail expanded")
+        s = self.session(ROWDETAIL_APP)
+        s.click_button("last_btn")
+        self.check_settled(s, 25, "after Last", timeout=30)
+        self.check(s, 25, "selected last record shows its detail", s.js("!!t.rows[%d] && t.rows[%d].detail.length > 0" % (TOTAL_ROWS, TOTAL_ROWS)))
+        self.check_at_end(s, 25, "after Last")
+
+        # A detail expanded on a row that is still loaded but scrolled above the view.
+        s.wheel(-300)
+        s.settle()
+        row = s.js("__tl.scanVis(t).firstvis")
+        s.click_row(row)
+        s.settle()
+        self.check(s, 25, "clicked row shows its detail", s.js("!!t.rows[%d] && t.rows[%d].detail.length > 0" % (row, row)))
+        for i in range(3):
+            s.wheel(600)
+            s.settle()
+        above = s.js("!!t.rows[%d] && __tl.scanVis(t).intersecting.indexOf(%d) < 0" % (row, row))
+        self.check(s, 25, "row with the detail is loaded but above the view", above)
+        self.check_at_end(s, 25, "detail expanded above the view")
+
+        s.click_button("first_btn")
+        self.check_settled(s, 25, "after First", timeout=30)
+        self.check_at_start(s, 25, "after First")
+
+    def test26(self):
+        reporter.add_test(26, "Thumb drag to the ends of the track")
+        s = self.session()
+        box = s.js("t.scrollbar.b")
+        chain = ActionChains(s.d).click_and_hold(box)
+        for i in range(8):
+            chain = chain.move_by_offset(0, 50).pause(0.04)
+        chain.release().perform()
+        self.check_settled(s, 26, "after dragging to the bottom", timeout=60)
+        self.check_at_end(s, 26, "dragged to the bottom")
+        self.check_invariants(s, 26, "invariants at the bottom", check_order=True)
+
+        box = s.js("t.scrollbar.b")
+        chain = ActionChains(s.d).click_and_hold(box)
+        for i in range(8):
+            chain = chain.move_by_offset(0, -50).pause(0.04)
+        chain.release().perform()
+        self.check_settled(s, 26, "after dragging to the top", timeout=60)
+        self.check_at_start(s, 26, "dragged to the top")
+        self.check_invariants(s, 26, "invariants at the top", check_order=True)
+
+        # End already known: from part way up, drag back onto the last pixel of the track.
+        box = s.js("t.scrollbar.b")
+        ActionChains(s.d).click_and_hold(box).move_by_offset(0, 300).pause(0.04).release().perform()
+        s.settle(60)
+        box = s.js("t.scrollbar.b")
+        bottom = s.js("$(t.scrollbar).height() - 18 - 3 - $(t.box).height()")
+        step = (bottom - s.js("__tl.relY(t.scrollbar.b)")) / 4.0
+        chain = ActionChains(s.d).click_and_hold(box)
+        for i in range(4):
+            chain = chain.move_by_offset(0, int(round(step))).pause(0.04)
+        chain.move_by_offset(0, 1).pause(0.04).release().perform()
+        self.check_settled(s, 26, "after dragging back to the bottom", timeout=60)
+        self.check_at_end(s, 26, "dragged back to the bottom")
+
     def stress_step(self, s, rng):
         kinds = ["wheel", "wheel", "wheel", "bigwheel", "drag", "click", "first", "last", "prev", "next", "refresh", "newcancel"]
         exclude = self.config.get("stress_exclude") or []
@@ -1107,7 +1182,7 @@ class Suite:
 
     def run(self):
         only = self.config.get("only")
-        tests = [getattr(self, "test%d" % i) for i in range(1, 25) if not only or i in only]
+        tests = [getattr(self, "test%d" % i) for i in range(1, 27) if not only or i in only]
         try:
             if not self.data_is_clean(self.session()):
                 print("Test data is not in its generated state.  Stop the server, run")

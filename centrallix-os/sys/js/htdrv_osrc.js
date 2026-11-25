@@ -2702,6 +2702,13 @@ function osrc_scroll_to(startrec, endrec)
 	    }
 	else
 	    {
+	    /* to the end of the results: fetch the last page directly */
+	    if (this.TargetRecord[1] == Number.MAX_VALUE && !this.query_ended)
+		{
+		this.FindLastPage();
+		return 0;
+		}
+
 	    /* data is far ahead: start a query there instead of reading up to it */
 	    if (this.TargetRecord[0] > this.LastRecord + this.replicasize && this.TargetRecord[1] != Number.MAX_VALUE && !this.query_ended)
 		{
