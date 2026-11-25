@@ -388,6 +388,8 @@ gap1 "widget/autolayoutspacer"
 
 			<property name="start_at_zero" type="boolean">Set to false if you want the y-axis to start at the lowest data value.  Default is true.</property>
 
+			<property name="stacked" type="boolean">Set to true to stack the bars of all series at each x value, instead of drawing them side by side.  Default is false.</property>
+
 			<property name="title" type="string">The title of the chart.  Default is none.</property>
 
 			<property name="titlecolor" type="string">A color, RGB or named, of the chart title.</property>
@@ -2813,6 +2815,8 @@ myMenu "widget/menu"
 			<action name="ChangeSource">Changes the data item that the object source points to in the server.  The 'Source' parameter is the new object path, which replaces the old path everywhere it occurs in the query.  The query is then re-run, unless the 'Refresh' parameter is given a false value.</action>
 
 			<action name="Clear"><ni/>Clears the replica of data.</action>
+
+			<action name="Copy">Creates a new object that is a copy of the current record, and makes the new object the current record.  Any parameters supplied set the values of those fields in the new object instead of the copied values; a parameter set to null leaves that field unset, so it takes its default value (or, for a key field, is autonumbered by drivers that support that).  If a form or other client has unsaved changes, it is given the chance to save them first.</action>
 
 			<action name="Create"><ni/>Encapsulates data in an array and calls CreateObject.</action>
 

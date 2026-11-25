@@ -285,7 +285,8 @@ function cht_chartjs_init() {
                 position: this.params.legend_position
             },
             onClick: function(event, activeElements) {
-                if (activeElements.length == 1) {
+                // Stacked or multi-series bars report one element per series at the clicked index.
+                if (activeElements.length >= 1) {
                     chart_wgt.OsrcRequest('MoveToRecord', {
                         rownum: activeElements[0]._index + 1
                     })

@@ -212,20 +212,20 @@ function tbld_format_cell(cell, color)
 	else
 	    {
 	    // Text
-	    txt = '<span onclick="() => {}">' + str + '</span>';
+	    txt = '<span onclick="void 0">' + str + '</span>';
 	    }
 	style += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), null, {textcolor: color});
 	if (cell.capdata)
 	    {
 	    // Caption (added to any of the above types)
-	    captxt = '<span onclick="() => {}">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
+	    captxt = '<span onclick="void 0">' + htutil_encode(htutil_obscure(cell.capdata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		captxt = htutil_nlbr(captxt);
 	    capstyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "caption", {textcolor: color});
 	    }
 	if (cell.titledata)
 	    {
-	    titletxt = '<span onclick="() => {}">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
+	    titletxt = '<span onclick="void 0">' + htutil_encode(htutil_obscure(cell.titledata), colinfo.wrap != 'no' && colinfo.wrap != 'newline') + '</span>';
 	    if (colinfo.wrap != 'no')
 		titletxt = htutil_nlbr(titletxt);
 	    titlestyle += htutil_getstyle(wgtrFindDescendent(this,colinfo.name,colinfo.ns), "title", {textcolor: color});

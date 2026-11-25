@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2014 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -883,6 +883,46 @@ function osrc_action_create(aparam)
 	if (p != 'cx__focus')
 	    newobj.push({oid:p, value:aparam[p]});
     this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj, focus:aparam['cx__focus']});
+    }
+
+/*** osrc_action_copy - creates a new object from the current record's
+ *** values, with any values supplied in aparam replacing the copied ones.
+ *** A value supplied as null is left unset in the new object, so that
+ *** it takes its default (and a key field is autonumbered).  As with
+ *** Create, the new object becomes the current record.
+ ***/
+function osrc_action_copy(aparam)
+    {
+    if (!this.replica || !this.replica[this.CurrentRecord]) return false;
+    this.GoNogo(osrc_action_copy_go, osrc_action_copy_nogo, aparam?aparam:{});
+    return true;
+    }
+
+function osrc_action_copy_go(aparam)
+    {
+    // Re-read the current record, since unsaved changes may have just been saved.
+    var cr = this.replica?this.replica[this.CurrentRecord]:null;
+    if (!cr) return;
+    var newobj = [];
+    for(var j in cr)
+	{
+	var col = cr[j];
+	if (j == 'oid' || col == null || typeof col != 'object' || !col.oid || col.system) continue;
+	if (typeof aparam[col.oid] != 'undefined') continue;
+	newobj.push({oid:col.oid, value:col.value, type:col.type});
+	}
+    for(var p in aparam)
+	{
+	if (p == '_Origin' || p == '_EventName' || p.substr(0,4) == 'cx__') continue;
+	if (aparam[p] === null || typeof aparam[p] == 'undefined') continue;
+	newobj.push({oid:p, value:aparam[p]});
+	}
+    this.ifcProbe(ifAction).Invoke("CreateObject", {client:null, data:newobj, focus:aparam['cx__focus']});
+    }
+
+function osrc_action_copy_nogo(aparam)
+    {
+    return;
     }
 
 function osrc_action_create_object(aparam) //up,initiating_client)
@@ -4276,6 +4316,7 @@ function osrc_init(param)
     ia.Add("Delete", osrc_action_delete);
     ia.Add("CreateObject", osrc_action_create_object);
     ia.Add("Create", osrc_action_create);
+    ia.Add("Copy", osrc_action_copy);
     ia.Add("Modify", osrc_action_modify);
     ia.Add("First", osrc_move_first);
     ia.Add("Next", osrc_move_next);
