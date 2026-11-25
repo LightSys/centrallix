@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -914,6 +915,61 @@ exp_internal_SetDomain(pExpression exp)
     }
 
 
+/*** exp_internal_WarnEqualsNull - warn about each "= NULL" comparison that
+ *** runs on the server, since it is always false.  'objlist' is the list the
+ *** expression was compiled against.  Returns 0 on success, or -1 on failure.
+ ***/
+int
+exp_internal_WarnEqualsNull(pExpression exp, pParamObjects objlist)
+    {
+    int i;
+    int rval = -1;
+    bool compares_null = false;
+    pExpression child;
+    pExpression operand = NULL;
+    pXString text = NULL;
+    XString text_buf;
+
+	/** Check recursion **/
+	if (thExcessiveRecursion())
+	    {
+	    mssError(1,"EXP","Failed to check for '= NULL': resource exhaustion occurred");
+	    goto end;
+	    }
+
+	/** Check children first **/
+	for(i=0;i<exp->Children.nItems;i++)
+	    {
+	    child = (pExpression)(exp->Children.Items[i]);
+	    if (exp_internal_WarnEqualsNull(child, objlist) < 0) goto end;
+	    if (child->Flags & EXPR_F_PERMNULL)
+		compares_null = true;
+	    else
+		operand = child;
+	    }
+
+	/** Warn on a server-side "= NULL" **/
+	if (exp->NodeType == EXPR_N_COMPARE && exp->CompareType == MLX_CMP_EQUALS
+	    && compares_null && operand != NULL
+	    && (exp->Flags & EXPR_F_DOMAINMASK) != EXPR_F_RUNCLIENT)
+	    {
+	    if (xsInit(&text_buf) == 0) text = &text_buf;
+	    if (text == NULL || expGenerateText(operand, objlist, xsWrite, text, '\0', "cxsql", 0) < 0)
+		{
+		mssError(0,"EXP","Failed to print a '= NULL' comparison, which is always false: use IS NULL.");
+		goto end;
+		}
+	    xsTrim(text);
+	    mssWarn("EXP", "'%s = NULL' is always false: use '%s IS NULL'.", text->String, text->String);
+	    }
+
+	rval = 0;
+    end:
+	if (text != NULL) xsDeInit(text);
+    return rval;
+    }
+
+
 /*** exp_internal_SetAggLevel - determine the level of aggregate nesting
  *** in an expression.
  ***/
@@ -1026,6 +1082,8 @@ expCompileExpressionFromLxs(pLxSession s, pParamObjects objlist, int cmpflags)
 	    return NULL;
 	    }
 	exp_internal_SetDomain(e);
+	if (exp_internal_WarnEqualsNull(e, objlist) < 0)
+	    mssWarnError("EXP", "Failed to check for '= NULL' comparisons.");
 
 	/** Set SEQ ids. **/
 	exp_internal_SetupControl(e);
