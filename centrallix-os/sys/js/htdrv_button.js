@@ -302,7 +302,7 @@ function gb_mouseup(e)
 	    if (ly.mode == 2)
 		{
 		gb_setmode(ly,1);
-		ly.ifcProbe(ifEvent).Activate('Click', { from_action:0 });
+		ly.ifcProbe(ifEvent).Activate('Click', { from_action:0, X:e.pageX, Y:e.pageY });
 		ly.ifcProbe(ifEvent).Activate('MouseUp', {});
 		}
             }
