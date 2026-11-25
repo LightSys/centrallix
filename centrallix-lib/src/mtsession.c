@@ -59,6 +59,7 @@ static struct
     int		LogAllErrors;
     char	AppName[32];
     int		WarnHistory;
+    int		IsInitialized;
     }
     MSS;
 
@@ -72,6 +73,21 @@ int
 mssMemoryErr(char* message)
     {
     mssError(1,"NM","Memory error: %s",message);
+    return 0;
+    }
+
+
+/*** mssFreeParam - release a session parameter and any value allocated
+ *** for it.
+ ***/
+static int
+mssFreeParam(void* param, void* arg)
+    {
+    pMtParam p = (pMtParam)param;
+
+	if (p->IsAlloc) nmSysFree(p->Value);
+	nmFree(p, sizeof(MtParam));
+
     return 0;
     }
 
@@ -114,10 +130,14 @@ mssInitialize(char* authmethod, char* authfile, char* logmethod, int logall, cha
 	    }
 	MSS.WarnHistory = warn_history;
    
-	/** Setup the sessions list **/
-	xaInit(&(MSS.Sessions),16);
-	nmRegister(sizeof(MtSession),"MtSession");
-	nmSetErrFunction(mssMemoryErr);
+	/** Setup the session list and the allocator hooks, once **/
+	if (!MSS.IsInitialized)
+	    {
+	    xaInit(&(MSS.Sessions),16);
+	    nmRegister(sizeof(MtSession),"MtSession");
+	    nmSetErrFunction(mssMemoryErr);
+	    MSS.IsInitialized = 1;
+	    }
 
     return 0;
     }
@@ -171,7 +191,7 @@ int
 mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_maxlen)
     {
     char salt_chars[] = "0123456789abcdef";
-    char salt_buf[9];
+    char salt_buf[MSS_SALT_SIZE * 2 + 1];
     char *ptr;
     char *dstptr;
 	
@@ -179,9 +199,10 @@ mssGenCred(char* salt, int salt_len, char* password, char* credential, int cred_
 	if (salt_len < 1) return -1;
 
 	/** Expand the salt to (up to) 8 bytes **/
+	if (salt_len > MSS_SALT_SIZE) salt_len = MSS_SALT_SIZE;
 	ptr = salt;
 	dstptr = salt_buf;
-	while (*ptr)
+	while (ptr < salt + salt_len)
 	    {
 	    *(dstptr++) = salt_chars[ptr[0] & 0xF];
 	    *(dstptr++) = salt_chars[(ptr[0]>>4) & 0xF];
@@ -366,7 +387,7 @@ mssAuthenticate(char* username, char* password, int bypass_crypt)
 		if (!bypass_crypt)
 		    {
 		    encrypted_pwd = (char*)crypt(s->Password,pwd);
-		    if (strcmp(encrypted_pwd,pwd)) goto end;
+		    if (!encrypted_pwd || strcmp(encrypted_pwd,pwd)) goto end;
 		    }
 		}
 	    else
@@ -464,10 +485,12 @@ mssEndSession(pMtSession s)
 	    if (!s) return -1;
 	    }
 
-	/** Unlink from thread if this is the current thread's session **/
+	/** Unlink from thread with the unlink function off; it re-enters here **/
 	if (s == cur_s)
 	    {
+	    thSetParamFunctions(NULL, mssLinkSession, NULL);
 	    thSetParam(NULL,"mss",NULL);
+	    thSetParamFunctions(NULL, mssLinkSession, mssUnlinkSession);
 	    thSetUserID(NULL,0);
 	    }
 
@@ -475,7 +498,7 @@ mssEndSession(pMtSession s)
 	for(i=0;i<s->ErrList.nItems;i++) nmSysFree(s->ErrList.Items[i]);
 	while (xrqCount(&s->WarnList) > 0) nmSysFree(xrqDequeue(&s->WarnList));
 	xrqDeInit(&s->WarnList);
-	xhClear(&s->Params, NULL, NULL);
+	xhClear(&s->Params, mssFreeParam, NULL);
 	xhDeInit(&s->Params);
 	xaDeInit(&(s->ErrList));
 	xaRemoveItem(&(MSS.Sessions),xaFindItem(&(MSS.Sessions),(void*)s));
@@ -856,22 +879,66 @@ mssSetParamPtr(char* paramname, void* ptr)
     pMtSession s;
     pMtParam p;
     int is_new = 0;
+    char name[MSS_PARAMNAME_SIZE];
 
+	/** Handle edge cases. **/
+	if (paramname == NULL)
+	    {
+	    mssError(1, "MSS", "paramname cannot be null.");
+	    goto error;
+	    }
+
+	/** Get session context. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (s == NULL)
+	    {
+	    mssError(1, "MSS", "Cannot set session param ptr outside of session context.");
+	    goto error;
+	    }
+
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0)
+	    {
+	    mssError(1, "MSS", "Failed to copy paramname: \"%s\".", paramname);
+	    goto error;
+	    }
 
     	/** Need to delete first? **/
-	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
-	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    strtcpy(p->Name, paramname, sizeof(p->Name));
+	    p = nmMalloc(sizeof(MtParam));
+	    if (p == NULL)
+		{
+		mssError(1, "MSS", "Failed to allocate MtParam.");
+		goto error;
+		}
+	    strcpy(p->Name, name);
 	    is_new = 1;
+	    }
+	else if (p->Value == ptr)
+	    {
+	    /** Nothing changes, and the value stays whosever it was **/
+	    return 0;
+	    }
+	else if (p->IsAlloc)
+	    {
+	    nmSysFree(p->Value);
 	    }
 
 	p->Value = ptr;
-	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
+	p->IsAlloc = 0;
+	if (is_new && xhAdd(&s->Params, p->Name, (void*)p) != 0)
+	    {
+	    mssError(1, "MSS", "Failed to add param pointer to xhash.");
+	    nmFree(p, sizeof(MtParam));
+	    goto error;
+	    }
 
-    return 0;
+	return 0;
+
+    error:
+	mssError(0, "MSS", "Failed to set session parameter pointer.");
+	return -1;
     }
 
 
@@ -882,32 +949,44 @@ mssSetParam(char* paramname, void* value)
     {
     pMtSession s;
     pMtParam p;
+    char* new_value;
     int is_new = 0;
+    char name[MSS_PARAMNAME_SIZE];
 
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return -1;
+	if (!s || !paramname || !value) return -1;
+
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0) return -1;
 
     	/** Need to delete first? **/
-	if (!(p = (pMtParam)xhLookup(&s->Params, paramname)))
+	if (!(p = (pMtParam)xhLookup(&s->Params, name)))
 	    {
 	    p = (pMtParam)nmMalloc(sizeof(MtParam));
-	    strtcpy(p->Name, paramname, sizeof(p->Name));
+	    if (!p) return -1;
+	    strcpy(p->Name, name);
+	    p->IsAlloc = 0;
 	    is_new = 1;
 	    }
-	else
-	    {
-	    if (p->Value != p->ValueBuf && p->Value) nmSysFree(p->Value);
-	    }
 
+	/** Take the new value in before letting go of the old one **/
 	if (strlen(value) < sizeof(p->ValueBuf))
 	    {
-	    p->Value = p->ValueBuf;
+	    new_value = p->ValueBuf;
 	    }
 	else
 	    {
-	    p->Value = (char*)nmSysMalloc(strlen(value)+1);
+	    new_value = (char*)nmSysMalloc(strlen(value)+1);
+	    if (!new_value)
+		{
+		if (is_new) nmFree(p, sizeof(MtParam));
+		return -1;
+		}
 	    }
-	strcpy(p->Value, value);
+	memmove(new_value, value, strlen(value)+1);
+	if (p->IsAlloc && p->Value != new_value) nmSysFree(p->Value);
+	p->Value = new_value;
+	p->IsAlloc = (new_value != p->ValueBuf);
 	if (is_new) xhAdd(&s->Params, p->Name, (void*)p);
 
     return 0;
@@ -921,12 +1000,16 @@ mssGetParam(char* paramname)
     {
     pMtSession s;
     pMtParam p;
+    char name[MSS_PARAMNAME_SIZE];
 
 	/** Get session. **/
 	s = (pMtSession)thGetParam(NULL,"mss");
-	if (!s) return NULL;
+	if (!s || !paramname) return NULL;
 
-    	p = (pMtParam) xhLookup(&s->Params, paramname);
+	/** The name has to fit the field it is kept in **/
+	if (strtcpy(name, paramname, sizeof(name)) < 0) return NULL;
+
+    	p = (pMtParam) xhLookup(&s->Params, name);
 	if (!p) return NULL;
 
     return p->Value;
