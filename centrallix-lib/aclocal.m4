@@ -316,6 +316,27 @@ AC_DEFUN(CHECK_VALGRIND,
 )
 	    
 	   
+dnl Check whether to zero-initialize automatic variables.  Valgrind integration
+dnl skips it so that Valgrind can report reads of uninitialized variables.
+AC_DEFUN(CHECK_AUTOINIT,
+    [
+    AC_MSG_CHECKING(if automatic variables should be zero-initialized)
+    AUTOINIT_CFLAGS=""
+    if test "$WITH_VALGRIND" = "yes"; then
+	AC_MSG_RESULT([no (valgrind integration)])
+    else
+	saved_cflags="$CFLAGS"
+	CFLAGS="$CFLAGS -ftrivial-auto-var-init=zero"
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [])],
+	    [AUTOINIT_CFLAGS="-ftrivial-auto-var-init=zero"; AC_MSG_RESULT(yes)],
+	    [AC_MSG_RESULT([no (unsupported by compiler)])]
+	)
+	CFLAGS="$saved_cflags"
+    fi
+    AC_SUBST(AUTOINIT_CFLAGS)
+    ]
+)
+
 dnl Check for POSIX Threads (pthreads) use for MTASK threads.
 AC_DEFUN(CHECK_PTHREADS,
     [

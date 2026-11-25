@@ -183,6 +183,9 @@ CHECK_HARDENING
 dnl Check optimization
 CHECK_OPTIMIZE
 
+dnl Check whether to zero-initialize automatic variables
+CHECK_AUTOINIT
+
 dnl Check for log method
 CHECK_LOGMETHOD
 

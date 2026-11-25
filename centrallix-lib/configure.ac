@@ -69,6 +69,9 @@ CHECK_COVERAGE
 dnl Check for Valgrind integration
 CHECK_VALGRIND
 
+dnl Check whether to zero-initialize automatic variables
+CHECK_AUTOINIT
+
 dnl Check for pthreads use for MTASK
 CHECK_PTHREADS
 
