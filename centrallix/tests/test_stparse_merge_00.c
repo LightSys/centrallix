@@ -41,8 +41,10 @@ int
 int_value(pStructInf group, char* name)
     {
     int n = -1;
+    int rval;
 
-	assert(stAttrValue(stLookup(group, name), &n, NULL, 0) == 0);
+	rval = stAttrValue(stLookup(group, name), &n, NULL, 0);
+	assert(rval == 0);
 
     return n;
     }
@@ -65,6 +67,7 @@ long long
 test(char** name)
     {
     pStructInf base, http;
+    int rval;
 
     *name = "stparse_merge_00 stMergeInf() merges config trees";
 
@@ -86,7 +89,7 @@ test(char** name)
 	"\t}\n"
 	"    net_http \"system/config\" { listen_port = 1; }\n"
 	"    }\n");
-    assert(stMergeInf(base, parse(
+    rval = stMergeInf(base, parse(
 	"$Version=2$\n"
 	"kardia \"system/config\"\n"
 	"    {\n"
@@ -98,7 +101,8 @@ test(char** name)
 	"\tupload_dirs = \"/apps/kardia/files\";\n"
 	"\t}\n"
 	"    mtsession \"system/config\" { auth_method = \"altpasswd\"; }\n"
-	"    }\n")) == 0);
+	"    }\n"));
+    assert(rval == 0);
     assert(strcmp(base->Name, "centrallix") == 0);				// base keeps its name
     assert(base->nSubInf == 5);							// one group added
     assert(strcmp(base->SubInf[1]->Name, "enable_send_credentials") == 0);	// attribute keeps its place
@@ -118,18 +122,22 @@ test(char** name)
 
     /** Group types must match **/
     base = parse("$Version=2$\ncentrallix \"system/config\" { net_http \"system/config\" { listen_port = 800; } }\n");
-    assert(stMergeInf(base, parse("$Version=2$\ncentrallix \"system/config\" { net_http \"system/other\" { listen_port = 8080; } }\n")) < 0);
+    rval = stMergeInf(base, parse("$Version=2$\ncentrallix \"system/config\" { net_http \"system/other\" { listen_port = 8080; } }\n"));
+    assert(rval < 0);
     stFreeInf(base);
     base = parse("$Version=2$\ncentrallix \"system/config\" { listen_port = 800; }\n");
-    assert(stMergeInf(base, parse("$Version=2$\ncentrallix \"system/other\" { listen_port = 8080; }\n")) < 0);
+    rval = stMergeInf(base, parse("$Version=2$\ncentrallix \"system/other\" { listen_port = 8080; }\n"));
+    assert(rval < 0);
     stFreeInf(base);
 
     /** An attribute and a group cannot merge **/
     base = parse("$Version=2$\ncentrallix \"system/config\" { net_http \"system/config\" { listen_port = 800; } }\n");
-    assert(stMergeInf(base, parse("$Version=2$\ncentrallix \"system/config\" { net_http = 8080; }\n")) < 0);
+    rval = stMergeInf(base, parse("$Version=2$\ncentrallix \"system/config\" { net_http = 8080; }\n"));
+    assert(rval < 0);
     stFreeInf(base);
     base = parse("$Version=2$\ncentrallix \"system/config\" { net_http = 8080; }\n");
-    assert(stMergeInf(base, parse("$Version=2$\ncentrallix \"system/config\" { net_http \"system/config\" { listen_port = 800; } }\n")) < 0);
+    rval = stMergeInf(base, parse("$Version=2$\ncentrallix \"system/config\" { net_http \"system/config\" { listen_port = 800; } }\n"));
+    assert(rval < 0);
     stFreeInf(base);
 
     return 0;

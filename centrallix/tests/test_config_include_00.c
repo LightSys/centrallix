@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include "cxlib/mtsession.h"
 #include "cxlib/newmalloc.h"
+#include "cxlib/strtcpy.h"
 #include "stparse.h"
 
 #include "centrallix.h"
@@ -16,8 +17,10 @@ char*
 test_path(char* name)
     {
     static char path[256];
+    int len;
 
-	snprintf(path, sizeof(path), "%s/%s", TestDir, name);
+	len = snprintf(path, sizeof(path), "%s/%s", TestDir, name);
+	assert(len >= 0 && (size_t)len < sizeof(path));
 
     return path;
     }
@@ -37,8 +40,9 @@ void
 write_main_config(char* include_dir)
     {
     char text[512];
+    int len;
 
-	snprintf(text, sizeof(text),
+	len = snprintf(text, sizeof(text),
 	    "$Version=2$\n"
 	    "centrallix \"system/config\"\n"
 	    "    {\n"
@@ -51,6 +55,7 @@ write_main_config(char* include_dir)
 	    "\t}\n"
 	    "    }\n",
 	    TestDir, include_dir);
+	assert(len >= 0 && (size_t)len < sizeof(text));
 	write_file("centrallix.conf", text);
     }
 
@@ -58,8 +63,10 @@ int
 http_int(char* name)
     {
     int n = -1;
+    int rval;
 
-	assert(stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"), name), &n, NULL, 0) == 0);
+	rval = stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"), name), &n, NULL, 0);
+	assert(rval == 0);
 
     return n;
     }
@@ -68,8 +75,10 @@ char*
 http_str(char* name)
     {
     char* str = NULL;
+    int rval;
 
-	assert(stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"), name), NULL, &str, 0) == 0);
+	rval = stAttrValue(stLookup(stLookup(CxGlobals.ParsedConfig, "net_http"), name), NULL, &str, 0);
+	assert(rval == 0);
 
     return str;
     }
@@ -88,16 +97,22 @@ free_config()
 long long
 test(char** name)
     {
+    char* dir;
+    int rval;
+
     *name = "config_include_00 cxLoadConfig() merges include_dir";
 
     nmInitialize();
     mssInitialize("system", "", "", 0, "test", 0);
-    assert(mkdtemp(TestDir) != NULL);
-    strcpy(CxGlobals.ConfigFileName, test_path("centrallix.conf"));
+    dir = mkdtemp(TestDir);
+    assert(dir != NULL);
+    rval = strtcpy(CxGlobals.ConfigFileName, test_path("centrallix.conf"), sizeof(CxGlobals.ConfigFileName));
+    assert(rval >= 0);
     CxGlobals.QuietInit = 1;
 
     /** Included files override in name order; other files are ignored **/
-    assert(mkdir(test_path("conf.d"), 0700) == 0);
+    rval = mkdir(test_path("conf.d"), 0700);
+    assert(rval == 0);
     write_main_config("conf.d");
     write_file("conf.d/90-local.conf", "$Version=2$\nlocal \"system/config\" { net_http \"system/config\" { listen_port = 8443; } }\n");
     write_file("conf.d/50-kardia.conf",
@@ -105,7 +120,8 @@ test(char** name)
     write_file("conf.d/.99-hidden.conf", "$Version=2$\nhidden \"system/config\" { net_http \"system/config\" { auth_realm = \"Hidden\"; } }\n");
     write_file("conf.d/99-backup.conf~", "$Version=2$\nbackup \"system/config\" { net_http \"system/config\" { auth_realm = \"Backup\"; } }\n");
     write_file("conf.d/README", "Not a config file.\n");
-    assert(cxLoadConfig() == 0);
+    rval = cxLoadConfig();
+    assert(rval == 0);
     assert(http_int("listen_port") == 8443);				// later file wins
     assert(http_int("accept_localhost_only") == 0);			// earlier file applies
     assert(strcmp(http_str("auth_realm"), "Kardia") == 0);		// hidden and non-.conf files ignored
@@ -113,12 +129,14 @@ test(char** name)
 
     /** Only the main config file can set include_dir **/
     write_file("conf.d/95-redirect.conf", "$Version=2$\nredirect \"system/config\" { include_dir = \"/etc\"; }\n");
-    assert(cxLoadConfig() < 0);
+    rval = cxLoadConfig();
+    assert(rval < 0);
     free_config();
 
     /** A missing include_dir fails **/
     write_main_config("missing.d");
-    assert(cxLoadConfig() < 0);
+    rval = cxLoadConfig();
+    assert(rval < 0);
     free_config();
 
     /** Clean up **/
