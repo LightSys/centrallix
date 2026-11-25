@@ -2155,6 +2155,7 @@ function tbld_init(param)
     t.colsepbg = param.colsep_bgnd;
     t.colsepmode = param.colsep_mode;
     t.gridinemptyrows = param.grid_in_empty_rows;
+    t.followcurrent = param.followcurrent;
     t.allowselect = param.allow_selection;
     t.showselect = param.show_selection;
     t.initselect = param.initial_selection;

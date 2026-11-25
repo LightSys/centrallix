@@ -122,6 +122,7 @@ typedef struct
     int max_rowheight;
     int cellhspacing;
     int cellvspacing;
+    int followcurrent;
     int dragcols;
     int colsep;
     int colsep_mode;
@@ -332,12 +333,14 @@ httblRenderDynamic(pHtSession s, pWgtrNode tree, int z, httbl_struct* t)
 	    "hdr:%INT, "
 	    "grid_in_empty_rows:%INT, "
 	    "windowsize:%INT, "
-	    "rcsize:%INT, ",
+	    "rcsize:%INT, "
+	    "followcurrent:%INT, ",
 	    t->data_mode,
 	    t->has_header,
 	    t->grid_in_empty_rows,
 	    t->windowsize,
-	    t->rowcache_size
+	    t->rowcache_size,
+	    t->followcurrent
 	) != 0)
 	    {
 	    mssError(0, "HTTBL", "Failed to write JS table general row data.");
@@ -701,6 +704,7 @@ httblRender(pHtSession s, pWgtrNode tree, int z)
 	t->grid_in_empty_rows = htrGetBoolean(tree, "gridinemptyrows", 1); /* Whether to show the grid in empty rows. */
 	if (wgtrGetPropertyValue(tree, "windowsize", DATA_T_INTEGER, POD(&(t->windowsize))) != 0) t->windowsize = -1;
 	if (wgtrGetPropertyValue(tree, "rowcache_size", DATA_T_INTEGER, POD(&(t->rowcache_size))) != 0) t->rowcache_size = 0;
+	t->followcurrent = htrGetBoolean(tree, "followcurrent", 1); /* Whether to scroll to the current record. */
 
 	/** Get general column data. **/
 	t->dragcols = htrGetBoolean(tree, "dragcols", 1);
