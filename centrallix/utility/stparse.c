@@ -480,15 +480,32 @@ stFind(pStructInf this, char* name)
     }
 
 
+/*** st_internal_Kind - return the kind of a node: ST_F_SCRIPT, ST_F_ATTRIB,
+ *** ST_F_GROUP, or 0 if it is none of these.
+ ***/
+static int
+st_internal_Kind(pStructInf inf)
+    {
+	if (inf->Flags & ST_F_SCRIPT) return ST_F_SCRIPT;
+	if (inf->Flags & ST_F_ATTRIB) return ST_F_ATTRIB;
+	if (inf->Flags & ST_F_GROUP) return ST_F_GROUP;
+
+    return 0;
+    }
+
+
 /*** st_internal_KindName - name the kind of a node, for error messages.
  ***/
 static char*
 st_internal_KindName(pStructInf inf)
     {
-	if (inf->Flags & ST_F_SCRIPT) return "script";
-	if (inf->Flags & ST_F_ATTRIB) return "attribute";
-
-    return "group";
+	switch (st_internal_Kind(inf))
+	    {
+	    case ST_F_SCRIPT: return "script";
+	    case ST_F_ATTRIB: return "attribute";
+	    case ST_F_GROUP: return "group";
+	    default: return "unknown";
+	    }
     }
 
 
@@ -503,6 +520,7 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
     pExpression value;
     char* base_type;
     char* overlay_type;
+    int kind;
     int i;
 
 	/** Check recursion **/
@@ -542,7 +560,8 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
 		}
 
 	    /** Check that both entries are the same kind **/
-	    if (strcmp(st_internal_KindName(base_inf), st_internal_KindName(new_inf)) != 0)
+	    kind = st_internal_Kind(new_inf);
+	    if (st_internal_Kind(base_inf) != kind)
 		{
 		mssError(1, "ST", "Failed to merge %s '%s' into %s '%s'",
 			st_internal_KindName(new_inf), new_inf->Name, st_internal_KindName(base_inf), base_inf->Name);
@@ -550,20 +569,24 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
 		}
 
 	    /** Merge the entry by its kind **/
-	    if (new_inf->Flags & ST_F_SCRIPT)
-		{
-		mssError(1, "ST", "Failed to merge script '%s': scripts cannot be merged", new_inf->Name);
-		return -1;
-		}
-	    else if (new_inf->Flags & ST_F_ATTRIB)
+	    if (kind == ST_F_ATTRIB)
 		{
 		value = base_inf->Value;
 		base_inf->Value = new_inf->Value;
 		new_inf->Value = value;
 		}
-	    else if (st_internal_MergeGroup(base_inf, new_inf) < 0)
+	    else if (kind == ST_F_GROUP)
 		{
-		mssError(0, "ST", "Failed to merge group '%s'", new_inf->Name);
+		if (st_internal_MergeGroup(base_inf, new_inf) < 0)
+		    {
+		    mssError(0, "ST", "Failed to merge group '%s'", new_inf->Name);
+		    return -1;
+		    }
+		}
+	    else
+		{
+		mssError(1, "ST", "Failed to merge %s '%s': only attributes and groups can be merged",
+			st_internal_KindName(new_inf), new_inf->Name);
 		return -1;
 		}
 	    i++;
@@ -581,7 +604,8 @@ st_internal_MergeGroup(pStructInf base, pStructInf overlay)
  ***   - A group merges recursively into that group, which must have the
  ***     same type.
  ***   - A child with no match is added to the end of base.
- *** Merging an attribute with a group, or merging any script, fails.
+ *** Merging different kinds of nodes, or any node that is not an attribute
+ *** or group, fails.
  ***
  *** Releases the caller's reference to overlay, even on failure.  On failure,
  *** base may be partially merged.  Returns 0 on success, -1 on failure.
@@ -595,7 +619,7 @@ stMergeInf(pStructInf base, pStructInf overlay)
 	ASSERTMAGIC(overlay, MGK_STRUCTINF);
 
 	/** Only groups can be merged **/
-	if ((base->Flags & (ST_F_GROUP | ST_F_SCRIPT)) != ST_F_GROUP || (overlay->Flags & (ST_F_GROUP | ST_F_SCRIPT)) != ST_F_GROUP)
+	if (st_internal_Kind(base) != ST_F_GROUP || st_internal_Kind(overlay) != ST_F_GROUP)
 	    {
 	    mssError(1, "ST", "Failed to merge %s '%s' into %s '%s'",
 		    st_internal_KindName(overlay), overlay->Name, st_internal_KindName(base), base->Name);
@@ -1918,5 +1942,3 @@ stPrint_ne(pStruct inf)
     {
     return stPrint_ne_r(inf, 0);
     }
-
-
