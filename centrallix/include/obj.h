@@ -422,8 +422,9 @@ typedef struct _TI
     XArray	Fields;		/* List of fields in this index */
     int*	Types;		/* Per field: DATA_T_xxx of the non-NULL values added, or -1 if mixed */
     XHashTable	Index;		/* FIXME: replace with B+ tree in the future */
+    XHashTable	Entries;	/* Index entries, keyed by tuple pointer */
     void*	OneObjList;	/* pParamObjects; for convenience */
-    int		IsUnique:1;
+    unsigned int IsComplete:1;	/* Every tuple is in the index */
     }
     ObjTempIndex, *pObjTempIndex;
 

@@ -1,0 +1,7 @@
+##NAME SQL Temp Collection Indexing with Long Keys
+
+# Enable index and scan output
+test 3,4
+
+query declare collection t scope application; insert into collection t select id = :s:id, note = condition(:s:id = 40, replicate('x', 300), :s:abbrev) from /tests/States.csv/rows s; select n = count(1) from collection t where :note = 'CA'
+query declare collection u scope application; insert into collection u select note = replicate('x', 300); select n = count(1) from collection u, collection t where :t:note = :u:note
