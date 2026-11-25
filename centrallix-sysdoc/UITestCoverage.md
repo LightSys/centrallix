@@ -664,6 +664,7 @@ A failing check prints the table/osrc state and a trace of recent table and osrc
 21. The create/delete reconciliation keeps records named like `Object.prototype` members (`constructor`, `__proto__`, ...), and still skips loaded and deleted ones.
 22. Empty result set (`table_large_empty_test.app`): `New` shows the placeholder with its `show_on_new` row detail and hides the "no data" message, and `Discard` brings the message back. The destructive part saves the first record as row 1 and deletes it again.
 23. After `Last` (which leaves most records unloaded), drag the thumb to the middle with many small mouse moves, and separately make two thumb jumps in a row. The table must not go blank, must show records near the thumb's position, and must not jump again after a later wheel scroll.
+24. After `Last` then `First`, drag the thumb while its position is sampled every 15ms: once with 500ms network latency, and once while a thumb animation is still running. The thumb must stay between its start and drop positions, must not snap back once it reaches the drop position, and must end there.
 
 ### Note
 - The osrc "You have already retrieved N records" `confirm()` is auto-accepted and reported. A `Refresh` while the current record is past record 500 still shows it once, because the refresh re-reads the result set up to the current record.
