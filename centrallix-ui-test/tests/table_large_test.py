@@ -963,6 +963,50 @@ class Suite:
             s.settle()
             self.delete_created(s, "First Row")
 
+    def thumb_target_record(self, s):
+        """Record the thumb's current position points to."""
+        return s.js("Math.floor(((__tl.relY(t.scrollbar.b) - 18) / Math.max(1, t.thumb_avail - t.thumb_height)) * Math.max(0, t.thumb_total - t.thumb_per_view)) + 1")
+
+    def check_jump(self, s, test_no, label, expect):
+        self.check_settled(s, test_no, label, timeout=60)
+        self.check_invariants(s, test_no, "invariants " + label, check_order=True)
+        fv = s.js("__tl.scanVis(t).firstvis")
+        self.check(s, test_no, "view near record %d %s" % (expect, label), fv is not None and abs(fv - expect) <= 100, "firstvis=%s" % fv)
+
+    def test23(self):
+        reporter.add_test(23, "Thumb drag into the replica hole after Last")
+
+        # A real drag: many small mouse moves up to the middle of the track.
+        s = self.session()
+        s.click_button("last_btn")
+        self.check_settled(s, 23, "after Last", timeout=30)
+        avail, height, top = s.js("[t.thumb_avail, t.thumb_height, __tl.relY(t.scrollbar.b)]")
+        target = 18 + 0.5 * (avail - height)
+        steps = 25
+        chain = ActionChains(s.d).click_and_hold(s.js("t.scrollbar.b"))
+        for i in range(steps):
+            chain = chain.move_by_offset(0, int(round((target - top) / steps))).pause(0.03)
+        chain.release().perform()
+        self.check_jump(s, 23, "after dragging the thumb", self.thumb_target_record(s))
+
+        # Two thumb jumps in a row: the second waits while the first loads.
+        s = self.session()
+        s.click_button("last_btn")
+        s.settle(30)
+        s.js("(t.ThumbScroll(0.9), t.ThumbScroll(0.5), 0)")
+        expect = s.js("Math.floor(0.5 * Math.max(0, t.thumb_total - t.thumb_per_view)) + 1")
+        self.check_jump(s, 23, "after two quick thumb jumps", expect)
+
+        # Scrolling afterwards: no delayed jump from a superseded request.
+        for i in range(3):
+            s.wheel(100)
+            s.settle()
+        fv0 = s.js("__tl.scanVis(t).firstvis")
+        time.sleep(2)
+        s.settle()
+        fv1 = s.js("__tl.scanVis(t).firstvis")
+        self.check(s, 23, "view stays put after scrolling", fv0 == fv1, "firstvis %s -> %s" % (fv0, fv1))
+
     def stress_step(self, s, rng):
         kinds = ["wheel", "wheel", "wheel", "bigwheel", "drag", "click", "first", "last", "prev", "next", "refresh", "newcancel"]
         exclude = self.config.get("stress_exclude") or []
@@ -1000,7 +1044,7 @@ class Suite:
 
     def run(self):
         only = self.config.get("only")
-        tests = [getattr(self, "test%d" % i) for i in range(1, 23) if not only or i in only]
+        tests = [getattr(self, "test%d" % i) for i in range(1, 24) if not only or i in only]
         try:
             if not self.data_is_clean(self.session()):
                 print("Test data is not in its generated state.  Stop the server, run")
