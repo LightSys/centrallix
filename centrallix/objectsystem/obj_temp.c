@@ -52,7 +52,6 @@
 #define	TMP_THRESHOLD	(32)	/* minimum collection size to index */
 #define	TMP_MIN_ORDER	(513)	/* min buckets in index hash table */
 #define TMP_MAX_ORDER	(3001)	/* max buckets in index hash table */
-#define	TMP_MAX_KEY	(512)	/* max internal key size for hash table */
 #define	TMP_TYPE_MIXED	(-1)	/* index field holds values of several types */
 
 typedef struct
@@ -108,26 +107,39 @@ tmp_internal_IndexHasField(pObjTempIndex idx, char* field)
     }
 
 
-/*** tmp_internal_GenerateKey() - determine lookup key for the index
+/*** tmp_internal_GenerateKey() - determine lookup key for the index.
+ *** Returns the key, which the caller frees with nmSysFree(), or NULL on
+ *** failure.
  ***/
 char*
 tmp_internal_GenerateKey(pObjTempIndex idx, pExpression fields[])
     {
-    char key[TMP_MAX_KEY];
-    char* rkey;
-    int len;
+    XString key;
+    char* key_str = NULL;
 
-	/** Generate the key value **/
-	len = objBuildBinaryImage(key, sizeof(key), fields, idx->Fields.nItems, idx->OneObjList, 1);
-	if (len >= sizeof(key))
+	if (xsInit(&key) < 0)
 	    {
-	    mssError(1, "TMP", "Create index: Key length exceeds internal representation");
+	    mssError(1, "TMP", "Failed to initialize the index key.");
 	    return NULL;
 	    }
 
-	rkey = nmSysStrdup(key);
-    
-    return rkey;
+	/** Generate the key value **/
+	if (objBuildBinaryImageXString(&key, fields, idx->Fields.nItems, idx->OneObjList, 1) < 0)
+	    {
+	    mssError(0, "TMP", "Failed to build the index key from %d field values.", idx->Fields.nItems);
+	    goto end;
+	    }
+
+	key_str = nmSysStrdup(key.String);
+	if (key_str == NULL)
+	    {
+	    mssError(1, "TMP", "Failed to copy the %d-byte index key.", key.Length);
+	    goto end;
+	    }
+
+    end:
+	xsDeInit(&key);
+	return key_str;
     }
 
 
