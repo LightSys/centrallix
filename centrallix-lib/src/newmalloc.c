@@ -40,6 +40,7 @@
 #include <unistd.h>
 
 #include "magic.h"
+#include "mtsession.h"
 #include "newmalloc.h"
 #include "range.h"
 #include "strtcpy.h"
@@ -419,9 +420,9 @@ nmMalloc(size_t size)
 #ifdef SIZED_BLK_COUNTING
 		if (listcnt[size] == 0u)
 		    {
-		    fprintf(stderr,
-			"Warning: Removed block from cache when stats show that "
-			"it should be empty!! Expect broken statistics.\n"
+		    mssWarn("NM",
+			"Removed block from cache when stats show that "
+			"it should be empty!! Expect broken statistics."
 		    );
 		    }
 		listcnt[size]--;
@@ -560,9 +561,9 @@ nmFree(void* ptr, size_t size)
  #ifdef SIZED_BLK_COUNTING
 	    if (outcnt[size] == 0u)
 		{
-		fprintf(stderr,
-		    "Warning: Call to nmFree() on memory of a size that has no "
-		    "valid allocated memory!! Expect broken statistics.\n"
+		mssWarn("NM",
+		    "Call to nmFree() on memory of a size that has no "
+		    "valid allocated memory!! Expect broken statistics."
 		);
 		}
 	    outcnt[size]--;
@@ -595,7 +596,7 @@ nmStats(void)
 	
 	/** Warn if statistics are not being tracked. **/
 #ifndef GLOBAL_BLK_COUNTING
-	fprintf(stderr, "Warning: GLOBAL_BLK_COUNTING is disabled.\n");
+	mssWarn("NM", "GLOBAL_BLK_COUNTING is disabled.");
 #endif
 	
 	/** Print subsystem stats. **/
@@ -762,7 +763,7 @@ nmDeltas(void)
 	char buf[SNPRINT_BYTES_BUF_SIZE];
 	if (snprintBytes(buf, sizeof(buf), magnitude) < 0)
 	    {
-	    fprintf(stderr, "Warning: Failed to format total delta of %lld bytes.\n", total_delta);
+	    mssWarn("NM", "Failed to format total delta of %lld bytes.", total_delta);
 	    printf("delta %lld total bytes\n", total_delta);
 	    }
 	else
