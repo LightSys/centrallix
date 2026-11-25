@@ -393,6 +393,8 @@ mqpAnalyze(pQueryStatement stmt)
     int has_aggregates;
     int has_assignments;
     int num_sources = 0;
+    int n_old_trees = stmt->Trees.nItems;
+    pQueryElement old_tree = stmt->Tree;
 
 	/** Tally up our source count **/
 	while((from_qs = mq_internal_FindItem(stmt->QTree, MQ_T_FROMSOURCE, from_qs)) != NULL)
@@ -515,16 +517,39 @@ mqpAnalyze(pQueryStatement stmt)
 		    item = (pQueryStructure)(groupby_qs->Children.Items[i]);
 		    if (item->ObjCnt == 1 && (item->ObjFlags[src_idx] & EXPR_O_REFERENCED))
 		        {
+			new_exp = exp_internal_CopyTree(item->Expr);
+			if (new_exp == NULL)
+			    {
+			    mssError(0, "MQP", "Failed to copy a GROUP BY item for source '%s'", from_qs->Source);
+			    goto error;
+			    }
+			expRemapID(new_exp, src_idx, 0);
+
+			/** Check to see if it is already in the list **/
+			found = 0;
+			for(j=0;qe->OrderBy[j];j++)
+			    {
+			    if (expCompareExpressions(new_exp, qe->OrderBy[j]))
+				{
+				found = 1;
+				break;
+				}
+			    }
+			if (found)
+			    {
+			    expFreeExpression(new_exp);
+			    continue;
+			    }
+
 			/** The objectsystem can only sort on OBJSYS_SORT_MAX items **/
 			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
 			    {
-			    fprintf(stderr, "Warning: Cannot sort source on more than %d GROUP BY items; grouping may produce duplicate rows.\n", OBJSYS_SORT_MAX);
-			    break;
+			    expFreeExpression(new_exp);
+			    mssError(1, "MQP", "Failed to sort source '%s' on more than %d GROUP BY items", from_qs->Source, OBJSYS_SORT_MAX);
+			    goto error;
 			    }
-			new_exp = exp_internal_CopyTree(item->Expr);
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0) break;
 			if (qe->OrderPrio == 999 || qe->OrderPrio > i) qe->OrderPrio = i;
-			expRemapID(new_exp, src_idx, 0);
 			}
 		    }
 		}
@@ -570,9 +595,8 @@ mqpAnalyze(pQueryStatement stmt)
 			if (mq_internal_nOrderBy(qe) >= OBJSYS_SORT_MAX)
 			    {
 			    expFreeExpression(new_exp);
-			    has_unhandled_orderby = 1;
-			    fprintf(stderr, "Warning: Cannot sort source on more than %d ORDER BY items.\n", OBJSYS_SORT_MAX);
-			    break;
+			    mssError(1, "MQP", "Failed to sort source '%s' on more than %d ORDER BY items", from_qs->Source, OBJSYS_SORT_MAX);
+			    goto error;
 			    }
 			if (mq_internal_AddOrderBy(qe, new_exp) < 0)
 			    {
@@ -650,6 +674,17 @@ mqpAnalyze(pQueryStatement stmt)
 	    }
 
     return 0;
+
+    error:
+	/** Free this source's element and those this call already added **/
+	mq_internal_FreeQE(qe);
+	while (stmt->Trees.nItems > n_old_trees)
+	    {
+	    mq_internal_FreeQE((pQueryElement)(stmt->Trees.Items[stmt->Trees.nItems - 1]));
+	    xaRemoveItem(&stmt->Trees, stmt->Trees.nItems - 1);
+	    }
+	stmt->Tree = old_tree;
+	return -1;
     }
 
 

@@ -1,0 +1,5 @@
+##NAME GROUP BY on keys that differ only by operator
+
+# :f_integer < 0 and :f_integer > 0 are different keys, so there is one group per sign.
+
+csv SELECT neg = :f_integer < 0, pos = :f_integer > 0, n = count(1) FROM /tests/Datatypes.csv/rows GROUP BY :f_integer < 0, :f_integer > 0
