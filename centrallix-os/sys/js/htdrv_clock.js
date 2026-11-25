@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2001 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -24,7 +24,6 @@ function cl_init(param){
         l.contentLayer = c1;
         l.hiddenLayer = c2;
         l.shadowed = param.shadowed;
-        l.moveable = param.moveable;
         l.bold = param.bold;
         l.fgColor1 = param.foreground1;
         l.fgColor2 = param.foreground2;
@@ -57,13 +56,14 @@ function cl_init(param){
 }
 
 function cl_get_time(l) {
-	var t = new Date();
-	var time = new Object();
-	time.hrs = t.getHours();
-	time.mins = t.getMinutes();
-	time.secs = t.getSeconds();
-	time.msecs = t.getMilliseconds();
-	time.formated = cl_format_time(l,time);
+	const t = new Date();
+	const time = {
+		hrs: t.getHours(),
+		mins: t.getMinutes(),
+		secs: t.getSeconds(),
+		msecs: t.getMilliseconds(),
+	};
+	time.formated = cl_format_time(l, time);
 	return time;
 }
 
@@ -110,46 +110,16 @@ function cl_format_time(l,t) {
 	return timef;
 }
 
-function cl_mouseup(e) {
-	if (e.kind == 'cl') {
-		cn_activate(e.mainlayer, 'MouseUp');
-		if (e.mainlayer.moveable) cl_move = false;
-	}
+// Handle events by passing them on to Centrallix.
+function cl_event(e, name) {
+	if (e && e.kind === 'cl') cn_activate(e.mainlayer, name);
 	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
 }
-
-function cl_mousedown(e) {
-	if (e.kind == 'cl') {
-		cn_activate(e.mainlayer, 'MouseDown');
-		if (e.mainlayer.moveable) {
-			cl_move = true;
-			cl_xOffset = e.pageX - getPageX(e.mainlayer);
-			cl_yOffset = e.pageY - getPageY(e.mainlayer);
-		}
-	}
-	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-}
-
-function cl_mouseover(e) {
-	if (e.kind == 'cl') cn_activate(e.mainlayer, 'MouseOver');
-	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-}
-
-function cl_mouseout(e) {
-	if (e.kind == 'cl') cn_activate(e.mainlayer, 'MouseOut');
-	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-}
-
-function cl_mousemove(e) {
-	if (e.kind == 'cl') {
-		cn_activate(e.mainlayer, 'MouseMove');
-		if (e.mainlayer.moveable && cl_move)
-			moveToAbsolute(e.mainlayer, 
-				e.pageX - cl_xOffset, 
-				e.pageY - cl_yOffset);
-	}
-	return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
-}
+function cl_mouseup(e)   { return cl_event(e, 'MouseUp'); }
+function cl_mousedown(e) { return cl_event(e, 'MouseDown'); }
+function cl_mouseover(e) { return cl_event(e, 'MouseOver'); }
+function cl_mouseout(e)  { return cl_event(e, 'MouseOut'); }
+function cl_mousemove(e) { return cl_event(e, 'MouseMove'); }
 
 // Load indication
 if (window.pg_scripts) pg_scripts['htdrv_clock.js'] = true;

@@ -1,4 +1,4 @@
-// Copyright (C) 1998-2004 LightSys Technology Services, Inc.
+// Copyright (C) 1998-2026 LightSys Technology Services, Inc.
 //
 // You may use these files and this library under the terms of the
 // GNU Lesser General Public License, Version 2.1, contained in the
@@ -18,32 +18,31 @@ function tv_show_obj(obj)
     }
 */
 
-function tv_new_layer(width,pdoc,l)
+function tv_new_layer(container,l)
     {
     var nl;
-    if (pdoc.tv_layer_cache.length > 0)
+    if (container.tv_layer_cache.length > 0)
 	{
-	/*nl = pdoc.tv_layer_cache;
-	pdoc.tv_layer_cache = nl.next;
+	/*nl = container.tv_layer_cache;
+	container.tv_layer_cache = nl.next;
 	nl.next = null;*/
 	tv_cache_cnt--;
-	nl = pdoc.tv_layer_cache.pop();
+	nl = container.tv_layer_cache.pop();
 	}
     else
 	{
 	if(cx__capabilities.Dom0NS)
 	    {
-	    nl = new Layer(width,pdoc.tv_layer_tgt);
+	    nl = new Layer(getClipWidth(l),l.pdoc.tv_layer_tgt);
 	    }
 	else if(cx__capabilities.Dom1HTML)
 	    {
+	    /*** Only the left edge is set (by the caller); the row shrink-wraps
+	     *** its content, so its click area matches its rendered text.
+	     ***/
 	    nl = document.createElement('DIV');
-	    if (width) nl.style.width = width + 'px';
 	    nl.className = l.divclass;
-	    //setClip(0, width, 0, 0);
 	    pg_set_style(nl, 'position','absolute');
-	    pg_set_style(nl, 'overflow','visible');
-	    pdoc.appendChild(nl);
 	    }
 	else
 	    {
@@ -51,23 +50,25 @@ function tv_new_layer(width,pdoc,l)
 	    }
 	tv_alloc_cnt++;
 	}
+    /** Attach (or re-attach) the row to the container holding the rows. **/
+    if (cx__capabilities.Dom1HTML) container.appendChild(nl);
     htr_init_layer(nl, l, 'tv');
     return nl;
     }
 
-function tv_cache_layer(l,pdoc)
+function tv_cache_layer(l,container)
     {
     if (cx__capabilities.Dom1HTML)
         {
-		//pg_debug('tv_cache_layer: ' + pdoc.id + '\n');
+		//pg_debug('tv_cache_layer: ' + container.id + '\n');
         }
     else if (cx__capabilities.Dom0NS)
         {
-		//pg_debug('tv_cache_layer: ' + pdoc.layer.name + '\n');
+		//pg_debug('tv_cache_layer: ' + container.layer.name + '\n');
 		}
-    /*l.next = pdoc.tv_layer_cache;
-    pdoc.tv_layer_cache = l;*/
-    pdoc.tv_layer_cache.push(l);
+    /*l.next = container.tv_layer_cache;
+    container.tv_layer_cache = l;*/
+    container.tv_layer_cache.push(l);
     pg_set_style_string(l,'visibility','hidden');
     if (l.selected)
 	{
@@ -88,8 +89,7 @@ function tv_action_setroot(aparam)
     // Set the root
     if (!aparam.NewRoot) aparam.NewRoot = 'javascript:window';
     if (!aparam.NewRootObj) aparam.NewRootObj = null;
-    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches, use3d:this.use3d, showrb:this.show_root_branch, icon:this.icon, divclass:this.divclass, sbg:this.sel_bg, desc:this.ord_desc});
-    //tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, pdoc:this.root.pdoc, width:getClipWidth(this.root), newroot:aparam.NewRootObj, branches:this.show_branches});
+    tv_init({layer:this.root, fname:aparam.NewRoot, loader:this.root.ld, newroot:aparam.NewRootObj, branches:this.show_branches, use3d:this.use3d, showroot:this.root.show_root, showrb:this.show_root_branch, icon:this.icon, divclass:this.divclass, sbg:this.sel_bg, desc:this.ord_desc});
     if (aparam.Expand == 'yes') this.root.expand(null);
     }
 
@@ -245,7 +245,7 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 	{
 	var tvtext = "<nobr>";
 	for(var i = start_img; i<=l.tree_depth; i++)
-	    tvtext += "<IMG width='" + l.root.iconwidth + "' SRC='" + l.imgs[i] + "' align='left'>";
+	    tvtext += "<img width='" + l.root.iconwidth + "' src='" + l.imgs[i] + "' style='float:left;'>";
 	tvtext += "&nbsp;<A HREF='" + link_href + "'>" +
 	    (link_bold?"<b>":"") + htutil_encode(htutil_obscure(link_text)) + (link_bold?"<b>":"") + "</A></nobr>";
 	if (l.tvtext != tvtext)
@@ -265,21 +265,28 @@ function tv_build_layer(l,img_src,link_href,link_text, link_bold, is_last, has_s
 
 	$(l).css({'white-space': 'nowrap'});
 
-	/** remove all current children of this node **/
-	while(c = l.firstChild)
+	/** Remove this node's own row content, keeping any child row layers. **/
+	c = l.firstChild;
+	while (c)
 	    {
-	    l.removeChild(c);
+	    var next = c.nextSibling;
+	    if (c.nodeName != 'DIV') l.removeChild(c);
+	    c = next;
 	    }
 
-	/** the image **/
+	/*** The image.  The content goes before the row layers so this node's
+	 *** own images stay first in pg_images() order.  A hidden root keeps
+	 *** its rebuilt content hidden.
+	 ***/
 	var nobr = document.createElement('nobr');
-	l.appendChild(nobr);
+	if (l == l.root && !l.show_root) nobr.style.visibility = 'hidden';
+	l.insertBefore(nobr, l.firstChild);
 	for(var i = start_img; i<=l.tree_depth; i++)
 	    {
 	    var img = document.createElement('img');
 	    img.setAttribute('width', '' + l.root.iconwidth);
 	    img.setAttribute('src',l.imgs[i]);
-	    img.setAttribute('align','left');
+	    img.style.cssFloat = 'left';
 	    nobr.appendChild(img);
 	    }
 
@@ -363,30 +370,50 @@ function tv_GetLinkCnt(l)
 
 function tv_MakeRoom(tv_tgt_layer, linkcnt)
     {
-    if (window != tv_tgt_layer.pdoc.tv_layer_tgt)
-	setClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt,getClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt)+ tv_tgt_layer.root.rowheight*(linkcnt));
+    var root = tv_tgt_layer.root;
+    var shift = root.rowheight*linkcnt;
 
-    var tgtTop = getRelativeY(tv_tgt_layer);
-    var layers = pg_layers(tv_tgt_layer.pdoc);
+    /** Grow the root layer so its overflow:hidden box holds the new rows. **/
+    root.visible_rows += linkcnt;
+    if (root.visible_rows > 0)
+	setRelativeH(root, root.rowheight*(root.visible_rows+1));
+
+    /** Grow the containing layer, which scroll containers watch. **/
+    if (window != tv_tgt_layer.pdoc.tv_layer_tgt)
+	setClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt,getClipHeight(tv_tgt_layer.pdoc.tv_layer_tgt)+shift);
+
+    /** Shift down the rows below the expansion point (in root coordinates). **/
+    var tgtTop = (tv_tgt_layer == root) ? 0 : getRelativeY(tv_tgt_layer);
+    var layers = pg_layers(root);
     for (var j=0;j<layers.length;j++)
 	{
 	var sl = layers[j];
 	var slTop = getRelativeY(sl);
-	if (slTop >= tgtTop + tv_tgt_layer.root.rowheight && sl != tv_tgt_layer && htr_getvisibility(sl) == 'inherit')
-	    setRelativeY(sl, slTop+tv_tgt_layer.root.rowheight*linkcnt);
+	if (slTop >= tgtTop + root.rowheight && sl != tv_tgt_layer && htr_getvisibility(sl) == 'inherit')
+	    setRelativeY(sl, slTop+shift);
 	}
-    return tv_tgt_layer.root.rowheight*linkcnt;
+
+    /** Shift down the layers below the tree, outside of it. **/
+    var rootTop = getRelativeY(root);
+    layers = pg_layers(tv_tgt_layer.pdoc);
+    for (var j=0;j<layers.length;j++)
+	{
+	var sl = layers[j];
+	if (root.contains(sl)) continue;
+	var slTop = getRelativeY(sl);
+	if (slTop >= rootTop + tgtTop + root.rowheight && htr_getvisibility(sl) == 'inherit')
+	    setRelativeY(sl, slTop+shift);
+	}
+    return shift;
     }
 
 function tv_clear_objs(l) { for(var i = 2; i<l.pdoc.layers.length;i++) l.pdoc.layers[i].objptr = null; }
 
 function tv_BuildNewLayers(l, linkcnt)
     {
-    /** pre-load some variables **/
-    //var tgtClipWidth = tv_tgt_layer.clip.width;
-    var tgtClipWidth = l.mainlayer.setwidth - (getRelativeX(l) - getRelativeX(l.mainlayer)) - l.root.iconwidth;
-    var tgtX = getRelativeX(l);
-    var tgtY = getRelativeY(l);
+    /** Pre-load the expansion point, in root-layer coordinates. **/
+    var tgtX = (l == l.root) ? 0 : getRelativeX(l);
+    var tgtY = (l == l.root) ? 0 : getRelativeY(l);
     var jsProps = null;
     var can_expand;
     var links;
@@ -411,11 +438,7 @@ function tv_BuildNewLayers(l, linkcnt)
 
 	var link_bold = 0;
 	var one_link;
-	//var one_layer = tv_new_layer(tgtClipWidth,l.pdoc,l.mainlayer);
-	//var one_layer = tv_new_layer(null,l.pdoc,l.mainlayer);
-	var one_layer = tv_new_layer(l.mainlayer.setwidth,l.pdoc,l.mainlayer);
-	//setClipWidth(one_layer, tgtClipWidth);
-	setClipWidth(one_layer, l.mainlayer.setwidth);
+	var one_layer = tv_new_layer(l.root,l.mainlayer);
 	setClipHeight(one_layer, l.root.rowheight);
 	var im;
 	can_expand = null;
@@ -561,7 +584,7 @@ function tv_loaded(e)
 	}
     else if(cx__capabilities.Dom1HTML)
 	{
-	pg_resize(l.parentNode);
+	pg_resize(l.root.parentNode);
 	}
     else
 	{
@@ -574,7 +597,9 @@ function tv_loaded(e)
 	var pl = l.mainlayer.parentLayer.mainlayer;
 	if (pl.ifcProbe && pl.ifcProbe(ifAction).Exists('ScrollTo'))
 	    {
-	    pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:getRelativeY(l), RangeEnd:getRelativeY(l)+offset+l.root.rowheight});
+	    /** Rows are root-relative; the scroll container wants its own coordinates. **/
+	    var scroll_y = getRelativeY(l.root) + ((l == l.root) ? 0 : getRelativeY(l));
+	    pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:scroll_y, RangeEnd:scroll_y+offset+l.root.rowheight});
 	    }
 	}
 
@@ -756,7 +781,7 @@ function tv_init(param)
 	l.imgnames.ico_file = l.icon;
 	l.imgnames.ico_folder = l.icon;
 	}
-    if (htr_getvisibility(l) == 'inherit')
+    if (param.showroot)
 	{
 	l.tree_depth = 0;
 	l.show_root = true;
@@ -767,6 +792,7 @@ function tv_init(param)
 	l.show_root = false;
 	}
     if (l.show_root_branch) l.tree_depth = 0;
+    l.visible_rows = 0;
     var t;
     if(!l.is_initialized)
 	{ /* not re-init */
@@ -802,6 +828,13 @@ function tv_init(param)
 	l.img.layer = l;
 	l.img.kind = 'tv';
 	}
+    /** The root's own row content wrapper; clicks on it belong to the root item. **/
+    l.row0 = l.firstChild;
+    if (l.row0)
+	{
+	l.row0.kind = 'tv';
+	l.row0.layer = l;
+	}
     l.pdoc = wgtrGetParentContainer(l);
     //l.pdoc = pdoc;
     l.ld = param.loader;
@@ -809,7 +842,7 @@ function tv_init(param)
     htr_init_layer(l,l,'tv');
     //l.ld.parent = l;
     l.root = l;
-    if (!l.pdoc.tv_layer_cache) l.pdoc.tv_layer_cache = new Array();
+    if (!l.tv_layer_cache) l.tv_layer_cache = new Array();
     if(cx__capabilities.Dom0NS)
 	{
 	l.pdoc.tv_layer_tgt = l.parentLayer;
@@ -822,8 +855,6 @@ function tv_init(param)
 	{
 	alert('browser not supported');
 	}
-    setClipWidth(l, param.width);
-    l.setwidth = param.width;
     l.childimgs = '';
 
     l.collapse=tv_collapse;
@@ -870,7 +901,7 @@ function tv_init(param)
     else
 	{
 	// auto expand if not showing root
-	if (htr_getvisibility(l) != 'inherit') l.root.expand(null);    
+	if (!l.show_root) l.root.expand(null);
 	l.initial_reveal = true;
 	}
 
@@ -906,7 +937,7 @@ function tv_expand(cb)
     else
 	{
 	// autocollapse an autoexpanded node at same level?
-	var arr = pg_layers(l.pdoc);
+	var arr = pg_layers(l.root);
 	var len = arr.length;
 	for(var i = 0; i < len; i++)
 	    {
@@ -1064,7 +1095,7 @@ function tv_findpath()
     var curitem = this.patharray.shift();
 
     // Find the 'current' item.
-    var lyrs = pg_layers(this.pdoc);
+    var lyrs = pg_layers(this.root);
     var len = lyrs.length;
     for(var i = 0; i < len; i++)
 	{
@@ -1079,7 +1110,9 @@ function tv_findpath()
     var pl = wgtrGetParent(this);
     if (pl.ifcProbe && pl.ifcProbe(ifAction).Exists('ScrollTo'))
 	{
-	pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:getRelativeY(this.pathitem), RangeEnd:getRelativeY(this.pathitem)+this.root.rowheight});
+	/** Rows are root-relative; the scroll container wants its own coordinates. **/
+	var item_y = getRelativeY(this.root) + ((this.pathitem == this.root) ? 0 : getRelativeY(this.pathitem));
+	pl.ifcProbe(ifAction).Invoke('ScrollTo', {RangeStart:item_y, RangeEnd:item_y+this.root.rowheight});
 	}
 
     // Last item to find?
@@ -1128,8 +1161,9 @@ function tv_collapse()
 
     l.expanded = false;
     l.autoexpanded = false;
+    var root = l.root;
     var cnt = 0;
-    var lyrs = pg_layers(l.pdoc);
+    var lyrs = pg_layers(root);
     var len = lyrs.length;
     pg_debug('tv_collapse: ' + l.fname + '\n');
     for(var i=len-1;i>=0;i--)
@@ -1139,7 +1173,7 @@ function tv_collapse()
 	    {
 	    //pg_debug('tv_collapse: caching ' + sl.fname + '\n');
 	    //alert(sl.fname);
-	    tv_cache_layer(sl,l.pdoc);
+	    tv_cache_layer(sl,root);
 	    //delete lyrs[i];
 	    sl.fname = null;
 	    if(cx__capabilities.Dom0NS)
@@ -1156,18 +1190,34 @@ function tv_collapse()
 		}
 	    cnt++;
 	    }
-	//layers = pg_layers(l.pdoc);
 	}
-    //sl = layers[0];
-    var vis = '';
+
+    /** Shrink the root layer back around the remaining rows. **/
+    root.visible_rows -= cnt;
+    setRelativeH(root, (root.visible_rows > 0) ? root.rowheight*(root.visible_rows+1) : 'auto');
+
+    /** Shift up the rows below the collapse point (in root coordinates). **/
+    var tgtTop = (l == root) ? 0 : getRelativeY(l);
     for (var j=0;j<len;j++)
 	{
 	sl = lyrs[j];
 	var visibility = pg_get_style(sl,'visibility');
-	if (getRelativeY(sl) > getRelativeY(l) && (visibility == 'inherit' || visibility == 'visible') )
+	if (getRelativeY(sl) > tgtTop && (visibility == 'inherit' || visibility == 'visible') )
 	    {
-	    setRelativeY(sl, getRelativeY(sl)-l.root.rowheight*cnt);
+	    setRelativeY(sl, getRelativeY(sl)-root.rowheight*cnt);
 	    }
+	}
+
+    /** Shift up the layers below the tree, outside of it. **/
+    var rootTop = getRelativeY(root);
+    var layers = pg_layers(l.pdoc);
+    for (var j=0;j<layers.length;j++)
+	{
+	sl = layers[j];
+	if (root.contains(sl)) continue;
+	var visibility = pg_get_style(sl,'visibility');
+	if (getRelativeY(sl) > rootTop + tgtTop && (visibility == 'inherit' || visibility == 'visible') )
+	    setRelativeY(sl, getRelativeY(sl)-root.rowheight*cnt);
 	}
     if(cx__capabilities.Dom0NS)
 	{
@@ -1175,7 +1225,7 @@ function tv_collapse()
 	}
     else if(cx__capabilities.Dom1HTML)
 	{
-	pg_resize(tv_tgt_layer.parentNode);
+	pg_resize(root.parentNode);
 	}
     else
 	{
@@ -1198,7 +1248,7 @@ function tv_cb_reveal(event)
 	    if (!this.initial_reveal)
 		{
 		// Auto expand if not showing root, otherwise what's the use?
-		if (htr_getvisibility(this) != 'inherit') this.root.expand(null);    
+		if (!this.show_root) this.root.expand(null);
 		this.initial_reveal = true;
 		}
 	    break;
@@ -1230,7 +1280,7 @@ function tv_click(e)
 	}
     else
 	{
-	if (e.target != null && e.target.kind == 'tv' && (e.target.nodeName == 'A' || e.target.nodeName == 'DIV'))
+	if (e.target != null && e.target.kind == 'tv' && (e.target.nodeName == 'A' || e.target.nodeName == 'DIV' || e.target.nodeName == 'SPAN'))
 	    {
 	    //htr_alert(e,1);
 	    //alert(e.target.objn);
@@ -1248,7 +1298,7 @@ function tv_click(e)
 function tv_mousedown(e)
     {
     if (e.kind == 'tv') cn_activate(e.mainlayer, 'MouseDown');
-    if (e.target && e.target.kind == 'tv' && ((cx__capabilities.Dom0NS && e.target.href == null) || (!cx__capabilities.Dom0NS && e.target.nodeName != 'A' && e.target.nodeName != 'DIV')))
+    if (e.target && e.target.kind == 'tv' && ((cx__capabilities.Dom0NS && e.target.href == null) || (!cx__capabilities.Dom0NS && e.target.nodeName != 'A' && e.target.nodeName != 'DIV' && e.target.nodeName != 'SPAN')))
         {
         if (e.which == 3)
             {
@@ -1297,7 +1347,8 @@ function tv_mouseover(e)
     if (e.kind == 'tv')
 	{
 	cn_activate(e.mainlayer, 'MouseOver');
-	if (getClipWidth(e.layer) <= getdocWidth(e.layer)+2 && e.layer.link_txt)
+	/** Only tip if the label is too wide for the row and thus truncated. **/
+	if (e.layer.link_txt && e.layer.scrollWidth > e.layer.clientWidth)
 	    e.layer.tipid = pg_tooltip(e.layer.link_txt, e.pageX, e.pageY);
 	}
     return EVENT_CONTINUE | EVENT_ALLOW_DEFAULT_ACTION;
