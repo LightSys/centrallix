@@ -345,7 +345,8 @@ cx_internal_CompareNames(const struct dirent** a, const struct dirent** b)
  *** into CxGlobals.ParsedConfig.  If that file sets include_dir, each visible
  *** "*.conf" file in that directory is then merged into it in name order
  *** (see stMergeInf()), so later files override earlier ones.  Those files
- *** cannot set include_dir.
+ *** cannot set include_dir.  A relative include_dir is resolved against the
+ *** working directory, so it should be an absolute path.
  ***
  *** Runs before mssInitialize(), which mssError() needs, so it reports
  *** failures with printf().  Returns 0 on success.  On failure, returns -1

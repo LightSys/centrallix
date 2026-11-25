@@ -21,6 +21,8 @@ centrallix "system/config"
     ssl_cipherlist = "DEFAULT";
 
     // Each "*.conf" file in this directory overrides this file, in name order.
+    // Use an absolute path: a relative one is resolved against the working
+    // directory.
     include_dir = "##SYSCONFDIR##/centrallix/conf.d";
 
     // Set this to 1 to allow Centrallix to send a user's login credentials
