@@ -64,7 +64,11 @@ COVERAGE=@COVERAGE@
 HARDEN_CFLAGS=-fPIE -fstack-protector-strong -fstack-clash-protection
 HARDEN_LDFLAGS=-Wl,-z,relro,-z,now
 
-CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -std=gnu99 -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g $(HARDEN_CFLAGS)
+## Zero-init flag.  MTCFLAGS omits it: zeroing mtask's stack-spacing
+## buffers would overwrite the stacks of running threads.
+AUTOINIT_CFLAGS=@AUTOINIT_CFLAGS@
+
+CFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -std=gnu99 -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g $(HARDEN_CFLAGS) $(AUTOINIT_CFLAGS)
 MTCFLAGS=@CFLAGS@ @DEFS@ -Iinclude -DCXLIB_INTERNAL -DNM_USE_SYSMALLOC -std=gnu99 -Wall -Wformat-nonliteral $(PROFILE) $(COVERAGE) -g -O0 $(HARDEN_CFLAGS)
 TCFLAGS=$(patsubst -DNDEBUG,,$(CFLAGS)) -DCX_TESTING
 
