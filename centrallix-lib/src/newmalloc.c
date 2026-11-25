@@ -624,7 +624,11 @@ nmRegister(size_t size, char* name)
 	
 	/** Prepend a new RegisteredBlockType record to the list of records for this size. **/
 	blk = (pRegisteredBlockType)malloc(sizeof(RegisteredBlockType));
-	if (blk == NULL) return;
+	if (blk == NULL)
+	    {
+	    if (err_fn != NULL) err_fn("Insufficient system memory to register a block name.");
+	    return;
+	    }
 	blk->Next = blknames[size];
 	blknames[size] = blk;
 	
