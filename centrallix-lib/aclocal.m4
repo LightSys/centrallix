@@ -318,6 +318,7 @@ AC_DEFUN(CHECK_VALGRIND,
 	   
 dnl Check whether to zero-initialize automatic variables.  Valgrind integration
 dnl skips it so that Valgrind can report reads of uninitialized variables.
+dnl This check must follow the valgrind check in configure.ac.
 AC_DEFUN(CHECK_AUTOINIT,
     [
     AC_MSG_CHECKING(if automatic variables should be zero-initialized)
