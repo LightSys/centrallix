@@ -636,10 +636,10 @@ sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
 
 sfedit: sfeditor/sfedit.o $(V3LSOBJS)
-	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o sfedit $(LIBS) `gtk-config --libs`
+	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o sfedit $(LIBS) `gtk-config --libs` -pie $(HARDEN_LDFLAGS)
 
 clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
-	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o clog $(LIBS)
+	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o clog $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 .c.so:	$<
 	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) $(COVERAGE) -shared -fPIC $< -o $@ $(HARDEN_LDFLAGS)
@@ -648,7 +648,7 @@ clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
 	$(GZIP) -9 < $< > $@
 
 jsengine: $(JSVM)
-	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o jsvm
+	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o jsvm -pie $(HARDEN_LDFLAGS)
 
 test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS) -pie $(HARDEN_LDFLAGS)
@@ -660,13 +660,13 @@ test_prt: test_prt.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 #	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o test_prt $(LIBS)
 
 ts: ts.o $(LSOBJS) $(TESTSUITE)
-	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o ts $(LIBS)
+	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o ts $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 lsclient: lsclient.o $(BASIC)
-	$(CC) lsclient.o $(BASIC) $(PROFILE) $(COVERAGE) -o lsclient
+	$(CC) lsclient.o $(BASIC) $(PROFILE) $(COVERAGE) -o lsclient -pie $(HARDEN_LDFLAGS)
 
 htmltest: htmltest.o $(SUPPORT)
-	$(CC) htmltest.o $(SUPPORT) $(PROFILE) $(COVERAGE) -o htmltest
+	$(CC) htmltest.o $(SUPPORT) $(PROFILE) $(COVERAGE) -o htmltest -pie $(HARDEN_LDFLAGS)
 
 etc/rootnode: etc/rootnode.in
 	@CXOSDIR=$(cxosdir); \
