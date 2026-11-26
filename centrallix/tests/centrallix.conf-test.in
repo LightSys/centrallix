@@ -12,6 +12,7 @@ centrallix "system/config"
     colors_config = "##SYSCONFDIR##/centrallix/rgb.txt";
     rootnode_type = "system/uxfile";
     rootnode_file = "##SYSCONFDIR##/centrallix/rootnode";
+    debug_log_file = "/dev/null";
     iface_dir = "/sys/ifc";	    // this is an OSML path
     theme_dir = "/sys/themes";	    // OSML path
     transaction_log_file = "/var/log/cx_transaction_log";
