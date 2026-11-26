@@ -1,6 +1,6 @@
 ####  Centrallix Makefile
 ####
-####  Copyright (C) 1998-2014 by LightSys Technology Services, Inc.
+####  Copyright (C) 1998-2026 by LightSys Technology Services, Inc.
 ####
 ####  FREE SOFTWARE, NO WARRANTY: This program is Free Software, licensed
 ####  under version 2 of the GNU General Public License, or any later
@@ -386,8 +386,13 @@ VERSION=$(shell cat .version)
 
 CXLIBDIR=@CXLIBDIR@
 CXINCDIR=@CXINCDIR@
+
+# Hardening flags.  Executables also link with -pie.
+HARDEN_CFLAGS=-fPIE -fstack-protector-strong -fstack-clash-protection
+HARDEN_LDFLAGS=-Wl,-z,relro,-z,now
+
 #CFLAGS=$(PROFILE) -I./include -I. -I$(CXINCDIR) -Ithirdparty/$(JSONC)-inst/include/json-c @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -Wall -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
-CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -std=gnu99 -Wall -Wformat-nonliteral -Wno-implicit-function-declaration -g @STATIC_CFLAGS@
+CFLAGS=$(PROFILE) $(COVERAGE) -I./include -I. -I$(CXINCDIR) @CFLAGS@ -DBUILD=$(BUILD) -DSUBBUILD=$(SUBBUILD) -DYEARS=\"$(YEARS)\" -DNHT_ENABLE -DDBMAGIC -DNM_USE_SYSMALLOC -DHAS_IOPUTC -DSTABILITY=\"DEVELOPMENT\" -DHAVE_CONFIG_H -std=gnu99 -Wall -Wformat-nonliteral -Wno-implicit-function-declaration -g @STATIC_CFLAGS@ $(HARDEN_CFLAGS)
 TCFLAGS=$(CFLAGS) -DCX_TESTING
 
 #LIBS=@LIBS@ @STATIC_LIBS@ thirdparty/$(JSONC)-inst/lib/libjson-c.a
@@ -423,16 +428,16 @@ centrallix: .build .subbuild lsmain.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
 	@echo ''
 	@echo "Linking Build #"`cat .build`"-"`cat .subbuild`
 	@echo
-	$(CC) centrallix.o lsmain.o $(V3LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o centrallix
+	$(CC) centrallix.o lsmain.o $(V3LSOBJS) $(LIBDIRS) $(LIBS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o centrallix -pie $(HARDEN_LDFLAGS)
 	@sh -c 'BLD=`cat $(BLDFILE)`; BLD=`expr $$BLD + 1`; echo $$BLD > $(BLDFILE)'
 	#@rm centrallix.o
 	@echo ''
 
 cxpasswd: cxpasswd.o centrallix.o $(STATIC_LIBS) $(V3LSOBJS)
-	$(CC) cxpasswd.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS)
+	$(CC) cxpasswd.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o cxpasswd $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 linksign: linksign.o centrallix.o $(STATIC_LIBS) $(V3LSOBJS)
-	$(CC) linksign.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o linksign $(LIBS)
+	$(CC) linksign.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o linksign $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 install: all config_install modules_install manpages_install test_install
 	@mkdir -p "$(sbindir)"
@@ -541,7 +546,7 @@ tests/test_%.o: tests/test_%.c
 	$(CC) $(TCFLAGS) $< -c -o $@
 
 tests/test_%.bin: tests/test_%.o tests/t_driver.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@
+	$(CC) $< tests/t_driver.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o $@ $(LIBS) @NCURSES_LIBS@ -pie $(HARDEN_LDFLAGS)
 
 test: tests/centrallix.conf-test $(TOTESTDEPS) $(TOTESTFILES) $(CBTESTFILES)
 	@printf "%-62.62s  %s\n" "Test Name" "Stat"
@@ -631,37 +636,37 @@ sfeditor/sfedit.o: sfeditor/sfedit.c sfeditor/*.xpm
 	$(CC) $(CFLAGS) `gtk-config --cflags` $< -c -o $@
 
 sfedit: sfeditor/sfedit.o $(V3LSOBJS)
-	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o sfedit $(LIBS) `gtk-config --libs`
+	$(CC) sfeditor/sfedit.o centrallix.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o sfedit $(LIBS) `gtk-config --libs` -pie $(HARDEN_LDFLAGS)
 
 clog: clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM)
-	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o clog $(LIBS)
+	$(CC) clog_src/clog.o $(EXPRMODS) $(SUPPORT) $(OBJECTSYSTEM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o clog $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 .c.so:	$<
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) $(COVERAGE) -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused $(PROFILE) $(COVERAGE) -shared -fPIC $< -o $@ $(HARDEN_LDFLAGS)
 
 %.gz:	%
 	$(GZIP) -9 < $< > $@
 
 jsengine: $(JSVM)
-	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o jsvm
+	$(CC) $(JSVM) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o jsvm -pie $(HARDEN_LDFLAGS)
 
 test_obj: test_obj.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS)
+	$(CC) centrallix.o test_obj.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_obj $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 test_prt: test_prt.o centrallix.o $(V3LSOBJS) $(STATIC_LIBS)
-	$(CC) centrallix.o test_prt.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_prt $(LIBS)
+	$(CC) centrallix.o test_prt.o $(V3LSOBJS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -Wl@EXPORT_DYNAMIC@ -o test_prt $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 #test_prt: test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS)
 #	$(CC) test_prt.o $(SUPPORT) $(EXPRMODS) $(OBJECTSYSTEM) $(V3OBJDRIVERS) $(QYDRIVERS) $(APPLAYER) $(V3RPTMODS) $(CXSSMODS) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o test_prt $(LIBS)
 
 ts: ts.o $(LSOBJS) $(TESTSUITE)
-	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o ts $(LIBS)
+	$(CC) ts.o $(LSOBJS) $(TESTSUITE) $(LIBDIRS) $(PROFILE) $(COVERAGE) -o ts $(LIBS) -pie $(HARDEN_LDFLAGS)
 
 lsclient: lsclient.o $(BASIC)
-	$(CC) lsclient.o $(BASIC) $(PROFILE) $(COVERAGE) -o lsclient
+	$(CC) lsclient.o $(BASIC) $(PROFILE) $(COVERAGE) -o lsclient -pie $(HARDEN_LDFLAGS)
 
 htmltest: htmltest.o $(SUPPORT)
-	$(CC) htmltest.o $(SUPPORT) $(PROFILE) $(COVERAGE) -o htmltest
+	$(CC) htmltest.o $(SUPPORT) $(PROFILE) $(COVERAGE) -o htmltest -pie $(HARDEN_LDFLAGS)
 
 etc/rootnode: etc/rootnode.in
 	@CXOSDIR=$(cxosdir); \
@@ -737,28 +742,28 @@ backup:
 # will probably also want to add checks to configure.ac and aclocal.m4 for
 # this new module.
 osdrivers/objdrv_mysql.so: osdrivers/objdrv_mysql.c
-	$(CC) $(CFLAGS) @MYSQL_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @MYSQL_LIBS@ -o $@
+	$(CC) $(CFLAGS) @MYSQL_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @MYSQL_LIBS@ -o $@ $(HARDEN_LDFLAGS)
 
 osdrivers/objdrv_sybase.so: osdrivers/objdrv_sybase.c
-	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SYBASE_LIBS@ -o $@
+	$(CC) $(CFLAGS) @SYBASE_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SYBASE_LIBS@ -o $@ $(HARDEN_LDFLAGS)
 
 osdrivers/objdrv_xml.so: osdrivers/objdrv_xml.c
-	$(CC) $(CFLAGS) @XML_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @XML_LIBS@ -o $@
+	$(CC) $(CFLAGS) @XML_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @XML_LIBS@ -o $@ $(HARDEN_LDFLAGS)
 
 osdrivers/objdrv_gzip.so: osdrivers/objdrv_gzip.c
-	$(CC) $(CFLAGS) @GZIP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @GZIP_LIBS@ -o $@
+	$(CC) $(CFLAGS) @GZIP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @GZIP_LIBS@ -o $@ $(HARDEN_LDFLAGS)
 
 osdrivers/objdrv_berk.so: osdrivers/objdrv_berk.c
-	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -ldb -DMODULE -Wno-unused -shared -fPIC $< -o $@ $(HARDEN_LDFLAGS)
 
 #osdrivers/objdrv_snmp.so: osdrivers/objdrv_snmp.c
 #	$(CC) $(CFLAGS) @SNMP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @SNMP_LIBS@ -o $@
 
 netdrivers/net_ldap.so: netdrivers/net_ldap.c
-	$(CC) $(CFLAGS) @NETLDAP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @NETLDAP_LIBS@ -o $@
+	$(CC) $(CFLAGS) @NETLDAP_CFLAGS@ -DMODULE -Wno-unused -shared -fPIC $< @NETLDAP_LIBS@ -o $@ $(HARDEN_LDFLAGS)
 
 %.so: %.c
-	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@
+	$(CC) $(CFLAGS) -DMODULE -Wno-unused -shared -fPIC $< -o $@ $(HARDEN_LDFLAGS)
 
 # Dependencies made by "make depend"
 include .depend
