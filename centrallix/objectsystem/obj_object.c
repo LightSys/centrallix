@@ -11,6 +11,7 @@
 #include "cxlib/magic.h"
 #include "htmlparse.h"
 #include "cxlib/mtsession.h"
+#include "cxlib/strtcpy.h"
 #include "stparse_ne.h"
 #include "cxss/cxss.h"
 
@@ -841,13 +842,21 @@ obj_internal_ProcessOpen(pObjSession s, char* path, int mode, int mask, char* us
 			    }
 			else
 			    {
+			    char resolved[OBJSYS_MAX_PATH];
+			    char child[OBJSYS_MAX_PATH];
+			    int n_resolved = this->SubPtr + this->SubCnt - 1;
+
 			    /** If the entire path has been used, this is a successful return. **/
 			    if (this->SubPtr + this->SubCnt > this->Pathname->nElements) break;
 
-			    /** Otherwise, error out **/
+			    /** Otherwise, no driver can open the next path element. **/
+			    strtcpy(resolved, obj_internal_PathPart(this->Pathname, 0, n_resolved) + 1, sizeof(resolved));
+			    strtcpy(child, obj_internal_PathPart(this->Pathname, n_resolved, 1), sizeof(child));
 			    obj_internal_PathPart(this->Pathname,0,0);
-			    mssError(1,"OSML","Object '%s' access failed - no suitable driver to handle '%s'",
+			    mssError(1,"OSML","Failed to open '%s': '%s' not found in '%s' (no driver handles children of '%s')",
 				    this->Pathname->Pathbuf+1,
+				    child,
+				    resolved,
 				    ck_type->Name);
 			    obj_internal_FreeObj(this);
 			    return NULL;
