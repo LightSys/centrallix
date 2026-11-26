@@ -40,10 +40,9 @@ red.
 
 Any incidental output from the test_obj program is printed in dark blue,
 immediately preceding the test name.  The presence of such output does not
-mean a test has failed.  For example, the division expression operation test
-intentionally tries to divide by zero, which is supposed to generate error
-messages accordingly.  Those error messages will display in dark blue, as
-opposed to an output mismatch in dark red.
+mean a test has failed, but it usually points to an unexpected error or
+warning.  Tests that cause errors or warnings on purpose should check for
+them with "expect" (see below), which keeps them out of this output.
 
 
 == CREATING TEST SUITE ENTRIES - test_obj BASED ==
@@ -88,6 +87,26 @@ The principle behind this architecture is that output-driven test suites will
 only want to include certain, predictable, types of test/debug output in
 order to verify code paths and functionality.  Each cxTestOutput() line in
 the C code should have its own unique ID value.
+
+If a command should cause an error, put an "expect error" line before it:
+
+    ##NAME division by zero
+    expect error "divide by zero"
+    query select 1 / 0
+
+The command's errors are captured instead of printed, and the result of the
+check is written to the .out file:
+
+    Error raised: yes
+    Error mentions "divide by zero": yes
+
+Each quoted text is optional and must appear (ignoring case) in some error
+the command raised.  Keep checks general so they survive changes to error
+messages: check for data the error should mention (like the name of the
+object that failed), not for exact wording.  If a check fails, the captured
+errors are printed with the incidental output.  Use "expect warning" in the
+same way for warnings.  Only the kind of message being expected is captured,
+so other errors or warnings from the command are still printed.
 
 As you develop new test suite entires to cover new or existing functionality,
 see the discussion above about the $TONLY environment variable, as well, to

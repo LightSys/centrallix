@@ -52,6 +52,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <unistd.h>
 
 #include "application.h"
@@ -87,6 +88,14 @@ void* my_ptr;
 unsigned long ticks_last_tab=0;
 pObjSession s;
 
+/** A check from the "expect" command, waiting for the command it checks. **/
+typedef struct
+    {
+    bool		IsWarning;	/* Checks warnings instead of errors. */
+    XArray		Parts;		/* Text that some message must contain. */
+    }
+    TestObjExpect, *pTestObjExpect;
+
 struct
     {
     char		UserName[CX_USERNAME_SIZE];
@@ -101,6 +110,7 @@ struct
     pObfSession		ObfuscationSession;
     char		ObfRuleFile[256];
     char		ObfKey[256];
+    pTestObjExpect	Expect;		/* Check for the next command, or NULL. */
     }
     TESTOBJ;
 
@@ -2856,6 +2866,208 @@ testobj_i_cmdTrunc(pObjSession s, char* path, pLxSession ls)
 
 
 static int testobj_i_runFile(pObjSession s, char* filename);
+int testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx);
+
+
+/*** testobj_i_freeExpect - frees a check from the "expect" command.
+ ***
+ *** @param expect The check.
+ ***/
+static void
+testobj_i_freeExpect(pTestObjExpect expect)
+    {
+	warnFail(xaClear(&expect->Parts, (void*)nmSysFree, NULL));
+	warnFail(xaDeInit(&expect->Parts));
+	nmFree(expect, sizeof(TestObjExpect));
+    }
+
+
+/*** testobj_i_cmdExpect - sets up a check that the next command raises an
+ *** error or warning, optionally mentioning some text.
+ ***
+ *** @param kind "error" or "warning", or NULL if none was given.
+ *** @param ls The lexer for the rest of the command, positioned before the
+ *** 	text that must be mentioned.
+ *** @returns 0 on success, or -1 on failure.
+ ***/
+static int
+testobj_i_cmdExpect(char* kind, pLxSession ls)
+    {
+    int rval = -1;
+    char* const usage = "Usage: expect error|warning [\"<text>\" ...]";
+    pTestObjExpect expect = NULL;
+
+	if (UNLIKELY(kind == NULL || (strcmp(kind, "error") != 0 && strcmp(kind, "warning") != 0)))
+	    {
+	    mssError(1, "TESTOBJ", "%s", usage);
+	    goto end;
+	    }
+
+	expect = (pTestObjExpect)nmMalloc(sizeof(TestObjExpect));
+	if (UNLIKELY(expect == NULL))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to allocate an expected %s check.", kind);
+	    goto end;
+	    }
+	expect->IsWarning = (strcmp(kind, "warning") == 0);
+	if (UNLIKELY(xaInit(&expect->Parts, 4) < 0))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to initialize an expected %s check.", kind);
+	    nmFree(expect, sizeof(TestObjExpect));
+	    expect = NULL;
+	    goto end;
+	    }
+
+	/** Read the text that must be mentioned. **/
+	while (true)
+	    {
+	    const int token = mlxNextToken(ls);
+	    if (token == MLX_TOK_EOF) break;
+	    mlxHoldToken(ls);
+	    char* const part = testobj_i_readString(ls, usage);
+	    if (UNLIKELY(part == NULL))
+		{
+		mssError(0, "TESTOBJ", "Failed to read the text of an expected %s.", kind);
+		goto end;
+		}
+	    if (UNLIKELY(xaAddItem(&expect->Parts, (void*)part) < 0))
+		{
+		mssError(1, "TESTOBJ", "Failed to add \"%s\" to an expected %s check.", part, kind);
+		nmSysFree(part);
+		goto end;
+		}
+	    }
+
+	/** Wait for the next command. **/
+	TESTOBJ.Expect = expect;
+	expect = NULL;
+
+	rval = 0;
+
+    end:
+	if (expect != NULL) testobj_i_freeExpect(expect);
+
+	return rval;
+    }
+
+
+/*** testobj_i_containsText - checks whether a string contains some text,
+ *** ignoring case.
+ ***
+ *** @param str The string to search.
+ *** @param text The text to find.
+ *** @returns Whether the text was found.
+ ***/
+static bool
+testobj_i_containsText(char* str, char* text)
+    {
+	const size_t text_len = strlen(text);
+	for (char* cur = str; *cur != '\0'; cur++)
+	    if (strncasecmp(cur, text, text_len) == 0) return true;
+
+    return (text_len == 0);
+    }
+
+
+/*** testobj_i_runExpected - runs a command checked by the pending "expect"
+ *** command.  The command's errors (or warnings) are captured instead of
+ *** printed, and the check results are written to the output.  If the check
+ *** fails, the captured messages are printed.
+ ***
+ *** @param s The OSML session.
+ *** @param cmd The command line.
+ *** @param batch_mode Passed to testobj_do_cmd().
+ *** @param inp_lx Passed to testobj_do_cmd().
+ *** @returns 0 on success, 1 to quit, or -1 on failure (including a failed
+ *** 	check).  The checked command failing is success when expecting an
+ *** 	error.
+ ***/
+static int
+testobj_i_runExpected(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
+    {
+    int rval = -1;
+    pTestObjExpect expect = TESTOBJ.Expect;
+    char* const kind = (expect->IsWarning) ? "warning" : "error";
+    char* const label = (expect->IsWarning) ? "Warning" : "Error";
+    const int cmd_len = (int)strcspn(cmd, "\r\n");
+    XArray captured; captured.Items = NULL;
+
+	TESTOBJ.Expect = NULL;
+	if (UNLIKELY(xaInit(&captured, 16) < 0))
+	    {
+	    mssError(1, "TESTOBJ", "Failed to initialize the captured %ss list.", kind);
+	    goto end;
+	    }
+
+	/** Run the command, capturing only what is expected. **/
+	if (!expect->IsWarning) mssClearError();
+	if (UNLIKELY(mssStartCapture((expect->IsWarning) ? NULL : &captured, (expect->IsWarning) ? &captured : NULL) < 0))
+	    {
+	    mssError(0, "TESTOBJ", "Failed to capture %ss from command \"%.*s\".", kind, cmd_len, cmd);
+	    goto end;
+	    }
+	const int cmd_rval = testobj_do_cmd(s, cmd, batch_mode, inp_lx);
+	if (UNLIKELY(mssStopCapture() < 0))
+	    {
+	    mssError(0, "TESTOBJ", "Failed to stop capturing %ss from command \"%.*s\".", kind, cmd_len, cmd);
+	    goto end;
+	    }
+	if (!expect->IsWarning) mssClearError();
+	if (UNLIKELY(TESTOBJ.Expect != NULL))
+	    {
+	    testobj_i_freeExpect(TESTOBJ.Expect);
+	    TESTOBJ.Expect = NULL;
+	    mssError(1, "TESTOBJ",
+		"Failed to check for an expected %s: \"expect\" must be followed by the command it checks.",
+		kind
+	    );
+	    goto end;
+	    }
+
+	/** Write the check results. **/
+	bool passed = (captured.nItems > 0);
+	bool print_ok = (fdPrintf(TESTOBJ.Output, "%s raised: %s\n", label, (passed) ? "yes" : "no") >= 0);
+	for (int i = 0; i < expect->Parts.nItems; i++)
+	    {
+	    char* const part = (char*)xaGetItem(&expect->Parts, i);
+	    bool found = false;
+	    for (int j = 0; j < captured.nItems && !found; j++)
+		found = testobj_i_containsText((char*)xaGetItem(&captured, j), part);
+	    print_ok &= (fdPrintf(TESTOBJ.Output, "%s mentions \"%s\": %s\n", label, part, (found) ? "yes" : "no") >= 0);
+	    passed &= found;
+	    }
+	if (UNLIKELY(!print_ok))
+	    {
+	    mssError(1, "TESTOBJ",
+		"Failed to write expected %s check results for \"%.*s\" to output file \"%s\".",
+		kind, cmd_len, cmd, TESTOBJ.OutputFilename
+	    );
+	    goto end;
+	    }
+
+	/** Show what was captured when the check fails. **/
+	if (UNLIKELY(!passed))
+	    {
+	    if (captured.nItems > 0) printf("Captured %ss from command \"%.*s\":\n", kind, cmd_len, cmd);
+	    for (int i = 0; i < captured.nItems; i++)
+		printf("--- %s\n", (char*)xaGetItem(&captured, i));
+	    mssError(1, "TESTOBJ", "Failed check for an expected %s from command \"%.*s\".", kind, cmd_len, cmd);
+	    goto end;
+	    }
+
+	/** The command can only fail when expecting an error. **/
+	rval = (cmd_rval < 0 && !expect->IsWarning) ? 0 : cmd_rval;
+
+    end:
+	if (LIKELY(captured.Items != NULL))
+	    {
+	    warnFail(xaClear(&captured, (void*)nmSysFree, NULL));
+	    warnFail(xaDeInit(&captured));
+	    }
+	testobj_i_freeExpect(expect);
+
+	return rval;
+    }
 
 
 /*** testobj_do_cmd - runs one command line.
@@ -2888,6 +3100,10 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 
 	cmd += strspn(cmd, " \t"); /* Ignore indentation. */
 	if (cmd[0] == '#') return 0;
+
+	/** Run a command checked by "expect", skipping blank lines. **/
+	if (TESTOBJ.Expect != NULL && cmd[strspn(cmd, "\r\n")] != '\0')
+	    return testobj_i_runExpected(s, cmd, batch_mode, inp_lx);
 
 	ls = mlxStringSession(cmd, MLX_F_ICASE | MLX_F_EOF);
 	if (UNLIKELY(ls == NULL))
@@ -3033,6 +3249,10 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 		);
 		goto end;
 		}
+	    }
+	else if (strcmp(cmdname, "expect") == 0)
+	    {
+	    if (UNLIKELY(testobj_i_cmdExpect(arg, ls) < 0)) goto end;
 	    }
 	else if (strcmp(cmdname, "mem") == 0)
 	    {
@@ -3235,6 +3455,7 @@ testobj_do_cmd(pObjSession s, char* cmd, int batch_mode, pLxSession inp_lx)
 	    printf("  delete    - Delete an object.\n");
 	    printf("  echo      - Print a line of text.\n");
 	    printf("  exec      - Call a method on an object.\n");
+	    printf("  expect    - Check that the next command raises an error or warning (mentioning any given \"text\").\n");
 	    printf("  hints     - Show the presentation hints of an attribute (or object)\n");
 	    printf("  help      - Displays this help screen.\n");
 	    printf("  list, ls  - Lists the objects in the current \"directory\" in the objectsystem.\n");
@@ -3392,6 +3613,18 @@ testobj_i_runFile(pObjSession s, char* filename)
 		rval = 1;
 		goto end;
 		}
+	    }
+
+	/** Fail if an "expect" has no command to check. **/
+	if (UNLIKELY(TESTOBJ.Expect != NULL))
+	    {
+	    testobj_i_freeExpect(TESTOBJ.Expect);
+	    TESTOBJ.Expect = NULL;
+	    mssError(1, "TESTOBJ",
+		"Failed to run command file \"%s\": its last \"expect\" has no command to check.",
+		filename
+	    );
+	    goto end;
 	    }
 
 	rval = 0;
