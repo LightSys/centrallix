@@ -1,0 +1,15 @@
+Attribute [f_integer]:  integer  NULL
+Attribute [f_string]:   string   "nulls" 
+Attribute [f_money]:    money  NULL
+Attribute [f_datetime]: datetime  NULL
+Attribute [f_double]:   double  NULL
+Attribute [f_integer]:  integer  1
+Attribute [f_string]:   string   "integers" 
+Attribute [f_money]:    money   $2.00 
+Attribute [f_datetime]: datetime   '04 Mar 2005 06:07' 
+Attribute [f_double]:   double  8.0
+Attribute [f_integer]:  integer  3
+Attribute [f_string]:   string   "doubles" 
+Attribute [f_money]:    money   $4.50 
+Attribute [f_datetime]: datetime  NULL
+Attribute [f_double]:   double  9.5

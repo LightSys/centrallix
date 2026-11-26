@@ -1,0 +1,14 @@
+##NAME INSERT SELECT converts values to the destination's types
+##UNDO /tests/Datatypes.csv
+
+# NULLs take each column's type.
+query insert into /tests/Datatypes.csv/rows select f_integer=null, f_string='nulls', f_money=null, f_datetime=null, f_double=null
+query select :f_integer, :f_string, :f_money, :f_datetime, :f_double from /tests/Datatypes.csv/rows where :f_string = 'nulls'
+
+# Integers convert to money and double, and strings to datetime.
+query insert into /tests/Datatypes.csv/rows select f_integer=1, f_string='integers', f_money=2, f_datetime='03/04/2005 06:07', f_double=8
+query select :f_integer, :f_string, :f_money, :f_datetime, :f_double from /tests/Datatypes.csv/rows where :f_string = 'integers'
+
+# Doubles convert to money.
+query insert into /tests/Datatypes.csv/rows select f_integer=3, f_string='doubles', f_money=4.5, f_datetime=null, f_double=9.5
+query select :f_integer, :f_string, :f_money, :f_datetime, :f_double from /tests/Datatypes.csv/rows where :f_string = 'doubles'

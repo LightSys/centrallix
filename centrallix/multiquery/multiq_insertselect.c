@@ -125,6 +125,10 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
     ObjData od;
     pObjData pod;
     int t;
+    int dest_t;
+    int int_val;
+    MoneyType money;
+    DateTime date;
     //int use_attrid;
     int hc_rval;
     pObjDataItem collection = NULL;
@@ -310,6 +314,42 @@ mqisStart(pQueryElement qe, pQueryStatement stmt, pExpression additional_expr)
 			goto error;
 		    else if (exp_rval == 1) /* null */
 			pod = NULL;
+		    }
+
+		/** Convert the value to the destination's type **/
+		dest_t = objGetAttrType(new_obj, attrname);
+		if (dest_t > 0 && dest_t != t)
+		    {
+		    if (pod == NULL)
+			{
+			t = dest_t;
+			}
+		    else if (t == DATA_T_INTEGER && dest_t == DATA_T_DOUBLE)
+			{
+			int_val = od.Integer;
+			od.Double = int_val;
+			t = dest_t;
+			}
+		    else if ((t == DATA_T_INTEGER || t == DATA_T_DOUBLE) && dest_t == DATA_T_MONEY)
+			{
+			if (objDataToMoney(t, pod, &money) < 0)
+			    {
+			    mssError(1, "MQIS", "Failed to convert the %s value for INSERT attribute '%s' to money", obj_type_names[t], attrname);
+			    goto error;
+			    }
+			od.Money = &money;
+			t = dest_t;
+			}
+		    else if (t == DATA_T_STRING && dest_t == DATA_T_DATETIME)
+			{
+			if (objDataToDateTime(DATA_T_STRING, od.String, &date, NULL) < 0)
+			    {
+			    mssError(1, "MQIS", "Failed to convert '%s' for INSERT attribute '%s' to a datetime", od.String, attrname);
+			    goto error;
+			    }
+			od.DateTime = &date;
+			t = dest_t;
+			}
 		    }
 
 		/** Set the attribute on the newly inserted object **/
