@@ -487,7 +487,9 @@ mssEndSession(pMtSession s)
 
 
 /*** mss_i_warn - Displays warning text in the console and adds it to a log
- *** that can provide extra context if an error fails.
+ *** that can provide extra context if an error fails.  While the session is
+ *** capturing warnings (see mssStartCapture()), the warning is added to the
+ *** capture instead of being displayed.
  ***
  *** Note: The format is parsed using vsnprintf(), so edge cases like a %s on
  *** 	a value that isn't a valid string rely on glibc's implementation of C
@@ -506,7 +508,9 @@ void
 mss_i_warn(char* module, char* file, int line, char* message, ...)
     {
     XString warn_msg_xstring; warn_msg_xstring.String = NULL;
+    char* formatted_warn_msg = NULL;
     char* allocated_warn_msg;
+    bool captured = false;
     va_list args;
 
 	/** Print nested warnings directly to stderr. **/
@@ -521,41 +525,63 @@ mss_i_warn(char* module, char* file, int line, char* message, ...)
 	    }
 	MssInWarn = true;
 
-	/** Prevent issues from interlacing this function with prints to stdout. **/
-	warnFail(fflush(stdout));
+	/** Only sessions store recent warnings or capture them. **/
+	pMtSession s = (thCurrent() != NULL) ? thGetParam(NULL, "mss") : NULL;
+	if (s != NULL && (MSS.WarnHistory != 0 || s->CapturedWarnings != NULL))
+	    {
+	    /** Format the warning using an XString. **/
+	    if (warnFail(xsInit(&warn_msg_xstring)) == 0)
+		{
+		bool format_ok = (warnNeg(xsConcatPrintf(&warn_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
+		va_start(args, message);
+		format_ok &= (warnNeg(xsGenPrintf_va(xsWrite, &warn_msg_xstring, NULL, NULL, message, args)) >= 0);
+		va_end(args);
+		if (LIKELY(format_ok)) formatted_warn_msg = xsString(&warn_msg_xstring);
+		}
+	    }
+
+	/** Capture the warning instead of printing it, if requested. **/
+	if (formatted_warn_msg != NULL && s->CapturedWarnings != NULL)
+	    {
+	    char* captured_warn_msg = warnNull(nmSysStrdup(formatted_warn_msg));
+	    if (LIKELY(captured_warn_msg != NULL))
+		{
+		if (warnNeg(xaAddItem(s->CapturedWarnings, (void*)captured_warn_msg)) >= 0)
+		    captured = true;
+		else
+		    nmSysFree(captured_warn_msg);
+		}
+	    }
 
 	/** Write the warning message using the requested logging method. **/
-	va_start(args, message);
-	if (strcmp(MSS.LogMethod, "syslog") == 0)
+	if (!captured)
 	    {
-	    char warn_msg[256];
-	    vsnprintf(warn_msg, sizeof(warn_msg), message, args);
-	    syslog(LOG_WARNING, "Warning: %s:%d: %s: %s\n", file, line, module, warn_msg);
-	    }
-	else
-	    {
-	    FILE* out = (strcmp(MSS.LogMethod, "stdout") == 0) ? stdout : stderr;
-	    fprintf(out, "Warning: %s:%d: %s: ", file, line, module);
-	    vfprintf(out, message, args);
-	    fputc('\n', out);
-	    fflush(out);
-	    }
-	va_end(args);
+	    /** Prevent issues from interlacing this function with prints to stdout. **/
+	    warnFail(fflush(stdout));
 
-	/** Only sessions store recent warnings, if history is enabled. **/
-	pMtSession s = (thCurrent() != NULL) ? thGetParam(NULL, "mss") : NULL;
-	if (s == NULL || MSS.WarnHistory == 0) goto end;
+	    va_start(args, message);
+	    if (strcmp(MSS.LogMethod, "syslog") == 0)
+		{
+		char warn_msg[256];
+		vsnprintf(warn_msg, sizeof(warn_msg), message, args);
+		syslog(LOG_WARNING, "Warning: %s:%d: %s: %s\n", file, line, module, warn_msg);
+		}
+	    else
+		{
+		FILE* out = (strcmp(MSS.LogMethod, "stdout") == 0) ? stdout : stderr;
+		fprintf(out, "Warning: %s:%d: %s: ", file, line, module);
+		vfprintf(out, message, args);
+		fputc('\n', out);
+		fflush(out);
+		}
+	    va_end(args);
+	    }
 
-	/** Format the warning using an XString. **/
-	if (warnFail(xsInit(&warn_msg_xstring)) != 0) goto end;
-	bool format_ok = (warnNeg(xsConcatPrintf(&warn_msg_xstring, "%s:%d: %s: ", file, line, module)) >= 0);
-	va_start(args, message);
-	format_ok &= (warnNeg(xsGenPrintf_va(xsWrite, &warn_msg_xstring, NULL, NULL, message, args)) >= 0);
-	va_end(args);
-	if (UNLIKELY(!format_ok)) goto end;
+	/** Store the warning in the history, if history is enabled. **/
+	if (formatted_warn_msg == NULL || MSS.WarnHistory == 0) goto end;
 
 	/** Allocate space for the warning text. **/
-	allocated_warn_msg = warnNull(nmSysStrdup(xsString(&warn_msg_xstring)));
+	allocated_warn_msg = warnNull(nmSysStrdup(formatted_warn_msg));
 	if (UNLIKELY(allocated_warn_msg == NULL)) goto end;
 
 	/** Drop the oldest warning when the list is full. **/
@@ -622,7 +648,7 @@ mss_i_warn_error(char* module, char* file, int line, char* message, ...)
 
 	/** Append the errors, unless mss_i_error() already logged them. **/
 	pMtSession s = (thCurrent() != NULL) ? thGetParam(NULL, "mss") : NULL;
-	if (s != NULL && !MSS.LogAllErrors && s->ErrList.nItems > 0)
+	if (s != NULL && (!MSS.LogAllErrors || s->CapturedErrors != NULL) && s->ErrList.nItems > 0)
 	    {
 	    xsConcatenate(&str, "\r\n", 2);
 	    mss_internal_StringErrorList(s, &str);
@@ -649,7 +675,9 @@ mss_i_warn_error(char* module, char* file, int line, char* message, ...)
 
 /*** mss_i_error - Displays error text to the user (but no stack trace).
  *** Does not exit the program, allowing the calling function to fail,
- *** creating a cascade of error messages which provides useful info.
+ *** creating a cascade of error messages which provides useful info.  While
+ *** the session is capturing errors (see mssStartCapture()), the error is
+ *** added to the capture instead of being displayed.
  ***
  *** Note: The format is parsed using vsnprintf(), so edge cases like a %s on
  *** 	a value that isn't a valid string rely on glibc's implementation of C
@@ -733,7 +761,20 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 
 	/** Get current session (returns NULL if running outside session context). **/
 	pMtSession s = thGetParam(NULL, "mss");
-	const bool log_error = (s == NULL || MSS.LogAllErrors);
+	bool log_error = (s == NULL || MSS.LogAllErrors);
+
+	/** Capture the error instead of logging it, if requested. **/
+	if (s != NULL && s->CapturedErrors != NULL)
+	    {
+	    char* captured_err_msg = warnNull(nmSysStrdup(err_msg));
+	    if (LIKELY(captured_err_msg != NULL))
+		{
+		if (warnNeg(xaAddItem(s->CapturedErrors, (void*)captured_err_msg)) >= 0)
+		    log_error = false;
+		else
+		    nmSysFree(captured_err_msg);
+		}
+	    }
 
 	/** Use standard logging without a session context, if needed. **/
 	if (log_error)
@@ -785,6 +826,62 @@ mss_i_error(int clr, char* module, char* file, int line, char* message, ...)
 	warnFail(fflush(stderr));
 
 	return;
+    }
+
+
+/*** mssStartCapture - starts capturing the current session's errors and/or
+ *** warnings.  Captured messages are added to the given arrays instead of
+ *** being displayed, but are otherwise handled as usual (e.g. errors are still
+ *** added to the error stack).
+ ***
+ *** @param errors The array that captured errors are added to, or NULL to
+ ***	leave errors uncaptured.  The caller frees each item with nmSysFree().
+ *** @param warnings The array that captured warnings are added to, or NULL to
+ ***	leave warnings uncaptured.  The caller frees each item with nmSysFree().
+ *** @returns 0 on success, or -1 if there is no session or it is already
+ ***	capturing.
+ ***/
+int
+mssStartCapture(pXArray errors, pXArray warnings)
+    {
+	pMtSession s = thGetParam(NULL, "mss");
+	if (UNLIKELY(s == NULL))
+	    {
+	    mssError(1, "MSS", "Failed to start capturing messages: no session.");
+	    return -1;
+	    }
+	if (UNLIKELY(s->CapturedErrors != NULL || s->CapturedWarnings != NULL))
+	    {
+	    mssError(1, "MSS", "Failed to start capturing messages: already capturing.");
+	    return -1;
+	    }
+
+	s->CapturedErrors = errors;
+	s->CapturedWarnings = warnings;
+
+    return 0;
+    }
+
+
+/*** mssStopCapture - stops capturing the current session's errors and
+ *** warnings, started by mssStartCapture().
+ ***
+ *** @returns 0 on success, or -1 if there is no session.
+ ***/
+int
+mssStopCapture(void)
+    {
+	pMtSession s = thGetParam(NULL, "mss");
+	if (UNLIKELY(s == NULL))
+	    {
+	    mssError(1, "MSS", "Failed to stop capturing messages: no session.");
+	    return -1;
+	    }
+
+	s->CapturedErrors = NULL;
+	s->CapturedWarnings = NULL;
+
+    return 0;
     }
 
 

@@ -61,6 +61,8 @@ typedef struct
     XRingQueue	WarnList;
     XHashTable	Params;
     int		LinkCnt;
+    pXArray	CapturedErrors;		/* NULL unless capturing errors. */
+    pXArray	CapturedWarnings;	/* NULL unless capturing warnings. */
     }
     MtSession, *pMtSession;
 
@@ -122,5 +124,7 @@ void mssClearError();
 int mssPrintError(pFile fd);
 int mssStringError(pXString str);
 int mssUserError(pXString str);
+int mssStartCapture(pXArray errors, pXArray warnings);
+int mssStopCapture(void);
 
 #endif
