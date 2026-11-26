@@ -90,18 +90,19 @@ the C code should have its own unique ID value.
 
 If a command should cause an error, put an "expect error" line before it:
 
-    ##NAME division by zero
-    expect error "divide by zero"
-    query select 1 / 0
+    ##NAME hash() with an unknown algorithm
+    expect error "md7"
+    query select hash('md7', 'x')
 
 The command's errors are captured instead of printed, and the result of the
 check is written to the .out file:
 
     Error raised: yes
-    Error mentions "divide by zero": yes
+    Error mentions "md7": yes
 
 Each quoted text is optional and must appear (ignoring case) in some error
-the command raised.  Keep checks general so they survive changes to error
+the command raised.  test_obj's own errors don't count, since they repeat
+the command's text.  Keep checks general so they survive changes to error
 messages: check for data the error should mention (like the name of the
 object that failed), not for exact wording.  If a check fails, the captured
 errors are printed with the incidental output.  Use "expect warning" in the

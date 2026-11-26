@@ -3032,7 +3032,13 @@ testobj_i_runExpected(pObjSession s, char* cmd, int batch_mode, pLxSession inp_l
 	    char* const part = (char*)xaGetItem(&expect->Parts, i);
 	    bool found = false;
 	    for (int j = 0; j < captured.nItems && !found; j++)
-		found = testobj_i_containsText((char*)xaGetItem(&captured, j), part);
+		{
+		char* const msg = (char*)xaGetItem(&captured, j);
+
+		/** Skip test_obj's own messages, which repeat the command's text. **/
+		if (strstr(msg, ": TESTOBJ: ") != NULL) continue;
+		found = testobj_i_containsText(msg, part);
+		}
 	    print_ok &= (fdPrintf(TESTOBJ.Output, "%s mentions \"%s\": %s\n", label, part, (found) ? "yes" : "no") >= 0);
 	    passed &= found;
 	    }

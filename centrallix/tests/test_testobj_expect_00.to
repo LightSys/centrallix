@@ -5,8 +5,8 @@ expect error
 query select 1 / 0
 
 # Each given text must appear in some error, ignoring case.
-expect error "DIVIDE BY ZERO" "1 / 0"
-query select 1 / 0
+expect error "MD7"
+query select hash('md7', 'x')
 
 # Blank and comment lines before the command are skipped.
 expect error "nosuch.txt"
