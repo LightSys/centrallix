@@ -19,3 +19,9 @@ Attribute [column_000]:   string   "?test1=string1&test2="
 Attribute [column_000]:   string   "?test1=string1&test2=" 
 Attribute [column_000]:   string   "?test1=string1" 
 Attribute [text]:   string   "Invalid Parameters:" 
+Error raised: yes
+Error raised: yes
+Error raised: yes
+Error raised: yes
+Error raised: yes
+Error raised: yes

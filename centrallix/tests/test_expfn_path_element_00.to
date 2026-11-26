@@ -5,23 +5,43 @@ query select path_element('filename.png')
 query select path_element('testfile')
 
 query select text='Invalid Names:'
+expect error
 query select path_element('')
+expect error
 query select path_element('/')
+expect error
 query select path_element('%2f')
+expect error
 query select path_element('file1/file2')
+expect error
 query select path_element('file1%2ffile2')
+expect error
 query select path_element('..')
+expect error
 query select path_element('.')
+expect error
 query select path_element('%2e')
+expect error
 query select path_element('%2E')
+expect error
 query select path_element('%2e.')
+expect error
 query select path_element('%2E.')
+expect error
 query select path_element('.%2e')
+expect error
 query select path_element('.%2E')
+expect error
 query select path_element('%2e%2e')
+expect error
 query select path_element('%2E%2e')
+expect error
 query select path_element('%2e%2E')
+expect error
 query select path_element('%2E%2E')
+expect error
 query select path_element('file=name.png')
+expect error
 query select path_element('file&name.png')
+expect error
 query select path_element('file?name.png')

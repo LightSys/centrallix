@@ -22,9 +22,15 @@ query select path_params('test1', 'string1', 'test2', NULL)
 query select path_params('test1', 'string1', NULL)
 
 query select text='Invalid Parameters:'
+expect error
 query select path_params('', NULL)
+expect error
 query select path_params(1, NULL)
+expect error
 query select path_params('test?', 'string')
+expect error
 query select path_params('test&', 'string')
+expect error
 query select path_params('test=', 'string')
+expect error
 query select path_params('test/', 'string')

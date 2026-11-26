@@ -1,3 +1,4 @@
 ##NAME Header line with no colon
 
+expect warning "This line has no colon"
 query select :name, :inner_type, before = :"X-Before", after = :"X-After" from /tests/MimeBadHeaderLine.eml
