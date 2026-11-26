@@ -12,14 +12,21 @@ query select '$5.00 / 2.0' = $5.00 / 2.0
 query select '$5.00 / $2.00' = $5.00 / $2.00
 
 # Below are nonsensical ops.
+expect error
 query select '5 / $2.00' = 5 / $2.00
+expect error
 query select '5.0 / $2.00' = 5.0 / $2.00
 
 # Detection of divsion by zero.
+expect error
 query select '1 / 0' = 1 / 0
+expect error
 query select '1.0 / 0' = 1.0 / 0
+expect error
 query select '$1.00 / 0' = $1.00 / 0
+expect error
 query select '1 / 0.00' = 1 / 0.00
+expect error
 query select '1 / $0.00' = 1 / $0.00
 
 # Null value handling

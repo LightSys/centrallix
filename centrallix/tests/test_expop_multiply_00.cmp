@@ -14,7 +14,9 @@ Attribute ["abc" * 4]:   string   "abcabcabcabc"
 Attribute [4 * ""]:   string   "" 
 Attribute ["" * 4]:   string   "" 
 Attribute ["4" * 4]:   string   "4444" 
+Error raised: yes
 Attribute ["abc" * 0]:   string   "" 
+Error raised: yes
 Attribute [1.5 * "1.3"]:   double  1.95
 Attribute [2 * null]:  integer  NULL
 Attribute [null * 2]:  integer  NULL

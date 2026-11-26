@@ -53,3 +53,5 @@ Attribute [cdate]:   string   "2015-10-04"
 Attribute [cid]:   string   "11" 
 Attribute [rid]:  integer  NULL
 Attribute [rdate]:  integer  NULL
+Error raised: yes
+Error mentions "multilevel1.json": yes

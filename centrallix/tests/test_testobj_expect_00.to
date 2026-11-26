@@ -1,0 +1,22 @@
+##NAME expect command
+
+# An expected error is captured instead of printed.
+expect error
+query select 1 / 0
+
+# Each given text must appear in some error, ignoring case.
+expect error "DIVIDE BY ZERO" "1 / 0"
+query select 1 / 0
+
+# Blank and comment lines before the command are skipped.
+expect error "nosuch.txt"
+
+# The command still runs normally after its errors.
+query select :name from object /tests/MimePartTypes.eml/nosuch.txt
+
+# Commands after the checked one are not checked.
+query select one = 1
+
+# An expected warning is captured instead of printed.
+expect warning "no colon"
+query select :name from /tests/MimeBadHeaderLine.eml

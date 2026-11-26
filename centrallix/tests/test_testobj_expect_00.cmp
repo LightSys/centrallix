@@ -1,0 +1,10 @@
+Error raised: yes
+Error raised: yes
+Error mentions "DIVIDE BY ZERO": yes
+Error mentions "1 / 0": yes
+Error raised: yes
+Error mentions "nosuch.txt": yes
+Attribute [one]:  integer  1
+Attribute [name]:   string   "attachment1.txt" 
+Warning raised: yes
+Warning mentions "no colon": yes

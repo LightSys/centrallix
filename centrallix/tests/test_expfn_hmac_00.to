@@ -8,9 +8,11 @@ query select 'sha384' = hmac("sha384", "test string", "key")
 query select 'sha512' = hmac("sha512", "test string", "key")
 
 # should cause invalid hash type error
+expect error "md7"
 query select hmac("md7", "test string", "key")
 
 # null values as parameters
+expect error
 query select hmac(null, "test string", "key")
 query select hmac("md5", null, "key")
 query select hmac("md5", "test string", null)
